@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package user;
+option go_package = "./proto/user";
+
+import "google/protobuf/empty.proto";
+
+service UserService {
+  rpc TestTimeout (google.protobuf.Empty) returns (google.protobuf.Empty);
+  rpc Get (GetRequest) returns (GetResponse);
+}
+
+message GetRequest {
+  int64 ID = 1;
+}
+
+message GetResponse {
+  int64 Code = 1;
+  string Msg = 2;
+  GetResponseDatas Datas = 3;
+}
+
+message GetResponseDatas {
+  int64 ID = 1;
+  string Name = 2;
+  string Ips = 3;
+}
+

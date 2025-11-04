@@ -1,0 +1,10 @@
+.env
+docs/
+**/.terraform/providers
+**/.terraform/modules
+**/.terraform.lock.hcl
+!**/.terraform/terraform.tfstate
+**/terraform.tfstate.*.backup
+**/terraform.tfstate.backup
+**/backend-kustomize/*/google-key.json
+.DS_Store
