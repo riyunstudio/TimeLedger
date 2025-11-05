@@ -2,7 +2,7 @@ package servers
 
 import (
 	"akali/global"
-	"akali/logs"
+	"akali/libs/logs"
 	"bytes"
 	"context"
 	"encoding/json"

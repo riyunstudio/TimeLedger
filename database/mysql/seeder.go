@@ -2,7 +2,7 @@ package mysql
 
 import (
 	"akali/app/models"
-	"akali/tools"
+	"akali/libs/tools"
 	"log"
 )
 

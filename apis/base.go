@@ -2,7 +2,7 @@ package apis
 
 import (
 	"akali/configs"
-	"akali/tools"
+	"akali/libs/tools"
 )
 
 type Api struct {

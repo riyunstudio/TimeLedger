@@ -1,8 +1,8 @@
-package libs
+package curl
 
 import (
-	"akali/logs"
-	"akali/tools"
+	"akali/libs/logs"
+	"akali/libs/tools"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -48,7 +48,7 @@ type Curl struct {
 	tools    *tools.Tools
 }
 
-func CurlInit(tools *tools.Tools) *Curl {
+func Initialize(tools *tools.Tools) *Curl {
 	// 預設超時
 	timeOut := 15 * time.Second
 

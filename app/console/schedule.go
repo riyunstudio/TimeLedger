@@ -2,7 +2,7 @@ package console
 
 import (
 	"akali/app"
-	"akali/logs"
+	"akali/libs/logs"
 	"fmt"
 	"log"
 	"sync"

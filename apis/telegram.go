@@ -1,12 +1,12 @@
 package apis
 
 import (
-	"akali/libs"
+	"akali/libs/curl"
 	"fmt"
 )
 
 func (api *Api) PostTelegramMessage(tid string, text string) (err error) {
-	req := libs.CurlInit(api.Tools)
+	req := curl.Initialize(api.Tools)
 	req.SetHttps().NewRequest("api.telegram.org", "443", fmt.Sprintf("/bot%s/sendMessage", api.Env.TelegramBotToken))
 	req.SetQueries(map[string]any{
 		"chat_id": api.Env.TelegramChatID,

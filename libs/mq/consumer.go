@@ -2,7 +2,8 @@ package mq
 
 import (
 	"akali/app"
-	"akali/logs"
+	rabbitmq "akali/global/rabbitMQ"
+	"akali/libs/logs"
 	"fmt"
 
 	"github.com/rabbitmq/amqp091-go"
@@ -52,7 +53,7 @@ func (c *Consumer) consume(queue string) error {
 				traceLog.SetTraceID(m.MessageId)
 
 				switch queue {
-				case QNAME_NORMAL:
+				case rabbitmq.N_NORMAL:
 					if err := c.handler.normal(m); err != nil {
 						traceLog.PrintErr(err)
 					}

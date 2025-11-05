@@ -2,6 +2,7 @@ package mq
 
 import (
 	"akali/app"
+	rabbitmq "akali/global/rabbitMQ"
 	"encoding/json"
 	"fmt"
 
@@ -14,8 +15,8 @@ type Handler struct {
 
 func (h *Handler) normal(msg amqp091.Delivery) error {
 	switch msg.Type {
-	case QTYPE_DEMO:
-		var u User
+	case rabbitmq.T_DEMO:
+		var u rabbitmq.NormalDemoUser
 		if err := json.Unmarshal(msg.Body, &u); err != nil {
 			return err
 		}

@@ -4,7 +4,7 @@ import (
 	"akali/app"
 	"akali/app/console"
 	ginSrv "akali/app/servers"
-	"akali/mq"
+	"akali/libs/mq"
 	rpcSrv "akali/rpc/servers"
 	"context"
 	"fmt"
@@ -38,10 +38,10 @@ func main() {
 
 	// MQ
 	rabbitMQ := mq.Initialize(app)
-	// body, _ := json.Marshal(mq.User{ID: 1, Name: "Test1"})
-	// rabbitMQ.Producer.Publish(mq.QNAME_NORMAL, amqp091.Publishing{Type: mq.QTYPE_DEMO, Body: body, MessageId: "TRACE_ID_XXXXX"})
-	// body, _ = json.Marshal(mq.User{ID: 2, Name: "Test2"})
-	// rabbitMQ.Producer.Publish(mq.QNAME_DELAY, amqp091.Publishing{Type: mq.QTYPE_DEMO, Body: body, MessageId: "TRACE_ID_XXXXX"})
+	// body, _ := json.Marshal(rabbitmq.NormalDemoUser{ID: 1, Name: "Test1"})
+	// rabbitMQ.Producer.Publish(rabbitmq.N_NORMAL, amqp091.Publishing{Type: rabbitmq.T_DEMO, Body: body, MessageId: "TRACE_ID_XXXXX"})
+	// body, _ = json.Marshal(rabbitmq.NormalDemoUser{ID: 2, Name: "Test2"})
+	// rabbitMQ.Producer.Publish(rabbitmq.N_DELAY, amqp091.Publishing{Type: rabbitmq.T_DEMO, Body: body, MessageId: "TRACE_ID_XXXXX"})
 
 	// 啟動 API server
 	ginServer := ginSrv.Initialize(app)
