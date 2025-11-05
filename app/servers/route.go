@@ -62,5 +62,6 @@ type actions struct {
 
 // 建構控制器
 func (s *Server) NewControllers() {
+	controllers.NewBaseController(s.app)
 	s.action.user = controllers.NewUserController(s.app)
 }

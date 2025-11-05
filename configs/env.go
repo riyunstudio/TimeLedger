@@ -10,12 +10,11 @@ type Env struct {
 	AppEnv      string
 	AppDebug    bool
 	AppTimezone string
+	AppID       int
 
 	ServerName string
 	ServerHost string
 	ServerPort string
-
-	PrefixCode int
 
 	MysqlMasterHost string
 	MysqlMasterPort string
@@ -48,12 +47,11 @@ func LoadEnv() *Env {
 		AppEnv:      os.Getenv("APP_ENV"),
 		AppDebug:    getEnvAsBool("APP_DEBUG", false),
 		AppTimezone: os.Getenv("APP_TIMEZONE"),
+		AppID:       getEnvAsInt("APP_ID", -1),
 
 		ServerName: os.Getenv("SERVER_NAME"),
 		ServerHost: os.Getenv("SERVER_HOST"),
 		ServerPort: os.Getenv("SERVER_PORT"),
-
-		PrefixCode: getEnvAsInt(os.Getenv("PREFIX_CODE"), -1),
 
 		MysqlMasterHost: os.Getenv("MYSQL_MASTER_HOST"),
 		MysqlMasterPort: os.Getenv("MYSQL_MASTER_PORT"),

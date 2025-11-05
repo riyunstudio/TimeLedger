@@ -1,19 +1,29 @@
 package controllers
 
 import (
+	"akali/app"
 	"akali/global"
 	"akali/global/errInfos"
 
 	"github.com/gin-gonic/gin"
 )
 
-type BaseController struct{}
+type BaseController struct {
+	app *app.App
+}
+
+// 建構函式
+func NewBaseController(app *app.App) *BaseController {
+	return &BaseController{
+		app: app,
+	}
+}
 
 // JSON 輔助回傳
 func (b *BaseController) JSON(ctx *gin.Context, response global.Ret) {
 	// 檢查 errInfo, 如果是nil就初始化
 	if response.ErrInfo == nil {
-		response.ErrInfo = &errInfos.Err{}
+		response.ErrInfo = &errInfos.Res{}
 	}
 
 	// 存到 gin.Context
@@ -22,7 +32,7 @@ func (b *BaseController) JSON(ctx *gin.Context, response global.Ret) {
 	// 客戶端回傳
 	if response.ErrInfo.Code == 0 {
 		ctx.JSON(response.Status, global.ApiResponse{
-			Code:    response.ErrInfo.Code,
+			Code:    0,
 			Message: "OK",
 			Datas:   response.Datas,
 		})

@@ -5,12 +5,14 @@ import (
 	"akali/configs"
 	"akali/database/mysql"
 	"akali/database/redis"
+	"akali/global/errInfos"
 	"akali/libs/tools"
 	"akali/rpc"
 )
 
 type App struct {
 	Env   *configs.Env
+	Err   *errInfos.ErrInfo
 	Tools *tools.Tools
 	Mysql *mysql.DB
 	Redis *redis.Redis
@@ -22,6 +24,8 @@ func Initialize() *App {
 	env := configs.LoadEnv()
 
 	tools := tools.Initialize(env.AppTimezone)
+
+	e := errInfos.Initialize(env.AppID)
 
 	mysql := mysql.Initialize(env)
 	mysql.AutoMigrate()
@@ -35,6 +39,7 @@ func Initialize() *App {
 
 	return &App{
 		Env:   env,
+		Err:   e,
 		Tools: tools,
 		Mysql: mysql,
 		Redis: redis,

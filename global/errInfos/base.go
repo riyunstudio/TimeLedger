@@ -1,5 +1,10 @@
 package errInfos
 
+import (
+	"fmt"
+	"strconv"
+)
+
 // 語系設定
 const (
 	LANG_EN = "en"
@@ -13,15 +18,25 @@ type message struct {
 	CN string
 }
 
-type Err struct {
+var SUPORT_LANG = []string{LANG_EN, LANG_TW, LANG_CN}
+
+type ErrInfo struct {
+	appID int
+}
+
+func Initialize(appID int) *ErrInfo {
+	return &ErrInfo{
+		appID: appID,
+	}
+}
+
+type Res struct {
 	Code int
 	Msg  string
 }
 
-var SUPORT_LANG = []string{LANG_EN, LANG_TW, LANG_CN}
-
 // 透過錯誤代碼取得對應的訊息
-func New(code int, lang ...string) *Err {
+func (e *ErrInfo) New(code int, lang ...string) *Res {
 	msgs, exists := messagesMap[code]
 
 	if !exists {
@@ -35,14 +50,17 @@ func New(code int, lang ...string) *Err {
 		selectedLang = lang[0]
 	}
 
+	codeStr := fmt.Sprintf("%d%d", e.appID, code)
+	code, _ = strconv.Atoi(codeStr)
+
 	switch selectedLang {
 	case LANG_EN:
-		return &Err{Code: code, Msg: msgs.EN}
+		return &Res{Code: code, Msg: msgs.EN}
 	case LANG_TW:
-		return &Err{Code: code, Msg: msgs.TW}
+		return &Res{Code: code, Msg: msgs.TW}
 	case LANG_CN:
-		return &Err{Code: code, Msg: msgs.CN}
+		return &Res{Code: code, Msg: msgs.CN}
 	default:
-		return &Err{Code: code, Msg: msgs.EN}
+		return &Res{Code: code, Msg: msgs.EN}
 	}
 }

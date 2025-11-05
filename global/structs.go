@@ -13,7 +13,7 @@ type ApiResponse struct {
 type Ret struct {
 	Status  int
 	Datas   any
-	ErrInfo *errInfos.Err
+	ErrInfo *errInfos.Res
 	Err     error
 }
 

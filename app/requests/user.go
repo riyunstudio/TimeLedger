@@ -25,10 +25,10 @@ type UserGetRequest struct {
 	ID int `json:"id"`
 }
 
-func (r *UserRequest) Get(ctx *gin.Context) (req *UserGetRequest, errInfo *errInfos.Err, err error) {
+func (r *UserRequest) Get(ctx *gin.Context) (req *UserGetRequest, errInfo *errInfos.Res, err error) {
 	req, err = Validate[UserGetRequest](ctx)
 	if err != nil {
-		return nil, errInfos.New(errInfos.PARAMS_VALIDATE_ERROR), err
+		return nil, r.app.Err.New(errInfos.PARAMS_VALIDATE_ERROR), err
 	}
 
 	return
@@ -40,10 +40,10 @@ type UserCreateRequest struct {
 	Games []string `json:"game"`
 }
 
-func (r *UserRequest) Create(ctx *gin.Context) (req *UserCreateRequest, errInfo *errInfos.Err, err error) {
+func (r *UserRequest) Create(ctx *gin.Context) (req *UserCreateRequest, errInfo *errInfos.Res, err error) {
 	req, err = Validate[UserCreateRequest](ctx)
 	if err != nil {
-		return nil, errInfos.New(errInfos.PARAMS_VALIDATE_ERROR), err
+		return nil, r.app.Err.New(errInfos.PARAMS_VALIDATE_ERROR), err
 	}
 
 	// 不合法的ip直接過濾
@@ -67,10 +67,10 @@ type UserUpdateRequest struct {
 	Games []string `json:"game"`
 }
 
-func (r *UserRequest) Update(ctx *gin.Context) (req *UserUpdateRequest, errInfo *errInfos.Err, err error) {
+func (r *UserRequest) Update(ctx *gin.Context) (req *UserUpdateRequest, errInfo *errInfos.Res, err error) {
 	req, err = Validate[UserUpdateRequest](ctx)
 	if err != nil {
-		return nil, errInfos.New(errInfos.PARAMS_VALIDATE_ERROR), err
+		return nil, r.app.Err.New(errInfos.PARAMS_VALIDATE_ERROR), err
 	}
 
 	// 不合法的ip直接過濾

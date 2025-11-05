@@ -58,7 +58,7 @@ func (s *Server) RecoverMiddleware() gin.HandlerFunc {
 // 			return
 // 		case <-ctx.Done():
 // 			// 超時或 client 取消
-// 			eInfo := errInfos.New(errInfos.REQUEST_TIMEOUT)
+// 			eInfo := s.app.Err.New(errInfos.REQUEST_TIMEOUT)
 // 			c.JSON(http.StatusGatewayTimeout, global.ApiResponse{
 // 				Code:    eInfo.Code,
 // 				Message: eInfo.Msg,
@@ -92,7 +92,7 @@ func (s *Server) TimeoutMiddleware() gin.HandlerFunc {
 			return
 		case <-time.After(s.timeout):
 			// 超時回傳錯誤 (不等待)
-			eInfo := errInfos.New(errInfos.REQUEST_TIMEOUT)
+			eInfo := s.app.Err.New(errInfos.REQUEST_TIMEOUT)
 			c.JSON(http.StatusGatewayTimeout, global.ApiResponse{
 				Code:    eInfo.Code,
 				Message: eInfo.Msg,
@@ -101,7 +101,7 @@ func (s *Server) TimeoutMiddleware() gin.HandlerFunc {
 			return
 		case <-ctx.Done():
 			// client 取消
-			eInfo := errInfos.New(errInfos.REQUEST_TIMEOUT)
+			eInfo := s.app.Err.New(errInfos.REQUEST_TIMEOUT)
 			c.JSON(http.StatusGatewayTimeout, global.ApiResponse{
 				Code:    eInfo.Code,
 				Message: eInfo.Msg,
