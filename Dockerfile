@@ -18,7 +18,7 @@ COPY . .
 
 # 產生 Swagger、跑 Lint、編譯
 RUN swag init
-# RUN golangci-lint run --timeout 10m
+RUN golangci-lint run --timeout 10m
 RUN go build -mod=vendor -o main .
 
 EXPOSE 8080
