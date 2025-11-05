@@ -36,6 +36,11 @@ type Env struct {
 
 	TelegramBotToken string
 	TelegramChatID   string
+
+	RabbitMqAccount  string
+	RabbitMqPassword string
+	RabbitMqHost     string
+	RabbitMqPort     string
 }
 
 func LoadEnv() *Env {
@@ -69,6 +74,11 @@ func LoadEnv() *Env {
 
 		TelegramBotToken: os.Getenv("TELEGRAM_BOT_TOKEN"),
 		TelegramChatID:   os.Getenv("TELEGRAM_CHAT_ID"),
+
+		RabbitMqAccount:  os.Getenv("RABBIT_MQ_ACCOUNT"),
+		RabbitMqPassword: os.Getenv("RABBIT_MQ_PASSWORD"),
+		RabbitMqHost:     os.Getenv("RABBIT_MQ_HOST"),
+		RabbitMqPort:     os.Getenv("RABBIT_MQ_PORT"),
 	}
 }
 

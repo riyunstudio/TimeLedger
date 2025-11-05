@@ -4,14 +4,17 @@ import (
 	"akali/app"
 	"akali/app/console"
 	ginSrv "akali/app/servers"
+	"akali/mq"
 	rpcSrv "akali/rpc/servers"
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
 
 	_ "github.com/joho/godotenv/autoload"
+	"github.com/rabbitmq/amqp091-go"
 )
 
 // @title Akali 阿卡莉 模板框架_1
@@ -34,6 +37,24 @@ func main() {
 	// 排程
 	scheduler := console.Initialize(app)
 	scheduler.Start()
+
+	queue := mq.NewRabbitMQ(app)
+
+	body, _ := json.Marshal(mq.User{
+		ID:   1,
+		Name: "Test1",
+	})
+
+	// 發送測試消息
+	queue.Producer.Publish("normal", amqp091.Publishing{
+		Type: "",
+		Body: body,
+	})
+	// queue.Producer.Publish("delay", &mq.User{
+	// 	Type: "normal",
+	// 	ID:   2,
+	// 	Name: "Test2",
+	// })
 
 	// 啟動 API server
 	srv := ginSrv.Initialize(app)
