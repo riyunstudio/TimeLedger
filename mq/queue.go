@@ -3,6 +3,7 @@ package mq
 import (
 	"akali/app"
 	"fmt"
+	"log"
 	"sync"
 
 	"github.com/rabbitmq/amqp091-go"
@@ -17,9 +18,11 @@ type RabbitMQ struct {
 
 	Consumer *Consumer
 	Producer *Producer
+
+	wg sync.WaitGroup
 }
 
-func NewRabbitMQ(app *app.App) *RabbitMQ {
+func Initialize(app *app.App) *RabbitMQ {
 	defer func() {
 		if err := recover(); err != nil {
 			panic(fmt.Errorf("RabbitMQ panic error, Err: %v", err))
@@ -42,7 +45,11 @@ func NewRabbitMQ(app *app.App) *RabbitMQ {
 		app:    app,
 		conn:   conn,
 		chPool: make(map[string]*amqp091.Channel),
+		wg:     sync.WaitGroup{},
 	}
+
+	// 要監聽的 Queue
+	queues := []string{}
 
 	// 初始化所有隊列
 	for _, cfg := range QueuesConfig {
@@ -61,27 +68,19 @@ func NewRabbitMQ(app *app.App) *RabbitMQ {
 		}
 
 		r.chPool[cfg.Name] = ch
-	}
 
-	// Consumer 路由
-	router := NewRouter()
-	router.RegisterBulk(GetRegistrations())
-
-	// Consumer
-	r.Consumer = NewConsumer(r, router)
-	for _, q := range []string{"normal"} {
-		if err := r.Consumer.Consume(q); err != nil {
-			panic(fmt.Errorf("RabbitMQ new consume error, Err: %v", err))
+		if cfg.Start {
+			queues = append(queues, cfg.Name)
 		}
 	}
 
-	// Producer
 	r.Producer = NewProducer(r)
+	r.Consumer = NewConsumer(r, app, queues)
 
 	return r
 }
 
-func (r *RabbitMQ) GetChannel(queue string) (*amqp091.Channel, error) {
+func (r *RabbitMQ) getChannel(queue string) (*amqp091.Channel, error) {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 	ch, ok := r.chPool[queue]
@@ -91,12 +90,19 @@ func (r *RabbitMQ) GetChannel(queue string) (*amqp091.Channel, error) {
 	return ch, nil
 }
 
-func (r *RabbitMQ) Close() error {
+func (r *RabbitMQ) Stop() error {
+	log.Println("RabbitMQ stopping...")
+
+	// 等待所有正在處理的消息完成
+	r.wg.Wait()
 	for _, ch := range r.chPool {
 		ch.Close()
 	}
+
 	if r.conn != nil {
 		r.conn.Close()
 	}
+
+	log.Println("RabbitMQ Stopped")
 	return nil
 }

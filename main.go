@@ -7,14 +7,12 @@ import (
 	"akali/mq"
 	rpcSrv "akali/rpc/servers"
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
 
 	_ "github.com/joho/godotenv/autoload"
-	"github.com/rabbitmq/amqp091-go"
 )
 
 // @title Akali 阿卡莉 模板框架_1
@@ -38,27 +36,16 @@ func main() {
 	scheduler := console.Initialize(app)
 	scheduler.Start()
 
-	queue := mq.NewRabbitMQ(app)
-
-	body, _ := json.Marshal(mq.User{
-		ID:   1,
-		Name: "Test1",
-	})
-
-	// 發送測試消息
-	queue.Producer.Publish("normal", amqp091.Publishing{
-		Type: "",
-		Body: body,
-	})
-	// queue.Producer.Publish("delay", &mq.User{
-	// 	Type: "normal",
-	// 	ID:   2,
-	// 	Name: "Test2",
-	// })
+	// MQ
+	rabbitMQ := mq.Initialize(app)
+	// body, _ := json.Marshal(mq.User{ID: 1, Name: "Test1"})
+	// rabbitMQ.Producer.Publish(mq.QNAME_NORMAL, amqp091.Publishing{Type: mq.QTYPE_DEMO, Body: body, MessageId: "TRACE_ID_XXXXX"})
+	// body, _ = json.Marshal(mq.User{ID: 2, Name: "Test2"})
+	// rabbitMQ.Producer.Publish(mq.QNAME_DELAY, amqp091.Publishing{Type: mq.QTYPE_DEMO, Body: body, MessageId: "TRACE_ID_XXXXX"})
 
 	// 啟動 API server
-	srv := ginSrv.Initialize(app)
-	srv.Start()
+	ginServer := ginSrv.Initialize(app)
+	ginServer.Start()
 
 	rpcServer := rpcSrv.Initialize(app)
 	rpcServer.Start()
@@ -73,9 +60,10 @@ func main() {
 		<-signals
 		// 優雅退出要結束的程式寫在這 Ex.關閉連線
 		cancel()
-		srv.Stop()
+		ginServer.Stop()
 		rpcServer.Stop()
 		scheduler.Stop()
+		rabbitMQ.Stop()
 		fmt.Println("Exit.")
 		exit <- struct{}{}
 	}()

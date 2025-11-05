@@ -90,16 +90,27 @@ func getlogfields(tl *TraceLog) logrus.Fields {
 
 	logField := logrus.Fields{}
 
-	// 固定資訊
-	logField["service"] = tl.service
-	logField["podName"] = tl.podName
-	logField["url"] = tl.url
-	logField["method"] = tl.method
-	logField["headers"] = tl.headers
-	logField["runTime"] = tl.runTime
-	logField["traceID"] = tl.traceID
-
-	// 非固定資訊
+	if tl.service != "" {
+		logField["service"] = tl.service
+	}
+	if tl.podName != "" {
+		logField["podName"] = tl.podName
+	}
+	if tl.url != "" {
+		logField["url"] = tl.url
+	}
+	if tl.method != "" {
+		logField["method"] = tl.method
+	}
+	if tl.headers != "" {
+		logField["headers"] = tl.headers
+	}
+	if tl.runTime != 0 {
+		logField["runTime"] = tl.runTime
+	}
+	if tl.traceID != "" {
+		logField["traceID"] = tl.traceID
+	}
 	if tl.topic != "" {
 		logField["topic"] = tl.topic
 	}
@@ -192,4 +203,11 @@ func (tl *TraceLog) PrintGrpc(res any, err error) {
 		logrus.SetLevel(logrus.ErrorLevel)
 		logrus.WithFields(lf).Error()
 	}
+}
+
+func (tl *TraceLog) PrintErr(err error) {
+	tl.err = err.Error()
+	lf := getlogfields(tl)
+	logrus.SetLevel(logrus.ErrorLevel)
+	logrus.WithFields(lf).Error()
 }
