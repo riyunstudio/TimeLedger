@@ -6,16 +6,16 @@ import (
 	"akali/database/mysql"
 	"akali/database/redis"
 	"akali/libs/tools"
-	rpcClient "akali/rpc/clients"
+	"akali/rpc"
 )
 
 type App struct {
-	Env       *configs.Env
-	Tools     *tools.Tools
-	Mysql     *mysql.DB
-	Redis     *redis.Redis
-	Api       *apis.Api
-	RpcClient *rpcClient.RpcClient
+	Env   *configs.Env
+	Tools *tools.Tools
+	Mysql *mysql.DB
+	Redis *redis.Redis
+	Api   *apis.Api
+	Rpc   *rpc.Rpc
 }
 
 func Initialize() *App {
@@ -31,14 +31,14 @@ func Initialize() *App {
 
 	api := apis.Initialize(env, tools)
 
-	rpcClient := rpcClient.Initialize(env, tools)
+	rpc := rpc.Initialize(env, tools)
 
 	return &App{
-		Env:       env,
-		Tools:     tools,
-		Mysql:     mysql,
-		Redis:     redis,
-		Api:       api,
-		RpcClient: rpcClient,
+		Env:   env,
+		Tools: tools,
+		Mysql: mysql,
+		Redis: redis,
+		Api:   api,
+		Rpc:   rpc,
 	}
 }

@@ -1,4 +1,4 @@
-package clients
+package rpc
 
 // type rpcClientConfig struct {
 // 	Name     string

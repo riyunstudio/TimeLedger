@@ -1,10 +1,10 @@
-package servers
+package grpc
 
 import (
 	"akali/app"
 	"akali/app/repositories"
-	"akali/rpc/servers/proto/user"
-	"akali/rpc/servers/services"
+	"akali/grpc/proto/user"
+	"akali/grpc/services"
 	"fmt"
 	"log"
 	"net"
@@ -14,7 +14,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-type RpcServer struct {
+type Grpc struct {
 	app     *app.App
 	timeout time.Duration
 
@@ -22,18 +22,18 @@ type RpcServer struct {
 	wg  sync.WaitGroup // For 優雅退出
 }
 
-func Initialize(app *app.App) *RpcServer {
-	return &RpcServer{
+func Initialize(app *app.App) *Grpc {
+	return &Grpc{
 		app:     app,
 		timeout: 5 * time.Second,
 	}
 }
 
-func (s *RpcServer) registerServices() {
+func (s *Grpc) registerServices() {
 	user.RegisterUserServiceServer(s.srv, &services.User{App: s.app, UserRepository: repositories.NewUserRepository(s.app)})
 }
 
-func (s *RpcServer) Start() {
+func (s *Grpc) Start() {
 	s.srv = grpc.NewServer(
 		grpc.ChainUnaryInterceptor(
 			s.InitMiddleware,    // wg
@@ -58,7 +58,7 @@ func (s *RpcServer) Start() {
 	log.Println("gRPC server started")
 }
 
-func (s *RpcServer) Stop() {
+func (s *Grpc) Stop() {
 	log.Println("gRPC server stopping...")
 
 	// 1. 停止 gRPC 伺服器的相關操作

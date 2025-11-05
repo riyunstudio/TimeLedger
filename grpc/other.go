@@ -1,4 +1,4 @@
-package servers
+package grpc
 
 import (
 	"akali/global"
@@ -9,14 +9,14 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-func (s *RpcServer) setRequestTime(ctx context.Context) context.Context {
+func (s *Grpc) setRequestTime(ctx context.Context) context.Context {
 	start := time.Now()
 	ctx = context.WithValue(ctx, global.RequestTimeKey, start)
 
 	return ctx
 }
 
-func (s *RpcServer) getRequestRunTime(ctx context.Context) float64 {
+func (s *Grpc) getRequestRunTime(ctx context.Context) float64 {
 	if startTime, ok := ctx.Value(global.RequestTimeKey).(time.Time); ok {
 		return float64(time.Since(startTime).Milliseconds()) / 1000
 	}
@@ -24,7 +24,7 @@ func (s *RpcServer) getRequestRunTime(ctx context.Context) float64 {
 	return 0
 }
 
-func (s *RpcServer) injectMetadataToContext(ctx context.Context) context.Context {
+func (s *Grpc) injectMetadataToContext(ctx context.Context) context.Context {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		return ctx // 沒有 metadata，直接返回原始 ctx
@@ -56,7 +56,7 @@ func (s *RpcServer) injectMetadataToContext(ctx context.Context) context.Context
 	return ctx
 }
 
-func (s *RpcServer) writeApiLog(ctx context.Context, method string, req any, resp any, err error) {
+func (s *Grpc) writeApiLog(ctx context.Context, method string, req any, resp any, err error) {
 	// 初始化 TraceLog
 	traceLog := logs.TraceLogInit()
 	traceLog.SetTopic("server_gRPC")
@@ -77,7 +77,7 @@ func (s *RpcServer) writeApiLog(ctx context.Context, method string, req any, res
 	traceLog.PrintGrpc(resp, err)
 }
 
-func (s *RpcServer) writePanicLog(ctx context.Context, method string, req any, err global.Panic) {
+func (s *Grpc) writePanicLog(ctx context.Context, method string, req any, err global.Panic) {
 	// 初始化 TraceLog
 	traceLog := logs.TraceLogInit()
 	traceLog.SetTopic("server_gRPC")

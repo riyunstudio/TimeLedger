@@ -1,4 +1,4 @@
-package servers
+package grpc
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func (s *RpcServer) InitMiddleware(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
+func (s *Grpc) InitMiddleware(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
 	ctx = s.setRequestTime(ctx)
 	s.wg.Add(1)
 	defer func() {
@@ -18,7 +18,7 @@ func (s *RpcServer) InitMiddleware(ctx context.Context, req any, info *grpc.Unar
 	return handler(ctx, req)
 }
 
-func (s *RpcServer) RecoverMiddleware(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
+func (s *Grpc) RecoverMiddleware(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			// 整理 Panic內容
@@ -33,7 +33,7 @@ func (s *RpcServer) RecoverMiddleware(ctx context.Context, req any, info *grpc.U
 	return handler(ctx, req)
 }
 
-func (s *RpcServer) TimeoutMiddleware(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+func (s *Grpc) TimeoutMiddleware(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 	ctx, cancel := context.WithTimeout(ctx, s.timeout)
 	defer cancel()
 
@@ -61,7 +61,7 @@ func (s *RpcServer) TimeoutMiddleware(ctx context.Context, req any, info *grpc.U
 	// }
 }
 
-func (s *RpcServer) MainMiddleware(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+func (s *Grpc) MainMiddleware(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 	// 避免空請求或 HTTP/2 preface
 	if info.FullMethod == "" || req == nil {
 		return handler(ctx, req)

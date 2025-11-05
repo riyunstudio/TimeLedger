@@ -3,9 +3,9 @@ package main
 import (
 	"akali/app"
 	"akali/app/console"
-	ginSrv "akali/app/servers"
+	"akali/app/servers"
+	"akali/grpc"
 	"akali/libs/mq"
-	rpcSrv "akali/rpc/servers"
 	"context"
 	"fmt"
 	"os"
@@ -44,11 +44,11 @@ func main() {
 	// rabbitMQ.Producer.Publish(rabbitmq.N_DELAY, amqp091.Publishing{Type: rabbitmq.T_DEMO, Body: body, MessageId: "TRACE_ID_XXXXX"})
 
 	// 啟動 API server
-	ginServer := ginSrv.Initialize(app)
-	ginServer.Start()
+	gin := servers.Initialize(app)
+	gin.Start()
 
-	rpcServer := rpcSrv.Initialize(app)
-	rpcServer.Start()
+	grpc := grpc.Initialize(app)
+	grpc.Start()
 
 	// 優雅退出
 	signals := make(chan os.Signal, 1)
@@ -60,8 +60,8 @@ func main() {
 		<-signals
 		// 優雅退出要結束的程式寫在這 Ex.關閉連線
 		cancel()
-		ginServer.Stop()
-		rpcServer.Stop()
+		gin.Stop()
+		grpc.Stop()
 		scheduler.Stop()
 		rabbitMQ.Stop()
 		fmt.Println("Exit.")

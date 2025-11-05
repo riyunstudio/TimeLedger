@@ -4,7 +4,7 @@ import (
 	"akali/app"
 	"akali/app/models"
 	"akali/app/repositories"
-	"akali/rpc/servers/proto/user"
+	"akali/grpc/proto/user"
 	"context"
 	"fmt"
 	"time"

@@ -1,4 +1,4 @@
-package clients
+package rpc
 
 import (
 	"akali/configs"
@@ -6,12 +6,12 @@ import (
 	"fmt"
 )
 
-type RpcClient struct {
+type Rpc struct {
 	Env   *configs.Env
 	Tools *tools.Tools
 }
 
-func Initialize(env *configs.Env, tools *tools.Tools) *RpcClient {
+func Initialize(env *configs.Env, tools *tools.Tools) *Rpc {
 	defer func() {
 		if err := recover(); err != nil {
 			panic(fmt.Errorf("初始化 [rpc client] 發生 panic, Err: %v", tools.PanicParser(err)))
@@ -26,7 +26,7 @@ func Initialize(env *configs.Env, tools *tools.Tools) *RpcClient {
 	// 	}
 	// }
 
-	return &RpcClient{
+	return &Rpc{
 		Env:   env,
 		Tools: tools,
 	}
