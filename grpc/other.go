@@ -32,11 +32,12 @@ func (s *Grpc) injectMetadataToContext(ctx context.Context) context.Context {
 
 	// 完整 MD
 	metaMap := make(map[string]string)
+	type ctxKey string
 
 	// 將每個 metadata key-value 放進 ctx
 	for k, vals := range md {
 		if len(vals) > 0 {
-			ctx = context.WithValue(ctx, k, vals[0])
+			ctx = context.WithValue(ctx, ctxKey(k), vals[0])
 			metaMap[k] = vals[0]
 		}
 	}

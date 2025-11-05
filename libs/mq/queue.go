@@ -90,19 +90,21 @@ func (r *RabbitMQ) getChannel(queue string) (*amqp091.Channel, error) {
 	return ch, nil
 }
 
-func (r *RabbitMQ) Stop() error {
+func (r *RabbitMQ) Stop() {
 	log.Println("RabbitMQ stopping...")
 
 	// 等待所有正在處理的消息完成
 	r.wg.Wait()
 	for _, ch := range r.chPool {
-		ch.Close()
+		if err := ch.Close(); err != nil {
+			fmt.Printf("RabbitMQ failed to close channel: %v\n", err)
+		}
 	}
-
 	if r.conn != nil {
-		r.conn.Close()
+		if err := r.conn.Close(); err != nil {
+			fmt.Printf("RabbitMQ failed to close connection: %v\n", err)
+		}
 	}
 
 	log.Println("RabbitMQ Stopped")
-	return nil
 }

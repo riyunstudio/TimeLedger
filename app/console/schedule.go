@@ -26,6 +26,7 @@ func Initialize(app *app.App) *Scheduler {
 }
 
 // 註冊任務
+// nolint:unused // 保留以供未來擴展
 func (s *Scheduler) addJob(spec string, job Job) {
 	_, err := s.cron.AddFunc(spec, func() {
 		s.wg.Add(1)

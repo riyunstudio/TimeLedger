@@ -25,13 +25,13 @@ func Validate[T any](ctx *gin.Context) (*T, error) {
 			// 若不是 JSON，再試 Form Data
 			if formErr := ctx.ShouldBind(&req); formErr != nil {
 				// 返回 Form Data 綁定錯誤
-				return nil, fmt.Errorf("Request payload validate fail (Form Data), Err: %v", formErr)
+				return nil, fmt.Errorf("request payload validate fail (Form Data), Err: %v", formErr)
 			}
 		}
 	}
 
 	if err != nil {
-		return nil, fmt.Errorf("Request payload validate fail (JSON/Query), Err: %v", err)
+		return nil, fmt.Errorf("request payload validate fail (JSON/Query), Err: %v", err)
 	}
 
 	return &req, nil
