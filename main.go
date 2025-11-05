@@ -15,7 +15,7 @@ import (
 	_ "github.com/joho/godotenv/autoload"
 )
 
-// @title Akali 阿卡莉 模板框架_1
+// @title Akali 阿卡莉 模板框架
 // @version 1.0
 // @description API 維護文件
 // @schemes http
