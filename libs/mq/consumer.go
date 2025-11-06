@@ -16,8 +16,11 @@ type Consumer struct {
 
 func NewConsumer(r *RabbitMQ, app *app.App, queues []string) *Consumer {
 	c := &Consumer{
-		r:       r,
-		handler: &Handler{app: app},
+		r: r,
+		handler: &Handler{
+			app: app,
+			r:   r,
+		},
 	}
 
 	for _, queue := range queues {
@@ -45,17 +48,31 @@ func (c *Consumer) consume(queue string) error {
 			c.r.wg.Add(1)
 			go func(m amqp091.Delivery) {
 				defer c.r.wg.Done()
-				// 初始化 TraceLog
-				traceLog := logs.TraceLogInit()
-				traceLog.SetTopic("RabbitMQ")
-				traceLog.SetMethod(m.Type)
-				traceLog.SetArgs(string(m.Body))
-				traceLog.SetTraceID(m.MessageId)
+
+				var err error
+				defer func() {
+					if exception := recover(); exception != nil {
+						panicErr := c.r.app.Tools.PanicParser(exception)
+						err = fmt.Errorf("%s\n%s", panicErr.Panic, panicErr.StackTrace)
+					}
+					if err != nil {
+						// 初始化 TraceLog
+						traceLog := logs.TraceLogInit()
+						traceLog.SetTopic("RabbitMQ")
+						traceLog.SetMethod(m.Type)
+						traceLog.SetArgs(string(m.Body))
+						traceLog.SetTraceID(m.MessageId)
+						traceLog.PrintErr(err)
+					}
+				}()
 
 				switch queue {
 				case rabbitmq.N_NORMAL:
-					if err := c.handler.normal(m); err != nil {
-						traceLog.PrintErr(err)
+					switch msg.Type {
+					case rabbitmq.T_DEMO:
+						c.handler.handleNormal(msg)
+					default:
+						err = fmt.Errorf("RabbitMQ unknown message type [%s]", msg.Type)
 					}
 				}
 			}(msg)
