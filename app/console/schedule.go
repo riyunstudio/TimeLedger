@@ -81,7 +81,7 @@ func (s *Scheduler) Start() {
 
 // 停止排程
 func (s *Scheduler) Stop() {
-	log.Println("Scheduler: shutting down gracefully...")
+	log.Println("Scheduler graceful stop complete")
 
 	// 停止接收新任務
 	s.cron.Stop()
@@ -89,5 +89,5 @@ func (s *Scheduler) Stop() {
 	// 等待所有任務完成
 	s.wg.Wait()
 
-	log.Println("All scheduled jobs completed. Exiting.")
+	log.Println("Scheduler all jobs completed")
 }

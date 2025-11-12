@@ -4,6 +4,7 @@ import (
 	"akali/app"
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"sync"
@@ -24,6 +25,11 @@ type Server struct {
 
 func Initialize(app *app.App) *Server {
 	r := gin.New()
+
+	gin.SetMode(gin.ReleaseMode)
+	gin.DisableConsoleColor()
+	gin.DefaultWriter = io.Discard
+
 	r.Use(gin.Recovery())
 
 	return &Server{
@@ -46,25 +52,25 @@ func (s *Server) Start() {
 		Handler: s.engine,
 	}
 	go func() {
-		log.Println("HTTP server started")
+		log.Println("Gin server started")
 		if err := s.srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			panic(fmt.Errorf("Server start error, Err: %v", err))
+			panic(fmt.Errorf("Gin server start error, Err: %v", err))
 		}
 	}()
 }
 
 func (s *Server) Stop() {
-	log.Println("Stopping HTTP server...")
+	log.Println("Gin server stopping...")
 
 	// 1. 使用 Shutdown 停止 HTTP Server
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	if err := s.srv.Shutdown(ctx); err != nil {
-		log.Printf("HTTP server Shutdown error: %v", err)
+		log.Printf("Gin server shutdown error: %v", err)
 	}
 
 	// 2. 等待所有請求完成
 	s.wg.Wait()
-	log.Println("Graceful Stop complete")
+	log.Println("Gin server graceful stop complete")
 }

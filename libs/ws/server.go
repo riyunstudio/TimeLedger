@@ -60,10 +60,8 @@ func Initialize(app *app.App) *WebSocketServer {
 		heartbeatTimeout:  60 * time.Second,
 	}
 
-	// 關閉 gin 詳細資訊
 	gin.SetMode(gin.ReleaseMode)
 	gin.DisableConsoleColor()
-	// 關掉 gin 預設的請求紀錄
 	gin.DefaultWriter = io.Discard
 
 	// 路由
@@ -78,7 +76,7 @@ func Initialize(app *app.App) *WebSocketServer {
 }
 
 func (w *WebSocketServer) Start() {
-	log.Printf("Websocket server started at %s\n", w.server.Addr)
+	log.Println("Websocket server started")
 
 	// 啟動 hub
 	w.wg.Go(func() {
