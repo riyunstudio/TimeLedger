@@ -40,6 +40,8 @@ type Env struct {
 	RabbitMqPassword string
 	RabbitMqHost     string
 	RabbitMqPort     string
+
+	WsServerPort string
 }
 
 func LoadEnv() *Env {
@@ -77,6 +79,8 @@ func LoadEnv() *Env {
 		RabbitMqPassword: os.Getenv("RABBIT_MQ_PASSWORD"),
 		RabbitMqHost:     os.Getenv("RABBIT_MQ_HOST"),
 		RabbitMqPort:     os.Getenv("RABBIT_MQ_PORT"),
+
+		WsServerPort: os.Getenv("WS_SERVER_PORT"),
 	}
 }
 

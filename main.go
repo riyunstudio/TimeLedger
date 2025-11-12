@@ -7,6 +7,7 @@ import (
 	_ "akali/docs"
 	"akali/grpc"
 	"akali/libs/mq"
+	"akali/libs/ws"
 	"context"
 	"fmt"
 	"os"
@@ -44,6 +45,10 @@ func main() {
 	// body, _ = json.Marshal(rabbitmq.NormalDemoUser{ID: 2, Name: "Test2"})
 	// rabbitMQ.Producer.Publish(rabbitmq.N_DELAY, amqp091.Publishing{Type: rabbitmq.T_DEMO, Body: body, MessageId: "TRACE_ID_XXXXX"})
 
+	// Websocket server
+	ws := ws.Initialize(app)
+	ws.Start()
+
 	// 啟動 API server
 	gin := servers.Initialize(app)
 	gin.Start()
@@ -61,10 +66,11 @@ func main() {
 		<-signals
 		// 優雅退出要結束的程式寫在這 Ex.關閉連線
 		cancel()
-		gin.Stop()
-		grpc.Stop()
 		scheduler.Stop()
 		rabbitMQ.Stop()
+		ws.Stop()
+		gin.Stop()
+		grpc.Stop()
 		fmt.Println("Exit.")
 		exit <- struct{}{}
 	}()

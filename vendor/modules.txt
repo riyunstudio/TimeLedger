@@ -135,6 +135,9 @@ github.com/goccy/go-yaml/token
 # github.com/google/uuid v1.6.0
 ## explicit
 github.com/google/uuid
+# github.com/gorilla/websocket v1.5.3
+## explicit; go 1.12
+github.com/gorilla/websocket
 # github.com/jinzhu/inflection v1.0.0
 ## explicit
 github.com/jinzhu/inflection
@@ -456,7 +459,6 @@ google.golang.org/protobuf/runtime/protoiface
 google.golang.org/protobuf/runtime/protoimpl
 google.golang.org/protobuf/types/known/anypb
 google.golang.org/protobuf/types/known/durationpb
-google.golang.org/protobuf/types/known/emptypb
 google.golang.org/protobuf/types/known/timestamppb
 # gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
 ## explicit; go 1.11
