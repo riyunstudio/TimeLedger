@@ -4,6 +4,7 @@ import (
 	"akali/app"
 	"akali/app/console"
 	"akali/app/servers"
+	_ "akali/docs"
 	"akali/grpc"
 	"akali/libs/mq"
 	"context"

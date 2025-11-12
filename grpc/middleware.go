@@ -33,34 +33,6 @@ func (s *Grpc) RecoverMiddleware(ctx context.Context, req any, info *grpc.UnaryS
 	return handler(ctx, req)
 }
 
-func (s *Grpc) TimeoutMiddleware(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
-	ctx, cancel := context.WithTimeout(ctx, s.timeout)
-	defer cancel()
-
-	return handler(ctx, req)
-
-	// done := make(chan struct{})
-	// var resp any
-	// var err error
-
-	// go func() {
-	// 	resp, err = handler(ctx, req)
-	// 	close(done)
-	// }()
-
-	// select {
-	// case <-done:
-	// 	// handler 執行完成
-	// 	return resp, err
-	// case <-time.After(s.timeout):
-	// 	// 超時回傳錯誤 (不等待)
-	// 	return nil, status.Errorf(codes.DeadlineExceeded, "Request timeout")
-	// case <-ctx.Done():
-	// 	// client 取消
-	// 	return nil, status.Errorf(codes.Canceled, "Client cancelled")
-	// }
-}
-
 func (s *Grpc) MainMiddleware(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 	// 避免空請求或 HTTP/2 preface
 	if info.FullMethod == "" || req == nil {

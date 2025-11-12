@@ -13,11 +13,10 @@ import (
 )
 
 type Server struct {
-	app     *app.App
-	engine  *gin.Engine
-	routes  []route
-	action  actions
-	timeout time.Duration
+	app    *app.App
+	engine *gin.Engine
+	routes []route
+	action actions
 
 	srv *http.Server   // Shutdown時直接使用
 	wg  sync.WaitGroup // For 優雅退出
@@ -29,7 +28,6 @@ func Initialize(app *app.App) *Server {
 
 	return &Server{
 		app: app, engine: r,
-		timeout: 5 * time.Second,
 	}
 }
 
@@ -47,8 +45,8 @@ func (s *Server) Start() {
 		Addr:    ":" + s.app.Env.ServerPort,
 		Handler: s.engine,
 	}
-
 	go func() {
+		log.Println("HTTP server started")
 		if err := s.srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			panic(fmt.Errorf("Server start error, Err: %v", err))
 		}

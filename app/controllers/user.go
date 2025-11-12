@@ -30,7 +30,7 @@ func NewUserController(app *app.App) *UserController {
 // @Param Content-Type header string true "Content-Type" default(application/json)
 // @Param Tid header string false "TraceID"
 // @Param ID query int true "會員ID"
-// @Success 200 {object} apiResponse{datas=resources.UserGetResource} "回傳"
+// @Success 200 {object} global.ApiResponse{datas=resources.UserGetResource} "回傳"
 // @Router /user [get]
 func (ctl *UserController) Get(ctx *gin.Context) {
 	req, eInfo, err := ctl.UserRequest.Get(ctx)
@@ -53,7 +53,7 @@ func (ctl *UserController) Get(ctx *gin.Context) {
 // @Param Content-Type header string true "Content-Type" default(application/json)
 // @Param Tid header string false "TraceID"
 // @param Params body requests.UserCreateRequest true "參數"
-// @Success 200 {object} apiResponse{datas=resources.UserCreateResource} "回傳"
+// @Success 200 {object} global.ApiResponse{datas=resources.UserCreateResource} "回傳"
 // @Router /user [post]
 func (ctl *UserController) Create(ctx *gin.Context) {
 	req, eInfo, err := ctl.UserRequest.Create(ctx)
@@ -76,7 +76,7 @@ func (ctl *UserController) Create(ctx *gin.Context) {
 // @Param Content-Type header string true "Content-Type" default(application/json)
 // @Param Tid header string false "TraceID"
 // @param Params body requests.UserUpdateRequest true "參數"
-// @Success 200 {object} apiResponse{datas=resources.UserUpdateResource} "回傳"
+// @Success 200 {object} global.ApiResponse{datas=resources.UserUpdateResource} "回傳"
 // @Router /user [put]
 func (ctl *UserController) Update(ctx *gin.Context) {
 	req, eInfo, err := ctl.UserRequest.Update(ctx)

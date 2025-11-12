@@ -6,10 +6,7 @@ import (
 	"akali/app/repositories"
 	"akali/grpc/proto/user"
 	"context"
-	"fmt"
 	"time"
-
-	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type User struct {
@@ -17,21 +14,6 @@ type User struct {
 	BaseService
 	App            *app.App
 	UserRepository *repositories.UserRepository
-}
-
-func (s *User) TestTimeout(ctx context.Context, req *emptypb.Empty) (*emptypb.Empty, error) {
-	return RunWithTimeout(ctx, 5*time.Second, func(ctx context.Context, do func(func() error) error) (*emptypb.Empty, error) {
-		for i := 1; i <= 15; i++ {
-			if err := do(func() error {
-				time.Sleep(1 * time.Second)
-				fmt.Println(i)
-				return nil
-			}); err != nil {
-				return nil, err
-			}
-		}
-		return &emptypb.Empty{}, nil
-	})
 }
 
 func (s *User) Get(ctx context.Context, req *user.GetRequest) (*user.GetResponse, error) {

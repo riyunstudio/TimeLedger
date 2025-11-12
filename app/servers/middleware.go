@@ -1,11 +1,8 @@
 package servers
 
 import (
-	"akali/global"
 	"akali/global/errInfos"
-	"context"
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -34,81 +31,6 @@ func (s *Server) RecoverMiddleware() gin.HandlerFunc {
 			}
 		}()
 		c.Next()
-	}
-}
-
-// func (s *Server) TimeoutMiddleware() gin.HandlerFunc {
-// 	return func(c *gin.Context) {
-// 		// 建立有超時的 context
-// 		ctx, cancel := context.WithTimeout(c.Request.Context(), s.timeout)
-// 		defer cancel()
-
-// 		// 用 channel 來控制 handler 是否完成
-// 		done := make(chan struct{})
-
-// 		c.Request = c.Request.WithContext(ctx) // 替換原始 context
-
-// 		go func() {
-// 			c.Next()
-// 			close(done)
-// 		}()
-
-// 		select {
-// 		case <-done:
-// 			return
-// 		case <-ctx.Done():
-// 			// 超時或 client 取消
-// 			eInfo := s.app.Err.New(errInfos.REQUEST_TIMEOUT)
-// 			c.JSON(http.StatusGatewayTimeout, global.ApiResponse{
-// 				Code:    eInfo.Code,
-// 				Message: eInfo.Msg,
-// 			})
-// 			c.Abort()
-// 			return
-// 		}
-// 	}
-// }
-
-func (s *Server) TimeoutMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		ctx, cancel := context.WithTimeout(c.Request.Context(), s.timeout)
-		defer cancel()
-
-		done := make(chan struct{})
-
-		// 替換原本的 request context
-		c.Request = c.Request.WithContext(ctx)
-
-		go func() {
-			defer func() {
-				close(done)
-			}()
-			c.Next()
-		}()
-
-		select {
-		case <-done:
-			// handler 執行完成
-			return
-		case <-time.After(s.timeout):
-			// 超時回傳錯誤 (不等待)
-			eInfo := s.app.Err.New(errInfos.REQUEST_TIMEOUT)
-			c.JSON(http.StatusGatewayTimeout, global.ApiResponse{
-				Code:    eInfo.Code,
-				Message: eInfo.Msg,
-			})
-			c.Abort()
-			return
-		case <-ctx.Done():
-			// client 取消
-			eInfo := s.app.Err.New(errInfos.REQUEST_TIMEOUT)
-			c.JSON(http.StatusGatewayTimeout, global.ApiResponse{
-				Code:    eInfo.Code,
-				Message: eInfo.Msg,
-			})
-			c.Abort()
-			return
-		}
 	}
 }
 

@@ -9,14 +9,12 @@ import (
 	"log"
 	"net"
 	"sync"
-	"time"
 
 	"google.golang.org/grpc"
 )
 
 type Grpc struct {
-	app     *app.App
-	timeout time.Duration
+	app *app.App
 
 	srv *grpc.Server   // Shutdown時直接使用
 	wg  sync.WaitGroup // For 優雅退出
@@ -24,8 +22,7 @@ type Grpc struct {
 
 func Initialize(app *app.App) *Grpc {
 	return &Grpc{
-		app:     app,
-		timeout: 5 * time.Second,
+		app: app,
 	}
 }
 
@@ -38,7 +35,6 @@ func (s *Grpc) Start() {
 		grpc.ChainUnaryInterceptor(
 			s.InitMiddleware,    // wg
 			s.RecoverMiddleware, // panic 保護
-			s.TimeoutMiddleware, // 超時控制
 			s.MainMiddleware,    // 主程式
 		),
 	)
