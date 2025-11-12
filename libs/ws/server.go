@@ -65,6 +65,9 @@ func Initialize(app *app.App) *WebSocketServer {
 	gin.DefaultWriter = io.Discard
 
 	// 路由
+	ws.router.GET("/healthy", func(c *gin.Context) {
+		c.String(http.StatusOK, "Healthy")
+	})
 	ws.router.GET("/ws", ws.handleConnection)
 
 	ws.server = &http.Server{
