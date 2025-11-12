@@ -10,15 +10,16 @@ import (
 type WsLog struct {
 	service   string
 	podName   string
+	topic     string // 主題或操作名稱
 	event     string // 事件名稱
 	clientIP  string // 客戶端 IP
-	topic     string // 主題或操作名稱
 	err       string // 錯誤訊息
 	extraInfo any    // 額外資訊
 }
 
 func WsLogInit() *WsLog {
 	return &WsLog{
+		topic:   "Websocket",
 		service: os.Getenv("SERVICE_NAME"),
 		podName: os.Getenv("HOSTNAME"),
 	}
@@ -31,11 +32,6 @@ func (wl *WsLog) SetEvent(event string) *WsLog {
 
 func (wl *WsLog) SetClientIP(ip string) *WsLog {
 	wl.clientIP = ip
-	return wl
-}
-
-func (wl *WsLog) SetTopic(topic string) *WsLog {
-	wl.topic = topic
 	return wl
 }
 
