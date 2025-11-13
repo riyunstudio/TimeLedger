@@ -46,8 +46,12 @@ func main() {
 	// rabbitMQ.Producer.Publish(rabbitmq.N_DELAY, amqp091.Publishing{Type: rabbitmq.T_DEMO, Body: body, MessageId: "TRACE_ID_XXXXX"})
 
 	// Websocket server
-	ws := ws.Initialize(app)
-	ws.Start()
+	wsServer := ws.InitializeServer(app)
+	wsServer.Start()
+
+	// Websocket client
+	wsClient := ws.InitializeClient(fmt.Sprintf("ws://%s:%s/ws?uuid=%s", app.Env.ServerHost, app.Env.WsServerPort, app.Env.ServerName))
+	wsClient.Start()
 
 	// 啟動 API server
 	gin := servers.Initialize(app)
@@ -68,7 +72,8 @@ func main() {
 		cancel()
 		scheduler.Stop()
 		rabbitMQ.Stop()
-		ws.Stop()
+		wsServer.Stop()
+		wsClient.Stop()
 		gin.Stop()
 		grpc.Stop()
 		fmt.Println("Exit.")

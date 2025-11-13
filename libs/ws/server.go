@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"sync"
 	"time"
@@ -16,269 +17,252 @@ import (
 )
 
 type WebSocketServer struct {
-	app        *app.App
-	upgrader   websocket.Upgrader
-	server     *http.Server
-	router     *gin.Engine
-	clients    map[*websocket.Conn]*clientInfo
-	clientsMu  sync.Mutex
-	register   chan *websocket.Conn
-	unregister chan *websocket.Conn
-	broadcast  chan []byte
-
-	closeOnce sync.Once
+	app       *app.App
+	server    *http.Server
+	router    *gin.Engine
+	upgrader  websocket.Upgrader
+	clients   map[string]*clientInfo
+	clientsMu sync.Mutex
 	closeChan chan struct{}
 	wg        sync.WaitGroup
-
-	// 心跳設置
-	heartbeatInterval time.Duration
-	heartbeatTimeout  time.Duration
 }
 
 type clientInfo struct {
-	conn       *websocket.Conn
-	lastActive time.Time
+	Uuid       string
+	Conn       *websocket.Conn
+	LastActive time.Time
+	IP         string
 }
 
-func Initialize(app *app.App) *WebSocketServer {
-	ws := &WebSocketServer{
+func InitializeServer(app *app.App) *WebSocketServer {
+	w := &WebSocketServer{
 		app: app,
 		upgrader: websocket.Upgrader{
 			ReadBufferSize:  1024,
 			WriteBufferSize: 1024,
 			CheckOrigin: func(r *http.Request) bool {
-				return true // 允許所有來源
+				return true
 			},
 		},
-		router:            gin.New(),
-		clients:           make(map[*websocket.Conn]*clientInfo),
-		register:          make(chan *websocket.Conn),
-		unregister:        make(chan *websocket.Conn),
-		broadcast:         make(chan []byte, 128),
-		closeChan:         make(chan struct{}),
-		heartbeatInterval: 15 * time.Second,
-		heartbeatTimeout:  60 * time.Second,
+		router:    gin.New(),
+		clients:   make(map[string]*clientInfo),
+		closeChan: make(chan struct{}),
 	}
 
 	gin.SetMode(gin.ReleaseMode)
 	gin.DisableConsoleColor()
 	gin.DefaultWriter = io.Discard
 
-	// 路由
-	ws.router.GET("/healthy", func(c *gin.Context) {
+	w.router.GET("/healthy", func(c *gin.Context) {
 		c.String(http.StatusOK, "Healthy")
 	})
-	ws.router.GET("/ws", ws.handleConnection)
+	w.router.GET("/ws", w.handleConnection)
 
-	ws.server = &http.Server{
+	w.server = &http.Server{
 		Addr:    ":" + app.Env.WsServerPort,
-		Handler: ws.router,
+		Handler: w.router,
 	}
 
-	return ws
+	return w
 }
 
+// 啟動 WebSocket Server
 func (w *WebSocketServer) Start() {
+	// 監控心跳
+	go w.monitorHeartbeats()
+
+	// 監聽Http服務
 	log.Println("Websocket server started")
-
-	// 啟動 hub
-	w.wg.Go(func() {
-		w.runHub()
-	})
-
-	// 啟動 HTTP server
-	w.wg.Go(func() {
+	go func() {
 		if err := w.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			panic(fmt.Errorf("Websocket ListenAndServe error: %v", err))
 		}
-	})
+	}()
 }
 
-// WebSocket 連線
-func (w *WebSocketServer) handleConnection(c *gin.Context) {
-	conn, err := w.upgrader.Upgrade(c.Writer, c.Request, nil)
-	if err != nil {
-		ws.WsLogInit().
-			SetClientIP(c.ClientIP()).SetError(err).
-			PrintError("Upgrade failed")
-		return
-	}
-
-	select {
-	case w.register <- conn:
-	case <-w.closeChan:
-		_ = conn.Close()
-		return
-	}
-
-	w.wg.Go(func() {
-		defer func() {
-			select {
-			case w.unregister <- conn:
-			case <-w.closeChan:
-			}
-			_ = conn.Close()
-		}()
-
-		for {
-			select {
-			case <-w.closeChan:
-				return
-			default:
-			}
-
-			_ = conn.SetReadDeadline(time.Now().Add(60 * time.Second))
-			_, msg, err := conn.ReadMessage()
-			if err != nil {
-				ws.WsLogInit().
-					SetEvent("ClientReadError").SetClientIP(c.ClientIP()).SetError(err).
-					PrintError("Client disconnected")
-				return
-			}
-
-			// 更新最後活動時間
-			w.clientsMu.Lock()
-			if ci, ok := w.clients[conn]; ok {
-				ci.lastActive = time.Now()
-			}
-			w.clientsMu.Unlock()
-
-			select {
-			case w.broadcast <- msg:
-			case <-w.closeChan:
-				return
-			default:
-				ws.WsLogInit().
-					SetEvent("BroadcastDrop").SetClientIP(c.ClientIP()).SetError(err).SetExtraInfo(string(msg)).
-					PrintError("Broadcast channel full, dropping message")
-			}
-		}
-	})
-}
-
-// runHub 註冊、廣播、斷線、心跳檢查
-func (w *WebSocketServer) runHub() {
-	ticker := time.NewTicker(w.heartbeatInterval)
+// 心跳監控
+func (w *WebSocketServer) monitorHeartbeats() {
+	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
 
 	for {
 		select {
-		case conn := <-w.register:
-			w.clientsMu.Lock()
-			w.clients[conn] = &clientInfo{
-				conn:       conn,
-				lastActive: time.Now(),
-			}
-			count := len(w.clients)
-			w.clientsMu.Unlock()
-
-			ws.WsLogInit().
-				SetEvent("ClientConnect").SetClientIP(conn.RemoteAddr().String()).SetExtraInfo(map[string]any{"clientCount": count}).
-				PrintInfo("Client connected")
-
-		case conn := <-w.unregister:
-			w.clientsMu.Lock()
-			delete(w.clients, conn)
-			count := len(w.clients)
-			w.clientsMu.Unlock()
-
-			ws.WsLogInit().
-				SetEvent("ClientDisconnect").SetClientIP(conn.RemoteAddr().String()).SetExtraInfo(map[string]any{"clientCount": count}).
-				PrintInfo("Client disconnected")
-
-		case msg := <-w.broadcast:
-			w.clientsMu.Lock()
-			for _, ci := range w.clients {
-				_ = ci.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
-				if err := ci.conn.WriteMessage(websocket.TextMessage, msg); err != nil {
-					_ = ci.conn.Close()
-					delete(w.clients, ci.conn)
-
-					ws.WsLogInit().
-						SetEvent("BroadcastError").SetClientIP(ci.conn.RemoteAddr().String()).SetError(err).
-						PrintError("Failed to send message, client removed")
-
-				} else {
-					ci.lastActive = time.Now()
-				}
-			}
-			w.clientsMu.Unlock()
-
-		case <-ticker.C: // 心跳檢查
+		case <-ticker.C:
 			now := time.Now()
 			w.clientsMu.Lock()
-			for _, ci := range w.clients {
-				// 超時就斷線
-				if now.Sub(ci.lastActive) > w.heartbeatTimeout {
-					_ = ci.conn.Close()
-					delete(w.clients, ci.conn)
-
-					ws.WsLogInit().
-						SetEvent("HeartbeatTimeout").SetClientIP(ci.conn.RemoteAddr().String()).
+			for uuid, c := range w.clients {
+				if now.Sub(c.LastActive) > 60*time.Second {
+					ws.WsLogInit().SetTopic(ws.TOPIC_SRV).SetEvent(ws.EVENT_SRV_HEART_TIMEOUT).
+						SetClientIP(c.IP).
 						PrintInfo("Client disconnected due to heartbeat timeout")
-					continue
-				}
-
-				// 向仍在線的客戶端發送心跳訊息
-				if err := ci.conn.WriteMessage(websocket.PingMessage, []byte("ping")); err != nil {
-					_ = ci.conn.Close()
-					delete(w.clients, ci.conn)
-
-					ws.WsLogInit().
-						SetEvent("HeartbeatSendError").SetClientIP(ci.conn.RemoteAddr().String()).SetError(err).
-						PrintError("Failed to send heartbeat ping")
+					_ = c.Conn.Close()
+					delete(w.clients, uuid)
 				}
 			}
 			w.clientsMu.Unlock()
-
 		case <-w.closeChan:
-			w.clientsMu.Lock()
-			for _, ci := range w.clients {
-				_ = ci.conn.Close()
-				delete(w.clients, ci.conn)
-			}
-			w.clientsMu.Unlock()
-
 			return
 		}
 	}
 }
 
-// 廣播
-func (w *WebSocketServer) Broadcast(msg string) {
-	select {
-	case <-w.closeChan:
+// 處理新的連線
+func (w *WebSocketServer) handleConnection(c *gin.Context) {
+	uuid := c.Query("uuid")
+	if uuid == "" {
+		// 沒有 uuid，直接拒絕
+		http.Error(c.Writer, "missing required parameter: uuid", http.StatusBadRequest)
 		return
-	default:
 	}
 
-	select {
-	case w.broadcast <- []byte(msg):
-	case <-w.closeChan:
+	conn, err := w.upgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		ws.WsLogInit().SetTopic(ws.TOPIC_SRV).SetEvent(ws.EVENT_SRV_UPGRADE_ERR).
+			SetUuid(uuid).SetClientIP(c.ClientIP()).SetError(err).
+			PrintError("Upgrade error")
+		return
+	}
+
+	client := &clientInfo{
+		Uuid:       uuid,
+		IP:         c.ClientIP(),
+		Conn:       conn,
+		LastActive: time.Now(),
+	}
+
+	w.clientsMu.Lock()
+	w.clients[uuid] = client
+	w.clientsMu.Unlock()
+
+	ws.WsLogInit().SetTopic(ws.TOPIC_SRV).SetEvent(ws.EVENT_SRV_CLIENT_CONN).
+		SetUuid(uuid).SetClientIP(conn.RemoteAddr().String()).SetExtraInfo(map[string]any{"clientCount": len(w.clients)}).
+		PrintInfo("Client connected")
+
+	w.wg.Add(1)
+	go w.handleClient(client)
+}
+
+func (w *WebSocketServer) handleClient(client *clientInfo) {
+	defer func() {
+		w.removeClient(client)
+		w.wg.Done()
+	}()
+
+	conn := client.Conn
+	conn.SetReadLimit(512)
+	conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+
+	for {
+		select {
+		case <-w.closeChan:
+			// Server 停掉，退出 goroutine
+			return
+		default:
+		}
+
+		_, msg, err := conn.ReadMessage()
+		if err != nil {
+			// 如果是 server 主動關閉連線，ReadMessage 會返回錯誤
+			if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
+				ws.WsLogInit().SetTopic(ws.TOPIC_SRV).SetEvent(ws.EVENT_SRV_CLIENT_DIS_CONN).
+					SetUuid(client.Uuid).SetClientIP(client.IP).
+					PrintInfo("Client disconnected (server closed)")
+			} else if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+				ws.WsLogInit().SetTopic(ws.TOPIC_SRV).SetEvent(ws.EVENT_SRV_HEART_TIMEOUT).
+					SetUuid(client.Uuid).SetClientIP(client.IP).
+					PrintInfo("Client heartbeat timeout")
+			} else {
+				ws.WsLogInit().SetTopic(ws.TOPIC_SRV).SetEvent(ws.EVENT_SRV_READ_ERR).
+					SetUuid(client.Uuid).SetClientIP(client.IP).SetError(err).
+					PrintError("Client read message error")
+			}
+			break
+		}
+
+		message := string(msg)
+
+		if message == "ping" {
+			client.LastActive = time.Now()
+			conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+			_ = conn.WriteMessage(websocket.TextMessage, []byte("pong"))
+			continue
+		}
+
+		// client 發送訊息，只回應該 client
+		reply := "Received: " + message
+		if err := conn.WriteMessage(websocket.TextMessage, []byte(reply)); err != nil {
+			ws.WsLogInit().SetTopic(ws.TOPIC_SRV).SetEvent(ws.EVENT_SRV_BROADCAST_ERR).
+				SetUuid(client.Uuid).SetClientIP(client.IP).SetError(err).
+				PrintError("Failed to send message, client removed")
+			break
+		}
+	}
+}
+
+// 移除 client
+func (w *WebSocketServer) removeClient(client *clientInfo) {
+	w.clientsMu.Lock()
+	delete(w.clients, client.Uuid)
+	w.clientsMu.Unlock()
+	_ = client.Conn.Close()
+
+	ws.WsLogInit().SetTopic(ws.TOPIC_SRV).SetEvent(ws.EVENT_SRV_CLIENT_DIS_CONN).
+		SetUuid(client.Uuid).SetClientIP(client.IP).SetExtraInfo(map[string]any{"clientCount": len(w.clients)}).
+		PrintInfo("Client disconnected")
+}
+
+// 廣播給所有 client
+func (w *WebSocketServer) BroadcastAll(message string) {
+	w.clientsMu.Lock()
+	defer w.clientsMu.Unlock()
+
+	for _, c := range w.clients {
+		_ = c.Conn.WriteMessage(websocket.TextMessage, []byte(message))
+	}
+}
+
+// 廣播給指定 UUID 的 client
+func (w *WebSocketServer) BroadcastTo(uuids []string, message string) {
+	if len(uuids) == 0 {
+		return
+	}
+
+	w.clientsMu.Lock()
+	defer w.clientsMu.Unlock()
+
+	for _, uuid := range uuids {
+		if c, ok := w.clients[uuid]; ok {
+			_ = c.Conn.WriteMessage(websocket.TextMessage, []byte(message))
+		}
 	}
 }
 
 func (w *WebSocketServer) Stop() {
-	w.closeOnce.Do(func() {
-		log.Println("Websocket stopping server...")
+	log.Println("Websocket stopping server...")
 
-		// 停止 HTTP server（不再接受新連線）
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		if err := w.server.Shutdown(shutdownCtx); err != nil && err != http.ErrServerClosed {
-			log.Printf("Websocket server shutdown error: %v", err)
+	// 先關閉 HTTP Server
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := w.server.Shutdown(shutdownCtx); err != nil && err != http.ErrServerClosed {
+		ws.WsLogInit().SetTopic(ws.TOPIC_SRV).SetEvent(ws.EVENT_SRV_SHUTDOWN_ERR).SetError(err).
+			PrintError("Failed to shutdown server")
+	}
 
-			ws.WsLogInit().
-				SetEvent("ServerShutdown").SetError(fmt.Errorf("server shutdown error: %w", err)).
-				PrintError("Server stop error")
-		}
+	// 關閉心跳監控 goroutine
+	close(w.closeChan)
 
-		// 通知所有 goroutine 停止（停止收訊息/廣播）
-		close(w.closeChan)
+	// 關閉所有 client 連線
+	w.clientsMu.Lock()
+	for uuid, c := range w.clients {
+		_ = c.Conn.WriteMessage(websocket.CloseMessage,
+			websocket.FormatCloseMessage(websocket.CloseNormalClosure, "server shutting down"))
+		_ = c.Conn.Close()
+		delete(w.clients, uuid)
+	}
+	w.clientsMu.Unlock()
 
-		// 等待所有 goroutine 完成
-		w.wg.Wait()
+	// 等待 handleClient goroutine 完成
+	w.wg.Wait()
 
-		log.Println("Websocket server stopped gracefully")
-	})
+	log.Println("Websocket server stopped gracefully")
 }
