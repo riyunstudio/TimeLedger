@@ -9,6 +9,8 @@ import (
 	"akali/global/errInfos"
 	"encoding/json"
 	"time"
+
+	"github.com/gin-gonic/gin"
 )
 
 type UserService struct {
@@ -26,8 +28,8 @@ func NewUserService(app *app.App) *UserService {
 	}
 }
 
-func (s *UserService) Get(req *requests.UserGetRequest) (datas any, errInfo *errInfos.Res, err error) {
-	user, err := s.userRepository.Get(models.User{ID: uint(req.ID)})
+func (s *UserService) Get(ctx *gin.Context, req *requests.UserGetRequest) (datas any, errInfo *errInfos.Res, err error) {
+	user, err := s.userRepository.Get(s.dbCtx(ctx), models.User{ID: uint(req.ID)})
 	if err != nil {
 		return nil, s.app.Err.New(errInfos.SQL_ERROR), err
 	}
@@ -36,7 +38,7 @@ func (s *UserService) Get(req *requests.UserGetRequest) (datas any, errInfo *err
 		return nil, s.app.Err.New(errInfos.USER_NOT_FOUNT), nil
 	}
 
-	response, err := s.userResource.Get(user)
+	response, err := s.userResource.Get(ctx, user)
 	if err != nil {
 		return nil, s.app.Err.New(errInfos.FORMAT_RESOURCE_ERROR), err
 	}
@@ -44,13 +46,13 @@ func (s *UserService) Get(req *requests.UserGetRequest) (datas any, errInfo *err
 	return response, nil, nil
 }
 
-func (s *UserService) Create(req *requests.UserCreateRequest) (datas any, errInfo *errInfos.Res, err error) {
+func (s *UserService) Create(ctx *gin.Context, req *requests.UserCreateRequest) (datas any, errInfo *errInfos.Res, err error) {
 	ips, err := json.Marshal(req.Ips)
 	if err != nil {
 		return nil, s.app.Err.New(errInfos.JSON_ENCODE_ERROR), err
 	}
 
-	user, err := s.userRepository.Create(models.User{
+	user, err := s.userRepository.Create(ctx, models.User{
 		Name:       req.Name,
 		Ips:        string(ips),
 		CreateTime: time.Now().Unix(),
@@ -60,7 +62,7 @@ func (s *UserService) Create(req *requests.UserCreateRequest) (datas any, errInf
 		return nil, s.app.Err.New(errInfos.SQL_ERROR), err
 	}
 
-	response, err := s.userResource.Create(user)
+	response, err := s.userResource.Create(ctx, user)
 	if err != nil {
 		return nil, s.app.Err.New(errInfos.FORMAT_RESOURCE_ERROR), err
 	}
@@ -68,8 +70,8 @@ func (s *UserService) Create(req *requests.UserCreateRequest) (datas any, errInf
 	return response, nil, nil
 }
 
-func (s *UserService) Update(req *requests.UserUpdateRequest) (datas any, errInfo *errInfos.Res, err error) {
-	user, err := s.userRepository.Get(models.User{ID: uint(req.Id)})
+func (s *UserService) Update(ctx *gin.Context, req *requests.UserUpdateRequest) (datas any, errInfo *errInfos.Res, err error) {
+	user, err := s.userRepository.Get(ctx, models.User{ID: uint(req.Id)})
 	if err != nil {
 		return nil, s.app.Err.New(errInfos.SQL_ERROR), err
 	}
@@ -86,12 +88,12 @@ func (s *UserService) Update(req *requests.UserUpdateRequest) (datas any, errInf
 
 	user.UpdateTime = s.app.Tools.NowUnix()
 
-	err = s.userRepository.UpdateById(user)
+	err = s.userRepository.UpdateById(ctx, user)
 	if err != nil {
 		return nil, s.app.Err.New(errInfos.SQL_ERROR), err
 	}
 
-	response, err := s.userResource.Update(user)
+	response, err := s.userResource.Update(ctx, user)
 	if err != nil {
 		return nil, s.app.Err.New(errInfos.FORMAT_RESOURCE_ERROR), err
 	}

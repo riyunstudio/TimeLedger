@@ -39,7 +39,7 @@ func (ctl *UserController) Get(ctx *gin.Context) {
 		return
 	}
 
-	datas, eInfo, err := ctl.UserService.Get(req)
+	datas, eInfo, err := ctl.UserService.Get(ctx, req)
 	if err != nil {
 		ctl.JSON(ctx, global.Ret{Status: http.StatusInternalServerError, ErrInfo: eInfo, Err: err})
 		return
@@ -62,7 +62,7 @@ func (ctl *UserController) Create(ctx *gin.Context) {
 		return
 	}
 
-	datas, eInfo, err := ctl.UserService.Create(req)
+	datas, eInfo, err := ctl.UserService.Create(ctx, req)
 	if err != nil {
 		ctl.JSON(ctx, global.Ret{Status: http.StatusInternalServerError, ErrInfo: eInfo, Err: err})
 		return
@@ -85,7 +85,7 @@ func (ctl *UserController) Update(ctx *gin.Context) {
 		return
 	}
 
-	datas, eInfo, err := ctl.UserService.Update(req)
+	datas, eInfo, err := ctl.UserService.Update(ctx, req)
 	if err != nil {
 		ctl.JSON(ctx, global.Ret{Status: http.StatusInternalServerError, ErrInfo: eInfo, Err: err})
 		return

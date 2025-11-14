@@ -18,7 +18,7 @@ type User struct {
 
 func (s *User) Get(ctx context.Context, req *user.GetRequest) (*user.GetResponse, error) {
 	return RunWithTimeout(ctx, 5*time.Second, func(ctx context.Context, do func(func() error) error) (*user.GetResponse, error) {
-		data, err := s.UserRepository.Get(models.User{ID: uint(req.GetID())})
+		data, err := s.UserRepository.Get(ctx, models.User{ID: uint(req.GetID())})
 		if err != nil {
 			return &user.GetResponse{Code: 100, Msg: err.Error()}, err
 		}

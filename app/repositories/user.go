@@ -3,6 +3,7 @@ package repositories
 import (
 	"akali/app"
 	"akali/app/models"
+	"context"
 )
 
 type UserRepository struct {
@@ -17,8 +18,8 @@ func NewUserRepository(app *app.App) *UserRepository {
 	}
 }
 
-func (rp *UserRepository) Get(cond models.User) (data models.User, err error) {
-	query := rp.app.Mysql.RDB.Model(&rp.model)
+func (rp *UserRepository) Get(ctx context.Context, cond models.User) (data models.User, err error) {
+	query := rp.app.Mysql.RDB.WithContext(ctx).Model(&rp.model)
 	if cond.ID != 0 {
 		query.Where("id = ?", cond.ID)
 	}
@@ -26,11 +27,11 @@ func (rp *UserRepository) Get(cond models.User) (data models.User, err error) {
 	return
 }
 
-func (rp *UserRepository) Create(data models.User) (models.User, error) {
+func (rp *UserRepository) Create(ctx context.Context, data models.User) (models.User, error) {
 	err := rp.app.Mysql.WDB.Model(&rp.model).Create(&data).Error
 	return data, err
 }
 
-func (rp *UserRepository) UpdateById(data models.User) error {
+func (rp *UserRepository) UpdateById(ctx context.Context, data models.User) error {
 	return rp.app.Mysql.WDB.Model(&rp.model).Where("id", data.ID).Updates(&data).Error
 }
