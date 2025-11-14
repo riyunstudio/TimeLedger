@@ -35,9 +35,8 @@ func (r *UserRequest) Get(ctx *gin.Context) (req *UserGetRequest, errInfo *errIn
 }
 
 type UserCreateRequest struct {
-	Name  string   `json:"name" binding:"required"`
-	Ips   []string `json:"ips"`
-	Games []string `json:"game"`
+	Name string   `json:"name" binding:"required"`
+	Ips  []string `json:"ips"`
 }
 
 func (r *UserRequest) Create(ctx *gin.Context) (req *UserCreateRequest, errInfo *errInfos.Res, err error) {
@@ -61,10 +60,9 @@ func (r *UserRequest) Create(ctx *gin.Context) (req *UserCreateRequest, errInfo 
 }
 
 type UserUpdateRequest struct {
-	Id    int      `json:"id" binding:"required"`
-	Name  string   `json:"name"`
-	Ips   []string `json:"ips"`
-	Games []string `json:"game"`
+	Id   int      `json:"id" binding:"required"`
+	Name string   `json:"name"`
+	Ips  []string `json:"ips"`
 }
 
 func (r *UserRequest) Update(ctx *gin.Context) (req *UserUpdateRequest, errInfo *errInfos.Res, err error) {
