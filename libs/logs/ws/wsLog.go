@@ -31,6 +31,7 @@ const TOPIC_SRV = "Websocket_Server"
 const TOPIC_CLI = "Websocket_Client"
 
 const EVENT_SRV_UPGRADE_ERR = "UpgradeError"
+const EVENT_SRV_SET_DEADLINE_ERR = "SetReadDeadline"
 const EVENT_SRV_READ_ERR = "ReadError"
 const EVENT_SRV_BROADCAST_ERR = "BroadcastError"
 const EVENT_SRV_CLIENT_CONN = "ClientConnect"

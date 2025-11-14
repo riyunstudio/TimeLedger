@@ -70,7 +70,7 @@ func (c *Consumer) consume(queue string) error {
 				case rabbitmq.N_NORMAL:
 					switch msg.Type {
 					case rabbitmq.T_DEMO:
-						c.handler.handleNormal(msg)
+						err = c.handler.handleNormal(msg)
 					default:
 						err = fmt.Errorf("RabbitMQ unknown message type [%s]", msg.Type)
 					}

@@ -54,7 +54,7 @@ func (s *Server) Start() {
 	go func() {
 		log.Println("Gin server started")
 		if err := s.srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			panic(fmt.Errorf("Gin server start error, Err: %v", err))
+			panic(fmt.Errorf("gin server start error, Err: %v", err))
 		}
 	}()
 }

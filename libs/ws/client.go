@@ -82,7 +82,7 @@ func (w *WebSocketClient) readLoop() {
 			if w.OnMessage != nil {
 				w.OnMessage(message)
 			} else {
-				// log.Println("Received message:", message)
+				log.Println("Received message:", message)
 			}
 		}
 	}

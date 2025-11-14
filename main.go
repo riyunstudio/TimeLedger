@@ -51,7 +51,9 @@ func main() {
 
 	// Websocket client
 	wsClient := ws.InitializeClient(fmt.Sprintf("ws://%s:%s/ws?uuid=%s", app.Env.ServerHost, app.Env.WsServerPort, app.Env.ServerName))
-	wsClient.Start()
+	if err := wsClient.Start(); err != nil {
+		fmt.Println(err)
+	}
 
 	// 啟動 API server
 	gin := servers.Initialize(app)

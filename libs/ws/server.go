@@ -75,7 +75,7 @@ func (w *WebSocketServer) Start() {
 	log.Println("Websocket server started")
 	go func() {
 		if err := w.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			panic(fmt.Errorf("Websocket ListenAndServe error: %v", err))
+			panic(fmt.Errorf("websocket ListenAndServe error: %v", err))
 		}
 	}()
 }
@@ -150,7 +150,12 @@ func (w *WebSocketServer) handleClient(client *clientInfo) {
 
 	conn := client.Conn
 	conn.SetReadLimit(512)
-	conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+	err := conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+	if err != nil {
+		ws.WsLogInit().SetTopic(ws.TOPIC_SRV).SetEvent(ws.EVENT_SRV_SET_DEADLINE_ERR).
+			SetUuid(client.Uuid).SetClientIP(client.IP).SetError(err).
+			PrintError("Client set deadline error")
+	}
 
 	for {
 		select {
@@ -183,7 +188,12 @@ func (w *WebSocketServer) handleClient(client *clientInfo) {
 
 		if message == "ping" {
 			client.LastActive = time.Now()
-			conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+			if err = conn.SetReadDeadline(time.Now().Add(60 * time.Second)); err != nil {
+				ws.WsLogInit().SetTopic(ws.TOPIC_SRV).SetEvent(ws.EVENT_SRV_SET_DEADLINE_ERR).
+					SetUuid(client.Uuid).SetClientIP(client.IP).SetError(err).
+					PrintError("Client set deadline error from ping/pong")
+			}
+
 			_ = conn.WriteMessage(websocket.TextMessage, []byte("pong"))
 			continue
 		}
