@@ -9,6 +9,8 @@ import (
 	"github.com/rabbitmq/amqp091-go"
 )
 
+var MQ *RabbitMQ
+
 type RabbitMQ struct {
 	app *app.App
 
@@ -76,6 +78,9 @@ func Initialize(app *app.App) *RabbitMQ {
 
 	r.Producer = NewProducer(r)
 	r.Consumer = NewConsumer(r, app, queues)
+
+	// 寫入全局
+	MQ = r
 
 	return r
 }
