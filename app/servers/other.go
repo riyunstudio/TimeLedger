@@ -2,7 +2,6 @@ package servers
 
 import (
 	"akali/global"
-	"akali/libs/logs"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -13,6 +12,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"gitlab.en.mcbwvx.com/frame/teemo/tools"
+	"gitlab.en.mcbwvx.com/frame/zilean/logs"
 )
 
 func (s *Server) setRequestTime(ctx *gin.Context) context.Context {
@@ -118,8 +118,7 @@ func (s *Server) getRet(ctx *gin.Context) global.Ret {
 
 func (s *Server) writeApiLog(ctx *gin.Context) {
 	// 初始化 TraceLog
-	traceLog := logs.TraceLogInit()
-	traceLog.SetTopic("server_gin")
+	traceLog := logs.GinLogInit()
 	traceLog.SetHeaders(s.getRequestHeaders(ctx))
 
 	switch ctx.Request.Method {
@@ -128,6 +127,7 @@ func (s *Server) writeApiLog(ctx *gin.Context) {
 	case http.MethodPost, http.MethodPut:
 		traceLog.SetArgs(s.getBodyParams(ctx))
 	}
+	res := s.getRet(ctx)
 
 	traceLog.SetUrl(ctx.Request.URL.String())
 	traceLog.SetMethod(ctx.Request.Method)
@@ -135,13 +135,12 @@ func (s *Server) writeApiLog(ctx *gin.Context) {
 	traceLog.SetClientIP(ctx.ClientIP())
 	traceLog.SetTraceID(s.getTraceID(ctx))
 	traceLog.SetRunTime(s.getRequestRunTime(ctx))
-	traceLog.PrintServer(s.getRet(ctx))
+	traceLog.PrintServer(res.ErrInfo.Code, res, res.Err)
 }
 
 func (s *Server) writePanicLog(ctx *gin.Context, err tools.Panic) {
 	// 初始化 TraceLog
-	traceLog := logs.TraceLogInit()
-	traceLog.SetTopic("server_gin")
+	traceLog := logs.GinLogInit()
 	traceLog.SetHeaders(s.getRequestHeaders(ctx))
 
 	switch ctx.Request.Method {

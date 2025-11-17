@@ -2,12 +2,12 @@ package console
 
 import (
 	"akali/app"
-	"akali/libs/logs"
 	"fmt"
 	"log"
 	"sync"
 
 	"github.com/robfig/cron/v3"
+	"gitlab.en.mcbwvx.com/frame/zilean/logs"
 )
 
 type Scheduler struct {
@@ -33,7 +33,7 @@ func (s *Scheduler) addJob(spec string, job Job) {
 		defer s.wg.Done()
 
 		// 初始化 TraceLog
-		traceLog := logs.TraceLogInit()
+		traceLog := logs.ScheduleLogInit()
 		traceLog.SetTopic("Schedule")
 		traceLog.SetMethod(job.Name())
 		tid, err := s.app.Tools.NewTraceId()

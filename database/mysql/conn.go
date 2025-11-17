@@ -3,12 +3,13 @@ package mysql
 import (
 	"akali/configs"
 	"akali/global"
-	"akali/libs/logs/db"
 	"context"
 	"fmt"
 	"log"
 	"sync"
 	"time"
+
+	"gitlab.en.mcbwvx.com/frame/zilean/logs"
 
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -103,9 +104,8 @@ func (t *GormTraceLogger) Info(ctx context.Context, msg string, data ...any) {
 
 	// Tid
 	traceID := getTraceID(ctx)
-
-	db.GormLogInit().
-		SetEvent(db.EVENT_DB_INFO).
+	logs.GormLogInit().
+		SetEvent(logs.GORM_EVENT_DB_INFO).
 		SetTraceID(traceID).
 		SetExtraInfo(map[string]any{
 			"message": msg,
@@ -128,9 +128,8 @@ func (t *GormTraceLogger) Warn(ctx context.Context, msg string, data ...any) {
 
 	// Tid
 	traceID := getTraceID(ctx)
-
-	db.GormLogInit().
-		SetEvent(db.EVENT_DB_WARN).
+	logs.GormLogInit().
+		SetEvent(logs.GORM_EVENT_DB_WARN).
 		SetTraceID(traceID).
 		SetError(errVal).
 		SetExtraInfo(map[string]any{
@@ -155,8 +154,8 @@ func (t *GormTraceLogger) Error(ctx context.Context, msg string, data ...any) {
 	// Tid
 	traceID := getTraceID(ctx)
 
-	db.GormLogInit().
-		SetEvent(db.EVENT_DB_ERROR).
+	logs.GormLogInit().
+		SetEvent(logs.GORM_EVENT_DB_ERROR).
 		SetTraceID(traceID).
 		SetError(errVal).
 		SetExtraInfo(map[string]any{
@@ -181,8 +180,8 @@ func (t *GormTraceLogger) Trace(ctx context.Context, begin time.Time, fc func() 
 	traceID := getTraceID(ctx)
 
 	// 只記錄有錯誤的 SQL
-	db.GormLogInit().
-		SetEvent(db.EVENT_SQL_ERROR).
+	logs.GormLogInit().
+		SetEvent(logs.GORM_EVENT_SQL_ERROR).
 		SetSql(sql).
 		SetRunTime(elapsed).
 		SetTraceID(traceID).

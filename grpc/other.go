@@ -2,11 +2,11 @@ package grpc
 
 import (
 	"akali/global"
-	"akali/libs/logs"
 	"context"
 	"time"
 
 	"gitlab.en.mcbwvx.com/frame/teemo/tools"
+	"gitlab.en.mcbwvx.com/frame/zilean/logs"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -60,8 +60,7 @@ func (s *Grpc) injectMetadataToContext(ctx context.Context) context.Context {
 
 func (s *Grpc) writeApiLog(ctx context.Context, method string, req any, resp any, err error) {
 	// 初始化 TraceLog
-	traceLog := logs.TraceLogInit()
-	traceLog.SetTopic("server_gRPC")
+	traceLog := logs.GrpcLogInit()
 
 	headers, _ := ctx.Value(global.MeteDataKey).(map[string]string)
 	traceLog.SetHeaders(headers)
@@ -81,8 +80,7 @@ func (s *Grpc) writeApiLog(ctx context.Context, method string, req any, resp any
 
 func (s *Grpc) writePanicLog(ctx context.Context, method string, req any, err tools.Panic) {
 	// 初始化 TraceLog
-	traceLog := logs.TraceLogInit()
-	traceLog.SetTopic("server_gRPC")
+	traceLog := logs.GrpcLogInit()
 
 	headers, _ := ctx.Value(global.MeteDataKey).(map[string]string)
 	traceLog.SetHeaders(headers)

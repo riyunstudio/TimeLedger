@@ -3,10 +3,10 @@ package mq
 import (
 	"akali/app"
 	rabbitmq "akali/global/rabbitMQ"
-	"akali/libs/logs"
 	"fmt"
 
 	"github.com/rabbitmq/amqp091-go"
+	"gitlab.en.mcbwvx.com/frame/zilean/logs"
 )
 
 type Consumer struct {
@@ -57,7 +57,7 @@ func (c *Consumer) consume(queue string) error {
 					}
 					if err != nil {
 						// 初始化 TraceLog
-						traceLog := logs.TraceLogInit()
+						traceLog := logs.PanicLogInit()
 						traceLog.SetTopic("RabbitMQ")
 						traceLog.SetMethod(m.Type)
 						traceLog.SetArgs(string(m.Body))

@@ -1,7 +1,6 @@
 package curl
 
 import (
-	"akali/libs/logs"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -14,6 +13,7 @@ import (
 	"time"
 
 	"gitlab.en.mcbwvx.com/frame/teemo/tools"
+	"gitlab.en.mcbwvx.com/frame/zilean/logs"
 )
 
 const (
@@ -45,7 +45,7 @@ type Curl struct {
 	cookies  map[string]string
 	queries  map[string]any
 	body     map[string]any
-	traceLog *logs.TraceLog
+	traceLog *logs.CurlLog
 	tools    *tools.Tools
 }
 
@@ -54,7 +54,7 @@ func Initialize(tools *tools.Tools) *Curl {
 	timeOut := 15 * time.Second
 
 	// 初始化 traceLog
-	traceLog := logs.TraceLogInit()
+	traceLog := logs.CurlLogInit()
 
 	return &Curl{
 		timeout:  timeOut,
@@ -181,7 +181,6 @@ func (c *Curl) send() (string, error) {
 	c.setHeaders().setCookies().setQueries()
 
 	// 寫入 trace log 相關資訊
-	c.traceLog.SetTopic("api")
 	c.traceLog.SetUrl(c.path)
 
 	if c.tools.InStrArray(c.method, []string{http.MethodGet, http.MethodDelete}) {

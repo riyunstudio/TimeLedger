@@ -1,8 +1,9 @@
 package apis
 
 import (
-	"akali/libs/curl"
 	"fmt"
+
+	"gitlab.en.mcbwvx.com/frame/ezreal/curl"
 )
 
 func (api *Api) PostTelegramMessage(tid string, text string) (err error) {

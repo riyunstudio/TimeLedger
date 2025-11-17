@@ -1,11 +1,12 @@
 package ws
 
 import (
-	"akali/libs/logs/ws"
 	"fmt"
 	"log"
 	"sync"
 	"time"
+
+	"gitlab.en.mcbwvx.com/frame/zilean/logs"
 
 	"github.com/gorilla/websocket"
 )
@@ -68,7 +69,7 @@ func (w *WebSocketClient) readLoop() {
 			if w.OnError != nil {
 				w.OnError(err)
 			} else {
-				ws.WsLogInit().SetTopic(ws.TOPIC_CLI).SetEvent(ws.EVENT_CLI_READ_ERR).SetError(err).PrintError("Read message error")
+				logs.WsLogInit().SetTopic(logs.WS_TOPIC_CLI).SetEvent(logs.WS_EVENT_CLI_READ_ERR).SetError(err).PrintError("Read message error")
 			}
 			return
 		}
@@ -102,7 +103,7 @@ func (w *WebSocketClient) pingLoop() {
 				if w.OnError != nil {
 					w.OnError(err)
 				} else {
-					ws.WsLogInit().SetTopic(ws.TOPIC_CLI).SetEvent(ws.EVENT_CLI_PING_ERR).SetError(err).PrintError("Ping error")
+					logs.WsLogInit().SetTopic(logs.WS_TOPIC_CLI).SetEvent(logs.WS_EVENT_CLI_PING_ERR).SetError(err).PrintError("Ping error")
 				}
 				return
 			}

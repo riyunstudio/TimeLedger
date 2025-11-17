@@ -1,4 +1,4 @@
-package db
+package logs
 
 import (
 	"os"
@@ -21,17 +21,17 @@ type GormLog struct {
 
 func GormLogInit() *GormLog {
 	return &GormLog{
-		topic:   "Mysql",
+		topic:   "Gorm_Log",
 		service: os.Getenv("SERVICE_NAME"),
 		podName: os.Getenv("HOSTNAME"),
 	}
 }
 
-const EVENT_DB_INFO = "db_info"
-const EVENT_DB_WARN = "db_warn"
-const EVENT_DB_ERROR = "db_error"
-const EVENT_SQL_ERROR = "sql_error"
-const EVENT_SQL_SLOW = "sql_slow"
+const GORM_EVENT_DB_INFO = "db_info"
+const GORM_EVENT_DB_WARN = "db_warn"
+const GORM_EVENT_DB_ERROR = "db_error"
+const GORM_EVENT_SQL_ERROR = "sql_error"
+const GORM_EVENT_SQL_SLOW = "sql_slow"
 
 func (l *GormLog) SetEvent(event string) *GormLog {
 	l.event = event

@@ -153,8 +153,12 @@ github.com/ugorji/go/codec v1.3.0/go.mod h1:pRBVtBSKl77K30Bv8R2P+cLSGaTtex6fsA2W
 github.com/xlzd/gotp v0.1.0 h1:37blvlKCh38s+fkem+fFh7sMnceltoIEBYTVXyoa5Po=
 github.com/xlzd/gotp v0.1.0/go.mod h1:ndLJ3JKzi3xLmUProq4LLxCuECL93dG9WASNLpHz8qg=
 github.com/yuin/goldmark v1.4.13/go.mod h1:6yULJ656Px+3vBD8DxQVa3kxgyrAnzto9xy5taEt/CY=
+gitlab.en.mcbwvx.com/frame/ezreal v1.0.2 h1:pbyk6wK1naYZAHYUbxrRaVBHGilKvUPEYaljqZChBgA=
+gitlab.en.mcbwvx.com/frame/ezreal v1.0.2/go.mod h1:TEupO7GxsPRii9fMge/URp6SEatyynbMmkk7YC7jclY=
 gitlab.en.mcbwvx.com/frame/teemo v1.0.1 h1:DejRcz2Zxq0R6eryC6hnkHGQnSdzDXngB/rz9HS/gtg=
 gitlab.en.mcbwvx.com/frame/teemo v1.0.1/go.mod h1:IADTsufHptH3QaFQaghy2pKELACrwRlJSGWdzYmxM1g=
+gitlab.en.mcbwvx.com/frame/zilean v1.0.9 h1:7yL3eTLI1xDa1llOf1GlV7HiCBFeHtzJvANPP5WB+7c=
+gitlab.en.mcbwvx.com/frame/zilean v1.0.9/go.mod h1:z88JXbgKMcMs0N+1IBIxYGvHloo8bjxROg1mjyQwsfk=
 go.opentelemetry.io/auto/sdk v1.1.0 h1:cH53jehLUN6UFLY71z+NDOiNJqDdPRaXzTel0sJySYA=
 go.opentelemetry.io/auto/sdk v1.1.0/go.mod h1:3wSPjt5PWp2RhlCcmmOial7AvC4DQqZb7a7wCow3W8A=
 go.opentelemetry.io/otel v1.37.0 h1:9zhNfelUvx0KBfu/gb+ZgeAfAgtWrfHJZcAqFC228wQ=

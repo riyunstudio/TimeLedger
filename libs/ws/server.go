@@ -2,7 +2,6 @@ package ws
 
 import (
 	"akali/app"
-	"akali/libs/logs/ws"
 	"context"
 	"fmt"
 	"io"
@@ -14,6 +13,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"gitlab.en.mcbwvx.com/frame/zilean/logs"
 )
 
 type WebSocketServer struct {
@@ -92,7 +92,7 @@ func (w *WebSocketServer) monitorHeartbeats() {
 			w.clientsMu.Lock()
 			for uuid, c := range w.clients {
 				if now.Sub(c.LastActive) > 60*time.Second {
-					ws.WsLogInit().SetTopic(ws.TOPIC_SRV).SetEvent(ws.EVENT_SRV_HEART_TIMEOUT).
+					logs.WsLogInit().SetTopic(logs.WS_TOPIC_SRV).SetEvent(logs.WS_EVENT_SRV_HEART_TIMEOUT).
 						SetClientIP(c.IP).
 						PrintInfo("Client disconnected due to heartbeat timeout")
 					_ = c.Conn.Close()
@@ -117,7 +117,7 @@ func (w *WebSocketServer) handleConnection(c *gin.Context) {
 
 	conn, err := w.upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
-		ws.WsLogInit().SetTopic(ws.TOPIC_SRV).SetEvent(ws.EVENT_SRV_UPGRADE_ERR).
+		logs.WsLogInit().SetTopic(logs.WS_TOPIC_SRV).SetEvent(logs.WS_EVENT_SRV_UPGRADE_ERR).
 			SetUuid(uuid).SetClientIP(c.ClientIP()).SetError(err).
 			PrintError("Upgrade error")
 		return
@@ -134,7 +134,7 @@ func (w *WebSocketServer) handleConnection(c *gin.Context) {
 	w.clients[uuid] = client
 	w.clientsMu.Unlock()
 
-	ws.WsLogInit().SetTopic(ws.TOPIC_SRV).SetEvent(ws.EVENT_SRV_CLIENT_CONN).
+	logs.WsLogInit().SetTopic(logs.WS_TOPIC_SRV).SetEvent(logs.WS_EVENT_SRV_CLIENT_CONN).
 		SetUuid(uuid).SetClientIP(conn.RemoteAddr().String()).SetExtraInfo(map[string]any{"clientCount": len(w.clients)}).
 		PrintInfo("Client connected")
 
@@ -152,7 +152,7 @@ func (w *WebSocketServer) handleClient(client *clientInfo) {
 	conn.SetReadLimit(512)
 	err := conn.SetReadDeadline(time.Now().Add(60 * time.Second))
 	if err != nil {
-		ws.WsLogInit().SetTopic(ws.TOPIC_SRV).SetEvent(ws.EVENT_SRV_SET_DEADLINE_ERR).
+		logs.WsLogInit().SetTopic(logs.WS_TOPIC_SRV).SetEvent(logs.WS_EVENT_SRV_SET_DEADLINE_ERR).
 			SetUuid(client.Uuid).SetClientIP(client.IP).SetError(err).
 			PrintError("Client set deadline error")
 	}
@@ -169,15 +169,15 @@ func (w *WebSocketServer) handleClient(client *clientInfo) {
 		if err != nil {
 			// 如果是 server 主動關閉連線，ReadMessage 會返回錯誤
 			if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
-				ws.WsLogInit().SetTopic(ws.TOPIC_SRV).SetEvent(ws.EVENT_SRV_CLIENT_DIS_CONN).
+				logs.WsLogInit().SetTopic(logs.WS_TOPIC_SRV).SetEvent(logs.WS_EVENT_SRV_CLIENT_DIS_CONN).
 					SetUuid(client.Uuid).SetClientIP(client.IP).
 					PrintInfo("Client disconnected (server closed)")
 			} else if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
-				ws.WsLogInit().SetTopic(ws.TOPIC_SRV).SetEvent(ws.EVENT_SRV_HEART_TIMEOUT).
+				logs.WsLogInit().SetTopic(logs.WS_TOPIC_SRV).SetEvent(logs.WS_EVENT_SRV_HEART_TIMEOUT).
 					SetUuid(client.Uuid).SetClientIP(client.IP).
 					PrintInfo("Client heartbeat timeout")
 			} else {
-				ws.WsLogInit().SetTopic(ws.TOPIC_SRV).SetEvent(ws.EVENT_SRV_READ_ERR).
+				logs.WsLogInit().SetTopic(logs.WS_TOPIC_SRV).SetEvent(logs.WS_EVENT_SRV_READ_ERR).
 					SetUuid(client.Uuid).SetClientIP(client.IP).SetError(err).
 					PrintError("Client read message error")
 			}
@@ -189,7 +189,7 @@ func (w *WebSocketServer) handleClient(client *clientInfo) {
 		if message == "ping" {
 			client.LastActive = time.Now()
 			if err = conn.SetReadDeadline(time.Now().Add(60 * time.Second)); err != nil {
-				ws.WsLogInit().SetTopic(ws.TOPIC_SRV).SetEvent(ws.EVENT_SRV_SET_DEADLINE_ERR).
+				logs.WsLogInit().SetTopic(logs.WS_TOPIC_SRV).SetEvent(logs.WS_EVENT_SRV_SET_DEADLINE_ERR).
 					SetUuid(client.Uuid).SetClientIP(client.IP).SetError(err).
 					PrintError("Client set deadline error from ping/pong")
 			}
@@ -201,7 +201,7 @@ func (w *WebSocketServer) handleClient(client *clientInfo) {
 		// client 發送訊息，只回應該 client
 		reply := "Received: " + message
 		if err := conn.WriteMessage(websocket.TextMessage, []byte(reply)); err != nil {
-			ws.WsLogInit().SetTopic(ws.TOPIC_SRV).SetEvent(ws.EVENT_SRV_BROADCAST_ERR).
+			logs.WsLogInit().SetTopic(logs.WS_TOPIC_SRV).SetEvent(logs.WS_EVENT_SRV_BROADCAST_ERR).
 				SetUuid(client.Uuid).SetClientIP(client.IP).SetError(err).
 				PrintError("Failed to send message, client removed")
 			break
@@ -216,7 +216,7 @@ func (w *WebSocketServer) removeClient(client *clientInfo) {
 	w.clientsMu.Unlock()
 	_ = client.Conn.Close()
 
-	ws.WsLogInit().SetTopic(ws.TOPIC_SRV).SetEvent(ws.EVENT_SRV_CLIENT_DIS_CONN).
+	logs.WsLogInit().SetTopic(logs.WS_TOPIC_SRV).SetEvent(logs.WS_EVENT_SRV_CLIENT_DIS_CONN).
 		SetUuid(client.Uuid).SetClientIP(client.IP).SetExtraInfo(map[string]any{"clientCount": len(w.clients)}).
 		PrintInfo("Client disconnected")
 }
@@ -254,7 +254,7 @@ func (w *WebSocketServer) Stop() {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := w.server.Shutdown(shutdownCtx); err != nil && err != http.ErrServerClosed {
-		ws.WsLogInit().SetTopic(ws.TOPIC_SRV).SetEvent(ws.EVENT_SRV_SHUTDOWN_ERR).SetError(err).
+		logs.WsLogInit().SetTopic(logs.WS_TOPIC_SRV).SetEvent(logs.WS_EVENT_SRV_SHUTDOWN_ERR).SetError(err).
 			PrintError("Failed to shutdown server")
 	}
 
