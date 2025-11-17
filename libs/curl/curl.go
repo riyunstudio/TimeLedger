@@ -2,7 +2,6 @@ package curl
 
 import (
 	"akali/libs/logs"
-	"akali/libs/tools"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -13,6 +12,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"gitlab.en.mcbwvx.com/frame/teemo/tools"
 )
 
 const (

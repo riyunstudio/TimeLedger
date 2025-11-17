@@ -1,12 +1,16 @@
 package tools
 
 import (
-	"akali/global"
 	"fmt"
 	"runtime"
 )
 
-func (tl *Tools) PanicParser(err any) global.Panic {
+type Panic struct {
+	Panic      string `json:"panic"`
+	StackTrace string `json:"stack_trace"`
+}
+
+func (tl *Tools) PanicParser(err any) Panic {
 	buf := make([]byte, 4096)
 	for {
 		n := runtime.Stack(buf, true) // 抓所有 goroutine
@@ -20,7 +24,7 @@ func (tl *Tools) PanicParser(err any) global.Panic {
 			default:
 				msg = fmt.Sprintf("Unknown Panic: %v", r)
 			}
-			return global.Panic{
+			return Panic{
 				Panic:      msg,
 				StackTrace: string(buf[:n]),
 			}

@@ -6,8 +6,9 @@ import (
 	"akali/database/mysql"
 	"akali/database/redis"
 	"akali/global/errInfos"
-	"akali/libs/tools"
 	"akali/rpc"
+
+	"gitlab.en.mcbwvx.com/frame/teemo/tools"
 )
 
 type App struct {

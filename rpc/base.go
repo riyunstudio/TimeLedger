@@ -2,8 +2,9 @@ package rpc
 
 import (
 	"akali/configs"
-	"akali/libs/tools"
 	"fmt"
+
+	"gitlab.en.mcbwvx.com/frame/teemo/tools"
 )
 
 type Rpc struct {

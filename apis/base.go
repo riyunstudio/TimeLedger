@@ -2,7 +2,8 @@ package apis
 
 import (
 	"akali/configs"
-	"akali/libs/tools"
+
+	"gitlab.en.mcbwvx.com/frame/teemo/tools"
 )
 
 type Api struct {

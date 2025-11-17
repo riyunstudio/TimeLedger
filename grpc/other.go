@@ -6,6 +6,7 @@ import (
 	"context"
 	"time"
 
+	"gitlab.en.mcbwvx.com/frame/teemo/tools"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -78,7 +79,7 @@ func (s *Grpc) writeApiLog(ctx context.Context, method string, req any, resp any
 	traceLog.PrintGrpc(resp, err)
 }
 
-func (s *Grpc) writePanicLog(ctx context.Context, method string, req any, err global.Panic) {
+func (s *Grpc) writePanicLog(ctx context.Context, method string, req any, err tools.Panic) {
 	// 初始化 TraceLog
 	traceLog := logs.TraceLogInit()
 	traceLog.SetTopic("server_gRPC")

@@ -2,8 +2,9 @@ package mysql
 
 import (
 	"akali/app/models"
-	"akali/libs/tools"
 	"log"
+
+	"gitlab.en.mcbwvx.com/frame/teemo/tools"
 )
 
 // Seed 建立測試資料

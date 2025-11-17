@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
+	"gitlab.en.mcbwvx.com/frame/teemo/tools"
 )
 
 type TraceLog struct {
@@ -137,7 +138,7 @@ func getlogfields(tl *TraceLog) logrus.Fields {
 }
 
 // Panic 打印專用
-func (tl *TraceLog) PrintPanic(err global.Panic) {
+func (tl *TraceLog) PrintPanic(err tools.Panic) {
 	tl.err = err.StackTrace
 	lf := getlogfields(tl)
 	logrus.SetLevel(logrus.PanicLevel)

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"gitlab.en.mcbwvx.com/frame/teemo/tools"
 )
 
 func (s *Server) setRequestTime(ctx *gin.Context) context.Context {
@@ -137,7 +138,7 @@ func (s *Server) writeApiLog(ctx *gin.Context) {
 	traceLog.PrintServer(s.getRet(ctx))
 }
 
-func (s *Server) writePanicLog(ctx *gin.Context, err global.Panic) {
+func (s *Server) writePanicLog(ctx *gin.Context, err tools.Panic) {
 	// 初始化 TraceLog
 	traceLog := logs.TraceLogInit()
 	traceLog.SetTopic("server_gin")
