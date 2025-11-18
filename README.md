@@ -33,3 +33,23 @@ Akali 為 Kubernetes (GKE) 上運行的服務，主要結合 Cloud SQL 與外部
 可透過 Port Forward 方式連線至 Kubernetes 內部的 phpMyAdmin 服務。
 
 ```bash
+
+```
+
+## proto編譯指令
+```bash
+protoc --go_out=./grpc --go-grpc_out=./grpc grpc/proto/user.proto
+```
+
+## pkg專案import指令
+```bash
+go env -w GOPRIVATE=gitlab.en.mcbwvx.com
+```
+
+## pkg列表
+* Tools 工具包
+    * https://gitlab.en.mcbwvx.com/frame/teemo#
+* Curl 工具包
+    * https://gitlab.en.mcbwvx.com/frame/ezreal#
+* Log 自定義包
+    * https://gitlab.en.mcbwvx.com/frame/zilean#
