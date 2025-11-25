@@ -327,7 +327,6 @@ protoc --go_out=./grpc --go-grpc_out=./grpc grpc/proto/user.proto
 #### gRPC 服務實作
 - 在 `grpc/services/` 目錄下實作服務
 - 必須嵌入 `BaseService` 和 `UnimplementedXxxServiceServer`
-- 使用 `RunWithTimeout` 處理超時
 - 範例：
 ```go
 type User struct {
@@ -338,19 +337,17 @@ type User struct {
 }
 
 func (s *User) Get(ctx context.Context, req *user.GetRequest) (*user.GetResponse, error) {
-    return RunWithTimeout(ctx, 5*time.Second, func(ctx context.Context, do func(func() error) error) (*user.GetResponse, error) {
-        data, err := s.UserRepository.Get(ctx, models.User{ID: uint(req.GetID())})
-        if err != nil {
-            return &user.GetResponse{Code: 100, Msg: err.Error()}, err
-        }
-        return &user.GetResponse{
-            Msg: "OK",
-            Datas: &user.GetResponseDatas{
-                ID:   int64(data.ID),
-                Name: data.Name,
-            },
-        }, nil
-    })
+    data, err := s.UserRepository.Get(ctx, models.User{ID: uint(req.GetID())})
+    if err != nil {
+        return &user.GetResponse{Code: 100, Msg: err.Error()}, err
+    }
+    return &user.GetResponse{
+        Msg: "OK",
+        Datas: &user.GetResponseDatas{
+            ID:   int64(data.ID),
+            Name: data.Name,
+        },
+    }, nil
 }
 ```
 
@@ -371,7 +368,6 @@ func (s *Grpc) registerServices() {
 - **MainMiddleware**：Metadata 注入、TraceID 處理、超時控制、日誌記錄
 
 #### gRPC 超時處理
-- 使用 `RunWithTimeout` 函數包裝業務邏輯
 - 預設超時時間建議：5 秒
 - 自動處理 Context 取消與超時
 
@@ -611,51 +607,47 @@ type Xxx struct {
 }
 
 func (s *Xxx) Get(ctx context.Context, req *xxx.GetRequest) (*xxx.GetResponse, error) {
-    return RunWithTimeout(ctx, 5*time.Second, func(ctx context.Context, do func(func() error) error) (*xxx.GetResponse, error) {
-        data, err := do(func() error {
-            var err error
-            data, err = s.XxxRepository.Get(ctx, models.Xxx{ID: uint(req.GetID())})
-            return err
-        })
-        if err != nil {
-            return &xxx.GetResponse{Code: 20001, Msg: err.Error()}, err
-        }
-
-        if data.ID == 0 {
-            return &xxx.GetResponse{Code: 40001, Msg: "Not found"}, nil
-        }
-
-        return &xxx.GetResponse{
-            Code: 0,
-            Msg:  "OK",
-            Datas: &xxx.GetResponseDatas{
-                ID:   int64(data.ID),
-                Name: data.Name,
-            },
-        }, nil
+    data, err := do(func() error {
+        var err error
+        data, err = s.XxxRepository.Get(ctx, models.Xxx{ID: uint(req.GetID())})
+        return err
     })
+    if err != nil {
+        return &xxx.GetResponse{Code: 20001, Msg: err.Error()}, err
+    }
+
+    if data.ID == 0 {
+        return &xxx.GetResponse{Code: 40001, Msg: "Not found"}, nil
+    }
+
+    return &xxx.GetResponse{
+        Code: 0,
+        Msg:  "OK",
+        Datas: &xxx.GetResponseDatas{
+            ID:   int64(data.ID),
+            Name: data.Name,
+        },
+    }, nil
 }
 
 func (s *Xxx) Create(ctx context.Context, req *xxx.CreateRequest) (*xxx.CreateResponse, error) {
-    return RunWithTimeout(ctx, 5*time.Second, func(ctx context.Context, do func(func() error) error) (*xxx.CreateResponse, error) {
-        data, err := do(func() error {
-            var err error
-            data, err = s.XxxRepository.Create(ctx, models.Xxx{Name: req.GetName()})
-            return err
-        })
-        if err != nil {
-            return &xxx.CreateResponse{Code: 20001, Msg: err.Error()}, err
-        }
-
-        return &xxx.CreateResponse{
-            Code: 0,
-            Msg:  "OK",
-            Datas: &xxx.CreateResponseDatas{
-                ID:   int64(data.ID),
-                Name: data.Name,
-            },
-        }, nil
+    data, err := do(func() error {
+        var err error
+        data, err = s.XxxRepository.Create(ctx, models.Xxx{Name: req.GetName()})
+        return err
     })
+    if err != nil {
+        return &xxx.CreateResponse{Code: 20001, Msg: err.Error()}, err
+    }
+
+    return &xxx.CreateResponse{
+        Code: 0,
+        Msg:  "OK",
+        Datas: &xxx.CreateResponseDatas{
+            ID:   int64(data.ID),
+            Name: data.Name,
+        },
+    }, nil
 }
 ```
 
@@ -723,7 +715,6 @@ func (s *Grpc) registerServices() {
 
 ### ⚠️ gRPC 服務開發
 - **Protocol Buffers 編譯**：修改 `.proto` 檔案後必須重新編譯
-- **超時處理**：所有 gRPC 方法都必須使用 `RunWithTimeout` 包裝
 - **錯誤碼統一**：gRPC 回應中的錯誤碼應與 HTTP API 保持一致
 - **Context 傳遞**：確保 Context 正確傳遞到 Repository 層
 - **Metadata 處理**：TraceID 從 Metadata 取得，若無則自動生成
