@@ -146,6 +146,8 @@ Middleware (TraceID, Body備份, 日誌)
     ↓
 Controller (參數驗證 via Request)
     ↓
+Request (驗證請求參數)
+    ↓
 Service (業務邏輯)
     ↓
 Repository (資料庫操作)
