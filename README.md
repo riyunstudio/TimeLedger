@@ -118,8 +118,9 @@ akali/
 
 ### 架構模式
 
-本框架採用 **分層架構（Layered Architecture）** 與 **倉儲模式（Repository Pattern）**：
+本框架採用 **分層架構（Layered Architecture）** 與 **倉儲模式（Repository Pattern）**，支援兩種通訊模式：
 
+#### HTTP RESTful API
 1. **Controller 層**：處理 HTTP 請求，負責參數驗證與回應格式化
 2. **Service 層**：處理業務邏輯，協調 Repository 與 Resource
 3. **Repository 層**：負責資料庫操作，封裝 GORM 查詢
@@ -127,7 +128,16 @@ akali/
 5. **Request 層**：請求參數驗證與轉換
 6. **Resource 層**：將 Model 轉換為 API 回應格式
 
+#### gRPC 服務
+1. **gRPC Service 層**：處理 gRPC 請求，實作 Protocol Buffers 定義的服務
+2. **Service 層**：處理業務邏輯，協調 Repository
+3. **Repository 層**：負責資料庫操作，封裝 GORM 查詢
+4. **Model 層**：定義資料模型結構（GORM）
+5. **Protocol Buffers**：定義服務介面與訊息格式
+
 ### 資料流程
+
+#### HTTP RESTful API 流程
 
 ```
 HTTP Request
@@ -151,6 +161,32 @@ Controller (JSON 回應)
 Middleware (記錄日誌)
     ↓
 HTTP Response
+```
+
+#### gRPC 服務流程
+
+```
+gRPC Request
+    ↓
+InitMiddleware (WaitGroup, RequestTime)
+    ↓
+RecoverMiddleware (Panic 保護)
+    ↓
+MainMiddleware (Metadata注入, TraceID, 超時控制)
+    ↓
+gRPC Service (業務邏輯)
+    ↓
+Repository (資料庫操作)
+    ↓
+Model (GORM)
+    ↓
+gRPC Service (資料處理)
+    ↓
+gRPC Response
+    ↓
+MainMiddleware (記錄日誌)
+    ↓
+gRPC Response
 ```
 
 ---
@@ -257,7 +293,94 @@ func (ctl *UserController) Get(ctx *gin.Context) {
 }
 ```
 
-### 8. 定時任務開發規範
+### 8. gRPC 服務開發規範
+
+#### Protocol Buffers 定義
+- 在 `grpc/proto/` 目錄下定義 `.proto` 檔案
+- 範例結構：
+```protobuf
+syntax = "proto3";
+
+package user;
+option go_package = "./proto/user";
+
+service UserService {
+  rpc Get (GetRequest) returns (GetResponse);
+}
+
+message GetRequest {
+  int64 ID = 1;
+}
+
+message GetResponse {
+  int64 Code = 1;
+  string Msg = 2;
+  GetResponseDatas Datas = 3;
+}
+```
+
+#### 編譯 Protocol Buffers
+```bash
+protoc --go_out=./grpc --go-grpc_out=./grpc grpc/proto/user.proto
+```
+
+#### gRPC 服務實作
+- 在 `grpc/services/` 目錄下實作服務
+- 必須嵌入 `BaseService` 和 `UnimplementedXxxServiceServer`
+- 使用 `RunWithTimeout` 處理超時
+- 範例：
+```go
+type User struct {
+    user.UnimplementedUserServiceServer
+    BaseService
+    App            *app.App
+    UserRepository *repositories.UserRepository
+}
+
+func (s *User) Get(ctx context.Context, req *user.GetRequest) (*user.GetResponse, error) {
+    return RunWithTimeout(ctx, 5*time.Second, func(ctx context.Context, do func(func() error) error) (*user.GetResponse, error) {
+        data, err := s.UserRepository.Get(ctx, models.User{ID: uint(req.GetID())})
+        if err != nil {
+            return &user.GetResponse{Code: 100, Msg: err.Error()}, err
+        }
+        return &user.GetResponse{
+            Msg: "OK",
+            Datas: &user.GetResponseDatas{
+                ID:   int64(data.ID),
+                Name: data.Name,
+            },
+        }, nil
+    })
+}
+```
+
+#### 註冊 gRPC 服務
+- 在 `grpc/server.go` 的 `registerServices()` 方法中註冊：
+```go
+func (s *Grpc) registerServices() {
+    user.RegisterUserServiceServer(s.srv, &services.User{
+        App:            s.app,
+        UserRepository: repositories.NewUserRepository(s.app),
+    })
+}
+```
+
+#### gRPC 中介層
+- **InitMiddleware**：初始化 WaitGroup 和 RequestTime
+- **RecoverMiddleware**：Panic 保護與錯誤記錄
+- **MainMiddleware**：Metadata 注入、TraceID 處理、超時控制、日誌記錄
+
+#### gRPC 超時處理
+- 使用 `RunWithTimeout` 函數包裝業務邏輯
+- 預設超時時間建議：5 秒
+- 自動處理 Context 取消與超時
+
+#### gRPC Metadata 與 TraceID
+- TraceID 從 Metadata 的 `Tid` 欄位取得，若無則自動生成
+- Metadata 會自動注入到 Context 中
+- 所有日誌都包含 TraceID 用於追蹤
+
+### 9. 定時任務開發規範
 
 - 實作 `console.Job` 介面：
 ```go
@@ -271,14 +394,14 @@ type Job interface {
 - 在 `app/console/schedule.go` 的 `loadJobs()` 方法中註冊任務
 - 使用 Cron 表達式：`秒 分 時 日 月 星期 * * * * * *`
 
-### 9. 環境變數配置
+### 10. 環境變數配置
 
 - 所有配置透過環境變數載入（`.env` 檔案）
 - 使用 `github.com/joho/godotenv/autoload` 自動載入
 - 在 `configs/env.go` 中定義配置結構
 - 必須設定的環境變數請參考 `configs/env.go`
 
-### 10. 日誌記錄規範
+### 11. 日誌記錄規範
 
 - 使用 `gitlab.en.mcbwvx.com/frame/zilean` 進行日誌記錄
 - API 請求日誌：自動在 `MainMiddleware` 中記錄
@@ -286,14 +409,14 @@ type Job interface {
 - 排程任務日誌：在 `Scheduler` 中自動記錄
 - 所有日誌都包含 TraceID 用於追蹤
 
-### 11. 優雅退出機制
+### 12. 優雅退出機制
 
 - 所有服務都實作 `Start()` 和 `Stop()` 方法
 - 使用 `sync.WaitGroup` 等待所有請求完成
 - 在 `main.go` 中統一處理 SIGTERM/SIGINT 信號
 - 退出順序：Scheduler → RabbitMQ → WebSocket → Gin → gRPC
 
-### 12. TraceID 追蹤
+### 13. TraceID 追蹤
 
 - 每個請求自動生成或從 Header 取得 TraceID
 - TraceID 會傳遞到：
@@ -307,7 +430,7 @@ type Job interface {
 
 ## 開發流程範例
 
-### 新增一個 API 端點
+### 新增一個 HTTP RESTful API 端點
 
 1. **定義 Model**（`app/models/xxx.go`）
 ```go
@@ -417,6 +540,158 @@ type actions struct {
 }
 ```
 
+### 新增一個 gRPC 服務端點
+
+1. **定義 Protocol Buffers**（`grpc/proto/xxx.proto`）
+```protobuf
+syntax = "proto3";
+
+package xxx;
+option go_package = "./proto/xxx";
+
+service XxxService {
+  rpc Get (GetRequest) returns (GetResponse);
+  rpc Create (CreateRequest) returns (CreateResponse);
+}
+
+message GetRequest {
+  int64 ID = 1;
+}
+
+message GetResponse {
+  int64 Code = 1;
+  string Msg = 2;
+  GetResponseDatas Datas = 3;
+}
+
+message GetResponseDatas {
+  int64 ID = 1;
+  string Name = 2;
+}
+
+message CreateRequest {
+  string Name = 1;
+}
+
+message CreateResponse {
+  int64 Code = 1;
+  string Msg = 2;
+  CreateResponseDatas Datas = 3;
+}
+
+message CreateResponseDatas {
+  int64 ID = 1;
+  string Name = 2;
+}
+```
+
+2. **編譯 Protocol Buffers**
+```bash
+protoc --go_out=./grpc --go-grpc_out=./grpc grpc/proto/xxx.proto
+```
+
+3. **實作 gRPC 服務**（`grpc/services/xxx.go`）
+```go
+package services
+
+import (
+    "akali/app"
+    "akali/app/models"
+    "akali/app/repositories"
+    "akali/grpc/proto/xxx"
+    "context"
+    "time"
+)
+
+type Xxx struct {
+    xxx.UnimplementedXxxServiceServer
+    BaseService
+    App            *app.App
+    XxxRepository *repositories.XxxRepository
+}
+
+func (s *Xxx) Get(ctx context.Context, req *xxx.GetRequest) (*xxx.GetResponse, error) {
+    return RunWithTimeout(ctx, 5*time.Second, func(ctx context.Context, do func(func() error) error) (*xxx.GetResponse, error) {
+        data, err := do(func() error {
+            var err error
+            data, err = s.XxxRepository.Get(ctx, models.Xxx{ID: uint(req.GetID())})
+            return err
+        })
+        if err != nil {
+            return &xxx.GetResponse{Code: 20001, Msg: err.Error()}, err
+        }
+
+        if data.ID == 0 {
+            return &xxx.GetResponse{Code: 40001, Msg: "Not found"}, nil
+        }
+
+        return &xxx.GetResponse{
+            Code: 0,
+            Msg:  "OK",
+            Datas: &xxx.GetResponseDatas{
+                ID:   int64(data.ID),
+                Name: data.Name,
+            },
+        }, nil
+    })
+}
+
+func (s *Xxx) Create(ctx context.Context, req *xxx.CreateRequest) (*xxx.CreateResponse, error) {
+    return RunWithTimeout(ctx, 5*time.Second, func(ctx context.Context, do func(func() error) error) (*xxx.CreateResponse, error) {
+        data, err := do(func() error {
+            var err error
+            data, err = s.XxxRepository.Create(ctx, models.Xxx{Name: req.GetName()})
+            return err
+        })
+        if err != nil {
+            return &xxx.CreateResponse{Code: 20001, Msg: err.Error()}, err
+        }
+
+        return &xxx.CreateResponse{
+            Code: 0,
+            Msg:  "OK",
+            Datas: &xxx.CreateResponseDatas{
+                ID:   int64(data.ID),
+                Name: data.Name,
+            },
+        }, nil
+    })
+}
+```
+
+4. **註冊 gRPC 服務**（`grpc/server.go`）
+```go
+func (s *Grpc) registerServices() {
+    user.RegisterUserServiceServer(s.srv, &services.User{...})
+    xxx.RegisterXxxServiceServer(s.srv, &services.Xxx{  // 新增
+        App:            s.app,
+        XxxRepository: repositories.NewXxxRepository(s.app),
+    })
+}
+```
+
+### HTTP RESTful vs gRPC 選擇建議
+
+#### 使用 HTTP RESTful 的場景
+- 需要對外提供公開 API
+- 需要 Swagger 文檔
+- 需要瀏覽器直接訪問
+- 需要簡單的 JSON 格式
+- 需要跨語言、跨平台的通用性
+
+#### 使用 gRPC 的場景
+- 微服務內部通訊
+- 需要高效能、低延遲
+- 需要強型別檢查
+- 需要流式處理（Streaming）
+- 需要雙向通訊
+- 需要更好的錯誤處理機制
+
+#### 共用 Repository 層
+- HTTP RESTful 和 gRPC 可以共用相同的 Repository 層
+- 業務邏輯可以共用 Service 層（但需要適配不同的輸入輸出格式）
+- 資料模型（Model）完全共用
+
 ---
 
 ## 重要注意事項
@@ -445,3 +720,12 @@ type actions struct {
 - **參數驗證**：所有輸入都必須驗證
 - **SQL 注入**：使用 GORM 參數化查詢，避免拼接 SQL
 - **敏感資訊**：不要在日誌中記錄密碼等敏感資訊
+
+### ⚠️ gRPC 服務開發
+- **Protocol Buffers 編譯**：修改 `.proto` 檔案後必須重新編譯
+- **超時處理**：所有 gRPC 方法都必須使用 `RunWithTimeout` 包裝
+- **錯誤碼統一**：gRPC 回應中的錯誤碼應與 HTTP API 保持一致
+- **Context 傳遞**：確保 Context 正確傳遞到 Repository 層
+- **Metadata 處理**：TraceID 從 Metadata 取得，若無則自動生成
+- **服務註冊**：新增服務後必須在 `registerServices()` 中註冊
+- **Unimplemented 嵌入**：必須嵌入 `UnimplementedXxxServiceServer` 以保持向後兼容
