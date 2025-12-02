@@ -3,10 +3,9 @@ package resources
 import (
 	"akali/app"
 	"akali/app/models"
+	"context"
 	"encoding/json"
 	"fmt"
-
-	"github.com/gin-gonic/gin"
 )
 
 type UserResource struct {
@@ -28,7 +27,7 @@ type UserGetResource struct {
 	UpdateTime int64    `json:"update_time,omitempty"`
 }
 
-func (rs *UserResource) Get(ctx *gin.Context, datas models.User) (*UserGetResource, error) {
+func (rs *UserResource) Get(ctx context.Context, datas models.User) (*UserGetResource, error) {
 	ips := []string{}
 	if err := json.Unmarshal([]byte(datas.Ips), &ips); err != nil {
 		return nil, fmt.Errorf("JsonDecode ips err, Err: %v", err)
@@ -44,18 +43,20 @@ func (rs *UserResource) Get(ctx *gin.Context, datas models.User) (*UserGetResour
 }
 
 type UserCreateResource struct {
+	ID        uint     `json:"id,omitempty"`
 	Name      string   `json:"name,omitempty"`
 	Ips       []string `json:"ips,omitempty"`
 	CreatedAt int64    `json:"created_at,omitempty"`
 }
 
-func (rs *UserResource) Create(ctx *gin.Context, datas models.User) (*UserCreateResource, error) {
+func (rs *UserResource) Create(ctx context.Context, datas models.User) (*UserCreateResource, error) {
 	ips := []string{}
 	if err := json.Unmarshal([]byte(datas.Ips), &ips); err != nil {
 		return nil, fmt.Errorf("JsonDecode ips err, Err: %v", err)
 	}
 
 	return &UserCreateResource{
+		ID:        datas.ID,
 		Name:      datas.Name,
 		Ips:       ips,
 		CreatedAt: datas.CreateTime,
@@ -68,7 +69,7 @@ type UserUpdateResource struct {
 	UpdatedAt int64    `json:"updated_at,omitempty"`
 }
 
-func (rs *UserResource) Update(ctx *gin.Context, datas models.User) (*UserUpdateResource, error) {
+func (rs *UserResource) Update(ctx context.Context, datas models.User) (*UserUpdateResource, error) {
 	ips := []string{}
 	if err := json.Unmarshal([]byte(datas.Ips), &ips); err != nil {
 		return nil, fmt.Errorf("JsonDecode ips err, Err: %v", err)

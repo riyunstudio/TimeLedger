@@ -22,7 +22,8 @@ func NewUserRequest(app *app.App) *UserRequest {
 }
 
 type UserGetRequest struct {
-	ID int `json:"id"`
+	ID   uint   `json:"id"`
+	Name string `json:"name"`
 }
 
 func (r *UserRequest) Get(ctx *gin.Context) (req *UserGetRequest, errInfo *errInfos.Res, err error) {

@@ -23,6 +23,9 @@ func (rp *UserRepository) Get(ctx context.Context, cond models.User) (data model
 	if cond.ID != 0 {
 		query.Where("id = ?", cond.ID)
 	}
+	if cond.Name != "" {
+		query.Where("name = ?", cond.Name)
+	}
 	err = query.Find(&data).Error
 	return
 }

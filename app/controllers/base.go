@@ -4,6 +4,7 @@ import (
 	"akali/app"
 	"akali/global"
 	"akali/global/errInfos"
+	"context"
 
 	"github.com/gin-gonic/gin"
 )
@@ -17,6 +18,18 @@ func NewBaseController(app *app.App) *BaseController {
 	return &BaseController{
 		app: app,
 	}
+}
+
+// 把 gin ctx 取指定內容寫入 context ctx
+func (b *BaseController) makeCtx(ctx *gin.Context) (c context.Context) {
+	if val, exists := ctx.Get(global.TraceIDKey); exists {
+		if tid, ok := val.(string); ok {
+			c = context.WithValue(context.Background(), global.TraceIDKey, tid)
+			return
+		}
+	}
+	c = context.WithValue(context.Background(), global.TraceIDKey, "")
+	return
 }
 
 // JSON 輔助回傳

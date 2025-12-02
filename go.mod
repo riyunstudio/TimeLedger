@@ -3,6 +3,7 @@ module akali
 go 1.25.1
 
 require (
+	github.com/alicebob/miniredis/v2 v2.35.0
 	github.com/gin-gonic/gin v1.11.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/joho/godotenv v1.5.1
@@ -12,16 +13,14 @@ require (
 	github.com/swaggo/files v1.0.1
 	github.com/swaggo/gin-swagger v1.6.1
 	github.com/swaggo/swag v1.16.6
+	gitlab.en.mcbwvx.com/frame/ezreal v1.0.2
+	gitlab.en.mcbwvx.com/frame/teemo v1.0.1
+	gitlab.en.mcbwvx.com/frame/zilean v1.0.9
 	google.golang.org/grpc v1.76.0
 	google.golang.org/protobuf v1.36.9
 	gorm.io/driver/mysql v1.6.0
+	gorm.io/driver/sqlite v1.6.0
 	gorm.io/gorm v1.31.0
-)
-
-require (
-	gitlab.en.mcbwvx.com/frame/teemo v1.0.1
-	gitlab.en.mcbwvx.com/frame/ezreal v1.0.2
-	gitlab.en.mcbwvx.com/frame/zilean v1.0.9
 )
 
 require (
@@ -57,6 +56,7 @@ require (
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/mailru/easyjson v0.7.6 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
+	github.com/mattn/go-sqlite3 v1.14.22 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
@@ -69,6 +69,7 @@ require (
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.3.0 // indirect
 	github.com/xlzd/gotp v0.1.0 // indirect
+	github.com/yuin/gopher-lua v1.1.1 // indirect
 	go.uber.org/mock v0.5.0 // indirect
 	golang.org/x/arch v0.20.0 // indirect
 	golang.org/x/crypto v0.40.0 // indirect

@@ -1,9 +1,12 @@
 package configs
 
 import (
+	"fmt"
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/joho/godotenv"
 )
 
 type Env struct {
@@ -45,6 +48,11 @@ type Env struct {
 }
 
 func LoadEnv() *Env {
+	err := godotenv.Load("./.env")
+	if err != nil {
+		panic(fmt.Sprintf("讀取.env錯誤, err: %s", err.Error()))
+	}
+
 	return &Env{
 		AppEnv:      os.Getenv("APP_ENV"),
 		AppDebug:    getEnvAsBool("APP_DEBUG", false),
