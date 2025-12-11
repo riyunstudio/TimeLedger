@@ -27,6 +27,7 @@ ENV TZ=Asia/Taipei
 
 COPY --from=builder /app/main .
 COPY --from=builder /app/docs ./docs
+COPY --from=builder /app/.env.example .env
 
 EXPOSE 8080
 CMD ["./main"]
