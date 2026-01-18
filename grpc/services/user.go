@@ -1,11 +1,11 @@
 package services
 
 import (
-	"akali/app"
-	"akali/app/models"
-	"akali/app/repositories"
-	"akali/grpc/proto/user"
 	"context"
+	"timeLedger/app"
+	"timeLedger/app/models"
+	"timeLedger/app/repositories"
+	"timeLedger/grpc/proto/user"
 )
 
 type User struct {

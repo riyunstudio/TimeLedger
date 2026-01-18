@@ -22,7 +22,7 @@ func listPackages(ctx context.Context, dir string, env []string, args ...string)
 	var stderrBuf bytes.Buffer
 	cmd.Stderr = &stderrBuf
 	defer func() {
-		if (finalErr != nil) && (stderrBuf.Len() > 0) {
+		if stderrBuf.Len() > 0 {
 			finalErr = fmt.Errorf("%v\n%s", finalErr, stderrBuf.Bytes())
 		}
 	}()
@@ -47,20 +47,16 @@ func listPackages(ctx context.Context, dir string, env []string, args ...string)
 	return pkgs, nil
 }
 
-func (parser *Parser) getAllGoFileInfoFromDepsByList(pkg *build.Package, parseFlag ParseFlag) error {
+func (parser *Parser) getAllGoFileInfoFromDepsByList(pkg *build.Package) error {
 	ignoreInternal := pkg.Goroot && !parser.ParseInternal
 	if ignoreInternal { // ignored internal
 		return nil
 	}
 
-	if parser.skipPackageByPrefix(pkg.ImportPath) {
-		return nil // ignored by user-defined package path prefixes
-	}
-
 	srcDir := pkg.Dir
 	var err error
 	for i := range pkg.GoFiles {
-		err = parser.parseFile(pkg.ImportPath, filepath.Join(srcDir, pkg.GoFiles[i]), nil, parseFlag)
+		err = parser.parseFile(pkg.ImportPath, filepath.Join(srcDir, pkg.GoFiles[i]), nil, ParseModels)
 		if err != nil {
 			return err
 		}
@@ -68,7 +64,7 @@ func (parser *Parser) getAllGoFileInfoFromDepsByList(pkg *build.Package, parseFl
 
 	// parse .go source files that import "C"
 	for i := range pkg.CgoFiles {
-		err = parser.parseFile(pkg.ImportPath, filepath.Join(srcDir, pkg.CgoFiles[i]), nil, parseFlag)
+		err = parser.parseFile(pkg.ImportPath, filepath.Join(srcDir, pkg.CgoFiles[i]), nil, ParseModels)
 		if err != nil {
 			return err
 		}

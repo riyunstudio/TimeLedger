@@ -1,10 +1,10 @@
 package mq
 
 import (
-	"akali/app"
 	"fmt"
 	"log"
 	"sync"
+	"timeLedger/app"
 
 	"github.com/rabbitmq/amqp091-go"
 )

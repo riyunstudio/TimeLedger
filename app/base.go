@@ -1,12 +1,12 @@
 package app
 
 import (
-	"akali/apis"
-	"akali/configs"
-	"akali/database/mysql"
-	"akali/database/redis"
-	"akali/global/errInfos"
-	"akali/rpc"
+	"timeLedger/apis"
+	"timeLedger/configs"
+	"timeLedger/database/mysql"
+	"timeLedger/database/redis"
+	"timeLedger/global/errInfos"
+	"timeLedger/rpc"
 
 	"gitlab.en.mcbwvx.com/frame/teemo/tools"
 )

@@ -1,7 +1,7 @@
 package apis
 
 import (
-	"akali/configs"
+	"timeLedger/configs"
 
 	"gitlab.en.mcbwvx.com/frame/teemo/tools"
 )

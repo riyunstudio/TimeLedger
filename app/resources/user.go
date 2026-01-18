@@ -1,11 +1,11 @@
 package resources
 
 import (
-	"akali/app"
-	"akali/app/models"
 	"context"
 	"encoding/json"
 	"fmt"
+	"timeLedger/app"
+	"timeLedger/app/models"
 )
 
 type UserResource struct {

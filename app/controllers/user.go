@@ -1,11 +1,11 @@
 package controllers
 
 import (
-	"akali/app"
-	"akali/app/requests"
-	"akali/app/services"
-	"akali/global"
 	"net/http"
+	"timeLedger/app"
+	"timeLedger/app/requests"
+	"timeLedger/app/services"
+	"timeLedger/global"
 
 	"github.com/gin-gonic/gin"
 )

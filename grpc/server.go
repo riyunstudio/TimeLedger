@@ -1,14 +1,14 @@
 package grpc
 
 import (
-	"akali/app"
-	"akali/app/repositories"
-	"akali/grpc/proto/user"
-	"akali/grpc/services"
 	"fmt"
 	"log"
 	"net"
 	"sync"
+	"timeLedger/app"
+	"timeLedger/app/repositories"
+	"timeLedger/grpc/proto/user"
+	"timeLedger/grpc/services"
 
 	"google.golang.org/grpc"
 )

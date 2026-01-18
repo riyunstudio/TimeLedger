@@ -1,8 +1,8 @@
 package mysql
 
 import (
-	"akali/app/models"
 	"log"
+	"timeLedger/app/models"
 
 	"gitlab.en.mcbwvx.com/frame/teemo/tools"
 )

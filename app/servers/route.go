@@ -1,8 +1,8 @@
 package servers
 
 import (
-	"akali/app/controllers"
 	"net/http"
+	"timeLedger/app/controllers"
 
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"

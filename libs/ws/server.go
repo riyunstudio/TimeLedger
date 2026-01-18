@@ -1,7 +1,6 @@
 package ws
 
 import (
-	"akali/app"
 	"context"
 	"fmt"
 	"io"
@@ -10,6 +9,7 @@ import (
 	"net/http"
 	"sync"
 	"time"
+	"timeLedger/app"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"

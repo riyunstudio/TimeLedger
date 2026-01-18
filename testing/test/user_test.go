@@ -1,17 +1,17 @@
 package test
 
 import (
-	"akali/app"
-	"akali/app/models"
-	"akali/app/requests"
-	"akali/app/resources"
-	"akali/app/services"
-	"akali/database/mysql"
-	"akali/database/redis"
-	mockRedis "akali/testing/redis"
-	"akali/testing/sqlite"
 	"fmt"
 	"reflect"
+	"timeLedger/app"
+	"timeLedger/app/models"
+	"timeLedger/app/requests"
+	"timeLedger/app/resources"
+	"timeLedger/app/services"
+	"timeLedger/database/mysql"
+	"timeLedger/database/redis"
+	mockRedis "timeLedger/testing/redis"
+	"timeLedger/testing/sqlite"
 
 	_ "github.com/joho/godotenv/autoload"
 

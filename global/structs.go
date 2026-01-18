@@ -1,6 +1,6 @@
 package global
 
-import "akali/global/errInfos"
+import "timeLedger/global/errInfos"
 
 // Gin server 響應回傳格式
 type ApiResponse struct {

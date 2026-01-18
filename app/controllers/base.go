@@ -1,10 +1,10 @@
 package controllers
 
 import (
-	"akali/app"
-	"akali/global"
-	"akali/global/errInfos"
 	"context"
+	"timeLedger/app"
+	"timeLedger/global"
+	"timeLedger/global/errInfos"
 
 	"github.com/gin-gonic/gin"
 )

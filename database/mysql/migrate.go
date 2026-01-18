@@ -1,9 +1,9 @@
 package mysql
 
 import (
-	"akali/app/models"
 	"fmt"
 	"log"
+	"timeLedger/app/models"
 )
 
 // AutoMigrate 自動建立資料表

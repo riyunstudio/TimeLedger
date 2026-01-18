@@ -1,7 +1,7 @@
-# Akali 專案部署說明
+# timeLedger 專案部署說明
 
 ## 專案概述
-Akali 為 Kubernetes (GKE) 上運行的服務，主要結合 Cloud SQL 與外部 API，並提供健康檢查機制與後台管理介面。
+timeLedger 為 Kubernetes (GKE) 上運行的服務，主要結合 Cloud SQL 與外部 API，並提供健康檢查機制與後台管理介面。
 
 ---
 
@@ -11,7 +11,7 @@ Akali 為 Kubernetes (GKE) 上運行的服務，主要結合 Cloud SQL 與外部
 |------|----|
 | **GKE Cluster 名稱** | `????` |
 | **GCP 區域** | `????` |
-| **Namespace** | `akali` |
+| **Namespace** | `timeLedger` |
 | **服務訪問 IP** | [http://localhost/](http://localhost/) |
 | **健康檢查路徑** | [http://localhost/healthy](http://localhost/healthy) |
 
@@ -61,7 +61,7 @@ go env -w GOPRIVATE=gitlab.en.mcbwvx.com
 ### 專案結構
 
 ```
-akali/
+timeLedger/
 ├── main.go                 # 應用程式入口點
 ├── app/                     # 應用層核心邏輯
 │   ├── base.go             # App 初始化與依賴注入
@@ -593,10 +593,10 @@ protoc --go_out=./grpc --go-grpc_out=./grpc grpc/proto/xxx.proto
 package services
 
 import (
-    "akali/app"
-    "akali/app/models"
-    "akali/app/repositories"
-    "akali/grpc/proto/xxx"
+    "timeLedger/app"
+    "timeLedger/app/models"
+    "timeLedger/app/repositories"
+    "timeLedger/grpc/proto/xxx"
     "context"
     "time"
 )

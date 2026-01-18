@@ -1,23 +1,23 @@
 package main
 
 import (
-	"akali/app"
-	"akali/app/console"
-	"akali/app/servers"
-	_ "akali/docs"
-	"akali/grpc"
-	"akali/libs/mq"
-	"akali/libs/ws"
 	"context"
 	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
+	"timeLedger/app"
+	"timeLedger/app/console"
+	"timeLedger/app/servers"
+	_ "timeLedger/docs"
+	"timeLedger/grpc"
+	"timeLedger/libs/mq"
+	"timeLedger/libs/ws"
 
 	_ "github.com/joho/godotenv/autoload"
 )
 
-// @title Akali 阿卡莉 模板框架
+// @title timeLedger 阿卡莉 模板框架
 // @version 1.0
 // @description API 維護文件
 // @schemes http

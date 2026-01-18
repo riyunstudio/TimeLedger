@@ -1,13 +1,13 @@
 package mysql
 
 import (
-	"akali/configs"
-	"akali/global"
 	"context"
 	"fmt"
 	"log"
 	"sync"
 	"time"
+	"timeLedger/configs"
+	"timeLedger/global"
 
 	"gitlab.en.mcbwvx.com/frame/zilean/logs"
 

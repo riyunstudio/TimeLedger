@@ -1,7 +1,7 @@
 package mq
 
 import (
-	rabbitmq "akali/global/rabbitMQ"
+	rabbitmq "timeLedger/global/rabbitMQ"
 
 	"github.com/rabbitmq/amqp091-go"
 )

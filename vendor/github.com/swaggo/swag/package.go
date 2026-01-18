@@ -5,7 +5,6 @@ import (
 	"go/token"
 	"reflect"
 	"strconv"
-	"strings"
 )
 
 // PackageDefinitions files and definition in a package.
@@ -95,26 +94,22 @@ func (pkg *PackageDefinitions) evaluateConstValue(file *ast.File, iota int, expr
 	case *ast.BasicLit:
 		switch valueExpr.Kind {
 		case token.INT:
-			// handle underscored number, such as 1_000_000
-			if strings.ContainsRune(valueExpr.Value, '_') {
-				valueExpr.Value = strings.Replace(valueExpr.Value, "_", "", -1)
-			}
-			if len(valueExpr.Value) >= 2 && valueExpr.Value[0] == '0' {
-				var start, base = 2, 8
-				switch valueExpr.Value[1] {
-				case 'x', 'X':
-					//hex
-					base = 16
-				case 'b', 'B':
-					//binary
-					base = 2
-				default:
-					//octet
-					start = 1
-				}
-				if x, err := strconv.ParseInt(valueExpr.Value[start:], base, 64); err == nil {
+			// hexadecimal
+			if len(valueExpr.Value) > 2 && valueExpr.Value[0] == '0' && valueExpr.Value[1] == 'x' {
+				if x, err := strconv.ParseInt(valueExpr.Value[2:], 16, 64); err == nil {
 					return int(x), nil
-				} else if x, err := strconv.ParseUint(valueExpr.Value[start:], base, 64); err == nil {
+				} else if x, err := strconv.ParseUint(valueExpr.Value[2:], 16, 64); err == nil {
+					return x, nil
+				} else {
+					panic(err)
+				}
+			}
+
+			//octet
+			if len(valueExpr.Value) > 1 && valueExpr.Value[0] == '0' {
+				if x, err := strconv.ParseInt(valueExpr.Value[1:], 8, 64); err == nil {
+					return int(x), nil
+				} else if x, err := strconv.ParseUint(valueExpr.Value[1:], 8, 64); err == nil {
 					return x, nil
 				} else {
 					panic(err)
@@ -163,18 +158,19 @@ func (pkg *PackageDefinitions) evaluateConstValue(file *ast.File, iota int, expr
 			if name == "uintptr" {
 				name = "uint"
 			}
-			value, _ := pkg.evaluateConstValue(file, iota, arg, globalEvaluator, recursiveStack)
 			if IsGolangPrimitiveType(name) {
+				value, _ := pkg.evaluateConstValue(file, iota, arg, globalEvaluator, recursiveStack)
 				value = EvaluateDataConversion(value, name)
 				return value, nil
 			} else if name == "len" {
+				value, _ := pkg.evaluateConstValue(file, iota, arg, globalEvaluator, recursiveStack)
 				return reflect.ValueOf(value).Len(), nil
 			}
 			typeDef := globalEvaluator.FindTypeSpec(name, file)
 			if typeDef == nil {
 				return nil, nil
 			}
-			return value, valueExpr.Fun
+			return arg, valueExpr.Fun
 		} else if selector, ok := valueExpr.Fun.(*ast.SelectorExpr); ok {
 			typeDef := globalEvaluator.FindTypeSpec(fullTypeName(selector.X.(*ast.Ident).Name, selector.Sel.Name), file)
 			if typeDef == nil {

@@ -1,15 +1,15 @@
 package services
 
 import (
-	"akali/app"
-	"akali/app/models"
-	"akali/app/repositories"
-	"akali/app/requests"
-	"akali/app/resources"
-	"akali/global/errInfos"
 	"context"
 	"encoding/json"
 	"time"
+	"timeLedger/app"
+	"timeLedger/app/models"
+	"timeLedger/app/repositories"
+	"timeLedger/app/requests"
+	"timeLedger/app/resources"
+	"timeLedger/global/errInfos"
 )
 
 type UserService struct {

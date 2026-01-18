@@ -1,8 +1,8 @@
 package servers
 
 import (
-	"akali/global/errInfos"
 	"net/http"
+	"timeLedger/global/errInfos"
 
 	"github.com/gin-gonic/gin"
 )

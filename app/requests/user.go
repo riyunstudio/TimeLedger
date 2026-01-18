@@ -1,9 +1,9 @@
 package requests
 
 import (
-	"akali/app"
-	"akali/app/repositories"
-	"akali/global/errInfos"
+	"timeLedger/app"
+	"timeLedger/app/repositories"
+	"timeLedger/global/errInfos"
 
 	"github.com/gin-gonic/gin"
 )

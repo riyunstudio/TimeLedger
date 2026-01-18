@@ -1,9 +1,6 @@
 package swag
 
-import (
-	"strings"
-	"unicode"
-)
+import "unicode"
 
 // FieldsFunc split a string s by a func splitter into max n parts
 func FieldsFunc(s string, f func(rune2 rune) bool, n int) []string {
@@ -55,13 +52,4 @@ func FieldsFunc(s string, f func(rune2 rune) bool, n int) []string {
 // FieldsByAnySpace split a string s by any space character into max n parts
 func FieldsByAnySpace(s string, n int) []string {
 	return FieldsFunc(s, unicode.IsSpace, n)
-}
-
-// AppendDescription appends a new string to the existing description, treating
-// a trailing backslash as a line continuation.
-func AppendDescription(current, addition string) string {
-	if strings.HasSuffix(current, "\\") {
-		return current[:len(current)-1] + addition
-	}
-	return current + "\n" + addition
 }

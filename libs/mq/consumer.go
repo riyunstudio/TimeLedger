@@ -1,9 +1,9 @@
 package mq
 
 import (
-	"akali/app"
-	rabbitmq "akali/global/rabbitMQ"
 	"fmt"
+	"timeLedger/app"
+	rabbitmq "timeLedger/global/rabbitMQ"
 
 	"github.com/rabbitmq/amqp091-go"
 	"gitlab.en.mcbwvx.com/frame/zilean/logs"

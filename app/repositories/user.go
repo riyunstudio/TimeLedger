@@ -1,9 +1,9 @@
 package repositories
 
 import (
-	"akali/app"
-	"akali/app/models"
 	"context"
+	"timeLedger/app"
+	"timeLedger/app/models"
 )
 
 type UserRepository struct {
