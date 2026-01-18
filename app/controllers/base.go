@@ -20,15 +20,20 @@ func NewBaseController(app *app.App) *BaseController {
 	}
 }
 
+var checkCtxMap = []global.ContextKey{
+	global.TraceIDKey,
+	global.SidKey,
+	// global.OperatorKey,
+}
+
 // 把 gin ctx 取指定內容寫入 context ctx
 func (b *BaseController) makeCtx(ctx *gin.Context) (c context.Context) {
-	if val, exists := ctx.Get(global.TraceIDKey); exists {
-		if tid, ok := val.(string); ok {
-			c = context.WithValue(context.Background(), global.TraceIDKey, tid)
-			return
+	c = context.Background()
+	for _, key := range checkCtxMap {
+		if val := ctx.Request.Context().Value(key); val != nil {
+			c = context.WithValue(c, key, val)
 		}
 	}
-	c = context.WithValue(context.Background(), global.TraceIDKey, "")
 	return
 }
 
