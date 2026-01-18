@@ -1,5 +1,4 @@
 .env
-docs/
 **/.terraform/providers
 **/.terraform/modules
 **/.terraform.lock.hcl

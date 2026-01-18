@@ -10,6 +10,7 @@ import (
 	"timeLedger/app/services"
 	"timeLedger/database/mysql"
 	"timeLedger/database/redis"
+	"timeLedger/global/errInfos"
 	mockRedis "timeLedger/testing/redis"
 	"timeLedger/testing/sqlite"
 
@@ -52,7 +53,7 @@ func TestUserService_CreateAndGet(t *testing.T) {
 		name           string
 		req            *requests.UserCreateRequest
 		expectError    bool
-		expectErrCode  int
+		expectErrCode  errInfos.ErrCode
 		expectUserData models.User
 	}{
 		{

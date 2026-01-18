@@ -1,0 +1,23 @@
+validate_pseudocode.txt — validatePlacement / validateReschedule（MVP）
+
+Inputs:
+- center_id
+- teacher_id
+- date (YYYY-MM-DD)
+- start_at, end_at (DATETIME)
+- ignore_rule_id (optional)
+
+Steps:
+1) Validate basic:
+   - start_at < end_at
+2) Check personal sessions overlap:
+   - select sessions where teacher_id=? and start_at < end_at AND end_at > start_at
+3) Check center rules overlap for that date:
+   - weekday(date)
+   - select rules where center_id=? and teacher_id=? and weekday=? (exclude ignore_rule_id)
+   - project rule time to date then overlap check
+4) If conflicts -> return TIME_CONFLICT(31101) with conflict list
+5) else return ok=true
+
+Overlap:
+(aStart < bEnd) && (bStart < aEnd)

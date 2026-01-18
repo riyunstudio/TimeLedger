@@ -31,12 +31,12 @@ func Initialize(appID int) *ErrInfo {
 }
 
 type Res struct {
-	Code int
+	Code ErrCode
 	Msg  string
 }
 
 // 透過錯誤代碼取得對應的訊息
-func (e *ErrInfo) New(code int, lang ...string) *Res {
+func (e *ErrInfo) New(code ErrCode, lang ...string) *Res {
 	msgs, exists := messagesMap[code]
 
 	if !exists {
@@ -51,7 +51,8 @@ func (e *ErrInfo) New(code int, lang ...string) *Res {
 	}
 
 	codeStr := fmt.Sprintf("%d%d", e.appID, code)
-	code, _ = strconv.Atoi(codeStr)
+	codeInt, _ := strconv.Atoi(codeStr)
+	code = ErrCode(codeInt)
 
 	switch selectedLang {
 	case LANG_EN:
@@ -63,4 +64,9 @@ func (e *ErrInfo) New(code int, lang ...string) *Res {
 	default:
 		return &Res{Code: code, Msg: msgs.EN}
 	}
+}
+
+
+func (e *ErrInfo) AsError(code ErrCode, lang ...string) error {
+	return fmt.Errorf("%d%d: %s", e.appID, code, e.New(code, lang...).Msg)
 }

@@ -3,6 +3,7 @@ package logs
 import (
 	"os"
 	"time"
+	"timeLedger/global/errInfos"
 
 	"github.com/sirupsen/logrus"
 	"gitlab.en.mcbwvx.com/frame/teemo/tools"
@@ -144,7 +145,7 @@ func (l *GinLog) fields() logrus.Fields {
 }
 
 // Gin Server 打印專用
-func (l *GinLog) PrintServer(code int, res any, err error) {
+func (l *GinLog) PrintServer(code errInfos.ErrCode, res any, err error) {
 	l.SetResponse(res)
 
 	switch code {

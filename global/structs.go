@@ -4,9 +4,9 @@ import "timeLedger/global/errInfos"
 
 // Gin server 響應回傳格式
 type ApiResponse struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
-	Datas   any    `json:"datas"`
+	Code    errInfos.ErrCode `json:"code"`
+	Message string           `json:"message"`
+	Datas   any              `json:"datas"`
 }
 
 // Gin server 處理結果
