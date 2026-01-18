@@ -135,7 +135,7 @@ func (s *Server) writeApiLog(ctx *gin.Context) {
 	traceLog.SetClientIP(ctx.ClientIP())
 	traceLog.SetTraceID(s.getTraceID(ctx))
 	traceLog.SetRunTime(s.getRequestRunTime(ctx))
-	traceLog.PrintServer(res.ErrInfo.Code, res, res.Err)
+	traceLog.PrintServer(int(res.ErrInfo.Code), res, res.Err)
 }
 
 func (s *Server) writePanicLog(ctx *gin.Context, err tools.Panic) {
