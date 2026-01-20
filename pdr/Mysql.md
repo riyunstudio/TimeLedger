@@ -60,11 +60,19 @@
 | **name** | VARCHAR | 標籤名稱 (Unique, e.g. '#街舞') |
 | **usage_count** | INT | 使用次數 (效能優化，用於清理判斷) |
 
-#### `teacher_hashtags` (老師-標籤 關聯表)
+#### `teacher_skill_hashtags` (老師技能-標籤 關聯表)
 | Column | Type | Description |
 |:--- |:--- |:--- |
-| teacher_id | BIGINT FK | Index |
+| teacher_skill_id | BIGINT FK | Index. 關聯至特定的老師技能。 |
 | hashtag_id | BIGINT FK | Index |
+
+#### `teacher_personal_hashtags` (老師個人品牌標籤)
+用於個人課表匯出展示，具備品牌辨識度。
+| Column | Type | Description |
+|:--- |:--- |:--- |
+| teacher_id | BIGINT FK | Index. 關聯老師個人。 |
+| hashtag_id | BIGINT FK | Index |
+| **sort_order** | TINYINT | 排序 (1-5) |
 
 #### `teacher_certificates` (老師證照/證明文件)
 | Column | Type | Description |

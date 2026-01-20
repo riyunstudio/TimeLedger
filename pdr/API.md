@@ -44,8 +44,13 @@
       "name": "Teacher A",
       "bio": "...",
       "region": "台北市大安區",
-      "skills": [{ "category": "舞蹈", "name": "街舞" }],
-      "hashtags": ["#MV舞蹈"],
+          { 
+            "category": "舞蹈", 
+            "name": "街舞", 
+            "hashtags": ["#MV舞蹈", "#街舞基礎"] 
+          }
+      ],
+      "personal_hashtags": ["#專業準時", "#親和力強", "#資深認證"],
       "is_open_to_hiring": true
   }
   ```
@@ -57,10 +62,10 @@
   {
       "bio": "...",
       "skills": [
-          { "category": "舞蹈", "name": "街舞", "level": "ADVANCED" },
-          { "category": "瑜伽", "name": "空中瑜伽", "level": "INTERMEDIATE" }
+          { "category": "舞蹈", "name": "街舞", "level": "ADVANCED", "hashtags": ["#MV舞蹈", "#小班制"] },
+          { "category": "瑜伽", "name": "空中瑜伽", "level": "INTERMEDIATE", "hashtags": ["#安靜", "#全英文教學"] }
       ],
-      "hashtags": ["#小班制", "#MV舞蹈", "#全英文教學"],
+      "personal_hashtags": ["#專業準時", "#親和力強"], 
       "is_open_to_hiring": true,
       "region": "台北市大安區",
       "public_contact_info": "LineID: happy_teacher"
@@ -226,7 +231,8 @@
       "availability": "AVAILABLE", // or CONFLICT, BUFFER_CONFLICT
       "internal_note": "適合教初學者",
       "internal_rating": 5,
-      "is_member": true, // false = 公開媒合到的非本中心老師
+      "personal_hashtags": ["#親和力", "#耐心"],
+      "is_member": true, 
       "public_contact_info": "LineID: ..." // 僅當 (is_member=false AND open_hiring=true) 時有值
     }
   ]
@@ -250,8 +256,9 @@
       "name": "Teacher Bloom",
       "bio": "Expert Yoga Instructor...",
       "region": "台北市大安區",
-      "skills": [{ "category": "瑜伽", "name": "空中瑜伽" }],
-      "hashtags": ["#安靜", "#平日可"],
+      "region": "台北市大安區",
+      "skills": [{ "category": "瑜伽", "name": "空中瑜伽", "hashtags": ["#安靜", "#平日可"] }],
+      "personal_hashtags": ["#專業認證", "#不遲到"],
       "certificates": [{ "name": "RYT-200", "url": "..." }],
       "public_contact_info": "Line: bloom_yoga"
     }
