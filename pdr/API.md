@@ -43,7 +43,9 @@
   {
       "name": "Teacher A",
       "bio": "...",
-      "region": "台北市大安區",
+      "city": "台北市",
+      "district": "大安區",
+      "skills": [
           { 
             "category": "舞蹈", 
             "name": "街舞", 
@@ -67,7 +69,8 @@
       ],
       "personal_hashtags": ["#專業準時", "#親和力強"], 
       "is_open_to_hiring": true,
-      "region": "台北市大安區",
+      "city": "台北市",
+      "district": "大安區",
       "public_contact_info": "LineID: happy_teacher"
   }
   ```
@@ -225,7 +228,8 @@
       "teacher_id": 101,
       "name": "Teacher A",
       "match_score": 90,
-      "region": "台北市大安區",
+      "city": "台北市",
+      "district": "大安區",
       "skills": [{ "category": "有氧", "name": "Zumba" }],
       "hashtags": ["#熱情", "#週末可"],
       "availability": "AVAILABLE", // or CONFLICT, BUFFER_CONFLICT
@@ -246,7 +250,8 @@
   - `category`: 有氧 (Filter)
   - `skill`: Zumba (Filter)
   - `tag`: "#熱情" (Filter)
-  - `region`: 台北市 (Filter)
+  - `city`: 台北市 (Filter)
+  - `district`: 大安區 (Filter)
   - `keyword`: "王小明" (Search Name/Bio)
 - **Response**:
   ```json
@@ -255,8 +260,8 @@
       "teacher_id": 105,
       "name": "Teacher Bloom",
       "bio": "Expert Yoga Instructor...",
-      "region": "台北市大安區",
-      "region": "台北市大安區",
+      "city": "台北市",
+      "district": "大安區",
       "skills": [{ "category": "瑜伽", "name": "空中瑜伽", "hashtags": ["#安靜", "#平日可"] }],
       "personal_hashtags": ["#專業認證", "#不遲到"],
       "certificates": [{ "name": "RYT-200", "url": "..." }],

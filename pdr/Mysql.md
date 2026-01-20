@@ -13,7 +13,7 @@
 #### `centers` (中心)
 | Column | Type | Description |
 |:--- |:--- |:--- |
-| id | BIGINT PK | 中心 ID |
+| id | BIGINT PK AI | 中心 ID |
 | name | VARCHAR | 中心名稱 |
 | plan_level | ENUM | 方案等級 (FREE, STARTER, PRO, TEAM) |
 | settings | JSON | 政策設定 (如：開放註冊、預設語系等，不再包含課程緩衝) |
@@ -22,7 +22,7 @@
 #### `admin_users` (後台管理員)
 | Column | Type | Description |
 |:--- |:--- |:--- |
-| id | BIGINT PK | |
+| id | BIGINT PK AI | |
 | center_id | BIGINT FK | 所屬中心 (Index) |
 | email | VARCHAR | 登入帳號 (Unique under center) |
 | password_hash | VARCHAR | |
@@ -33,20 +33,21 @@
 #### `teachers` (老師/個人用戶)
 | Column | Type | Description |
 |:--- |:--- |:--- |
-| id | BIGINT PK | |
+| id | BIGINT PK AI | |
 | **line_user_id** | VARCHAR | LINE OpenID (Index, Unique) |
 | name | VARCHAR | 显示名稱 |
 | email | VARCHAR | 備用/通知 Email |
 | avatar_url | VARCHAR | |
 | **bio** | TEXT | 老師自我介紹 (公開) |
 | **is_open_to_hiring** | BOOLEAN | 是否開放媒合 (開啟後，未加入的中心也能搜尋到) |
-| **region** | VARCHAR | 服務地區 (e.g. '台北市大安區', '台中市西屯區') |
+| **city** | VARCHAR | 服務縣市 (e.g. '台北市') |
+| **district** | VARCHAR | 服務區域 (e.g. '大安區') |
 | **public_contact_info** | TEXT | 自訂公開聯繫資訊 (Line/Phone/Email 等) |
 
 #### `teacher_skills` (老師專業能力 - 雙層結構)
 | Column | Type | Description |
 |:--- |:--- |:--- |
-| id | BIGINT PK | |
+| id | BIGINT PK AI | |
 | teacher_id | BIGINT FK | Index. 老師可擁有「多項」專業能力 (如：皮拉提斯 + 重訓)。 |
 | **category** | VARCHAR | 大類 (e.g. '有氧', '瑜伽', '舞蹈'...) |
 | **skill_name** | VARCHAR | 子類/具體描述 |
@@ -56,7 +57,7 @@
 存放系統中所有被使用過的標籤。
 | Column | Type | Description |
 |:--- |:--- |:--- |
-| id | BIGINT PK | |
+| id | BIGINT PK AI | |
 | **name** | VARCHAR | 標籤名稱 (Unique, e.g. '#街舞') |
 | **usage_count** | INT | 使用次數 (效能優化，用於清理判斷) |
 
@@ -77,7 +78,7 @@
 #### `teacher_certificates` (老師證照/證明文件)
 | Column | Type | Description |
 |:--- |:--- |:--- |
-| id | BIGINT PK | |
+| id | BIGINT PK AI | |
 | teacher_id | BIGINT FK | Index |
 | name | VARCHAR | 證照名稱 (e.g. 'Yamaha 鋼琴檢定 5 級') |
 | file_url | VARCHAR | S3/Storage 連結 |
@@ -87,7 +88,7 @@
 #### `center_teacher_notes` (中心對老師的私密備註/評價)
 | Column | Type | Description |
 |:--- |:--- |:--- |
-| id | BIGINT PK | |
+| id | BIGINT PK AI | |
 | center_id | BIGINT FK | Index |
 | teacher_id | BIGINT FK | |
 | internal_note | TEXT | 中心內部的備註 (如：配合度高、適合教幼兒) |
@@ -96,7 +97,7 @@
 #### `center_memberships` (老師-中心關聯)
 | Column | Type | Description |
 |:--- |:--- |:--- |
-| id | BIGINT PK | |
+| id | BIGINT PK AI | |
 | center_id | BIGINT FK | |
 | teacher_id | BIGINT FK | |
 | status | ENUM | ACTIVE, INACTIVE, INVITED |
@@ -105,13 +106,26 @@
 追蹤邀請狀態，避免重複發送或過期。
 | Column | Type | Description |
 |:--- |:--- |:--- |
-| id | BIGINT PK | |
+| id | BIGINT PK AI | |
 | center_id | BIGINT FK | |
 | email | VARCHAR | 受邀者 Email (Nullable if via LINE) |
 | token | VARCHAR | 唯一邀請碼 (UUID) |
 | status | ENUM | PENDING, ACCEPTED, EXPIRED |
 | created_at | DATETIME | |
 | expires_at | DATETIME | 預設 7 天過期 |
+
+#### `geo_cities` (縣市字典表)
+| Column | Type | Description |
+|:--- |:--- |:--- |
+| id | BIGINT PK AI | |
+| name | VARCHAR | e.g. '台北市' |
+
+#### `geo_districts` (行政區字典表)
+| Column | Type | Description |
+|:--- |:--- |:--- |
+| id | BIGINT PK AI | |
+| city_id | BIGINT FK | 關聯縣市 |
+| name | VARCHAR | e.g. '大安區' |
 
 ---
 
@@ -120,7 +134,7 @@
 #### `courses` (課程模板)
 | Column | Type | Description |
 |:--- |:--- |:--- |
-| id | BIGINT PK | |
+| id | BIGINT PK AI | |
 | center_id | BIGINT FK | |
 | name | VARCHAR | |
 | default_duration | INT | 分鐘數 |
@@ -131,7 +145,7 @@
 #### `offerings` (開課班別)
 | Column | Type | Description |
 |:--- |:--- |:--- |
-| id | BIGINT PK | |
+| id | BIGINT PK AI | |
 | center_id | BIGINT FK | |
 | course_id | BIGINT FK | |
 | default_room_id | BIGINT FK | 預設教室 (可 Null) |
@@ -142,7 +156,7 @@
 定義 Grid 的行列結構。
 | Column | Type | Description |
 |:--- |:--- |:--- |
-| id | BIGINT PK | |
+| id | BIGINT PK AI | |
 | center_id | BIGINT FK | |
 | name | VARCHAR | 模板名稱 (例：'音樂教室 A 週末板') |
 | row_type | ENUM | ROOM, TEACHER (定義 Row 代表的是教室還是老師) |
@@ -151,7 +165,7 @@
 預先定義好的排課位置。
 | Column | Type | Description |
 |:--- |:--- |:--- |
-| id | BIGINT PK | |
+| id | BIGINT PK AI | |
 | template_id | BIGINT FK | |
 | row_no | INT | 橫向編號 |
 | col_no | INT | 縱向編號 (通常對應時間段) |
@@ -164,7 +178,7 @@
 定義中心正規課程的週期。
 | Column | Type | Description |
 |:--- |:--- |:--- |
-| id | BIGINT PK | |
+| id | BIGINT PK AI | |
 | center_id | BIGINT FK | Index |
 | offering_id | BIGINT FK | |
 | teacher_id | BIGINT FK | **Nullable**.所屬老師 (Index)。支援暫不指派老師之排課。 |
@@ -178,7 +192,7 @@
 處理停課、改期。
 | Column | Type | Description |
 |:--- |:--- |:--- |
-| id | BIGINT PK | |
+| id | BIGINT PK AI | |
 | center_id | BIGINT FK | |
 | **rule_id** | BIGINT FK | 關聯原本的 Rule |
 | **original_date** | DATE | 原本發生的日期 (Index) |
@@ -194,7 +208,7 @@
 老師個人的私有行程，不歸屬任何中心，但需在「空檔查找」時被納入 Teacher Buffer 計算。
 | Column | Type | Description |
 |:--- |:--- |:--- |
-| id | BIGINT PK | |
+| id | BIGINT PK AI | |
 | **teacher_id** | BIGINT FK | Index |
 | title | VARCHAR | |
 | start_at | DATETIME | |
@@ -211,7 +225,7 @@
 用於老師針對「特定日期」的課程撰寫備課或教學紀錄。
 | Column | Type | Description |
 |:--- |:--- |:--- |
-| id | BIGINT PK | |
+| id | BIGINT PK AI | |
 | **teacher_id** | BIGINT FK | 撰寫者 |
 | **rule_id** | BIGINT FK | 關聯的中心排課規則 (Nullable) |
 | **personal_event_id** | BIGINT FK | 關聯的個人行程 (Nullable) |
@@ -227,7 +241,7 @@
 #### `audit_logs` (操作審計)
 | Column | Type | Description |
 |:--- |:--- |:--- |
-| id | BIGINT PK | |
+| id | BIGINT PK AI | |
 | center_id | BIGINT FK | |
 | actor_type | ENUM | ADMIN, TEACHER |
 | actor_id | BIGINT | |
@@ -252,7 +266,7 @@
 
     - `session_notes`: `UNIQUE(rule_id, session_date)` - 確保單一課堂當日只有一份筆記。
     - `center_invitations`: `INDEX(token)` - 加速邀請碼驗證。
-    - `teachers`: `INDEX(region)` - 支持地區篩選。
+    - `teachers`: `INDEX(city, district)` - 支持地區分級篩選。
 
 ## 4. 併發與資料一致性 (Concurrency Control)
 針對「多中心同時排同一位老師」的競爭條件 (Race Condition)：
