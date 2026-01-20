@@ -15,8 +15,11 @@ go build -mod=vendor -o main .
 # Run locally (requires MySQL + Redis running)
 go run main.go
 
-# Run tests (uses SQLite mock DB + MinRedis)
+# Run all tests (uses SQLite mock DB + MinRedis)
 go test ./testing/test/... -v
+
+# Run a single test
+go test ./testing/test/... -v -run TestUserService_CreateAndGet
 
 # Lint (via Docker build or local golangci-lint)
 golangci-lint run --timeout 10m
@@ -70,8 +73,12 @@ Key directories:
 - Write: `app.Mysql.WDB.WithContext(ctx)` (master)
 - Always pass `context.Context` to repository methods
 
-**Error Codes:** Format `ProjectID(2) + FunctionType(2) + Serial(4)`
-- Type 1: System, Type 2: DB/Cache, Type 3: Other, Type 4: User
+**Error Codes:** Format `FunctionType(1) + Serial(4)` (e.g., `10001` = System Error)
+- Type 1: System (10001-10999)
+- Type 2: DB/Cache (20001-20999)
+- Type 3: Other (30001-30999)
+- Type 4: User (40001-40999)
+- Define codes in `global/errInfos/code.go`, messages in `message.go`
 
 **Request Validation:** Use `requests.Validate[T](ctx)` generic function
 
@@ -104,6 +111,20 @@ Product specs in `pdr/`:
 - `Mysql.md` - Database schema
 - `功能業務邏輯.md` - Business logic (Chinese)
 - `Stages.md` - Execution roadmap
+
+## Testing
+
+Tests use SQLite (mock DB) and MinRedis instead of real MySQL/Redis:
+```go
+// Initialize mock DB and Redis
+sqliteDB, _ := sqlite.Initialize()
+rdb, mr, _ := mockRedis.Initialize()
+defer mr.Close()
+
+// Inject into app
+app.Mysql = &mysql.DB{WDB: sqliteDB, RDB: sqliteDB}
+app.Redis = &redis.Redis{DB0: rdb}
+```
 
 ## Internal Packages
 
