@@ -16,7 +16,7 @@
 | id | BIGINT PK | 中心 ID |
 | name | VARCHAR | 中心名稱 |
 | plan_level | ENUM | 方案等級 (FREE, STARTER, PRO, TEAM) |
-| settings | JSON | 政策設定 (room_buffer, teacher_buffer, allow_override...) |
+| settings | JSON | 政策設定 (如：開放註冊、預設語系等，不再包含課程緩衝) |
 | created_at | DATETIME | |
 
 #### `admin_users` (後台管理員)
@@ -117,6 +117,8 @@
 | name | VARCHAR | |
 | default_duration | INT | 分鐘數 |
 | color_hex | VARCHAR | 顯示顏色 |
+| **room_buffer_min** | INT | 該課程所需教室緩衝 (清潔時間) |
+| **teacher_buffer_min** | INT | 該課程所需老師緩衝 (轉場時間) |
 
 #### `offerings` (開課班別)
 | Column | Type | Description |
@@ -126,6 +128,7 @@
 | course_id | BIGINT FK | |
 | default_room_id | BIGINT FK | 預設教室 (可 Null) |
 | default_teacher_id| BIGINT FK | 預設老師 (可 Null) |
+| **allow_buffer_override** | BOOLEAN | 是否允許無視緩衝強制排入 (特定班別權限) |
 
 #### `timetable_templates` (課表模板)
 定義 Grid 的行列結構。

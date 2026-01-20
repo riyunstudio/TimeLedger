@@ -183,7 +183,7 @@
 
 ### `POST /admin/centers/{id}/validate`
 - **描述**: 預檢排課衝突 (Validate Engine)。
-- **Body**: `{ "teacher_id": 1, "room_id": 2, "start_at": "...", "end_at": "...", "override_buffer": false }`
+- **Body**: `{ "offering_id": 10, "teacher_id": 1, "room_id": 2, "start_at": "...", "end_at": "...", "override_buffer": false }`
 - **Response**:
   ```json
   {
@@ -296,7 +296,15 @@
 
 ### `GET /admin/centers/{id}/courses`
 - **描述**: 課程模板列表。
-- **Response**: `[{ "id": 10, "name": "Piano Basic", "duration": 60, "color": "#FF9900" }]`
+- **Response**: `[{ "id": 10, "name": "...", "duration": 60, "color": "#FF9900", "room_buffer_min": 10, "teacher_buffer_min": 5 }]`
+
+### `POST /admin/centers/{id}/courses`
+- **描述**: 新增課程模板。
+- **Body**: `{ "name": "...", "duration": 60, "color": "#...", "room_buffer_min": 10, "teacher_buffer_min": 5 }`
+
+### `GET /admin/centers/{id}/offerings`
+- **描述**: 班別列表。
+- **Response**: `[{ "id": 55, "course_id": 10, "allow_buffer_override": true }]`
 
 ---
 
@@ -320,7 +328,7 @@
 
 ### `GET /admin/centers/{id}`
 - **描述**: 取得中心基本資訊與 Policy。
-- **Response**: `{ "name": "Mozart", "plan": "PRO", "policy": { "teacher_buffer": 10 } }`
+- **Response**: `{ "name": "Mozart", "plan": "PRO", "policy": { "allow_public_register": true } }`
 
 ### `PATCH /admin/centers/{id}`
 - **描述**: 修改中心資訊。

@@ -86,18 +86,19 @@ TimeLedger 是一套 **Web-only（RWD）** 的「多中心 × 老師」排課協
    - Room Buffer：A 結束到 B 開始需 ≥ X 分
    - Teacher Buffer：A 結束到 B 開始需 ≥ Y 分
 
-### 5.2 Center Policy（必備）
-- `room_buffer_min`（預設 10）
-- `teacher_buffer_min`（預設 5）
-- `allow_override_room_buffer`（預設 false）
-- `allow_override_teacher_buffer`（預設 true）
-- `override_requires_approval`（預設 true）
+### 5.2 Course Buffer Policy (課程緩衝政策)
+- **課程級設定 (at Course Level)**:
+  - `room_buffer_min`: 該課程專屬的教室清潔時間。
+  - `teacher_buffer_min`: 該課程專屬的老師轉場時間。
+- **班別級權限 (at Offering Level)**:
+  - `allow_buffer_override`: 針對特定班別，決定是否允許在 Buffer 衝突時強制排入。
 
-### 5.3 覆寫規則（必備）
-- Overlap：永遠不可覆寫
-- Room buffer：預設不可覆寫（可由中心開放，通常需審核）
-- Teacher buffer：可由中心開放覆寫（可要求審核）
-- 覆寫必填 `reason`，並寫 audit/event
+### 5.3 覆寫規則 (Override Logic)
+- **Overlap (硬衝突)**：永遠不可覆寫。
+- **Buffer (軟衝突)**：
+  - 系統檢查該 Offering 是否開啟 `allow_buffer_override`。
+  - 若開啟：管理員可進行「強制排入」，需填寫 `reason` 並記錄於 Audit Log。
+  - 若關閉：即便是管理員，在出現 Buffer 衝突時也無法強制排入，確保特定高品質課程的專業間隔。
 
 ---
 
@@ -246,7 +247,8 @@ Trial：新中心自動 Pro 試用（例：30 天），到期降級 read-only。
 
 ### 14.2 排課治理
 - overlap 必須拒絕
-- buffer 依 policy：拒絕/待審/允許覆寫（且需 reason + audit）
+- buffer 依該課程 (Course) 設定之時長進行驗證。
+- 是否可覆寫 (Override) 依該班別 (Offering) 權限決定。
 
 ### 14.3 審核一致性
 - approve 必須 re-validate；失敗不可核准

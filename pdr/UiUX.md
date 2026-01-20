@@ -139,8 +139,8 @@
       - 🟠 橘色殘影：Buffer Conflict (可放置但需 Override/Audit)
   - **右欄 (狀態/衝突詳情)**：
     - 顯示當前選取 Cell 的詳細資訊。
-    - 若有衝突，顯示衝突原因 (例：Teacher Buffer 不足 5 分鐘)。
-    - **Override 開關**：若權限允許，顯示「強制排入」Checkbox 與「原因」輸入框。
+    - 若有衝突，顯示衝突原因 (例：該課程要求 10 分鐘 Room Buffer)。
+    - **Override 開關**：若該 Offering 權限允許，顯示「強制排入」Checkbox 與「原因」輸入框。
 
 #### C. 審核中心 (Approval Center)
 - 列表式呈現所有 Exception (停課/改期) 申請。
@@ -257,7 +257,7 @@
   3. **中央主視圖 (Core Workspace)**：
      - **左三 (資源面板)**：待指派課程與未排課老師清單。
      - **中六 (主網格)**：橫向為時間 (08:00 - 22:00)，縱向為 教室 或 老師。
-     - **右三 (詳情與衝突)**：點擊格子後滑出 (Slide-over)，顯示驗證結果與 Override 控制項。
+     - **右三 (詳情與衝突)**：點擊格子後滑出 (Slide-over)，顯示驗證結果。若 Offering 開啟 `allow_buffer_override` 則顯示覆寫控制項。
 
 ### 4.3 管理員：人才搜尋頁 (Talent Discovery Layout)
 - **結構**：
