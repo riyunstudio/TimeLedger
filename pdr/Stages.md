@@ -32,6 +32,9 @@
     - [ ] Seed 3 Centers (Starter, Growth, Pro 方案)
     - [ ] Seed 20 Teachers (混合: 有證照/無證照, 開啟媒合/關閉)
     - [ ] Seed 複雜排課場景 (故意製造衝突以供測試)
+- [ ] **UI/UX Foundation (Frontend Base)**:
+    - [ ] **Theme Config**: Setup Tailwind colors & Glassmorphism tokens in `frontend/`.
+    - [ ] **Component Atomic Structure**: Initialize basic Layouts (Mobile Nav, Admin Sidebar).
 - [ ] **Testing (Stage 1)**:
     - [ ] **Repository Tests**: 撰寫對應 DB CRUD 的單元測試，確保 SQL 邏輯正確。
 

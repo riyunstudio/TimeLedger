@@ -60,9 +60,12 @@
 1.  **Migrations**: Create tables for `centers`, `users`, `courses`, `rules`, `exceptions`, `session_notes`, `teacher_skills`.
 2.  **Models**: Initialize Go ORM (GORM or sqlx) structures.
 3.  **Seeding**: Generate realistic test data:
-    - 3 Centers (Starter/Growth/Pro).
     - 20 Teachers (Simulate "Talent Search" attributes).
     - Complex schedules with overlapping conflicts.
+4.  **UI/UX Foundation**:
+    - Initialize Nuxt 3 project inside `frontend/`.
+    - Configure `tailwind.config.js` with **Midnight Premium** theme (Colors, Glassmorphism utilities) based on `pdr/UiUX.md`.
+    - Set up Google Fonts (Outfit/Inter).
 
 **Goal**:
 By the end of this session, the database should be fully discoverable via `docker-compose exec db mysql` and contain rich seed data.
@@ -73,8 +76,9 @@ By the end of this session, the database should be fully discoverable via `docke
 
 1.  **Index Documents**: Ensure you have read all files in `pdr/` to maintain full context.
 2.  **Verify Environment**: Run `go version`, `node -v`, and `docker ps` to ensure the environment matches `pdr/Project_Assessment.md`.
-3.  **Execute Stage 1**: Follow the checklist in `pdr/Stages.md`. Begin by creating the Go project structure and Docker configuration.
+3.  **Execute Stage 1**: Follow the checklist in `pdr/Stages.md`. Begin by creating the Go project structure and Docker configuration. **Do not neglect the frontend design system setup.**
 4.  **Language Policy**: Always communicate with the user in **Traditional Chinese (繁體中文)**.
+5.  **Progress Tracking**: After every significant task, update **`pdr/progress_tracker.md`**. Ensure you reflect both Backend and Frontend/UIUX progress separately within each stage.
 
 ---
 

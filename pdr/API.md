@@ -75,6 +75,11 @@
   }
   ```
 
+### `PATCH /teacher/me/avatar`
+- **描述**: 更新個人頭像。
+- **Body** (Multipart): `avatar` (Image)
+- **Response**: `{ "avatar_url": "..." }`
+
 ### `GET /teacher/me/centers`
 - **描述**: 取得已加入的中心列表。
 - **Response**: `[ { "id": 1, "name": "Mozart Center", "status": "ACTIVE" } ]`
