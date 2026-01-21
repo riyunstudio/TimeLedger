@@ -1,127 +1,78 @@
 # TimeLedger 開發階段規劃 (Development Stages)
 
-本專案採 **「先後端核心，後前端介面」** 的開發順序。以下為詳細的執行項目 (Todo List)。
+> [!IMPORTANT]
+> **開發鐵律 (Atomic Vertical Slices)**
+> 1. **功能隔離**：一次僅開發一個 Stage 中的單一子項。
+> 2. **開發順序**：`Migration -> Unit Test (Mock) -> Backend Service -> API -> Frontend UI -> Integration Test`。
+> 3. **原子提交**：每完成一個子項的「後端」或「前端」皆須 Commit 並更新 `progress_tracker.md`。
 
 ---
 
-## Stage 0: 專案基建 (已完成)
-- [x] **Monorepo Init**: `backend/` (Go) + `frontend/` (Nuxt).
-- [x] **Infra Setup**: `docker-compose.yml` (MySQL + Redis).
-- [x] **Docs**: DEV_GUIDELINES, API Docs, Tech Specs.
+## Stage 1: 基建與設計系統 (Core & Design Tokens)
+- [ ] **1.1 Workspace Init**: Docker Compose (MySQL 8, Redis), Monorepo 初始化。
+- [ ] **1.2 Migrations (Base)**: 建立 `centers`, `users`, `geo_cities`, `geo_districts`。
+- [ ] **1.3 UI Design System**: 
+    - [ ] Tailwind Config (Midnight Indigo 漸層)、Google Fonts 引入。
+    - [ ] 基礎組件：`BaseGlassCard`, `BaseButton`, `BaseInput`。
+    - [ ] 基礎佈局：Admin Sidebar 與 Mobile Bottom Nav。
 
----
+## Stage 2: 老師身份與專業檔案 (Teacher Identity & Skills)
+- [ ] **2.1 Migrations (Skills & Certs)**: 建立 `teacher_skills`, `hashtags`, `teacher_ certificates` 等表。
+- [ ] **2.2 Auth Implementation**: LINE Login (LIFF Silent), JWT 適配器。
+- [ ] **2.3 Profile Logic**: 實作 **Hashtag 字典同步邏輯** (Update usage_count / GC)。
+- [ ] **2.4 Profile UI**: 具有技能標籤掛載、證照上傳與求職開關的個人頁面。
 
-## Stage 1: 資料庫與核心模型 (Data Foundation)
-**目標**: 建立穩固的資料層，並產生足以支持開發的測試數據。
-- [ ] **Migrations (Core)**:
-    - [ ] `centers` (含 Plan/Policy JSON)
-    - [ ] `users` (Teachers & Admins)
-    - [ ] `memberships` (關聯表)
-- [ ] **Migrations (Scheduling)**:
-    - [ ] `courses` & `offerings` & `rooms`
-    - [ ] `schedule_rules` (RB 週期規則)
-    - [ ] `schedule_exceptions` (例外單)
-    - [ ] `personal_events` (含 Recurrence JSON)
-- [ ] **Migrations (Features)**:
-    - [ ] `teacher_skills` (Hierarchical) & `teacher_certificates`
-    - [ ] `hashtags` (Master) & `teacher_hashtags` (Mapping)
-    - [ ] `timetable_templates` & `timetable_cells` (Grid Layouts)
-    - [ ] `session_notes` (Teaching Records)
-    - [ ] `center_invitations` (Traceable)
-- [ ] **Data Seeding (Fake Data)**:
-    - [ ] Seed 3 Centers (Starter, Growth, Pro 方案)
-    - [ ] Seed 20 Teachers (混合: 有證照/無證照, 開啟媒合/關閉)
-    - [ ] Seed 複雜排課場景 (故意製造衝突以供測試)
-- [ ] **UI/UX Foundation (Frontend Base)**:
-    - [ ] **Theme Config**: Setup Tailwind colors & Glassmorphism tokens in `frontend/`.
-    - [ ] **Component Atomic Structure**: Initialize basic Layouts (Mobile Nav, Admin Sidebar).
-- [ ] **Testing (Stage 1)**:
-    - [ ] **Repository Tests**: 撰寫對應 DB CRUD 的單元測試，確保 SQL 邏輯正確。
+## Stage 3: 中心管理與邀請流 (Center Admin & Invitation)
+- [ ] **2.1 Migrations (Admin & Membership)**: 建立 `admin_users`, `center_memberships`, `center_invitations`。
+- [ ] **3.2 Admin Auth**: Email/Password 登入與 Role-based 權限牆。
+- [ ] **3.3 Staff Management**: 管理員帳號 CRUD 與停權功能。
+- [ ] **3.4 Invitation Flow**: 產生邀請碼 Token 至老師點擊連結加入中心的整合流程。
 
----
+## Stage 4: 中心資源與緩衝設定 (Resources & Buffers)
+- [ ] **4.1 Migrations (Resources)**: 建立 `rooms`, `courses`, `offerings`。
+- [ ] **4.2 Rooms**: 教室 CRUD (含 **Capacity** 校驗)。
+- [ ] **4.3 Courses**: 課程模板 (含 **Buffer Min** 分鐘數設定)。
+- [ ] **4.4 Offerings**: 開課班別定義 (含 **Buffer Override** 覆寫旗標)。
 
-## Stage 2: 身份與資源 API (Auth & Resources)
-**目標**: 完成登入、權限、以及基礎的 CRUD。
-- [ ] **Auth System**:
-    - [ ] Admin Login (Email/Pass) + JWT
-    - [ ] Teacher Login (LINE OIDC) + Auto Register
-    - [ ] RBAC Middleware (`requireAdmin`, `requireTeacher`)
-- [ ] **Teacher Profile API**:
-    - [ ] GET/PUT `/teacher/me/profile` (含 Hiring Toggle, Public Contact)
-    - [ ] Upload `/teacher/me/certificates` (S3/Local)
-- [ ] **Admin Resource API**:
-    - [ ] CRUD Rooms / Courses / Offerings
-    - [ ] CRUD **Timetable Templates & Cells**
-    - [ ] **Admin Account CRUD** (List, Create, Delete with Role)
-    - [ ] CRUD Teachers (Invite Flow with Contact Info)
-    - [ ] GET/PATCH Center Settings
-- [ ] **Testing (Stage 2)**:
-    - [ ] **API Logic Tests**: 使用 Go 客戶端模擬 API 呼叫，驗證 JWT 與 RBAC 攔截是否正確。
+## Stage 5: 排課引擎 I - 週期展開 (Scheduling Engine: Rules)
+- [ ] **5.1 Migrations (Rules)**: 建立 `schedule_rules`。
+- [ ] **5.2 Rules API**: 循環規則基本 CRUD (TDD)。
+- [ ] **5.3 Expander Logic**: `expandRules()` 核心邏輯，支援每週/隔週規律。
+- [ ] **5.4 Unified Calendar**: 老師端 **多中心綜合課表**。
 
----
+## Stage 6: 排課引擎 II - 衝突驗證 (Scheduling Engine: Validation)
+- [ ] **6.1 Validation Engine**: `checkOverlap`, `checkBuffer` 核心檢測 (TDD)。
+- [ ] **6.2 Conflict UI**: 拖拉式排課工作台，整合紅/綠/橘視覺回饋。
+- [ ] **6.3 Bulk Validate**: 儲存時的批量原子校驗 logic。
 
-## Stage 3: 排課引擎與通知 (The Brain)
-**目標**: 本專案最困難的後端邏輯。
-- [ ] **Validation Engine**:
-    - [ ] `checkOverlap()`: 嚴格時段重疊檢查
-    - [ ] `checkBuffer()`: 教室清潔/老師轉場緩衝檢查
-- [ ] **Scheduling Logic**:
-    - [ ] `expandRules()`: 將週規則展開為實際日期
-    - [ ] `createException()`: 停課/改期 狀態機 (Pending -> Approved)
-    - [ ] **DB Lock**: 實作 `SELECT ... FOR UPDATE` 防止併發寫入
-- [ ] **Smart Features**:
-    - [ ] Matching Algo: 實作老師推薦評分 (`findMatches`)
-    - [ ] Talent Search: 實作 `searchTalent(skills, keyword)`
-- [ ] **Notification System**:
-    - [ ] 實作 LINE Notify Client
-    - [ ] Cron Job: 每日 20:00 發送「明日課程提醒」
-    - [ ] Event Hooks: 邀請通知、緊急異動通知
-- [ ] **Testing (Stage 3 - Critical)**:
-    - [ ] **Logic Unit Tests**: 針對 `validator` 與 `expander` 撰寫極端案例測試 (邊界值、跨日)。
-    - [ ] **Concurrency Tests**: 模擬多執行緒競爭排課，驗證 DB Lock 是否有效。
+## Stage 7: 排課引擎 III - 週期過渡 (Dynamic Phases)
+- [ ] **7.1 Phase Support**: 實作 `effective_start/end` 邏輯控管。
+- [ ] **7.2 Transition Flow**: 處理同一班別不同月份更換教室或時段的過渡介面。
 
----
+## Stage 8: 國定假日與自動化邏輯 (Holiday Automation)
+- [ ] **8.1 Migrations (Holidays)**: 建立 `center_holidays`。
+- [ ] **8.2 Holiday CRUD**: 各中心自定義假日管理 UI。
+- [ ] **8.3 Auto-Filter**: 展開課表時「無感」隱藏假日行程，且不產生髒資料。
 
-## Stage 4: 老師端 App (Teacher Frontend)
-**目標**: 手機版極致體驗。
-- [ ] **Dashboard**:
-    - [ ] 統一視圖 (Unified View) 呈現多中心課程
-    - [ ] 週次切換 (Prev/Next) 與 3日視圖適配
-- [ ] **Actions**:
-    - [ ] 課程詳情 Modal (顯示教室/人數)
-    - [ ] **Session Notes**: 讀寫 上課紀錄/備課筆記
-    - [ ] **Personal Event**: 新增/編輯 私人行程
-- [ ] **Profile**:
-    - [ ] 編輯個人檔案 & 求職設定開關
-    - [ ] 上傳證照 UI
-- [ ] **Features**:
-    - [ ] 匯出精美課表 (html2canvas)
-- [ ] **Testing (Stage 4)**:
-    - [ ] **Frontend Unit Tests**: 驗證週次切換邏輯、時區轉換是否正確。
+## Stage 9: 異動審核與狀態機 (Exceptions & Approvals)
+- [ ] **9.1 Migrations (Exceptions)**: 建立 `schedule_exceptions`。
+- [ ] **9.2 Exception API**: 老師端發起停課 / 改期請求。
+- [ ] **9.3 Approval Workflow**: 管理員審核、反對與 **Re-validation (前置防撞)**。
 
----
+## Stage 10: 預約排課與截止鎖定 (Deadlines & Locking)
+- [ ] **10.1 Locking Logic**: `lock_at` 與 `exception_lead_days` 動態鎖定檢測。
+- [ ] **10.2 Lock UI**: 老師端功能按鈕的自動禁用與提示。
 
-## Stage 5: 中心後台 (Center Frontend)
-**目標**: 高效率排課治理。
-- [ ] **Scheduling Grid**:
-    - [ ] 大型週曆元件 (支援 Drag & Drop)
-    - [ ] 即時衝突檢測顯示 (紅/綠/橘)
-- [ ] **Management**:
-    - [ ] 審核中心 (Approval Queue) 介面
-    - [ ] 資源管理頁 (老師/教室/課程)
-- [ ] **Talent Integration**:
-    - [ ] 智慧代課 Drawer (推薦名單)
-    - [ ] **Talent Search Page**: 搜尋開放老師、查看履歷、發送邀請
-- [ ] **Public Landing Page**:
-    - [ ] **WOW Hero Section** (Branding)
-    - [ ] **Interactive Demo Sandbox** (Validate API integration)
-- [ ] **Testing (Stage 5)**:
-    - [ ] **Integration Tests**: 驗證拖曳後是否成功觸發後端 API 與錯誤處理。
+## Stage 11: 人才市場與智慧媒合 (Talent Search & Match)
+- [ ] **11.1 Migrations (Notes)**: 建立 `center_teacher_notes`。
+- [ ] **11.2 Talent Discovery**: 全球老師搜尋介面 (Skill/Region 篩選)。
+- [ ] **11.3 Smart Matcher**: 評分權限因子排序推薦列表，代課建議 Drawer。
+- [ ] **11.4 Internal Notes**: 中心內的評分與私密備註系統。
 
----
-
-## Stage 6: 驗收與部署 (QA & Deploy)
-- [ ] **Integration Test**: 測試「邀請 -> 排課 -> 請假 -> 找代課 -> 審核」全流程
-- [ ] **Load Test**: 模擬 50 人同時操作排課
-- [ ] **Production Deploy**: Docker Compose 上線 VPS
-- [ ] **Documentation**: API 文件與操作手冊
+## Stage 12: 營運、通知與登陸頁 (Operational Polish)
+- [ ] **12.1 Migrations (Notes & Logs)**: 建立 `session_notes`, `audit_logs`。
+- [ ] **12.2 Operation Logic**: 教學筆記、管理員稽核歷史紀錄。
+- [ ] **12.3 Notifications**: LINE 每日提醒、緊急異動與邀請推播。
+- [ ] **12.4 Export & Branding**: 匯出具備 **個人品牌標籤** 的精美週課表圖。
+- [ ] **12.5 Public Sandbox**: 首頁免登入的高質感排課模擬器。
+- [ ] **Final QA**: 通過 `Integration_Playbook.md` 全功能驗收。

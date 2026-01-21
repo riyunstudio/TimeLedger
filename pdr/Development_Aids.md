@@ -48,7 +48,31 @@
 
 ---
 
-## 4. 維護性黃金法則 (AI-Driven Development)
+---
+
+## 4. AI 前端開發成功策略 (AI-Frontend Synergy)
+
+為了避免 AI 在實作前端時發生「視覺不一致」或「邏輯混亂」，請遵循以下策略：
+
+### 4.1 核心設計標記 (Design Tokens)
+*   **規則**：禁止 AI 在組件中寫死 `Hex Code` (如 `#6366f1`)。
+*   **執行**：在 `frontend/tailwind.config.ts` 中完成標記定義，AI 必須僅使用 `text-brand-primary` 或 `bg-midnight-glass` 等語義化 Class。
+
+### 4.2 組件庫優先 (Atomic UI)
+*   **規範**：優先指導 AI 建立 `BaseButton.vue`, `BaseModal.vue`, `BaseCard.vue`。
+*   **AI 提示語**：在開始任何頁面開發前，先要求 AI 閱讀 `pdr/UiUX.md` 並生成一套基礎組件。這能確保後續所有頁面的「WOW 質感」一致。
+
+### 4.3 邏輯與介面分離 (Logic Extraction)
+*   **規範**：排課網格的「座標計算」、「時段衝突判定」等純運算邏輯，禁止寫在 `.vue` 的 `<script>` 內。
+*   **執行**：要求 AI 將其抽離至 `frontend/utils/scheduling.ts`。這不僅能讓 AI 更精準地撰寫測試，也避免單一 Vue 檔案過大導致 AI 遺忘語境。
+
+### 4.4 模擬環境先行 (LIFF Mocking)
+*   **規範**：封裝 `useLiff` composable。在非 LINE 環境下，自動回傳 Mock User 資料。
+*   **維護性價值**：讓 AI 能在標準瀏覽器環境下完成 99% 的介面開發，而不需要依賴 LIFF 真實環境。
+
+---
+
+## 5. 維護性黃金法則 (AI-Driven Development)
 
 1.  **拒絕大檔案**：強制單一 `.go` 或 `.vue` 檔案不超過 300 行。
 2.  **自帶註解**：要求 AI 在 Service 層標註對應的 `pdr/功能業務邏輯.md` 的章節編號。

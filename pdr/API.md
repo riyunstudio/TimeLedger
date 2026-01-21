@@ -37,7 +37,7 @@
 ## 3. 老師 / 個人端 API (Teacher & Personal)
 
 ### `GET /teacher/me/profile`
-- **描述**: 取得個人資料 (Bio, Skills, Region, Hashtags)。
+- **描述**: 取得個人資料 (Bio, Skills, City, District, Hashtags)。
 - **Response**:
   ```json
   {
@@ -190,6 +190,10 @@
   ```
 - **Response**: `200 OK` (若 Policy 允許自動通過) 或 `202 Accepted` (若需審核, status=PENDING)。
 
+### `GET /teacher/me/exceptions`
+- **描述**: 查看已提交的變更申請 (停課/改期) 狀態歷程。
+- **Response**: `[ { "id": 1, "type": "CANCEL", "status": "PENDING", "original_date": "...", "reason": "..." } ]`
+
 ---
 
 ## 4. 中心後台 API (Center Admin)
@@ -218,7 +222,24 @@
 
 ### `POST /admin/centers/{id}/rules/bulk`
 - **描述**: 批量新增/更新排課規則 (Grid 儲存)。
-- **Body**: `[ { "teacher_id":..., "weekday":..., "time":... } ]`
+- **Body**: `[ { "offering_id":..., "teacher_id":..., "room_id":..., "weekday":..., "start_time":..., "end_time":..., "effective_start":..., "effective_end":... } ]`
+
+### `GET /admin/centers/{id}/rooms/{room_id}/schedule`
+- **描述**: 取得特定教室的課表 (用於檢查教室佔用與空檔)。
+- **Query**: `start=2026-01-01&end=2026-01-07`
+- **Response**:
+  ```json
+  [
+    {
+      "session_id": "rule_55_20260120",
+      "course_name": "瑜伽基礎",
+      "teacher_name": "Teacher A",
+      "start": "2026-01-20T10:00:00",
+      "end": "2026-01-20T11:00:00",
+      "status": "NORMAL"
+    }
+  ]
+  ```
 
 ### `GET /admin/centers/{id}/matching/teachers`
 - **描述**: **(亮點功能)** 智慧媒合：根據時段與技能尋找可用老師。
@@ -247,7 +268,9 @@
   ]
   ```
 
-  ```
+
+### `GET /admin/centers/{id}/matching/teachers/details`
+- **描述**: 查看媒合老師的完整履歷 (Bio/Certs)。
 
 ### `GET /admin/talent/search`
 - **描述**: **(人才庫搜尋)** 主動搜尋已開啟「求職媒合」的老師。
@@ -291,6 +314,23 @@
 - **描述**: 取得範圍內的完整排班 (Grid View)。含 Rules (週期) 與 Excpetions (例外)。
 - **Query**: `start=2026-01-01&end=2026-01-07`
 
+### `POST /admin/centers/{id}/rules`
+- **描述**: 新增一條循環排課規則。
+- **Body**:
+  ```json
+  {
+    "offering_id": 10,
+    "teacher_id": 1,
+    "room_id": 2,
+    "weekday": 2,
+    "start_time": "10:00:00",
+    "end_time": "11:00:00",
+    "effective_start": "2026-01-01",
+    "effective_end": "2026-02-28",
+    "lock_at": "2026-01-15T23:59:59"
+  }
+  ```
+
 ---
 
 ## 6. 資源管理庫 (Resource CRUD) - Admin Only
@@ -311,6 +351,12 @@
 ### `POST /admin/centers/{id}/rooms`
 - **Body**: `{ "name": "Room B", "capacity": 5 }`
 
+### `PATCH /admin/centers/{id}/rooms/{room_id}`
+- **Body**: `{ "name": "...", "capacity": 10, "is_active": true }`
+
+### `DELETE /admin/centers/{id}/rooms/{room_id}`
+- **描述**: 移除教室。
+
 ### `GET /admin/centers/{id}/courses`
 - **描述**: 課程模板列表。
 - **Response**: `[{ "id": 10, "name": "...", "duration": 60, "color": "#FF9900", "room_buffer_min": 10, "teacher_buffer_min": 5 }]`
@@ -322,6 +368,10 @@
 ### `GET /admin/centers/{id}/offerings`
 - **描述**: 班別列表。
 - **Response**: `[{ "id": 55, "course_id": 10, "allow_buffer_override": true }]`
+
+### `GET /admin/centers/{id}/reports/plan-usage`
+- **描述**: 取得方案用量報表 (老師數、排課總時數、方案上限)。
+- **Response**: `{ "teacher_count": 15, "teacher_limit": 20, "session_hours": 120, "plan_name": "PRO" }`
 
 ---
 
@@ -345,11 +395,21 @@
 
 ### `GET /admin/centers/{id}`
 - **描述**: 取得中心基本資訊與 Policy。
-- **Response**: `{ "name": "Mozart", "plan": "PRO", "policy": { "allow_public_register": true } }`
+- **Response**: `{ "name": "Mozart", "plan": "PRO", "policy": { "allow_public_register": true, "exception_lead_days": 14 } }`
 
 ### `PATCH /admin/centers/{id}`
-- **描述**: 修改中心資訊。
-- **Body**: `{ "name": "new name", "settings": {...} }`
+- **描述**: 修改中心資訊與預設政策。
+- **Body**: `{ "name": "...", "settings": { "exception_lead_days": 7 } }`
+
+### `GET /admin/centers/{id}/holidays`
+- **描述**: 取得中心自定義假日列表。
+- **Response**: `[ { "id": 1, "date": "2026-02-14", "name": "情人節停課" } ]`
+
+### `POST /admin/centers/{id}/holidays`
+- **Body**: `{ "date": "2026-02-14", "name": "情人節停課" }`
+
+### `DELETE /admin/centers/{id}/holidays/{holiday_id}`
+- **描述**: 刪除假日設定。
 
 ---
 

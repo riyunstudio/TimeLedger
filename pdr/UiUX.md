@@ -24,6 +24,14 @@
   - **Haptic Feedback**：手機版長按、拖曳時具備輕微觸控震動感。
   - **Smooth Inertia**：日曆滑動具備物理慣性與緩動機制。
 
+### 1.2 AI 組件開發清單 (Atomic UI Checklist for AI)
+為了確保 AI 生成的介面具備 WOW 質感，請優先引導 AI 實作以下基礎組件：
+- [ ] **BaseGlassCard**：包含 `backdrop-blur` 與 `1px border` 的毛玻璃容器。
+- [ ] **BaseButton**：處理 Indigo/Purple 漸層與琥珀色待審核狀態。
+- [ ] **BaseBadge**：用於顯示「鋼琴」、「瑜伽」等類別，具備不同色調的半透明背景。
+- [ ] **BaseModal**：由底部滑入的手機版組件。
+- [ ] **GridSkeleton**：加載中的骨架屏，確保加載過程不跳躍。
+
 ### 2.0 公開登陸頁 (Official Landing Page - Pre-login) - *New*
 **目標**：在 User 登入前，透過震撼的視覺與簡單範例吸引其使用。
 
@@ -143,6 +151,14 @@
     - 顯示當前選取 Cell 的詳細資訊。
     - 若有衝突，顯示衝突原因 (例：該課程要求 10 分鐘 Room Buffer)。
     - **Override 開關**：若該 Offering 權限允許，顯示「強制排入」Checkbox 與「原因」輸入框。
+- **排課規則詳情 (Rule Details Modal)**：
+  - **區域選擇**：教室 (Select)、老師 (Select)。
+  - **時間設定**：星期、開始時間、結束時間。
+  - **生效階段 (Phase Settings)**：
+    - **生效開始日 (Effective Start)**：日期選擇器。
+    - **生效結束日 (Effective End)**：日期選擇器 (可選，預設無限期)。
+    - **老師異動截止 (Locking)**：可選「依中心預設」或「指定日期」。
+  - **衝突預覽**：在 Modal 內即時顯示該區間是否有重疊規則。
 
 #### C. 審核中心 (Approval Center)
 - 列表式呈現所有 Exception (停課/改期) 申請。
@@ -190,8 +206,19 @@
   - 列表式呈現：時間、**操作管理員 (Actor)**、動作 (Action)、對象 (Target)、備註 (如 Override 原因)。
   - 支援：按管理員名稱或日期範圍篩選。
 
+#### I. 假日與停課設定 (Holiday Settings) - *New*
+- **介面**：行事曆視圖與清單視圖切換。
+- **功能**：
+  - **點選日期**：快速將某天標記為「中心假日」。
+  - **自動停課效果**：在 Grid 視圖中，假日當天背景顯示「灰色斜紋」，且自動隱藏所有該日的週期課程。
+  - **批量匯入**：支援一鍵匯入常見國定假日 (選配)。
+
+#### H. 方案用量報表 (Plan Usage Report) - *System Control*
+- **視覺**：圓環圖 (Doughnut Chart) 顯示當前老師數/規則數佔總配額之百分比。
+- **警示**：接近上限時 (80%+)，頂部顯示琥珀橘 (Warning) 通知條。
+
 #### F. 老師個人檔案編輯 (Profile Edit) - *UX Optimized*
-- **區域選擇 (Region Picker)**：提供「縣市」與「行政區」的級聯選擇 (Cascading Selector)。選完縣市後，行政區選單才動態過濾對應選項。
+- **區域選擇 (City/District Selector)**：提供「縣市」與「行政區」的級聯選擇 (Cascading Selector)。選完縣市後，行政區選單才動態過濾對應選項。
 - **大類快速選取 (One-tap selection)**：提供常用大類圖示按鈕，點擊即自動填入類別，減少打字。
 - **階層式輸入 (Hierarchical Flow)**：選取大類後，子類輸入框自動獲得焦點 (Focus) 並跳出該類別下的熱門建議。
 - **Hashtag 輸入組件**：

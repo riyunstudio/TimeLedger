@@ -27,8 +27,19 @@
 4.  **Coding Standards**: Follow `pdr/docs/DEV_GUIDELINES.md` exactly.
 5.  **Quality Assurance**:
     - **No Code Without Tests**: Every Service or Logic module (especially Scheduling) MUST have corresponding unit tests.
+    - **Layered Design (Service Pattern)**: Strictly follow the layered architecture defined in `pdr/docs/DEV_GUIDELINES.md`. Use `app/services/user.go` as the **Golden Template** for all Service implementations.
     - **Authentication (Mock First)**: 初期開發時，應採用 **Interface-based Auth Service**。實作一個 `MockAuthService` 讓系統先運作，確保業邏輯與 UI 不被 LINE 憑證卡住。
     - **Stage Validation**: A stage is not "Done" until its testing checklist in `pdr/Stages.md` is complete.
+    - **Documentation Feedback Loop (Gap Handling)**: If you discover a required API, field, or logic missing from the PDR documents during implementation, you MUST NOT make assumptions or "hidden" code changes. Instead:
+        1. **Pause** development.
+        2. **Update** the relevant PDR document (e.g., `API.md`) to include the missing detail.
+        3. **Notify** the user to confirm the update before proceeding with the code.
+6.  **Architectural Principles**:
+    - **Decoupling (Shared Logic)**: Extract all shared business logic (e.g., Validation Engine, Recurrence Expander, Matching Algo) into independent `internal/logic` or `pkg/` packages. Services and Handlers should depend on these shared functions via interfaces, NOT concrete implementations.
+    - **Single Responsibility**: Each module must do one thing. Keep Handlers thin and move core logic to Services/Logic layers.
+    - **DRY (Don't Repeat Yourself)**: If a logic is used in more than two places (e.g., Auth, Permission check), it MUST be refactored into a shared utility.
+- **Atomic Operations (Vertical Slices)**: Commit every feature segment. NEVER batch multiple features. Follow the `Backend -> Frontend -> Commit` cycle for each individual sub-task. Write clear commit messages and update `progress_tracker.md` before stopping.
+- **TDD Enforcement**: You MUST write tests (with mocks) BEFORE implementation. No Backend feature is considered done until it has a 100% pass rate in unit tests.
 
 ---
 
@@ -41,10 +52,13 @@
 | `pdr/API.md` | RESTful API Definitions. |
 | `pdr/Mysql.md` | Database Schema Design. |
 | `pdr/UiUX.md` | Frontend logic, layouts, and interaction flows. |
+| `pdr/Implementation_Blueprint.md` | **Feature-to-File mapping** and execution sequence. |
+| `pdr/Testing_Matrix.md` | **Critical Test Cases** for the Scheduling Engine. |
 | `pdr/System_Specs.md` | Error codes, notifications, and limits. |
 | `pdr/功能業務邏輯.md` | Complex logic (Validation, State Machine, Smart Match). |
 | `pdr/前後台功能列表.md` | **Final baseline** of all frontend and backend features. |
 | `pdr/流程與權限控管.md` | RBAC Matrix and Sequence Diagrams. |
+| `pdr/Integration_Playbook.md` | **Exhaustive Workflows** & Integration Tests. |
 | `pdr/Infrastructure_Cost.md`| Financial projections and VPS capacity analysis. |
 | `pdr/Analysis_SWOT.md` | Strategic market analysis and positioning. |
 | `pdr/Development_Aids.md` | Recommended AI skills, MCP servers, and tools. |
@@ -57,18 +71,12 @@
 **Objective**: Translate the ER Model into reality and seed data for development.
 
 **Immediate Tasks** (Refer to `pdr/Stages.md` for details):
-1.  **Migrations**: Create tables for `centers`, `users`, `courses`, `rules`, `exceptions`, `session_notes`, `teacher_skills`.
-2.  **Models**: Initialize Go ORM (GORM or sqlx) structures.
-3.  **Seeding**: Generate realistic test data:
-    - 20 Teachers (Simulate "Talent Search" attributes).
-    - Complex schedules with overlapping conflicts.
-4.  **UI/UX Foundation**:
-    - Initialize Nuxt 3 project inside `frontend/`.
-    - Configure `tailwind.config.js` with **Midnight Premium** theme (Colors, Glassmorphism utilities) based on `pdr/UiUX.md`.
-    - Set up Google Fonts (Outfit/Inter).
+1.  **Infrastructure Initialization**: Docker Compose, Backend (Go), and Frontend (Nuxt) root setups.
+2.  **Base Migrations**: Create tables for `centers`, `users`, `memberships`.
+3.  **UI Design System**: Setup Tailwind theme and atomic components (Glassmorphism).
 
 **Goal**:
-By the end of this session, the database should be fully discoverable via `docker-compose exec db mysql` and contain rich seed data.
+A fully containerized skeleton with a functional DB and a WOW-ready frontend baseline.
 
 ---
 

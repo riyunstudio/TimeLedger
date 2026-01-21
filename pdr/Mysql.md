@@ -16,7 +16,8 @@
 | id | BIGINT PK AI | 中心 ID |
 | name | VARCHAR | 中心名稱 |
 | plan_level | ENUM | 方案等級 (FREE, STARTER, PRO, TEAM) |
-| settings | JSON | 政策設定 (如：開放註冊、預設語系等，不再包含課程緩衝) |
+| exception_lead_days | INT | **預設老師異動截止天數** (e.g. 7 代表課程開始前 7 天鎖定) |
+| settings | JSON | 政策設定 (如：開放註冊、預設語系等) |
 | created_at | DATETIME | |
 
 #### `admin_users` (後台管理員)
@@ -114,6 +115,16 @@
 | created_at | DATETIME | |
 | expires_at | DATETIME | 預設 7 天過期 |
 
+#### `center_holidays` (中心國定假日/自定義停課日)
+| Column | Type | Description |
+|:--- |:--- |:--- |
+| id | BIGINT PK AI | |
+| center_id | BIGINT FK | Index |
+| holiday_date | DATE | 停課日期 (Index) |
+| name | VARCHAR | 假日名稱 (e.g. '春節', '中心創立紀念日') |
+| is_recurring | BOOLEAN | 是否每年循環 (選配：若為 True 則忽略年份) |
+| created_at | DATETIME | |
+
 #### `geo_cities` (縣市字典表)
 | Column | Type | Description |
 |:--- |:--- |:--- |
@@ -141,6 +152,16 @@
 | color_hex | VARCHAR | 顯示顏色 |
 | **room_buffer_min** | INT | 該課程所需教室緩衝 (清潔時間) |
 | **teacher_buffer_min** | INT | 該課程所需老師緩衝 (轉場時間) |
+
+#### `rooms` (教室)
+| Column | Type | Description |
+|:--- |:--- |:--- |
+| id | BIGINT PK AI | |
+| center_id | BIGINT FK | Index |
+| name | VARCHAR | 教室名稱 (e.g. 'A 教室') |
+| capacity | INT | 容納人數 |
+| is_active | BOOLEAN | 是否啟用 |
+| created_at | DATETIME | |
 
 #### `offerings` (開課班別)
 | Column | Type | Description |
@@ -186,7 +207,9 @@
 | **weekday** | TINYINT | 1=Mon, 7=Sun |
 | start_time | TIME | '09:00:00' |
 | end_time | TIME | '10:30:00' |
-| effective_range | DATERANGE | [start_date, end_date] |
+| effective_start | DATE | 規則生效開始日 |
+| effective_end | DATE | 規則生效結束日 |
+| **lock_at** | DATETIME | **老師異動截止時間** (超過此時間老師不可提出申請) |
 
 #### `schedule_exceptions` (例外管理)
 處理停課、改期。
@@ -267,6 +290,7 @@
     - `session_notes`: `UNIQUE(rule_id, session_date)` - 確保單一課堂當日只有一份筆記。
     - `center_invitations`: `INDEX(token)` - 加速邀請碼驗證。
     - `teachers`: `INDEX(city, district)` - 支持地區分級篩選。
+    - `center_holidays`: `UNIQUE(center_id, holiday_date)` - 確保同一天不重複設定。
 
 ## 4. 併發與資料一致性 (Concurrency Control)
 針對「多中心同時排同一位老師」的競爭條件 (Race Condition)：
