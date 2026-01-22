@@ -1,0 +1,105 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-slate-900 text-slate-100 antialiased;
+    font-family: 'Outfit', sans-serif;
+  }
+
+  .light body {
+    @apply bg-slate-50 text-slate-900;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-heading;
+  }
+
+  .glass {
+    @apply backdrop-blur-glass bg-glass-dark border border-white/10;
+  }
+
+  .light .glass {
+    @apply bg-glass-light border-slate-300/30;
+  }
+
+  .glass-card {
+    @apply glass rounded-2xl shadow-xl;
+  }
+
+  .glass-btn {
+    @apply glass hover:bg-white/10 transition-all duration-300;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply px-6 py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 transition-all duration-300 shadow-lg hover:shadow-xl;
+  }
+
+  .btn-secondary {
+    @apply px-6 py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-secondary-500 to-secondary-600 hover:from-secondary-600 hover:to-secondary-700 transition-all duration-300 shadow-lg hover:shadow-xl;
+  }
+
+  .btn-success {
+    @apply px-6 py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-success-500 to-success-600 hover:from-success-600 hover:to-success-700 transition-all duration-300 shadow-lg hover:shadow-xl;
+  }
+
+  .btn-critical {
+    @apply px-6 py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-critical-500 to-critical-600 hover:from-critical-600 hover:to-critical-700 transition-all duration-300 shadow-lg hover:shadow-xl;
+  }
+
+  .input-field {
+    @apply w-full px-4 py-3 rounded-xl bg-slate-800/50 border border-slate-700 text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-300;
+  }
+
+  .light .input-field {
+    @apply bg-white/50 border-slate-300 text-slate-900 placeholder-slate-500;
+  }
+
+  .card-schedule-safe {
+    @apply bg-success-500/20 border-success-500/50;
+  }
+
+  .card-schedule-warning {
+    @apply bg-warning-500/20 border-warning-500/50;
+  }
+
+  .card-schedule-conflict {
+    @apply bg-critical-500/20 border-critical-500/50;
+  }
+
+  .animate-spring {
+    animation: spring 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+
+  @keyframes spring {
+    0% {
+      transform: scale(0.9);
+      opacity: 0;
+    }
+    50% {
+      transform: scale(1.05);
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}

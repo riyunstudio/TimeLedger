@@ -1,0 +1,21 @@
+2026/01/22 22:44:43 MySQL Master/Slave connected
+2026/01/22 22:44:43 AutoMigrate done
+2026/01/22 22:44:43 All tables cleaned
+2026/01/22 22:44:43 Created teacher: 王小明 (ID: 44)
+2026/01/22 22:44:43 Created admin: admin@timeledger.com
+2026/01/22 22:44:43 Database seed complete
+2026/01/22 22:44:43 Redis connected (DB 0)
+[GIN-debug] [WARNING] Running in "debug" mode. Switch to "release" mode in production.
+ - using env:	export GIN_MODE=release
+ - using code:	gin.SetMode(gin.ReleaseMode)
+
+2026/01/22 22:44:43 Total routes registered: 73
+2026/01/22 22:44:43 Gin server started
+[Main panic] gRPC server start error, Err: failed to listen: listen tcp :50051: bind: Only one usage of each socket address (protocol/network address/port) is normally permitted.
+panic: gin server start error, Err: listen tcp :8888: bind: Only one usage of each socket address (protocol/network address/port) is normally permitted.
+
+goroutine 73 [running]:
+timeLedger/app/servers.(*Server).Start.func1()
+	D:/project/TimeLedger/app/servers/server.go:71 +0x125
+created by timeLedger/app/servers.(*Server).Start in goroutine 1
+	D:/project/TimeLedger/app/servers/server.go:68 +0x11b
