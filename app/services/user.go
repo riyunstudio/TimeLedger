@@ -34,7 +34,7 @@ func (s *UserService) Get(ctx context.Context, req *requests.UserGetRequest) (da
 	}
 
 	if user.ID == 0 {
-		return nil, s.app.Err.New(errInfos.USER_NOT_FOUNT), nil
+		return nil, s.app.Err.New(errInfos.NOT_FOUND), nil
 	}
 
 	response, err := s.userResource.Get(ctx, user)

@@ -170,6 +170,43 @@
 - **描述**: 刪除行程。
 - **Query**: `mode=SINGLE|FUTURE|ALL` (若為循環行程必填)
 
+### `POST /teacher/personal-events/{id}/copy`
+- **描述**: 複製個人行程。
+- **Body**:
+```json
+{
+  "title": "私人練琴 (複製)",
+  "start_at": "2026-01-25T14:00:00",
+  "end_at": "2026-01-25T16:00:00"
+}
+```
+- **Response**: `{ "id": 456, "title": "私人練琴 (複製)", ... }`
+
+### `PATCH /teacher/personal-events/{id}`
+- **描述**: 修改行程（支援拖曳改時、內容修訂）。
+- **Body**:
+```json
+{
+  "title": "私人練琴 (改)",
+  "start_at": "2026-01-21T14:00:00",
+  "end_at": "2026-01-21T16:00:00",
+  "update_mode": "SINGLE", // 必填（若為循環行程）
+  "recurrence": {
+    // 僅當 update_mode = ALL 時可更新循環規則
+    "type": "WEEKLY",
+    "interval": 1,
+    "weekdays": [1, 3],
+    "until": "2026-06-30"
+  }
+}
+```
+- **update_mode 說明**:
+  - `SINGLE`: 僅修改此單一場次（原規則產生一個 CANCEL 例外，新規則產生一個 ADD 例外）
+  - `FUTURE`: 修改此場次及之後所有場次（原規則截斷，新規則從此場次開始）
+  - `ALL`: 修改整串循環規則（更新 recurrence 欄位）
+- **Error Responses**:
+  - `E_INVALID_UPDATE_MODE`: update_mode 與行程類型不符（非循環行程不應傳此參數）
+
 ### `GET /teacher/me/schedule/conflicts`
 - **描述**: (UX優化) 在新增/拖曳行程時，主動檢查是否與「中心課程」或其他「私人行程」重疊。
 - **Query**: `start_at=...&end_at=...&exclude_id=...`
@@ -178,21 +215,65 @@
 ### `POST /teacher/exceptions`
 - **描述**: 針對 **中心課程** 提出異動申請 (請假/改期)。
 - **Body**:
-  ```json
-  {
-    "rule_id": 55,
-    "original_date": "2026-01-22",
-    "type": "RESCHEDULE", // CANCEL
-    "new_start_at": "2026-01-23T10:00:00", // Required if RESCHEDULE
-    "new_end_at": "2026-01-23T11:00:00",
-    "reason": "家裡有事"
-  }
-  ```
+```json
+{
+  "rule_id": 55,
+  "original_date": "2026-01-22",
+  "type": "RESCHEDULE", // CANCEL
+  "new_start_at": "2026-01-23T10:00:00", // Required if RESCHEDULE
+  "new_end_at": "2026-01-23T11:00:00",
+  "reason": "家裡有事"
+}
+```
 - **Response**: `200 OK` (若 Policy 允許自動通過) 或 `202 Accepted` (若需審核, status=PENDING)。
+
+### `POST /teacher/exceptions/{exception_id}/revoke`
+- **描述**: 撤回待審核的異動申請（僅限 PENDING 狀態）。
+- **Path Parameters**:
+  - `exception_id` (BIGINT): 例外申請 ID
+- **Response**:
+```json
+{
+  "code": "SUCCESS",
+  "message": "Exception revoked successfully",
+  "data": {
+    "id": 123,
+    "status": "REVOKED",
+    "revoked_at": "2026-01-22T10:00:00Z"
+  }
+}
+```
+- **Error Responses**:
+  - `E_FORBIDDEN`: 僅能撤回自己提交的申請
+  - `E_INVALID_STATUS`: 僅 PENDING 狀態可撤回
 
 ### `GET /teacher/me/exceptions`
 - **描述**: 查看已提交的變更申請 (停課/改期) 狀態歷程。
 - **Response**: `[ { "id": 1, "type": "CANCEL", "status": "PENDING", "original_date": "...", "reason": "..." } ]`
+
+### `POST /teacher/exceptions/{exception_id}/reject`
+- **描述**: **中心端** 拒絕老師的異動申請（管理員專用）。
+- **Path Parameters**:
+  - `exception_id` (BIGINT): 例外申請 ID
+- **Body**:
+```json
+{
+  "reason": "該時段已無法調整，請見諒"
+}
+```
+- **Response**:
+```json
+{
+  "code": "SUCCESS",
+  "message": "Exception rejected successfully",
+  "data": {
+    "id": 123,
+    "status": "REJECTED",
+    "rejected_at": "2026-01-22T10:00:00Z",
+    "reject_reason": "該時段已無法調整，請見諒"
+  }
+}
+```
 
 ---
 
@@ -333,20 +414,65 @@
 
 ---
 
-## 6. 資源管理庫 (Resource CRUD) - Admin Only
+## 12. 資源管理庫 (Resource CRUD) - Admin Only
 
 ### `GET /admin/centers/{id}/teachers`
 - **描述**: 列表顯示中心老師。
-- **Response**: `[{ "id": 1, "name": "...", "status": "ACTIVE", "rating": 5 }]`
+- **Query**: `page=1&limit=20&sort_by=name&sort_order=ASC&status=ACTIVE`
+- **Response**:
+```json
+{
+  "code": "SUCCESS",
+  "data": [
+    { "id": 1, "name": "...", "status": "ACTIVE", "rating": 5 }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 50,
+    "total_pages": 3,
+    "has_next": true,
+    "has_prev": false
+  }
+}
+```
 
 ### `POST /admin/centers/{id}/teachers/invite`
 - **描述**: 產生邀請連結或邀請碼，並發送 LINE 通知。
 - **Body**: `{ "line_user_id": "...", "contact_info": "請加 Line: abc", "note": "誠徵鋼琴老師" }`
 - **Response**: `{ "invite_code": "INV-888", "invite_url": "https://..." }`
 
+### `GET /admin/centers/{id}/invitations`
+- **描述**: 取得中心所有邀請碼列表（含狀態統計）。
+- **Query**: `page=1&limit=20&status=PENDING&sort_by=created_at&sort_order=DESC`
+- **Response**:
+```json
+{
+  "code": "SUCCESS",
+  "data": [
+    {
+      "id": 1,
+      "invite_code": "INV-888",
+      "status": "PENDING",
+      "teacher_name": null,
+      "created_at": "2026-01-20T10:00:00",
+      "expires_at": "2026-01-27T10:00:00",
+      "used_at": null
+    }
+  ],
+  "pagination": { ... },
+  "statistics": {
+    "total": 100,
+    "pending": 50,
+    "accepted": 45,
+    "expired": 5
+  }
+}
+```
+
 ### `GET /admin/centers/{id}/rooms`
 - **描述**: 教室列表。
-- **Response**: `[{ "id": 1, "name": "Room A", "capacity": 10 }]`
+- **Response**: `[{ "id": 1, "name": "Room A", "capacity": 10, "is_active": true }]`
 
 ### `POST /admin/centers/{id}/rooms`
 - **Body**: `{ "name": "Room B", "capacity": 5 }`
@@ -355,19 +481,74 @@
 - **Body**: `{ "name": "...", "capacity": 10, "is_active": true }`
 
 ### `DELETE /admin/centers/{id}/rooms/{room_id}`
-- **描述**: 移除教室。
+- **描述**: 軟刪除教室（將 is_active 設為 false）。
+- **Note**: 若教室仍有排課規則，回傳 `E_ROOM_IN_USE` 錯誤。
+- **Response**: `{ "code": "SUCCESS", "message": "Room deactivated successfully" }`
 
 ### `GET /admin/centers/{id}/courses`
 - **描述**: 課程模板列表。
-- **Response**: `[{ "id": 10, "name": "...", "duration": 60, "color": "#FF9900", "room_buffer_min": 10, "teacher_buffer_min": 5 }]`
+- **Response**: `[{ "id": 10, "name": "...", "duration": 60, "color": "#FF9900", "room_buffer_min": 10, "teacher_buffer_min": 5, "is_active": true }]`
 
 ### `POST /admin/centers/{id}/courses`
 - **描述**: 新增課程模板。
 - **Body**: `{ "name": "...", "duration": 60, "color": "#...", "room_buffer_min": 10, "teacher_buffer_min": 5 }`
 
+### `PATCH /admin/centers/{id}/courses/{course_id}`
+- **描述**: 更新課程模板。
+- **Body**: `{ "name": "...", "duration": 90, "color": "#...", "room_buffer_min": 15, "teacher_buffer_min": 10 }`
+
+### `DELETE /admin/centers/{id}/courses/{course_id}`
+- **描述**: 軟刪除課程模板（將 is_active 設為 false）。
+- **Note**: 若課程仍有關聯的班別 (offerings)，回傳 `E_COURSE_IN_USE` 錯誤。
+- **Response**: `{ "code": "SUCCESS", "message": "Course deactivated successfully" }`
+
 ### `GET /admin/centers/{id}/offerings`
 - **描述**: 班別列表。
-- **Response**: `[{ "id": 55, "course_id": 10, "allow_buffer_override": true }]`
+- **Response**: `[{ "id": 55, "course_id": 10, "course_name": "鋼琴課", "allow_buffer_override": true, "is_active": true }]`
+
+### `POST /admin/centers/{id}/offerings`
+- **描述**: 新增班別。
+- **Body**:
+```json
+{
+  "course_id": 10,
+  "default_room_id": 1,
+  "default_teacher_id": null,
+  "allow_buffer_override": false
+}
+```
+
+### `PATCH /admin/centers/{id}/offerings/{offering_id}`
+- **描述**: 更新班別。
+- **Body**: `{ "default_room_id": 2, "allow_buffer_override": true }`
+
+### `DELETE /admin/centers/{id}/offerings/{offering_id}`
+- **描述**: 軟刪除班別（將 is_active 設為 false）。
+- **Note**: 若班別仍有排課規則，回傳 `E_OFFERING_HAS_RULES` 錯誤。
+- **Response**: `{ "code": "SUCCESS", "message": "Offering deactivated successfully" }`
+
+### `POST /admin/centers/{id}/offerings/{offering_id}/copy`
+- **描述**: 複製班別（用於快速建立相似班別）。
+- **Body**:
+```json
+{
+  "new_name": "鋼琴課 - 進階班",
+  "effective_start": "2026-03-01",
+  "effective_end": "2026-06-30",
+  "copy_rules": true
+}
+```
+- **Response**:
+```json
+{
+  "code": "SUCCESS",
+  "data": {
+    "id": 56,
+    "name": "鋼琴課 - 進階班",
+    "rules_copied": 5
+  }
+}
+```
 
 ### `GET /admin/centers/{id}/reports/plan-usage`
 - **描述**: 取得方案用量報表 (老師數、排課總時數、方案上限)。
@@ -411,6 +592,38 @@
 ### `DELETE /admin/centers/{id}/holidays/{holiday_id}`
 - **描述**: 刪除假日設定。
 
+### `POST /admin/centers/{id}/holidays/bulk`
+- **描述**: 批量匯入假日（支援常見國定假日）。
+- **Body**:
+```json
+{
+  "holidays": [
+    { "date": "2026-01-01", "name": "元旦" },
+    { "date": "2026-02-14", "name": "春節" },
+    { "date": "2026-04-04", "name": "兒童節" },
+    { "date": "2026-10-10", "name": "雙十節" }
+  ],
+  "is_recurring": false
+}
+```
+- **Response**:
+```json
+{
+  "code": "SUCCESS",
+  "data": {
+    "imported": 4,
+    "skipped": 0,
+    "holidays": [
+      { "id": 1, "date": "2026-01-01", "name": "元旦" },
+      { "id": 2, "date": "2026-02-14", "name": "春節" },
+      { "id": 3, "date": "2026-04-04", "name": "兒童節" },
+      { "id": 4, "date": "2026-10-10", "name": "雙十節" }
+    ]
+  }
+}
+```
+- **Note**: 若某日期已有假日設定，該筆會被標記為 `skipped`，不回報錯誤。
+
 ---
 
 ## 8. 管理員帳號管理 (Admin User Management) - Owner/Admin Only
@@ -432,20 +645,38 @@
 
 ### `GET /admin/centers/{id}/audit-logs`
 - **描述**: 取得中心的操作紀錄。
-- **Query**: `actor_id=1&start=...&end=...`
-- **Response**: 
-  ```json
-  [
+- **Query**: `page=1&limit=50&actor_id=1&start=...&end=...&sort_by=created_at&sort_order=DESC`
+- **Response**:
+```json
+{
+  "code": "SUCCESS",
+  "data": [
     {
       "id": 1,
       "actor_name": "Admin A",
+      "actor_email": "admin@example.com",
       "action": "APPROVE_RESCHEDULE",
-      "target": "Course X",
-      "created_at": "2026-01-20T10:00:00",
-      "note": "Reason: Approved by request"
+      "target_type": "schedule_exception",
+      "target_id": 123,
+      "target_name": "鋼琴課 - 1/22",
+      "payload": {
+        "before": { "status": "PENDING" },
+        "after": { "status": "APPROVED" }
+      },
+      "note": "Reason: Approved by request",
+      "created_at": "2026-01-20T10:00:00Z"
     }
-  ]
-  ```
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 50,
+    "total": 1000,
+    "total_pages": 20,
+    "has_next": true,
+    "has_prev": false
+  }
+}
+```
 
 ---
 
@@ -461,6 +692,49 @@
 ---
 
 ## 9. 公用與輔助 (Common & Utils)
+
+## 11. 通用分頁與排序規範 (Pagination & Sorting Standards)
+所有列表 API 支援以下標準參數：
+
+### 11.1 通用查詢參數
+| 參數 | 類型 | 必填 | 預設值 | 說明 |
+|:---|:---:|:---:|:---:|:---|
+| `page` | INT | 否 | 1 | 頁碼 |
+| `limit` | INT | 否 | 20 | 每頁筆數 (最大 100) |
+| `sort_by` | STRING | 否 | 依各 API 定義 | 排序欄位 |
+| `sort_order` | STRING | 否 | ASC | 排序方向 (ASC/DESC) |
+
+### 11.2 通用分頁 Response 格式
+```json
+{
+  "code": "SUCCESS",
+  "data": [...],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 150,
+    "total_pages": 8,
+    "has_next": true,
+    "has_prev": false
+  }
+}
+```
+
+### 11.3 支援排序欄位對照表
+| API | 支援的 sort_by 值 | 預設排序 |
+|:---|:---|:---|
+| `/admin/centers/{id}/teachers` | `name`, `rating`, `created_at`, `last_active_at` | `name:ASC` |
+| `/admin/talent/search` | `match_score`, `rating`, `name`, `created_at` | `match_score:DESC` |
+| `/admin/centers/{id}/teachers/{tid}/certificates` | `issued_at`, `name` | `issued_at:DESC` |
+| `/admin/centers/{id}/audit-logs` | `created_at`, `action` | `created_at:DESC` |
+| `/admin/centers/{id}/exceptions` | `created_at`, `original_date` | `created_at:DESC` |
+| `/teacher/personal-events` | `start_at`, `title` | `start_at:ASC` |
+| `/teacher/me/exceptions` | `created_at`, `original_date` | `created_at:DESC` |
+| `/admin/centers/{id}/rooms` | `name`, `capacity` | `name:ASC` |
+| `/admin/centers/{id}/courses` | `name`, `created_at` | `name:ASC` |
+| `/admin/centers/{id}/offerings` | `name`, `created_at` | `created_at:DESC` |
+| `/admin/centers/{id}/invitations` | `created_at`, `expires_at` | `created_at:DESC` |
+| `/admin/centers/{id}/holidays` | `date`, `name` | `date:ASC` |
 
 ### `GET /common/hashtags/search`
 - **描述**: (UX優化) 老師輸入標籤時的模糊搜尋建議。

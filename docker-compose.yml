@@ -1,0 +1,258 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: timeledger-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-timeledger_root_2026}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-timeledger}
+      MYSQL_USER: ${MYSQL_USER:-timeledger}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-timeledger_password_2026}
+      TZ: ${APP_TIMEZONE:-Asia/Taipei}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./deploy/mysql/init:/docker-entrypoint-initdb.d:ro
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-timeledger_root_2026}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - timeledger-network
+
+  mysql-test:
+    image: mysql:8.0
+    container_name: timeledger-mysql-test
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: timeledger_test
+      TZ: Asia/Taipei
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_test_data:/var/lib/mysql
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpassword"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - timeledger-network
+    profiles:
+      - testing
+
+  redis:
+    image: redis:7-alpine
+    container_name: timeledger-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-timeledger_redis_2026}
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - timeledger-network
+
+  redis-test:
+    image: redis:7-alpine
+    container_name: timeledger-redis-test
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass testredis123
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_test_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - timeledger-network
+    profiles:
+      - testing
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: timeledger-app
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      APP_DEBUG: ${APP_DEBUG:-false}
+      APP_TIMEZONE: ${APP_TIMEZONE:-Asia/Taipei}
+      SERVER_HOST: 0.0.0.0
+      SERVER_PORT: 8080
+      MYSQL_MASTER_HOST: mysql
+      MYSQL_MASTER_PORT: 3306
+      MYSQL_MASTER_USER: ${MYSQL_USER:-timeledger}
+      MYSQL_MASTER_PASS: ${MYSQL_PASSWORD:-timeledger_password_2026}
+      MYSQL_MASTER_NAME: ${MYSQL_DATABASE:-timeledger}
+      MYSQL_SLAVE_HOST: mysql
+      MYSQL_SLAVE_PORT: 3306
+      MYSQL_SLAVE_USER: ${MYSQL_USER:-timeledger}
+      MYSQL_SLAVE_PASS: ${MYSQL_PASSWORD:-timeledger_password_2026}
+      MYSQL_SLAVE_NAME: ${MYSQL_DATABASE:-timeledger}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASS: ${REDIS_PASSWORD:-timeledger_redis_2026}
+      REDIS_POOlSIZE: 100
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
+      RABBIT_MQ_ACCOUNT: ${RABBIT_MQ_ACCOUNT:-guest}
+      RABBIT_MQ_PASSWORD: ${RABBIT_MQ_PASSWORD:-guest}
+      RABBIT_MQ_HOST: ${RABBIT_MQ_HOST:-rabbitmq}
+      RABBIT_MQ_PORT: 5672
+      WS_SERVER_PORT: 8080
+    volumes:
+      - ./logs:/app/logs
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - timeledger-network
+
+  app-local:
+    image: golang:1.25-alpine
+    container_name: timeledger-app-local
+    restart: unless-stopped
+    working_dir: /app
+    command: >
+      sh -c "go run main.go"
+    ports:
+      - "8888:8888"
+    environment:
+      APP_ENV: local
+      APP_DEBUG: true
+      APP_TIMEZONE: Asia/Taipei
+      MYSQL_MASTER_HOST: mysql
+      MYSQL_MASTER_PORT: 3306
+      MYSQL_MASTER_USER: root
+      MYSQL_MASTER_PASS: timeledger_root_2026
+      MYSQL_MASTER_NAME: timeledger
+      MYSQL_SLAVE_HOST: mysql
+      MYSQL_SLAVE_PORT: 3306
+      MYSQL_SLAVE_USER: root
+      MYSQL_SLAVE_PASS: timeledger_root_2026
+      MYSQL_SLAVE_NAME: timeledger
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASS: timeledger_redis_2026
+      REDIS_POOLSIZE: 100
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
+      RABBIT_MQ_ACCOUNT: guest
+      RABBIT_MQ_PASSWORD: guest
+      RABBIT_MQ_HOST: rabbitmq
+      RABBIT_MQ_PORT: 5672
+      WS_SERVER_PORT: 8889
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - .:/app
+      - go_cache:/go/pkg
+    networks:
+      - timeledger-network
+    profiles:
+      - local-dev
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    container_name: timeledger-phpmyadmin
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-timeledger_root_2026}
+      TZ: Asia/Taipei
+    ports:
+      - "8080:80"
+    networks:
+      - timeledger-network
+    profiles:
+      - local-dev
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: timeledger-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBIT_MQ_ACCOUNT:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBIT_MQ_PASSWORD:-guest}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - timeledger-network
+
+  nginx:
+    image: nginx:alpine
+    container_name: timeledger-nginx
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./deploy/nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./deploy/ssl:/etc/nginx/ssl:ro
+      - nginx_logs:/var/log/nginx
+    networks:
+      - timeledger-network
+
+volumes:
+  mysql_data:
+    driver: local
+  mysql_test_data:
+    driver: local
+  redis_data:
+    driver: local
+  redis_test_data:
+    driver: local
+  rabbitmq_data:
+    driver: local
+  nginx_logs:
+    driver: local
+  go_cache:
+    driver: local
+
+networks:
+  timeledger-network:
+    driver: bridge

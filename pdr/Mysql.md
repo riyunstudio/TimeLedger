@@ -84,6 +84,7 @@
 | name | VARCHAR | 證照名稱 (e.g. 'Yamaha 鋼琴檢定 5 級') |
 | file_url | VARCHAR | S3/Storage 連結 |
 | issued_at | DATE | 發證日期 |
+| **is_verified** | BOOLEAN | 證照是否已審核 (預設 false) |
 | created_at | DATETIME | |
 
 #### `center_teacher_notes` (中心對老師的私密備註/評價)
@@ -152,6 +153,7 @@
 | color_hex | VARCHAR | 顯示顏色 |
 | **room_buffer_min** | INT | 該課程所需教室緩衝 (清潔時間) |
 | **teacher_buffer_min** | INT | 該課程所需老師緩衝 (轉場時間) |
+| **is_active** | BOOLEAN | 是否啟用 (軟刪除，預設 true) |
 
 #### `rooms` (教室)
 | Column | Type | Description |
@@ -160,7 +162,7 @@
 | center_id | BIGINT FK | Index |
 | name | VARCHAR | 教室名稱 (e.g. 'A 教室') |
 | capacity | INT | 容納人數 |
-| is_active | BOOLEAN | 是否啟用 |
+| **is_active** | BOOLEAN | 是否啟用 (軟刪除，預設 true) |
 | created_at | DATETIME | |
 
 #### `offerings` (開課班別)
@@ -172,6 +174,7 @@
 | default_room_id | BIGINT FK | 預設教室 (可 Null) |
 | default_teacher_id| BIGINT FK | 預設老師 (可 Null) |
 | **allow_buffer_override** | BOOLEAN | 是否允許無視緩衝強制排入 (特定班別權限) |
+| **is_active** | BOOLEAN | 是否啟用 (軟刪除，預設 true) |
 
 #### `timetable_templates` (課表模板)
 定義 Grid 的行列結構。
@@ -181,6 +184,7 @@
 | center_id | BIGINT FK | |
 | name | VARCHAR | 模板名稱 (例：'音樂教室 A 週末板') |
 | row_type | ENUM | ROOM, TEACHER (定義 Row 代表的是教室還是老師) |
+| **is_active** | BOOLEAN | 是否啟用 (軟刪除，預設 true) |
 
 #### `timetable_cells` (模板格子)
 預先定義好的排課位置。
@@ -194,6 +198,7 @@
 | end_time | TIME | |
 | room_id | BIGINT | 預設教室 (若 row_type=TEACHER) |
 | teacher_id | BIGINT | **Nullable**. 預設老師 (若 row_type=ROOM) |
+| **is_active** | BOOLEAN | 是否啟用 (軟刪除，預設 true) |
 
 #### `schedule_rules` (排課規則 - 週期性)
 定義中心正規課程的週期。
@@ -220,12 +225,15 @@
 | **rule_id** | BIGINT FK | 關聯原本的 Rule |
 | **original_date** | DATE | 原本發生的日期 (Index) |
 | type | ENUM | **CANCEL**, **RESCHEDULE**, **ADD** |
-| status | ENUM | **PENDING**, **APPROVED**, **REJECTED** |
+| status | ENUM | **PENDING**, **APPROVED**, **REJECTED**, **REVOKED** |
 | new_start_at | DATETIME | 改期後的新開始時間 (Nullable) |
 | new_end_at | DATETIME | 改期後的新結束時間 (Nullable) |
 | **new_teacher_id** | BIGINT | 改期後或新指派的老師 (Nullable) |
 | new_room_id | BIGINT | 改期後教室 |
 | reason | VARCHAR | 申請/審核原因 |
+| **reviewed_at** | DATETIME | 審核時間 (Nullable) |
+| **reviewed_by** | BIGINT | 審核者 ID (Nullable) |
+| **review_note** | TEXT | 審核備註 (如拒絕原因) |
 
 #### `personal_events` (個人行程 - 免費版功能)
 老師個人的私有行程，不歸屬任何中心，但需在「空檔查找」時被納入 Teacher Buffer 計算。

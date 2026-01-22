@@ -117,7 +117,6 @@ func (s *Server) getRet(ctx *gin.Context) global.Ret {
 }
 
 func (s *Server) writeApiLog(ctx *gin.Context) {
-	// 初始化 TraceLog
 	traceLog := logs.GinLogInit()
 	traceLog.SetHeaders(s.getRequestHeaders(ctx))
 
@@ -127,7 +126,6 @@ func (s *Server) writeApiLog(ctx *gin.Context) {
 	case http.MethodPost, http.MethodPut:
 		traceLog.SetArgs(s.getBodyParams(ctx))
 	}
-	res := s.getRet(ctx)
 
 	traceLog.SetUrl(ctx.Request.URL.String())
 	traceLog.SetMethod(ctx.Request.Method)
@@ -135,7 +133,9 @@ func (s *Server) writeApiLog(ctx *gin.Context) {
 	traceLog.SetClientIP(ctx.ClientIP())
 	traceLog.SetTraceID(s.getTraceID(ctx))
 	traceLog.SetRunTime(s.getRequestRunTime(ctx))
-	traceLog.PrintServer(int(res.ErrInfo.Code), res, res.Err)
+
+	// 只記錄，不存取 response
+	traceLog.PrintServer(0, nil, nil)
 }
 
 func (s *Server) writePanicLog(ctx *gin.Context, err tools.Panic) {

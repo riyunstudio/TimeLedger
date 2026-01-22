@@ -11,8 +11,6 @@ import (
 	"timeLedger/app/servers"
 	_ "timeLedger/docs"
 	"timeLedger/grpc"
-	"timeLedger/libs/mq"
-	"timeLedger/libs/ws"
 
 	_ "github.com/joho/godotenv/autoload"
 )
@@ -39,28 +37,30 @@ func main() {
 	scheduler.Start()
 
 	// MQ
-	rabbitMQ := mq.Initialize(app)
-	// body, _ := json.Marshal(rabbitmq.NormalDemoUser{ID: 1, Name: "Test1"})
-	// rabbitMQ.Producer.Publish(rabbitmq.N_NORMAL, amqp091.Publishing{Type: rabbitmq.T_DEMO, Body: body, MessageId: "TRACE_ID_XXXXX"})
-	// body, _ = json.Marshal(rabbitmq.NormalDemoUser{ID: 2, Name: "Test2"})
-	// rabbitMQ.Producer.Publish(rabbitmq.N_DELAY, amqp091.Publishing{Type: rabbitmq.T_DEMO, Body: body, MessageId: "TRACE_ID_XXXXX"})
+	// rabbitMQ := mq.Initialize(app)
 
-	// Websocket server
-	wsServer := ws.InitializeServer(app)
-	wsServer.Start()
+	// Websocket server (optional)
+	// wsEnabled := os.Getenv("WS_ENABLED")
+	// if wsEnabled != "false" {
+	// 	wsServer := ws.InitializeServer(app)
+	// 	wsServer.Start()
 
-	// Websocket client
-	wsClient := ws.InitializeClient(fmt.Sprintf("ws://%s:%s/ws?uuid=%s", app.Env.ServerHost, app.Env.WsServerPort, app.Env.ServerName))
-	if err := wsClient.Start(); err != nil {
-		fmt.Println(err)
-	}
+	// 	wsClient := ws.InitializeClient(fmt.Sprintf("ws://%s:%s/ws?uuid=%s", app.Env.ServerHost, app.Env.WsServerPort, app.Env.ServerName))
+	// 	if err := wsClient.Start(); err != nil {
+	// 		fmt.Println(err)
+	// 	}
+	// }
 
 	// 啟動 API server
 	gin := servers.Initialize(app)
 	gin.Start()
 
-	grpc := grpc.Initialize(app)
-	grpc.Start()
+	// gRPC server (optional)
+	grpcEnabled := os.Getenv("GRPC_ENABLED")
+	if grpcEnabled != "false" {
+		grpcSrv := grpc.Initialize(app)
+		grpcSrv.Start()
+	}
 
 	// 優雅退出
 	signals := make(chan os.Signal, 1)
@@ -70,14 +70,10 @@ func main() {
 
 	go func() {
 		<-signals
-		// 優雅退出要結束的程式寫在這 Ex.關閉連線
 		cancel()
 		scheduler.Stop()
-		rabbitMQ.Stop()
-		wsServer.Stop()
-		wsClient.Stop()
+		// rabbitMQ.Stop()
 		gin.Stop()
-		grpc.Stop()
 		fmt.Println("Exit.")
 		exit <- struct{}{}
 	}()

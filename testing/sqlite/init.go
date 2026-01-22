@@ -1,27 +1,17 @@
 package sqlite
 
 import (
-	"gorm.io/driver/sqlite"
+	"fmt"
+
+	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
 
 func Initialize() (*gorm.DB, error) {
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	dsn := "root:rootpassword@tcp(127.0.0.1:3307)/timeledger_test?charset=utf8mb4&parseTime=True&loc=Local"
+	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("mysql init error: %w", err)
 	}
-
-	// // 流程測試需要的Mock資料表
-	// models := []any{
-	// 	models.User{},
-	// }
-
-	// // 自動建立 schema
-	// if len(models) > 0 {
-	// 	if err := db.AutoMigrate(models...); err != nil {
-	// 		return nil, err
-	// 	}
-	// }
-
 	return db, nil
 }

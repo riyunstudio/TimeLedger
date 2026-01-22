@@ -24,9 +24,24 @@ type Panic struct {
 }
 
 type Pagination struct {
-	Total int64
-	Page  int64
-	Limit int64
+	Page       int64 `json:"page"`
+	Limit      int64 `json:"limit"`
+	Total      int64 `json:"total"`
+	TotalPages int64 `json:"total_pages"`
+	HasNext    bool  `json:"has_next"`
+	HasPrev    bool  `json:"has_prev"`
+}
+
+func NewPagination(page, limit, total int64) Pagination {
+	totalPages := (total + limit - 1) / limit
+	return Pagination{
+		Page:       page,
+		Limit:      limit,
+		Total:      total,
+		TotalPages: totalPages,
+		HasNext:    page < totalPages,
+		HasPrev:    page > 1,
+	}
 }
 
 type TimeRange struct {

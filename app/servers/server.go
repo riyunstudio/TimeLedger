@@ -10,6 +10,7 @@ import (
 	"time"
 	"timeLedger/app"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
@@ -31,6 +32,19 @@ func Initialize(app *app.App) *Server {
 	gin.DefaultWriter = io.Discard
 
 	r.Use(gin.Recovery())
+
+	config := cors.DefaultConfig()
+	config.AllowOrigins = []string{
+		"*",
+	}
+	config.AllowMethods = []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"}
+	config.AllowHeaders = []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Requested-With", "Access-Control-Request-Method", "Access-Control-Request-Headers"}
+	config.ExposeHeaders = []string{"Content-Length", "Authorization"}
+	config.AllowCredentials = true
+	config.AllowOriginFunc = func(origin string) bool {
+		return true
+	}
+	r.Use(cors.New(config))
 
 	return &Server{
 		app: app, engine: r,

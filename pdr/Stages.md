@@ -27,12 +27,18 @@
 - [ ] **3.2 Admin Auth**: Email/Password 登入與 Role-based 權限牆。
 - [ ] **3.3 Staff Management**: 管理員帳號 CRUD 與停權功能。
 - [ ] **3.4 Invitation Flow**: 產生邀請碼 Token 至老師點擊連結加入中心的整合流程。
+- [ ] **3.5 Invitation Rejection**: 老師拒絕邀請流程與 API。
 
 ## Stage 4: 中心資源與緩衝設定 (Resources & Buffers)
 - [ ] **4.1 Migrations (Resources)**: 建立 `rooms`, `courses`, `offerings`。
 - [ ] **4.2 Rooms**: 教室 CRUD (含 **Capacity** 校驗)。
 - [ ] **4.3 Courses**: 課程模板 (含 **Buffer Min** 分鐘數設定)。
 - [ ] **4.4 Offerings**: 開課班別定義 (含 **Buffer Override** 覆寫旗標)。
+
+## Stage 4.5: 資源管理擴充 (Resource Management Extended) - NEW
+- [ ] **4.5.1 軟刪除機制**: 課程/班別/教室的 `is_active` 欄位與 API。
+- [ ] **4.5.2 課程複製**: 班別複製功能 (含規則複製)。
+- [ ] **4.5.3 邀請統計**: 邀請碼列表與使用統計 API。
 
 ## Stage 5: 排課引擎 I - 週期展開 (Scheduling Engine: Rules)
 - [ ] **5.1 Migrations (Rules)**: 建立 `schedule_rules`。
@@ -52,12 +58,20 @@
 ## Stage 8: 國定假日與自動化邏輯 (Holiday Automation)
 - [ ] **8.1 Migrations (Holidays)**: 建立 `center_holidays`。
 - [ ] **8.2 Holiday CRUD**: 各中心自定義假日管理 UI。
-- [ ] **8.3 Auto-Filter**: 展開課表時「無感」隱藏假日行程，且不產生髒資料。
+- [ ] **8.3 Bulk Import**: 批量匯入國定假日 API。
+- [ ] **8.4 Auto-Filter**: 展開課表時「無感」隱藏假日行程，且不產生髒資料。
+
+## Stage 8.5: 循環編輯功能 (Recurrence Edit) - NEW
+- [ ] **8.5.1 Personal Events Update Mode**: 支援 SINGLE/FUTURE/ALL 模式。
+- [ ] **8.5.2 例外生成邏輯**: 編輯單一場次時產生 CANCEL + ADD 例外。
+- [ ] **8.5.3 UI 流程**: 編輯/刪除確認對話框與受影響場次預覽。
 
 ## Stage 9: 異動審核與狀態機 (Exceptions & Approvals)
 - [ ] **9.1 Migrations (Exceptions)**: 建立 `schedule_exceptions`。
 - [ ] **9.2 Exception API**: 老師端發起停課 / 改期請求。
-- [ ] **9.3 Approval Workflow**: 管理員審核、反對與 **Re-validation (前置防撞)**。
+- [ ] **9.3 Exception Revoke**: 老師撤回待審核申請 API。
+- [ ] **9.4 Approval Workflow**: 管理員審核、反對與 **Re-validation (前置防撞)**。
+- [ ] **9.5 Review Fields**: 審核時間、審核者、審核備註欄位。
 
 ## Stage 10: 預約排課與截止鎖定 (Deadlines & Locking)
 - [ ] **10.1 Locking Logic**: `lock_at` 與 `exception_lead_days` 動態鎖定檢測。
@@ -66,8 +80,9 @@
 ## Stage 11: 人才市場與智慧媒合 (Talent Search & Match)
 - [ ] **11.1 Migrations (Notes)**: 建立 `center_teacher_notes`。
 - [ ] **11.2 Talent Discovery**: 全球老師搜尋介面 (Skill/Region 篩選)。
-- [ ] **11.3 Smart Matcher**: 評分權限因子排序推薦列表，代課建議 Drawer。
-- [ ] **11.4 Internal Notes**: 中心內的評分與私密備註系統。
+- [ ] **11.3 Pagination & Sorting**: 人才搜尋列表的分頁與排序功能。
+- [ ] **11.4 Smart Matcher**: 評分權限因子排序推薦列表，代課建議 Drawer。
+- [ ] **11.5 Internal Notes**: 中心內的評分與私密備註系統。
 
 ## Stage 12: 營運、通知與登陸頁 (Operational Polish)
 - [ ] **12.1 Migrations (Notes & Logs)**: 建立 `session_notes`, `audit_logs`。

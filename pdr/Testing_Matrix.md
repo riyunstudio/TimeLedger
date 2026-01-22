@@ -80,6 +80,62 @@
 
 ---
 
+## 8. 邊緣案例與擴充功能測試 (Edge Cases & Extended Features)
+
+### 8.1 課程複製測試 (Course Copy)
+| ID | 測試場景 | 輸入數據 | 預期結果 |
+|:---|:---|:---|:---|
+| T8.1 | 標準複製 | 複製班別，含 5 條規則 | 新班別 ID 不同，規則數量正確 |
+| T8.2 | 複製不帶規則 | copy_rules=false | 新班別無規則，需重新建立 |
+| T8.3 | 複製並更換老師 | 設定 new_teacher_id | 新班別老師為指定人員 |
+| T8.4 | 複製至新日期範圍 | effective_start=2026-03-01 | 新規則的 effective_start 正確 |
+| T8.5 | 複製衝突 | 新範圍內已有同班別課程 | 衝突檢測正常運作 |
+
+### 8.2 循環編輯測試 (Recurrence Edit)
+| ID | 測試場景 | 輸入數據 | 預期結果 |
+|:---|:---|:---|:---|
+| T8.6 | 編輯單一場次 | update_mode=SINGLE, start_at 改變 | 產生 CANCEL + ADD 兩筆例外 |
+| T8.7 | 編輯未來場次 | update_mode=FUTURE | 原規則截斷，新規則從該場次開始 |
+| T8.8 | 編輯整組循環 | update_mode=ALL, recurrence 改變 | recurrence 欄位更新，所有場次受影響 |
+| T8.9 | 刪除單一場次 | DELETE, mode=SINGLE | 該場次標記為 CANCEL |
+| T8.10 | 刪除未來場次 | DELETE, mode=FUTURE | 原規則截斷，該場次後刪除 |
+| T8.11 | 刪除整組循環 | DELETE, mode=ALL | schedule_rules 記錄刪除 |
+
+### 8.3 多中心配色測試 (Multi-Center Colors)
+| ID | 測試場景 | 預期結果 |
+|:---|:---|:---|
+| T8.12 | 同色系中心 | 亮度自動調整，顏色可區分 |
+| T8.13 | 中心篩選 | 點擊圖例可 Toggle 顯示/隱藏 |
+| T8.14 | 課表卡片標籤 | 顯示中心名稱縮寫 |
+| T8.15 | 導出圖片 | 維持原有中心配色 |
+
+### 8.4 分頁與排序測試 (Pagination & Sorting)
+| ID | 測試場景 | 預期結果 |
+|:---|:---|:---|
+| T8.16 | 第一頁 | has_prev=false, has_next=true |
+| T8.17 | 中間頁 | has_prev=true, has_next=true |
+| T8.18 | 最後一頁 | has_prev=true, has_next=false |
+| T8.19 | 排序切換 | 資料依排序欄位正確排列 |
+| T8.20 | 超出範圍 page | 回傳空 data, pagination 正確 |
+
+### 8.5 軟刪除測試 (Soft Delete)
+| ID | 測試場景 | 預期結果 |
+|:---|:---|:---|
+| T8.21 | 刪除課程模板 | is_active=false, 列表不再顯示 |
+| T8.22 | 恢復課程模板 | PATCH is_active=true, 列表重新顯示 |
+| T8.23 | 刪除有關聯的課程 | 回傳 E_COURSE_IN_USE |
+| T8.24 | 刪除空白教室 | 軟刪除成功 |
+| T8.25 | 查詢時過濾軟刪除 | 查詢自動過濾 is_active=false |
+
+### 8.6 例外撤回測試 (Exception Revoke)
+| ID | 測試場景 | 預期結果 |
+|:---|:---|:---|
+| T8.26 | 撤回待審核例外 | status 變為 REVOKED |
+| T8.27 | 撤回已核准例外 | 回傳 E_INVALID_STATUS |
+| T8.28 | 撤回他人例外 | 回傳 E_FORBIDDEN |
+
+---
+
 ## 5. 使用者體驗細節 (UX/Edge Case Tests)
 *   **1 分鐘銜接**：[09:00:00 - 09:59:59] 與 [10:00:00] 是否判定為不重疊？
 *   **夏季時制 (若適用)**：台灣目前雖無，但 API 應能正確處理 `UTC+8` 位移。

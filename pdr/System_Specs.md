@@ -8,37 +8,79 @@
 本專案採用 **集中式錯誤管理**。所有錯誤碼需在後端 `global/errInfos` 套件中統一宣告，禁止散落在各個 Controller。
 
 ### 1.1 通用類 (Common)
-| Code | Message | 說明 |
-|:---|:---|:---|
-| `SUCCESS` | "Operation successful" | 成功 (HTTP 200) |
-| `E_BAD_REQUEST` | "Invalid parameters" | 參數格式錯誤 (HTTP 400) |
-| `E_INTERNAL_ERROR`| "Internal server error" | 系統內部錯誤 (HTTP 500) |
-| `E_DB_ERROR` | "Database operation failed" | 資料庫存取失敗 |
+| Code | HTTP Status | Message | 說明 |
+|:---|:---:|:---|:---|
+| `SUCCESS` | 200 | "Operation successful" | 成功 |
+| `E_BAD_REQUEST` | 400 | "Invalid parameters" | 參數格式錯誤 |
+| `E_INTERNAL_ERROR`| 500 | "Internal server error" | 系統內部錯誤 |
+| `E_DB_ERROR` | 500 | "Database operation failed" | 資料庫存取失敗 |
+| `E_NOT_IMPLEMENTED` | 501 | "Feature not implemented" | 功能尚未實作 |
 
 ### 1.2 權限與認證 (Auth)
-| Code | Message | 說明 |
-|:---|:---|:---|
-| `E_UNAUTHORIZED` | "Please login first" | 未登入/Token 無效 (HTTP 401) |
-| `E_FORBIDDEN` | "Permission denied" | 權限不足 (HTTP 403) |
-| `E_TOKEN_EXPIRED` | "Token expired" | Token 過期，需 Refresh |
+| Code | HTTP Status | Message | 說明 |
+|:---|:---:|:---|:---|
+| `E_UNAUTHORIZED` | 401 | "Please login first" | 未登入/Token 無效 |
+| `E_FORBIDDEN` | 403 | "Permission denied" | 權限不足 |
+| `E_TOKEN_EXPIRED` | 401 | "Token expired" | Token 過期，需 Refresh |
+| `E_INVALID_TOKEN` | 401 | "Invalid token" | Token 格式錯誤或被篡改 |
+| `E_INVALID_INVITE` | 403 | "Invalid or expired invite" | 邀請碼無效或已過期 |
 
 ### 1.3 業務資源類 (Resource)
-| Code | Message | 說明 |
-|:---|:---|:---|
-| `E_NOT_FOUND` | "Resource not found" | 找不到中心/老師/課程 |
-| `E_DUPLICATE` | "Resource already exists" | Email/LINE ID 已註冊 |
-| `E_INVITE_INVALID`| "Invalid or expired invite"| 邀請碼無效或已過期 |
-| `E_TAG_INVALID` | "Invalid hashtag format" | 標籤格式錯誤 (如長度超限) |
-| `E_LIMIT_EXCEEDED`| "Plan limit reached" | 超過方案配額 (老師數/規則數) |
+| Code | HTTP Status | Message | 說明 |
+|:---|:---:|:---|:---|
+| `E_NOT_FOUND` | 404 | "Resource not found" | 找不到中心/老師/課程 |
+| `E_DUPLICATE` | 409 | "Resource already exists" | Email/LINE ID 已註冊 |
+| `E_TAG_INVALID` | 400 | "Invalid hashtag format" | 標籤格式錯誤 (如長度超限) |
+| `E_LIMIT_EXCEEDED`| 403 | "Plan limit reached" | 超過方案配額 (老師數/規則數) |
+| `E_RESOURCE_IN_USE` | 409 | "Resource is in use" | 資源仍在使用中，無法刪除 |
+| `E_COURSE_IN_USE` | 409 | "Course has active offerings" | 課程模板仍有關聯班別 |
+| `E_OFFERING_HAS_RULES` | 409 | "Offering has schedule rules" | 班別仍有排課規則 |
+| `E_ROOM_IN_USE` | 409 | "Room has active schedules" | 教室仍有排課安排 |
+| `E_INVALID_STATUS` | 400 | "Invalid status transition" | 狀態機不允許此轉換 |
 
 ### 1.4 排課核心類 (Scheduling)
-| Code | Message | 前端 UI 行為 |
+| Code | HTTP Status | Message | 前端 UI 行為 |
+|:---|:---:|:---|:---|
+| `E_SCHED_OVERLAP` | 409 | "Time slot occupied" | 🔴 紅框：時段被佔用 |
+| `E_SCHED_BUFFER` | 409 | "Insufficient buffer time" | 🟠 橘框：教室清潔/老師轉場不足 |
+| `E_SCHED_PAST` | 400 | "Cannot book past time" | 🚫 阻擋：不能排過去的時間 |
+| `E_SCHED_LOCKED` | 409 | "Slot is locked by another" | ⏳ 提示：併發鎖定中，請重試 |
+| `E_SCHED_CLOSED` | 400 | "Center is closed" | 🚫 阻擋：非營業時間 |
+| `E_SCHED_INVALID_RANGE` | 400 | "Invalid date range" | 日期範圍錯誤 |
+| `E_SCHED_RULE_CONFLICT` | 409 | "Rule conflict detected" | 規則衝突 |
+| `E_SCHED_EXCEPTION_EXISTS` | 409 | "Exception already exists" | 該日期已有例外單 |
+
+### 1.5 例外與審核類 (Exception & Approval)
+| Code | HTTP Status | Message | 說明 |
+|:---|:---:|:---|:---|
+| `E_EXCEPTION_NOT_FOUND` | 404 | "Exception request not found" | 例外申請不存在 |
+| `E_EXCEPTION_INVALID_ACTION` | 400 | "Invalid action for current status" | 當前狀態不允許此操作 |
+| `E_EXCEPTION_REVIEWED` | 400 | "Exception already reviewed" | 例外已審核過 |
+| `E_EXCEPTION_REVOKED` | 400 | "Exception was revoked" | 例外已撤回 |
+| `E_EXCEPTION_REJECT_SELF` | 400 | "Cannot reject own request" | 不能拒絕自己提交的申請 |
+
+### 1.6 驗證引擎衝突類 (Validation Conflicts)
+| Code | Message | conflict_source 值 |
 |:---|:---|:---|
-| `E_SCHED_OVERLAP` | "Time slot occupied" | 🔴 紅框：時段被佔用 |
-| `E_SCHED_BUFFER` | "Insufficient buffer time" | 🟠 橘框：教室清潔/老師轉場不足 |
-| `E_SCHED_PAST` | "Cannot book past time" | 🚫 阻擋：不能排過去的時間 |
-| `E_SCHED_LOCKED` | "Slot is locked by another" | ⏳ 提示：併發鎖定中 |
-| `E_SCHED_CLOSED` | "Center is closed" | 🚫 阻擋：非營業時間 |
+| `E_CONFLICT_RULE` | 衝突來源：週期排課規則 | `"RULE"` |
+| `E_CONFLICT_SESSION` | 衝突來源：已展開的課堂 | `"SESSION"` |
+| `E_CONFLICT_PERSONAL` | 衝突來源：老師個人行程 | `"PERSONAL"` |
+| `E_CONFLICT_EXCEPTION` | 衝突來源：例外單 | `"EXCEPTION"` |
+
+### 1.7 檔案與媒體類 (File & Media)
+| Code | HTTP Status | Message | 說明 |
+|:---|:---:|:---|:---|
+| `E_FILE_TOO_LARGE` | 413 | "File size exceeds limit" | 檔案超過大小限制 |
+| `E_FILE_TYPE_INVALID` | 400 | "Invalid file type" | 不支援的檔案類型 |
+| `E_UPLOAD_FAILED` | 500 | "Upload failed" | 上傳失敗 |
+| `E_CERTIFICATE_NOT_FOUND` | 404 | "Certificate not found" | 證照不存在 |
+
+### 1.8 搜尋與媒合類 (Search & Matching)
+| Code | HTTP Status | Message | 說明 |
+|:---|:---:|:---|:---|
+| `E_SEARCH_EMPTY_RESULT` | 200 | "No results found" | 搜尋無結果（非錯誤） |
+| `E_MATCH_NO_AVAILABLE` | 200 | "No available teachers" | 無可用老師（非錯誤） |
+| `E_TALENT_NOT_OPEN` | 403 | "Talent search not available" | 該老師未開放搜尋 |
 
 ---
 
