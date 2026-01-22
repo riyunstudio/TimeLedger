@@ -224,10 +224,32 @@ func (ctl *TeacherController) GetCenters(ctx *gin.Context) {
 		return
 	}
 
+	memberships, err := ctl.membershipRepo.GetActiveByTeacherID(ctx, teacherID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
+			Code:    500,
+			Message: "Failed to get memberships",
+		})
+		return
+	}
+
+	var centerResources []resources.CenterMembershipResource
+	for _, m := range memberships {
+		var center models.Center
+		ctl.app.Mysql.RDB.WithContext(ctx).First(&center, m.CenterID)
+		centerResources = append(centerResources, resources.CenterMembershipResource{
+			ID:         m.ID,
+			CenterID:   m.CenterID,
+			CenterName: center.Name,
+			Status:     string(m.Status),
+			CreatedAt:  m.CreatedAt,
+		})
+	}
+
 	ctx.JSON(http.StatusOK, global.ApiResponse{
 		Code:    0,
 		Message: "Success",
-		Datas:   []models.CenterMembership{},
+		Datas:   centerResources,
 	})
 }
 

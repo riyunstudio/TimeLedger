@@ -16,6 +16,7 @@ func (db *DB) Seeds(tools *tools.Tools) {
 	seedGeoData(db)
 	seedOneTeacher(db)
 	seedOneAdminUser(db)
+	seedTestData(db)
 	log.Println("Database seed complete")
 }
 
@@ -215,6 +216,81 @@ func seedOneTeacher(db *DB) {
 	db.WDB.Create(&cert)
 
 	log.Printf("Created teacher: %s (ID: %d)", teacher.Name, teacher.ID)
+}
+
+func seedTestData(db *DB) {
+	var teacher models.Teacher
+	db.WDB.Where("line_user_id = ?", "LINE_TEACHER_001").First(&teacher)
+
+	var center models.Center
+	db.WDB.Where("name = ?", "莫札特音樂教室").First(&center)
+
+	db.WDB.Exec("DELETE FROM center_memberships")
+	db.WDB.Exec("DELETE FROM rooms")
+	db.WDB.Exec("DELETE FROM courses")
+	db.WDB.Exec("DELETE FROM offerings")
+	db.WDB.Exec("DELETE FROM schedule_rules")
+
+	room := models.Room{
+		CenterID:  center.ID,
+		Name:      "鋼琴教室A",
+		Capacity:  2,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+	db.WDB.Create(&room)
+
+	course := models.Course{
+		CenterID:         center.ID,
+		Name:             "鋼琴基礎班",
+		DefaultDuration:  60,
+		ColorHex:         "#10B981",
+		TeacherBufferMin: 10,
+		RoomBufferMin:    10,
+		IsActive:         true,
+		CreatedAt:        time.Now(),
+		UpdatedAt:        time.Now(),
+	}
+	db.WDB.Create(&course)
+
+	teacherID := teacher.ID
+	roomID := room.ID
+	offering := models.Offering{
+		CenterID:            center.ID,
+		CourseID:            course.ID,
+		DefaultRoomID:       &roomID,
+		DefaultTeacherID:    &teacherID,
+		AllowBufferOverride: false,
+		CreatedAt:           time.Now(),
+		UpdatedAt:           time.Now(),
+	}
+	db.WDB.Create(&offering)
+
+	membership := models.CenterMembership{
+		CenterID:  center.ID,
+		TeacherID: teacher.ID,
+		Status:    "ACTIVE",
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+	db.WDB.Create(&membership)
+
+	startDate := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	endDate := time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC)
+
+	rules := []models.ScheduleRule{
+		{CenterID: center.ID, OfferingID: offering.ID, TeacherID: &teacherID, RoomID: room.ID, Weekday: 1, StartTime: "10:00", EndTime: "11:00", EffectiveRange: models.DateRange{StartDate: startDate, EndDate: endDate}, CreatedAt: time.Now(), UpdatedAt: time.Now()},
+		{CenterID: center.ID, OfferingID: offering.ID, TeacherID: &teacherID, RoomID: room.ID, Weekday: 1, StartTime: "14:00", EndTime: "15:00", EffectiveRange: models.DateRange{StartDate: startDate, EndDate: endDate}, CreatedAt: time.Now(), UpdatedAt: time.Now()},
+		{CenterID: center.ID, OfferingID: offering.ID, TeacherID: &teacherID, RoomID: room.ID, Weekday: 2, StartTime: "11:00", EndTime: "12:00", EffectiveRange: models.DateRange{StartDate: startDate, EndDate: endDate}, CreatedAt: time.Now(), UpdatedAt: time.Now()},
+		{CenterID: center.ID, OfferingID: offering.ID, TeacherID: &teacherID, RoomID: room.ID, Weekday: 4, StartTime: "15:00", EndTime: "16:00", EffectiveRange: models.DateRange{StartDate: startDate, EndDate: endDate}, CreatedAt: time.Now(), UpdatedAt: time.Now()},
+		{CenterID: center.ID, OfferingID: offering.ID, TeacherID: &teacherID, RoomID: room.ID, Weekday: 6, StartTime: "09:00", EndTime: "10:00", EffectiveRange: models.DateRange{StartDate: startDate, EndDate: endDate}, CreatedAt: time.Now(), UpdatedAt: time.Now()},
+	}
+
+	for _, rule := range rules {
+		db.WDB.Create(&rule)
+	}
+
+	log.Printf("Created test data: 1 room, 1 course, 1 offering, %d schedule rules", len(rules))
 }
 
 func seedUsers(db *DB) {
