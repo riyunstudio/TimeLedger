@@ -109,15 +109,19 @@ const handleMockLogin = () => {
   loading.value = true
 
   setTimeout(() => {
+    // Mock 登入 - 使用假的 token 和用戶資料
     authStore.login({
       user: {
         id: 1,
         name: 'Mock Admin',
         email: 'admin@example.com',
         role: 'admin',
+        center_id: 1,
       },
       token: 'mock-token-' + Date.now(),
     })
+    // 儲存 center_id 到 localStorage
+    localStorage.setItem('center_id', '1')
     router.push('/admin/dashboard')
     loading.value = false
   }, 500)
