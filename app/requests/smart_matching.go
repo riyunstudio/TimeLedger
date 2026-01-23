@@ -3,7 +3,7 @@ package requests
 import "github.com/gin-gonic/gin"
 
 type TalentSearchRequest struct {
-	CenterID uint   `uri:"id" binding:"required"`
+	CenterID uint   `json:"-"`
 	City     string `form:"city"`
 	District string `form:"district"`
 	Keyword  string `form:"keyword"`
@@ -13,9 +13,6 @@ type TalentSearchRequest struct {
 
 func ValidateTalentSearch(ctx *gin.Context) (*TalentSearchRequest, error) {
 	var req TalentSearchRequest
-	if err := ctx.ShouldBindUri(&req); err != nil {
-		return nil, err
-	}
 	if err := ctx.ShouldBindQuery(&req); err != nil {
 		return nil, err
 	}

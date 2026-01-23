@@ -101,12 +101,31 @@ func (ctl *SmartMatchingController) SearchTalent(ctx *gin.Context) {
 		return
 	}
 
+	centerIDVal, exists := ctx.Get(global.CenterIDKey)
+	if !exists {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Center ID required",
+		})
+		return
+	}
+
+	centerID, ok := centerIDVal.(uint)
+	if !ok {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Invalid center ID format",
+		})
+		return
+	}
+
 	skills := []string{}
 	if uriReq.Skills != "" {
 		skills = []string{uriReq.Skills}
 	}
 
 	searchParams := services.TalentSearchParams{
+		CenterID: centerID,
 		City:     uriReq.City,
 		District: uriReq.District,
 		Keyword:  uriReq.Keyword,

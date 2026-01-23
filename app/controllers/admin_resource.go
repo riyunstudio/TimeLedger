@@ -120,6 +120,23 @@ type CreateCenterRequest struct {
 // @Router /api/v1/admin/rooms [get]
 func (ctl *AdminResourceController) GetRooms(ctx *gin.Context) {
 	centerID := ctx.GetUint(global.CenterIDKey)
+
+	// If GetUint returns 0, try getting as interface{}
+	if centerID == 0 {
+		if val, exists := ctx.Get(global.CenterIDKey); exists {
+			switch v := val.(type) {
+			case uint:
+				centerID = v
+			case uint64:
+				centerID = uint(v)
+			case int:
+				centerID = uint(v)
+			case float64:
+				centerID = uint(v)
+			}
+		}
+	}
+
 	if centerID == 0 {
 		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
 			Code:    global.BAD_REQUEST,
@@ -155,6 +172,22 @@ func (ctl *AdminResourceController) GetRooms(ctx *gin.Context) {
 // @Router /api/v1/admin/rooms [post]
 func (ctl *AdminResourceController) CreateRoom(ctx *gin.Context) {
 	centerID := ctx.GetUint(global.CenterIDKey)
+
+	if centerID == 0 {
+		if val, exists := ctx.Get(global.CenterIDKey); exists {
+			switch v := val.(type) {
+			case uint:
+				centerID = v
+			case uint64:
+				centerID = uint(v)
+			case int:
+				centerID = uint(v)
+			case float64:
+				centerID = uint(v)
+			}
+		}
+	}
+
 	if centerID == 0 {
 		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
 			Code:    global.BAD_REQUEST,
@@ -223,6 +256,22 @@ type CreateRoomRequest struct {
 // @Router /api/v1/admin/courses [get]
 func (ctl *AdminResourceController) GetCourses(ctx *gin.Context) {
 	centerID := ctx.GetUint(global.CenterIDKey)
+
+	if centerID == 0 {
+		if val, exists := ctx.Get(global.CenterIDKey); exists {
+			switch v := val.(type) {
+			case uint:
+				centerID = v
+			case uint64:
+				centerID = uint(v)
+			case int:
+				centerID = uint(v)
+			case float64:
+				centerID = uint(v)
+			}
+		}
+	}
+
 	if centerID == 0 {
 		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
 			Code:    global.BAD_REQUEST,
@@ -258,6 +307,22 @@ func (ctl *AdminResourceController) GetCourses(ctx *gin.Context) {
 // @Router /api/v1/admin/courses [post]
 func (ctl *AdminResourceController) CreateCourse(ctx *gin.Context) {
 	centerID := ctx.GetUint(global.CenterIDKey)
+
+	if centerID == 0 {
+		if val, exists := ctx.Get(global.CenterIDKey); exists {
+			switch v := val.(type) {
+			case uint:
+				centerID = v
+			case uint64:
+				centerID = uint(v)
+			case int:
+				centerID = uint(v)
+			case float64:
+				centerID = uint(v)
+			}
+		}
+	}
+
 	if centerID == 0 {
 		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
 			Code:    global.BAD_REQUEST,
@@ -333,6 +398,30 @@ type CreateCourseRequest struct {
 // @Router /api/v1/admin/courses/{course_id} [delete]
 func (ctl *AdminResourceController) DeleteCourse(ctx *gin.Context) {
 	centerID := ctx.GetUint(global.CenterIDKey)
+
+	if centerID == 0 {
+		if val, exists := ctx.Get(global.CenterIDKey); exists {
+			switch v := val.(type) {
+			case uint:
+				centerID = v
+			case uint64:
+				centerID = uint(v)
+			case int:
+				centerID = uint(v)
+			case float64:
+				centerID = uint(v)
+			}
+		}
+	}
+
+	if centerID == 0 {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Center ID required",
+		})
+		return
+	}
+
 	courseIDStr := ctx.Param("course_id")
 	if courseIDStr == "" {
 		ctx.JSON(http.StatusBadRequest, global.ApiResponse{

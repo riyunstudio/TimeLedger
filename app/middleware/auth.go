@@ -61,7 +61,7 @@ func (m *AuthMiddleware) Authenticate() gin.HandlerFunc {
 
 		c.Set(global.UserIDKey, claims.UserID)
 		c.Set(global.UserTypeKey, claims.UserType)
-		c.Set(global.CenterIDKey, claims.CenterID)
+		c.Set(global.CenterIDKey, uint(claims.CenterID))
 		c.Set(global.LineUserIDKey, claims.LineUserID)
 
 		c.Next()
@@ -149,6 +149,16 @@ func (m *AuthMiddleware) RequireCenterAdmin() gin.HandlerFunc {
 			return
 		}
 
+		centerIDTokenUint := centerIDFromToken.(uint)
+
+		// If center_id from token is valid (non-zero), use it directly
+		if centerIDTokenUint != 0 {
+			c.Set(global.CenterIDKey, centerIDTokenUint)
+			c.Next()
+			return
+		}
+
+		// If center_id from token is 0 (super admin), require param
 		centerIDParam := c.Param("id")
 		if centerIDParam == "" {
 			centerIDParam = c.Query("center_id")
@@ -187,16 +197,6 @@ func (m *AuthMiddleware) RequireCenterAdmin() gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, global.ApiResponse{
 				Code:    global.BAD_REQUEST,
 				Message: "Invalid center ID format",
-			})
-			c.Abort()
-			return
-		}
-
-		centerIDTokenUint := centerIDFromToken.(uint)
-		if centerIDTokenUint != 0 && centerIDTokenUint != centerIDParamUint {
-			c.JSON(http.StatusForbidden, global.ApiResponse{
-				Code:    global.FORBIDDEN,
-				Message: "Access denied to this center",
 			})
 			c.Abort()
 			return

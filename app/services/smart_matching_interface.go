@@ -11,6 +11,7 @@ type SmartMatchingService interface {
 }
 
 type TalentSearchParams struct {
+	CenterID uint     `json:"center_id"`
 	City     string   `json:"city,omitempty"`
 	District string   `json:"district,omitempty"`
 	Keyword  string   `json:"keyword,omitempty"`

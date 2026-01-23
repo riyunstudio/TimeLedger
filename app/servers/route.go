@@ -72,8 +72,8 @@ func (s *Server) LoadRoutes() {
 		{http.MethodPost, "/api/v1/teacher/exceptions/:id/revoke", s.action.teacher.RevokeException, []gin.HandlerFunc{authMiddleware.Authenticate()}},
 
 		// Teacher - Admin
-		{http.MethodGet, "/api/v1/teachers", s.action.teacher.ListTeachers, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
-		{http.MethodDelete, "/api/v1/teachers/:id", s.action.teacher.DeleteTeacher, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodGet, "/api/v1/teachers", s.action.teacher.ListTeachers, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireAdmin()}},
+		{http.MethodDelete, "/api/v1/teachers/:id", s.action.teacher.DeleteTeacher, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireAdmin()}},
 		{http.MethodPost, "/api/v1/admin/centers/:id/invitations", s.action.teacher.InviteTeacher, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 
 		// Admin - Offerings
