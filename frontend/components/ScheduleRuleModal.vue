@@ -232,7 +232,8 @@ const handleSubmit = async () => {
 
   try {
     const api = useApi()
-    await api.post(`/admin/scheduling/rules`, {
+    const centerId = getCenterId()
+    await api.post(`/admin/centers/${centerId}/rules`, {
       name: form.value.name,
       offering_id: parseInt(form.value.offering_id),
       teacher_id: parseInt(form.value.teacher_id),
