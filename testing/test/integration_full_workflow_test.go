@@ -934,3 +934,958 @@ func TestIntegration_ValidationAndException(t *testing.T) {
 		t.Log("Successfully checked rule lock status")
 	})
 }
+
+func TestIntegration_InvitationFlow(t *testing.T) {
+	appInstance, _, cleanup := setupIntegrationTestAppWithMigrations()
+	defer cleanup()
+
+	ctx := context.Background()
+	now := time.Now()
+
+	center := models.Center{
+		Name:      fmt.Sprintf("Invitation Center %d", now.UnixNano()),
+		PlanLevel: "STARTER",
+		Settings: models.CenterSettings{
+			ExceptionLeadDays: 14,
+		},
+		CreatedAt: now,
+	}
+	centerRepo := repositories.NewCenterRepository(appInstance)
+	createdCenter, _ := centerRepo.Create(ctx, center)
+
+	adminUserRepo := repositories.NewAdminUserRepository(appInstance)
+	adminUser := models.AdminUser{
+		Email:        fmt.Sprintf("invitation_admin_%d@test.com", now.UnixNano()),
+		PasswordHash: "$2a$10$lVIoLQr4EjCjQIU98JExROfBoOFK.UNOkVS0LVH2Lj1rT0VX5DYqa",
+		Name:         "Invitation Admin",
+		CenterID:     createdCenter.ID,
+		Role:         "ADMIN",
+		Status:       "ACTIVE",
+		CreatedAt:    now,
+	}
+	createdAdmin, _ := adminUserRepo.Create(ctx, adminUser)
+
+	t.Run("Step1_CreateInvitation", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Set(global.UserIDKey, createdAdmin.ID)
+		c.Set(global.CenterIDKey, createdCenter.ID)
+		c.Set(global.UserTypeKey, "ADMIN")
+		c.Params = gin.Params{{Key: "id", Value: fmt.Sprintf("%d", createdCenter.ID)}}
+
+		reqBody := map[string]interface{}{
+			"email": fmt.Sprintf("new_teacher_%d@test.com", now.UnixNano()),
+			"role":  "TEACHER",
+		}
+		body, _ := json.Marshal(reqBody)
+		c.Request = httptest.NewRequest("POST", "/api/v1/admin/centers/"+fmt.Sprintf("%d", createdCenter.ID)+"/invitations", bytes.NewBuffer(body))
+		c.Request.Header.Set("Content-Type", "application/json")
+
+		teacherController := controllers.NewTeacherController(appInstance)
+		teacherController.InviteTeacher(c)
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())
+		}
+
+		var response map[string]interface{}
+		json.Unmarshal(w.Body.Bytes(), &response)
+		datas := response["datas"].(map[string]interface{})
+		invitationToken := datas["token"].(string)
+		if invitationToken == "" {
+			t.Fatal("Expected non-empty invitation token")
+		}
+		t.Logf("Created invitation with token: %s...", invitationToken[:20])
+	})
+
+	t.Run("Step2_GetInvitations", func(t *testing.T) {
+		adminResourceController := controllers.NewAdminResourceController(appInstance)
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Set(global.UserIDKey, createdAdmin.ID)
+		c.Set(global.CenterIDKey, createdCenter.ID)
+		c.Set(global.UserTypeKey, "ADMIN")
+		c.Request = httptest.NewRequest("GET", "/api/v1/admin/centers/"+fmt.Sprintf("%d", createdCenter.ID)+"/invitations?page=1&limit=10", nil)
+
+		adminResourceController.GetInvitations(c)
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())
+		}
+		t.Log("Successfully retrieved invitations")
+	})
+}
+
+func TestIntegration_ExceptionReview(t *testing.T) {
+	appInstance, _, cleanup := setupIntegrationTestAppWithMigrations()
+	defer cleanup()
+
+	ctx := context.Background()
+	now := time.Now()
+
+	center := models.Center{
+		Name:      fmt.Sprintf("Exception Center %d", now.UnixNano()),
+		PlanLevel: "STARTER",
+		Settings: models.CenterSettings{
+			ExceptionLeadDays: 14,
+		},
+		CreatedAt: now,
+	}
+	centerRepo := repositories.NewCenterRepository(appInstance)
+	createdCenter, _ := centerRepo.Create(ctx, center)
+
+	adminUserRepo := repositories.NewAdminUserRepository(appInstance)
+	adminUser := models.AdminUser{
+		Email:        fmt.Sprintf("exception_admin_%d@test.com", now.UnixNano()),
+		PasswordHash: "$2a$10$lVIoLQr4EjCjQIU98JExROfBoOFK.UNOkVS0LVH2Lj1rT0VX5DYqa",
+		Name:         "Exception Admin",
+		CenterID:     createdCenter.ID,
+		Role:         "ADMIN",
+		Status:       "ACTIVE",
+		CreatedAt:    now,
+	}
+	createdAdmin, _ := adminUserRepo.Create(ctx, adminUser)
+
+	teacherRepo := repositories.NewTeacherRepository(appInstance)
+	teacher := models.Teacher{
+		LineUserID: fmt.Sprintf("LINE_EXC_%d", now.UnixNano()),
+		Name:       "Exception Teacher",
+		Email:      fmt.Sprintf("exception_teacher_%d@test.com", now.UnixNano()),
+		City:       "Taipei",
+		District:   "Xinyi",
+		CreatedAt:  now,
+	}
+	createdTeacher, _ := teacherRepo.Create(ctx, teacher)
+
+	roomRepo := repositories.NewRoomRepository(appInstance)
+	room := models.Room{
+		CenterID:  createdCenter.ID,
+		Name:      "Exception Room",
+		Capacity:  10,
+		IsActive:  true,
+		CreatedAt: now,
+	}
+	createdRoom, _ := roomRepo.Create(ctx, room)
+
+	courseRepo := repositories.NewCourseRepository(appInstance)
+	course := models.Course{
+		CenterID:         createdCenter.ID,
+		Name:             "Exception Course",
+		DefaultDuration:  60,
+		ColorHex:         "#E74C3C",
+		RoomBufferMin:    10,
+		TeacherBufferMin: 10,
+		IsActive:         true,
+		CreatedAt:        now,
+	}
+	createdCourse, _ := courseRepo.Create(ctx, course)
+
+	offeringRepo := repositories.NewOfferingRepository(appInstance)
+	offering := models.Offering{
+		CenterID:  createdCenter.ID,
+		CourseID:  createdCourse.ID,
+		Name:      "Exception Offering",
+		IsActive:  true,
+		CreatedAt: now,
+	}
+	createdOffering, _ := offeringRepo.Create(ctx, offering)
+
+	effectiveRange := models.DateRange{
+		StartDate: now,
+		EndDate:   now.AddDate(1, 0, 0),
+	}
+	scheduleRuleRepo := repositories.NewScheduleRuleRepository(appInstance)
+	scheduleRule := models.ScheduleRule{
+		CenterID:       createdCenter.ID,
+		OfferingID:     createdOffering.ID,
+		TeacherID:      &createdTeacher.ID,
+		RoomID:         createdRoom.ID,
+		Weekday:        int(now.Weekday()),
+		StartTime:      now.Format("15:04"),
+		EndTime:        now.Add(time.Hour).Format("15:04"),
+		EffectiveRange: effectiveRange,
+		CreatedAt:      now,
+		UpdatedAt:      now,
+	}
+	createdRule, _ := scheduleRuleRepo.Create(ctx, scheduleRule)
+
+	schedulingController := controllers.NewSchedulingController(appInstance)
+	teacherController := controllers.NewTeacherController(appInstance)
+
+	t.Run("Step1_CreateExceptionRequest", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Set(global.UserIDKey, createdTeacher.ID)
+		c.Set(global.CenterIDKey, createdCenter.ID)
+		c.Set(global.UserTypeKey, "TEACHER")
+
+		originalDate := now.AddDate(0, 0, 3)
+		newStartAt := originalDate.Add(time.Hour * 14)
+		newEndAt := originalDate.Add(time.Hour * 15)
+
+		reqBody := map[string]interface{}{
+			"center_id":     createdCenter.ID,
+			"rule_id":       createdRule.ID,
+			"original_date": originalDate.Format("2006-01-02"),
+			"type":          "RESCHEDULE",
+			"new_start_at":  newStartAt.Format("2006-01-02T15:04:05Z"),
+			"new_end_at":    newEndAt.Format("2006-01-02T15:04:05Z"),
+			"reason":        "Personal meeting",
+		}
+		body, _ := json.Marshal(reqBody)
+		c.Request = httptest.NewRequest("POST", "/api/v1/teacher/scheduling/exceptions", bytes.NewBuffer(body))
+		c.Request.Header.Set("Content-Type", "application/json")
+
+		teacherController.CreateException(c)
+
+		if w.Code != http.StatusOK {
+			t.Logf("Create exception request body: %s", string(body))
+			t.Fatalf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())
+		}
+		t.Log("Successfully created exception request")
+	})
+
+	t.Run("Step2_GetExceptions", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Set(global.UserIDKey, createdTeacher.ID)
+		c.Set(global.CenterIDKey, createdCenter.ID)
+		c.Set(global.UserTypeKey, "TEACHER")
+		c.Request = httptest.NewRequest("GET", "/api/v1/teacher/scheduling/exceptions", nil)
+
+		teacherController.GetExceptions(c)
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())
+		}
+		t.Log("Successfully retrieved exceptions")
+	})
+
+	t.Run("Step3_ReviewException_Approve", func(t *testing.T) {
+		exceptionRepo := repositories.NewScheduleExceptionRepository(appInstance)
+		newStartAt := now.AddDate(0, 0, 5).Add(time.Hour * 14)
+		newEndAt := now.AddDate(0, 0, 5).Add(time.Hour * 15)
+		exception := models.ScheduleException{
+			RuleID:       createdRule.ID,
+			CenterID:     createdCenter.ID,
+			OriginalDate: now.AddDate(0, 0, 5),
+			Type:         "TIME_CHANGE",
+			Status:       "PENDING",
+			NewStartAt:   &newStartAt,
+			NewEndAt:     &newEndAt,
+			Reason:       "Doctor appointment",
+			CreatedAt:    now,
+		}
+		createdException, _ := exceptionRepo.Create(ctx, exception)
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Set(global.UserIDKey, createdAdmin.ID)
+		c.Set(global.CenterIDKey, createdCenter.ID)
+		c.Set(global.UserTypeKey, "ADMIN")
+		c.Params = gin.Params{{Key: "exceptionId", Value: fmt.Sprintf("%d", createdException.ID)}}
+
+		reqBody := map[string]interface{}{
+			"action":       "APPROVE",
+			"review_notes": "Approved by admin",
+		}
+		body, _ := json.Marshal(reqBody)
+		c.Request = httptest.NewRequest("POST", "/api/v1/admin/scheduling/exceptions/"+fmt.Sprintf("%d", createdException.ID)+"/review", bytes.NewBuffer(body))
+		c.Request.Header.Set("Content-Type", "application/json")
+
+		schedulingController.ReviewException(c)
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())
+		}
+		t.Log("Successfully approved exception request")
+	})
+
+	t.Run("Step4_ReviewException_Reject", func(t *testing.T) {
+		exceptionRepo := repositories.NewScheduleExceptionRepository(appInstance)
+		exception := models.ScheduleException{
+			RuleID:       createdRule.ID,
+			CenterID:     createdCenter.ID,
+			OriginalDate: now.AddDate(0, 0, 7),
+			Type:         "CANCEL",
+			Status:       "PENDING",
+			Reason:       "Travel",
+			CreatedAt:    now,
+		}
+		createdException, _ := exceptionRepo.Create(ctx, exception)
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Set(global.UserIDKey, createdAdmin.ID)
+		c.Set(global.CenterIDKey, createdCenter.ID)
+		c.Set(global.UserTypeKey, "ADMIN")
+		c.Params = gin.Params{{Key: "exceptionId", Value: fmt.Sprintf("%d", createdException.ID)}}
+
+		reqBody := map[string]interface{}{
+			"action":       "REJECT",
+			"review_notes": "Cannot approve during exam week",
+		}
+		body, _ := json.Marshal(reqBody)
+		c.Request = httptest.NewRequest("POST", "/api/v1/admin/scheduling/exceptions/"+fmt.Sprintf("%d", createdException.ID)+"/review", bytes.NewBuffer(body))
+		c.Request.Header.Set("Content-Type", "application/json")
+
+		schedulingController.ReviewException(c)
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())
+		}
+		t.Log("Successfully rejected exception request")
+	})
+
+	t.Run("Step5_RevokeException", func(t *testing.T) {
+		exceptionRepo := repositories.NewScheduleExceptionRepository(appInstance)
+		newStartAt := now.AddDate(0, 0, 9).Add(time.Hour * 10)
+		newEndAt := now.AddDate(0, 0, 9).Add(time.Hour * 11)
+		exception := models.ScheduleException{
+			RuleID:       createdRule.ID,
+			CenterID:     createdCenter.ID,
+			OriginalDate: now.AddDate(0, 0, 9),
+			Type:         "TIME_CHANGE",
+			Status:       "PENDING",
+			NewStartAt:   &newStartAt,
+			NewEndAt:     &newEndAt,
+			Reason:       "Family event",
+			CreatedAt:    now,
+		}
+		createdException, _ := exceptionRepo.Create(ctx, exception)
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Set(global.UserIDKey, createdTeacher.ID)
+		c.Set(global.CenterIDKey, createdCenter.ID)
+		c.Set(global.UserTypeKey, "TEACHER")
+		c.Params = gin.Params{{Key: "id", Value: fmt.Sprintf("%d", createdException.ID)}}
+
+		c.Request = httptest.NewRequest("POST", "/api/v1/teacher/exceptions/"+fmt.Sprintf("%d", createdException.ID)+"/revoke", nil)
+
+		teacherController.RevokeException(c)
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())
+		}
+		t.Log("Successfully revoked exception request")
+	})
+}
+
+func TestIntegration_RecurrenceEditing(t *testing.T) {
+	appInstance, _, cleanup := setupIntegrationTestAppWithMigrations()
+	defer cleanup()
+
+	ctx := context.Background()
+	now := time.Now()
+
+	center := models.Center{
+		Name:      fmt.Sprintf("Recurrence Center %d", now.UnixNano()),
+		PlanLevel: "STARTER",
+		Settings: models.CenterSettings{
+			ExceptionLeadDays: 14,
+		},
+		CreatedAt: now,
+	}
+	centerRepo := repositories.NewCenterRepository(appInstance)
+	createdCenter, _ := centerRepo.Create(ctx, center)
+
+	adminUserRepo := repositories.NewAdminUserRepository(appInstance)
+	adminUser := models.AdminUser{
+		Email:        fmt.Sprintf("recurrence_admin_%d@test.com", now.UnixNano()),
+		PasswordHash: "$2a$10$lVIoLQr4EjCjQIU98JExROfBoOFK.UNOkVS0LVH2Lj1rT0VX5DYqa",
+		Name:         "Recurrence Admin",
+		CenterID:     createdCenter.ID,
+		Role:         "ADMIN",
+		Status:       "ACTIVE",
+		CreatedAt:    now,
+	}
+	createdAdmin, _ := adminUserRepo.Create(ctx, adminUser)
+
+	teacherRepo := repositories.NewTeacherRepository(appInstance)
+	teacher := models.Teacher{
+		LineUserID: fmt.Sprintf("LINE_REC_%d", now.UnixNano()),
+		Name:       "Recurrence Teacher",
+		Email:      fmt.Sprintf("recurrence_teacher_%d@test.com", now.UnixNano()),
+		City:       "Taipei",
+		District:   "Xinyi",
+		CreatedAt:  now,
+	}
+	createdTeacher, _ := teacherRepo.Create(ctx, teacher)
+
+	roomRepo := repositories.NewRoomRepository(appInstance)
+	room := models.Room{
+		CenterID:  createdCenter.ID,
+		Name:      "Recurrence Room",
+		Capacity:  15,
+		IsActive:  true,
+		CreatedAt: now,
+	}
+	createdRoom, _ := roomRepo.Create(ctx, room)
+
+	courseRepo := repositories.NewCourseRepository(appInstance)
+	course := models.Course{
+		CenterID:         createdCenter.ID,
+		Name:             "Recurrence Course",
+		DefaultDuration:  60,
+		ColorHex:         "#3498DB",
+		RoomBufferMin:    10,
+		TeacherBufferMin: 10,
+		IsActive:         true,
+		CreatedAt:        now,
+	}
+	createdCourse, _ := courseRepo.Create(ctx, course)
+
+	offeringRepo := repositories.NewOfferingRepository(appInstance)
+	offering := models.Offering{
+		CenterID:  createdCenter.ID,
+		CourseID:  createdCourse.ID,
+		Name:      "Recurrence Offering",
+		IsActive:  true,
+		CreatedAt: now,
+	}
+	createdOffering, _ := offeringRepo.Create(ctx, offering)
+
+	effectiveRange := models.DateRange{
+		StartDate: now,
+		EndDate:   now.AddDate(1, 0, 0),
+	}
+	scheduleRuleRepo := repositories.NewScheduleRuleRepository(appInstance)
+	scheduleRule := models.ScheduleRule{
+		CenterID:       createdCenter.ID,
+		OfferingID:     createdOffering.ID,
+		TeacherID:      &createdTeacher.ID,
+		RoomID:         createdRoom.ID,
+		Weekday:        int(now.Weekday()),
+		StartTime:      now.Format("15:04"),
+		EndTime:        now.Add(time.Hour).Format("15:04"),
+		EffectiveRange: effectiveRange,
+		CreatedAt:      now,
+		UpdatedAt:      now,
+	}
+	createdRule, _ := scheduleRuleRepo.Create(ctx, scheduleRule)
+
+	teacherController := controllers.NewTeacherController(appInstance)
+
+	t.Run("Step1_PreviewAffectedSessions", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Set(global.UserIDKey, createdAdmin.ID)
+		c.Set(global.CenterIDKey, createdCenter.ID)
+		c.Set(global.UserTypeKey, "ADMIN")
+
+		startDate := now.Format(time.RFC3339)
+		endDate := now.AddDate(0, 1, 0).Format(time.RFC3339)
+
+		reqBody := map[string]interface{}{
+			"rule_id":    createdRule.ID,
+			"edit_mode":  "FUTURE",
+			"start_date": startDate,
+			"end_date":   endDate,
+			"new_start":  "16:00",
+			"new_end":    "17:00",
+		}
+		body, _ := json.Marshal(reqBody)
+		c.Request = httptest.NewRequest("POST", "/api/v1/teacher/scheduling/preview-recurrence-edit", bytes.NewBuffer(body))
+		c.Request.Header.Set("Content-Type", "application/json")
+
+		teacherController.PreviewRecurrenceEdit(c)
+
+		if w.Code != http.StatusOK && w.Code != http.StatusBadRequest {
+			t.Fatalf("Expected status 200 or 400, got %d. Body: %s", w.Code, w.Body.String())
+		}
+		t.Log("Preview recurrence edit completed")
+	})
+
+	t.Run("Step2_EditRecurringSchedule_Single", func(t *testing.T) {
+		targetDate := now.AddDate(0, 0, 7).Format("2006-01-02")
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Set(global.UserIDKey, createdAdmin.ID)
+		c.Set(global.CenterIDKey, createdCenter.ID)
+		c.Set(global.UserTypeKey, "ADMIN")
+
+		reqBody := map[string]interface{}{
+			"rule_id":     createdRule.ID,
+			"edit_mode":   "SINGLE",
+			"target_date": targetDate,
+			"new_start":   "14:00",
+			"new_end":     "15:00",
+		}
+		body, _ := json.Marshal(reqBody)
+		c.Request = httptest.NewRequest("POST", "/api/v1/teacher/scheduling/edit-recurring", bytes.NewBuffer(body))
+		c.Request.Header.Set("Content-Type", "application/json")
+
+		teacherController.EditRecurringSchedule(c)
+
+		if w.Code != http.StatusOK && w.Code != http.StatusBadRequest {
+			t.Fatalf("Expected status 200 or 400, got %d. Body: %s", w.Code, w.Body.String())
+		}
+		t.Log("Edit recurring schedule (single) completed")
+	})
+
+	t.Run("Step3_EditRecurringSchedule_Future", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Set(global.UserIDKey, createdAdmin.ID)
+		c.Set(global.CenterIDKey, createdCenter.ID)
+		c.Set(global.UserTypeKey, "ADMIN")
+
+		startDate := now.AddDate(0, 0, 14).Format(time.RFC3339)
+
+		reqBody := map[string]interface{}{
+			"rule_id":    createdRule.ID,
+			"edit_mode":  "FUTURE",
+			"start_date": startDate,
+			"new_start":  "10:00",
+			"new_end":    "11:00",
+		}
+		body, _ := json.Marshal(reqBody)
+		c.Request = httptest.NewRequest("POST", "/api/v1/teacher/scheduling/edit-recurring", bytes.NewBuffer(body))
+		c.Request.Header.Set("Content-Type", "application/json")
+
+		teacherController.EditRecurringSchedule(c)
+
+		if w.Code != http.StatusOK && w.Code != http.StatusBadRequest {
+			t.Fatalf("Expected status 200 or 400, got %d. Body: %s", w.Code, w.Body.String())
+		}
+		t.Log("Edit recurring schedule (future) completed")
+	})
+
+	t.Run("Step4_DeleteRecurringSchedule", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Set(global.UserIDKey, createdAdmin.ID)
+		c.Set(global.CenterIDKey, createdCenter.ID)
+		c.Set(global.UserTypeKey, "ADMIN")
+
+		reqBody := map[string]interface{}{
+			"rule_id":   createdRule.ID,
+			"edit_mode": "ALL",
+			"reason":    "Course discontinued",
+		}
+		body, _ := json.Marshal(reqBody)
+		c.Request = httptest.NewRequest("POST", "/api/v1/teacher/scheduling/delete-recurring", bytes.NewBuffer(body))
+		c.Request.Header.Set("Content-Type", "application/json")
+
+		teacherController.DeleteRecurringSchedule(c)
+
+		if w.Code != http.StatusOK && w.Code != http.StatusBadRequest {
+			t.Fatalf("Expected status 200 or 400, got %d. Body: %s", w.Code, w.Body.String())
+		}
+		t.Log("Delete recurring schedule completed")
+	})
+}
+
+func TestIntegration_OfferingManagement(t *testing.T) {
+	appInstance, _, cleanup := setupIntegrationTestAppWithMigrations()
+	defer cleanup()
+
+	ctx := context.Background()
+	now := time.Now()
+
+	center := models.Center{
+		Name:      fmt.Sprintf("Offering Center %d", now.UnixNano()),
+		PlanLevel: "STARTER",
+		Settings: models.CenterSettings{
+			ExceptionLeadDays: 14,
+		},
+		CreatedAt: now,
+	}
+	centerRepo := repositories.NewCenterRepository(appInstance)
+	createdCenter, _ := centerRepo.Create(ctx, center)
+
+	adminUserRepo := repositories.NewAdminUserRepository(appInstance)
+	adminUser := models.AdminUser{
+		Email:        fmt.Sprintf("offering_admin_%d@test.com", now.UnixNano()),
+		PasswordHash: "$2a$10$lVIoLQr4EjCjQIU98JExROfBoOFK.UNOkVS0LVH2Lj1rT0VX5DYqa",
+		Name:         "Offering Admin",
+		CenterID:     createdCenter.ID,
+		Role:         "ADMIN",
+		Status:       "ACTIVE",
+		CreatedAt:    now,
+	}
+	createdAdmin, _ := adminUserRepo.Create(ctx, adminUser)
+
+	courseRepo := repositories.NewCourseRepository(appInstance)
+	course := models.Course{
+		CenterID:         createdCenter.ID,
+		Name:             "Offering Test Course",
+		DefaultDuration:  60,
+		ColorHex:         "#9B59B6",
+		RoomBufferMin:    10,
+		TeacherBufferMin: 10,
+		IsActive:         true,
+		CreatedAt:        now,
+	}
+	createdCourse, _ := courseRepo.Create(ctx, course)
+
+	offeringController := controllers.NewOfferingController(appInstance)
+	adminResourceController := controllers.NewAdminResourceController(appInstance)
+
+	t.Run("Step1_CreateOffering", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Set(global.UserIDKey, createdAdmin.ID)
+		c.Set(global.CenterIDKey, createdCenter.ID)
+		c.Set(global.UserTypeKey, "ADMIN")
+
+		reqBody := controllers.CreateOfferingRequest{
+			CourseID: createdCourse.ID,
+		}
+		body, _ := json.Marshal(reqBody)
+		c.Request = httptest.NewRequest("POST", "/api/v1/admin/offerings", bytes.NewBuffer(body))
+		c.Request.Header.Set("Content-Type", "application/json")
+
+		offeringController.CreateOffering(c)
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())
+		}
+
+		var response map[string]interface{}
+		json.Unmarshal(w.Body.Bytes(), &response)
+		datas := response["datas"].(map[string]interface{})
+		offeringID := uint(datas["id"].(float64))
+		if offeringID == 0 {
+			t.Fatal("Expected non-zero offering ID")
+		}
+		t.Logf("Created offering: ID=%d", offeringID)
+	})
+
+	t.Run("Step2_GetOfferings", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Set(global.UserIDKey, createdAdmin.ID)
+		c.Set(global.CenterIDKey, createdCenter.ID)
+		c.Request = httptest.NewRequest("GET", "/api/v1/admin/offerings", nil)
+
+		offeringController.GetOfferings(c)
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())
+		}
+		t.Log("Successfully retrieved offerings")
+	})
+
+	t.Run("Step3_ToggleOfferingActive", func(t *testing.T) {
+		offeringRepo := repositories.NewOfferingRepository(appInstance)
+		offering := models.Offering{
+			CenterID:  createdCenter.ID,
+			CourseID:  createdCourse.ID,
+			Name:      fmt.Sprintf("Toggle Test Offering %d", now.UnixNano()),
+			IsActive:  true,
+			CreatedAt: now,
+		}
+		createdOffering, _ := offeringRepo.Create(ctx, offering)
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Set(global.UserIDKey, createdAdmin.ID)
+		c.Set(global.CenterIDKey, createdCenter.ID)
+		c.Set(global.UserTypeKey, "ADMIN")
+		c.Params = gin.Params{{Key: "offering_id", Value: fmt.Sprintf("%d", createdOffering.ID)}}
+
+		reqBody := map[string]interface{}{
+			"is_active": false,
+		}
+		body, _ := json.Marshal(reqBody)
+		c.Request = httptest.NewRequest("PATCH", "/api/v1/admin/offerings/"+fmt.Sprintf("%d", createdOffering.ID)+"/toggle-active", bytes.NewBuffer(body))
+		c.Request.Header.Set("Content-Type", "application/json")
+
+		adminResourceController.ToggleOfferingActive(c)
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())
+		}
+		t.Log("Successfully toggled offering active status")
+	})
+
+	t.Run("Step4_CopyOffering", func(t *testing.T) {
+		offeringRepo := repositories.NewOfferingRepository(appInstance)
+		offering := models.Offering{
+			CenterID:  createdCenter.ID,
+			CourseID:  createdCourse.ID,
+			Name:      fmt.Sprintf("Original Offering %d", now.UnixNano()),
+			IsActive:  true,
+			CreatedAt: now,
+		}
+		createdOffering, _ := offeringRepo.Create(ctx, offering)
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Set(global.UserIDKey, createdAdmin.ID)
+		c.Set(global.CenterIDKey, createdCenter.ID)
+		c.Set(global.UserTypeKey, "ADMIN")
+		c.Params = gin.Params{{Key: "id", Value: fmt.Sprintf("%d", createdCenter.ID)}, {Key: "offeringId", Value: fmt.Sprintf("%d", createdOffering.ID)}}
+
+		reqBody := map[string]interface{}{
+			"new_name": fmt.Sprintf("Copied Offering %d", now.UnixNano()),
+		}
+		body, _ := json.Marshal(reqBody)
+		c.Request = httptest.NewRequest("POST", "/api/v1/admin/centers/"+fmt.Sprintf("%d", createdCenter.ID)+"/offerings/"+fmt.Sprintf("%d", createdOffering.ID)+"/copy", bytes.NewBuffer(body))
+		c.Request.Header.Set("Content-Type", "application/json")
+
+		offeringController.CopyOffering(c)
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())
+		}
+		t.Log("Successfully copied offering")
+	})
+
+	t.Run("Step5_DeleteOffering", func(t *testing.T) {
+		offeringRepo := repositories.NewOfferingRepository(appInstance)
+		offering := models.Offering{
+			CenterID:  createdCenter.ID,
+			CourseID:  createdCourse.ID,
+			Name:      fmt.Sprintf("Delete Test Offering %d", now.UnixNano()),
+			IsActive:  true,
+			CreatedAt: now,
+		}
+		createdOffering, _ := offeringRepo.Create(ctx, offering)
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Set(global.UserIDKey, createdAdmin.ID)
+		c.Set(global.CenterIDKey, createdCenter.ID)
+		c.Set(global.UserTypeKey, "ADMIN")
+		c.Params = gin.Params{{Key: "offering_id", Value: fmt.Sprintf("%d", createdOffering.ID)}}
+
+		c.Request = httptest.NewRequest("DELETE", "/api/v1/admin/offerings/"+fmt.Sprintf("%d", createdOffering.ID), nil)
+
+		offeringController.DeleteOffering(c)
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())
+		}
+		t.Log("Successfully deleted offering")
+	})
+}
+
+func TestIntegration_HolidayManagement(t *testing.T) {
+	appInstance, _, cleanup := setupIntegrationTestAppWithMigrations()
+	defer cleanup()
+
+	ctx := context.Background()
+	now := time.Now()
+
+	center := models.Center{
+		Name:      fmt.Sprintf("Holiday Center %d", now.UnixNano()),
+		PlanLevel: "STARTER",
+		Settings: models.CenterSettings{
+			ExceptionLeadDays: 14,
+		},
+		CreatedAt: now,
+	}
+	centerRepo := repositories.NewCenterRepository(appInstance)
+	createdCenter, _ := centerRepo.Create(ctx, center)
+
+	adminUserRepo := repositories.NewAdminUserRepository(appInstance)
+	adminUser := models.AdminUser{
+		Email:        fmt.Sprintf("holiday_admin_%d@test.com", now.UnixNano()),
+		PasswordHash: "$2a$10$lVIoLQr4EjCjQIU98JExROfBoOFK.UNOkVS0LVH2Lj1rT0VX5DYqa",
+		Name:         "Holiday Admin",
+		CenterID:     createdCenter.ID,
+		Role:         "ADMIN",
+		Status:       "ACTIVE",
+		CreatedAt:    now,
+	}
+	createdAdmin, _ := adminUserRepo.Create(ctx, adminUser)
+
+	adminResourceController := controllers.NewAdminResourceController(appInstance)
+
+	t.Run("Step1_CreateHoliday", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Set(global.UserIDKey, createdAdmin.ID)
+		c.Set(global.CenterIDKey, createdCenter.ID)
+		c.Set(global.UserTypeKey, "ADMIN")
+		c.Params = gin.Params{{Key: "id", Value: fmt.Sprintf("%d", createdCenter.ID)}}
+
+		holidayDate := now.AddDate(0, 1, 0).Format("2006-01-02")
+
+		reqBody := map[string]interface{}{
+			"date": holidayDate,
+			"name": "National Day",
+			"type": "NATIONAL_HOLIDAY",
+		}
+		body, _ := json.Marshal(reqBody)
+		c.Request = httptest.NewRequest("POST", "/api/v1/admin/centers/"+fmt.Sprintf("%d", createdCenter.ID)+"/holidays", bytes.NewBuffer(body))
+		c.Request.Header.Set("Content-Type", "application/json")
+
+		adminResourceController.CreateHoliday(c)
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())
+		}
+		t.Log("Successfully created holiday")
+	})
+
+	t.Run("Step2_GetHolidays", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Set(global.UserIDKey, createdAdmin.ID)
+		c.Set(global.CenterIDKey, createdCenter.ID)
+		c.Set(global.UserTypeKey, "ADMIN")
+		c.Params = gin.Params{{Key: "id", Value: fmt.Sprintf("%d", createdCenter.ID)}}
+		c.Request = httptest.NewRequest("GET", "/api/v1/admin/centers/"+fmt.Sprintf("%d", createdCenter.ID)+"/holidays", nil)
+
+		adminResourceController.GetHolidays(c)
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())
+		}
+		t.Log("Successfully retrieved holidays")
+	})
+
+	t.Run("Step3_BulkCreateHolidays", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Set(global.UserIDKey, createdAdmin.ID)
+		c.Set(global.CenterIDKey, createdCenter.ID)
+		c.Set(global.UserTypeKey, "ADMIN")
+		c.Params = gin.Params{{Key: "id", Value: fmt.Sprintf("%d", createdCenter.ID)}}
+
+		holidays := []map[string]interface{}{
+			{
+				"date": now.AddDate(0, 2, 0).Format("2006-01-02"),
+				"name": "Christmas",
+				"type": "NATIONAL_HOLIDAY",
+			},
+			{
+				"date": now.AddDate(0, 2, 15).Format("2006-01-02"),
+				"name": "New Year",
+				"type": "CENTER_CLOSED",
+			},
+		}
+
+		reqBody := map[string]interface{}{
+			"holidays": holidays,
+		}
+		body, _ := json.Marshal(reqBody)
+		c.Request = httptest.NewRequest("POST", "/api/v1/admin/centers/"+fmt.Sprintf("%d", createdCenter.ID)+"/holidays/bulk", bytes.NewBuffer(body))
+		c.Request.Header.Set("Content-Type", "application/json")
+
+		adminResourceController.BulkCreateHolidays(c)
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())
+		}
+		t.Log("Successfully bulk created holidays")
+	})
+}
+
+func TestIntegration_AdminUserManagement(t *testing.T) {
+	appInstance, _, cleanup := setupIntegrationTestAppWithMigrations()
+	defer cleanup()
+
+	ctx := context.Background()
+	now := time.Now()
+
+	center := models.Center{
+		Name:      fmt.Sprintf("Admin User Center %d", now.UnixNano()),
+		PlanLevel: "STARTER",
+		Settings: models.CenterSettings{
+			ExceptionLeadDays: 14,
+		},
+		CreatedAt: now,
+	}
+	centerRepo := repositories.NewCenterRepository(appInstance)
+	createdCenter, _ := centerRepo.Create(ctx, center)
+
+	adminUserRepo := repositories.NewAdminUserRepository(appInstance)
+	adminUser := models.AdminUser{
+		Email:        fmt.Sprintf("admin_user_admin_%d@test.com", now.UnixNano()),
+		PasswordHash: "$2a$10$lVIoLQr4EjCjQIU98JExROfBoOFK.UNOkVS0LVH2Lj1rT0VX5DYqa",
+		Name:         "Admin User Admin",
+		CenterID:     createdCenter.ID,
+		Role:         "ADMIN",
+		Status:       "ACTIVE",
+		CreatedAt:    now,
+	}
+	createdAdmin, _ := adminUserRepo.Create(ctx, adminUser)
+
+	adminUserController := controllers.NewAdminUserController(appInstance)
+
+	t.Run("Step1_CreateAdminUser", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Set(global.UserIDKey, createdAdmin.ID)
+		c.Set(global.CenterIDKey, createdCenter.ID)
+		c.Set(global.UserTypeKey, "ADMIN")
+		c.Params = gin.Params{{Key: "id", Value: fmt.Sprintf("%d", createdCenter.ID)}}
+
+		reqBody := map[string]interface{}{
+			"email":    fmt.Sprintf("new_admin_%d@test.com", now.UnixNano()),
+			"name":     "New Admin User",
+			"role":     "STAFF",
+			"password": "password123",
+		}
+		body, _ := json.Marshal(reqBody)
+		c.Request = httptest.NewRequest("POST", "/api/v1/admin/centers/"+fmt.Sprintf("%d", createdCenter.ID)+"/users", bytes.NewBuffer(body))
+		c.Request.Header.Set("Content-Type", "application/json")
+
+		adminUserController.CreateAdminUser(c)
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())
+		}
+		t.Log("Successfully created admin user")
+	})
+
+	t.Run("Step2_GetAdminUsers", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Set(global.UserIDKey, createdAdmin.ID)
+		c.Set(global.CenterIDKey, createdCenter.ID)
+		c.Set(global.UserTypeKey, "ADMIN")
+		c.Params = gin.Params{{Key: "id", Value: fmt.Sprintf("%d", createdCenter.ID)}}
+		c.Request = httptest.NewRequest("GET", "/api/v1/admin/centers/"+fmt.Sprintf("%d", createdCenter.ID)+"/users", nil)
+
+		adminUserController.GetAdminUsers(c)
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())
+		}
+		t.Log("Successfully retrieved admin users")
+	})
+
+	t.Run("Step3_UpdateAdminUser", func(t *testing.T) {
+		newAdminUserRepo := repositories.NewAdminUserRepository(appInstance)
+		newAdmin := models.AdminUser{
+			Email:        fmt.Sprintf("update_admin_%d@test.com", now.UnixNano()),
+			PasswordHash: "$2a$10$lVIoLQr4EjCjQIU98JExROfBoOFK.UNOkVS0LVH2Lj1rT0VX5DYqa",
+			Name:         "Update Admin",
+			CenterID:     createdCenter.ID,
+			Role:         "STAFF",
+			Status:       "ACTIVE",
+			CreatedAt:    now,
+		}
+		createdNewAdmin, _ := newAdminUserRepo.Create(ctx, newAdmin)
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Set(global.UserIDKey, createdAdmin.ID)
+		c.Set(global.CenterIDKey, createdCenter.ID)
+		c.Set(global.UserTypeKey, "ADMIN")
+		c.Params = gin.Params{{Key: "id", Value: fmt.Sprintf("%d", createdCenter.ID)}, {Key: "admin_id", Value: fmt.Sprintf("%d", createdNewAdmin.ID)}}
+
+		reqBody := map[string]interface{}{
+			"name": "Updated Admin Name",
+			"role": "STAFF",
+		}
+		body, _ := json.Marshal(reqBody)
+		c.Request = httptest.NewRequest("PUT", "/api/v1/admin/centers/"+fmt.Sprintf("%d", createdCenter.ID)+"/users/"+fmt.Sprintf("%d", createdNewAdmin.ID), bytes.NewBuffer(body))
+		c.Request.Header.Set("Content-Type", "application/json")
+
+		adminUserController.UpdateAdminUser(c)
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())
+		}
+		t.Log("Successfully updated admin user")
+	})
+}

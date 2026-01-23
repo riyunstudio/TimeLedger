@@ -44,9 +44,12 @@ func (rp *OfferingRepository) ListActiveByCenterID(ctx context.Context, centerID
 }
 
 func (rp *OfferingRepository) ToggleActive(ctx context.Context, id uint, centerID uint, isActive bool) error {
-	return rp.app.MySQL.WDB.WithContext(ctx).
+	result := rp.app.MySQL.WDB.WithContext(ctx).
+		Model(&models.Offering{}).
 		Where("id = ? AND center_id = ?", id, centerID).
-		Update("is_active", isActive).Error
+		Update("is_active", isActive)
+
+	return result.Error
 }
 
 func (rp *OfferingRepository) ListByCenterIDPaginated(ctx context.Context, centerID uint, page, limit int64) ([]models.Offering, int64, error) {
