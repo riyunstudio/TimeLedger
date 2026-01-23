@@ -45,6 +45,17 @@ type ScheduleExpansionService interface {
 	// ExpandRules 將週規則展開為實際日期
 	// 根據規則的週期（weekday）和有效範圍，展開為具體日期
 	ExpandRules(ctx context.Context, rules []models.ScheduleRule, startDate, endDate time.Time, centerID uint) []ExpandedSchedule
+
+	// GetEffectiveRuleForDate 取得指定日期的有效規則
+	// 用於檢測 phase transition
+	GetEffectiveRuleForDate(ctx context.Context, offeringID uint, date time.Time) (*models.ScheduleRule, error)
+
+	// DetectPhaseTransitions 檢測指定範圍內的 phase 變化
+	// 返回 phase 變化的日期點
+	DetectPhaseTransitions(ctx context.Context, centerID uint, offeringID uint, startDate, endDate time.Time) ([]PhaseTransition, error)
+
+	// GetRulesByEffectiveDateRange 取得指定 effective 日期範圍內的規則
+	GetRulesByEffectiveDateRange(ctx context.Context, centerID uint, offeringID uint, startDate, endDate time.Time) ([]models.ScheduleRule, error)
 }
 
 type ScheduleExceptionService interface {
@@ -82,4 +93,19 @@ type ExpandedSchedule struct {
 	TeacherID    *uint     `json:"teacher_id"`
 	IsHoliday    bool      `json:"is_holiday"`
 	HasException bool      `json:"has_exception"`
+}
+
+type PhaseTransition struct {
+	Date          time.Time `json:"date"`
+	PrevRuleID    *uint     `json:"prev_rule_id,omitempty"`
+	PrevRoomID    *uint     `json:"prev_room_id,omitempty"`
+	PrevTeacherID *uint     `json:"prev_teacher_id,omitempty"`
+	PrevStartTime string    `json:"prev_start_time,omitempty"`
+	PrevEndTime   string    `json:"prev_end_time,omitempty"`
+	NextRuleID    *uint     `json:"next_rule_id,omitempty"`
+	NextRoomID    *uint     `json:"next_room_id,omitempty"`
+	NextTeacherID *uint     `json:"next_teacher_id,omitempty"`
+	NextStartTime string    `json:"next_start_time,omitempty"`
+	NextEndTime   string    `json:"next_end_time,omitempty"`
+	HasGap        bool      `json:"has_gap"`
 }

@@ -37,6 +37,9 @@ func (s *ScheduleExpansionServiceImpl) ExpandRules(ctx context.Context, rules []
 			continue
 		}
 
+		ruleStartDate := rule.EffectiveRange.StartDate
+		ruleEndDate := rule.EffectiveRange.EndDate
+
 		date := startDate
 		for date.Before(endDate) || date.Equal(endDate) {
 			weekday := int(date.Weekday())
@@ -45,20 +48,30 @@ func (s *ScheduleExpansionServiceImpl) ExpandRules(ctx context.Context, rules []
 			}
 
 			if weekday == int(rule.Weekday) {
-				exceptions, _ := s.exceptionRepo.GetByRuleAndDate(ctx, rule.ID, date)
-				hasException := len(exceptions) > 0
-
-				schedule := ExpandedSchedule{
-					RuleID:       rule.ID,
-					Date:         date,
-					StartTime:    rule.StartTime,
-					EndTime:      rule.EndTime,
-					RoomID:       rule.RoomID,
-					TeacherID:    rule.TeacherID,
-					HasException: hasException,
+				isWithinEffectiveRange := true
+				if !ruleStartDate.IsZero() && date.Before(ruleStartDate) {
+					isWithinEffectiveRange = false
+				}
+				if !ruleEndDate.IsZero() && date.After(ruleEndDate) {
+					isWithinEffectiveRange = false
 				}
 
-				schedules = append(schedules, schedule)
+				if isWithinEffectiveRange {
+					exceptions, _ := s.exceptionRepo.GetByRuleAndDate(ctx, rule.ID, date)
+					hasException := len(exceptions) > 0
+
+					schedule := ExpandedSchedule{
+						RuleID:       rule.ID,
+						Date:         date,
+						StartTime:    rule.StartTime,
+						EndTime:      rule.EndTime,
+						RoomID:       rule.RoomID,
+						TeacherID:    rule.TeacherID,
+						HasException: hasException,
+					}
+
+					schedules = append(schedules, schedule)
+				}
 			}
 
 			date = date.AddDate(0, 0, 1)
@@ -66,6 +79,128 @@ func (s *ScheduleExpansionServiceImpl) ExpandRules(ctx context.Context, rules []
 	}
 
 	return schedules
+}
+
+func (s *ScheduleExpansionServiceImpl) GetEffectiveRuleForDate(ctx context.Context, offeringID uint, date time.Time) (*models.ScheduleRule, error) {
+	var rules []models.ScheduleRule
+	err := s.app.MySQL.RDB.WithContext(ctx).
+		Where("offering_id = ?", offeringID).
+		Where("weekday = ?", func() int {
+			weekday := int(date.Weekday())
+			if weekday == 0 {
+				return 7
+			}
+			return weekday
+		}()).
+		Where("JSON_EXTRACT(effective_range, '$.start_date') <= ?", date.Format("2006-01-02")).
+		Where(func() string {
+			return "JSON_EXTRACT(effective_range, '$.end_date') >= ? OR JSON_EXTRACT(effective_range, '$.end_date') = '\"0001-01-01\"' OR JSON_EXTRACT(effective_range, '$.end_date') IS NULL"
+		}()).
+		Find(&rules).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	if len(rules) == 0 {
+		return nil, nil
+	}
+
+	return &rules[0], nil
+}
+
+func (s *ScheduleExpansionServiceImpl) DetectPhaseTransitions(ctx context.Context, centerID uint, offeringID uint, startDate, endDate time.Time) ([]PhaseTransition, error) {
+	rules, err := s.scheduleRuleRepo.ListByOfferingID(ctx, offeringID)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(rules) <= 1 {
+		return []PhaseTransition{}, nil
+	}
+
+	var transitions []PhaseTransition
+	date := startDate
+	prevRule := (*models.ScheduleRule)(nil)
+
+	for date.Before(endDate) || date.Equal(endDate) {
+		currentRule, _ := s.GetEffectiveRuleForDate(ctx, offeringID, date)
+
+		if prevRule != nil && currentRule != nil {
+			prevRuleID := prevRule.ID
+			currRuleID := currentRule.ID
+
+			if prevRuleID != currRuleID ||
+				(prevRule.RoomID != currentRule.RoomID) ||
+				!ptrEqual(prevRule.TeacherID, currentRule.TeacherID) ||
+				(prevRule.StartTime != currentRule.StartTime) ||
+				(prevRule.EndTime != currentRule.EndTime) {
+
+				transition := PhaseTransition{
+					Date:          date,
+					PrevRuleID:    &prevRuleID,
+					PrevRoomID:    &prevRule.RoomID,
+					PrevTeacherID: prevRule.TeacherID,
+					PrevStartTime: prevRule.StartTime,
+					PrevEndTime:   prevRule.EndTime,
+					NextRuleID:    &currRuleID,
+					NextRoomID:    &currentRule.RoomID,
+					NextTeacherID: currentRule.TeacherID,
+					NextStartTime: currentRule.StartTime,
+					NextEndTime:   currentRule.EndTime,
+					HasGap:        false,
+				}
+				transitions = append(transitions, transition)
+			}
+		} else if prevRule != nil && currentRule == nil {
+			prevRuleID := prevRule.ID
+			transition := PhaseTransition{
+				Date:       date,
+				PrevRuleID: &prevRuleID,
+				PrevRoomID: &prevRule.RoomID,
+				HasGap:     true,
+			}
+			transitions = append(transitions, transition)
+		} else if prevRule == nil && currentRule != nil {
+			currRuleID := currentRule.ID
+			transition := PhaseTransition{
+				Date:       date,
+				NextRuleID: &currRuleID,
+				NextRoomID: &currentRule.RoomID,
+			}
+			transitions = append(transitions, transition)
+		}
+
+		prevRule = currentRule
+		date = date.AddDate(0, 0, 1)
+	}
+
+	return transitions, nil
+}
+
+func (s *ScheduleExpansionServiceImpl) GetRulesByEffectiveDateRange(ctx context.Context, centerID uint, offeringID uint, startDate, endDate time.Time) ([]models.ScheduleRule, error) {
+	var rules []models.ScheduleRule
+	err := s.app.MySQL.RDB.WithContext(ctx).
+		Where("center_id = ?", centerID).
+		Where("offering_id = ?", offeringID).
+		Where("JSON_EXTRACT(effective_range, '$.start_date') <= ?", endDate.Format("2006-01-02")).
+		Where(func() string {
+			return "(JSON_EXTRACT(effective_range, '$.end_date') >= ? OR JSON_EXTRACT(effective_range, '$.end_date') = '\"0001-01-01\"' OR JSON_EXTRACT(effective_range, '$.end_date') IS NULL)"
+		}()).
+		Order("JSON_EXTRACT(effective_range, '$.start_date') ASC").
+		Find(&rules).Error
+
+	return rules, err
+}
+
+func ptrEqual(a, b *uint) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	return *a == *b
 }
 
 type ScheduleExceptionServiceImpl struct {
@@ -288,7 +423,7 @@ func (s *ScheduleExceptionServiceImpl) GetExceptionsByRule(ctx context.Context, 
 
 func (s *ScheduleExceptionServiceImpl) GetExceptionsByDateRange(ctx context.Context, centerID uint, startDate, endDate time.Time) ([]models.ScheduleException, error) {
 	var exceptions []models.ScheduleException
-	err := s.app.Mysql.RDB.WithContext(ctx).
+	err := s.app.MySQL.RDB.WithContext(ctx).
 		Where("center_id = ?", centerID).
 		Where("original_date >= ?", startDate).
 		Where("original_date <= ?", endDate).
@@ -300,7 +435,7 @@ func (s *ScheduleExceptionServiceImpl) GetExceptionsByDateRange(ctx context.Cont
 
 func (s *ScheduleExceptionServiceImpl) GetPendingExceptions(ctx context.Context, centerID uint) ([]models.ScheduleException, error) {
 	var exceptions []models.ScheduleException
-	err := s.app.Mysql.RDB.WithContext(ctx).
+	err := s.app.MySQL.RDB.WithContext(ctx).
 		Where("center_id = ?", centerID).
 		Where("status = ?", "PENDING").
 		Order("created_at ASC").

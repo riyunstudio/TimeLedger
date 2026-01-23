@@ -110,6 +110,7 @@ func (s *Server) LoadRoutes() {
 		{http.MethodGet, "/api/v1/admin/rules/:ruleId/exceptions", s.action.scheduling.GetExceptionsByRule, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodGet, "/api/v1/admin/centers/:id/exceptions", s.action.scheduling.GetExceptionsByDateRange, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodPost, "/api/v1/admin/centers/:id/expand-rules", s.action.scheduling.ExpandRules, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodPost, "/api/v1/admin/centers/:id/detect-phase-transitions", s.action.scheduling.DetectPhaseTransitions, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 
 		// Admin - Resources
 		{http.MethodGet, "/api/v1/admin/rooms", s.action.adminResource.GetRooms, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},

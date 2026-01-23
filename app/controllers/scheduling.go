@@ -573,3 +573,44 @@ func (ctl *SchedulingController) DeleteRule(ctx *gin.Context) {
 		Message: "Schedule rule deleted successfully",
 	})
 }
+
+type DetectPhaseTransitionsRequest struct {
+	OfferingID uint      `json:"offering_id" binding:"required"`
+	StartDate  time.Time `json:"start_date" binding:"required"`
+	EndDate    time.Time `json:"end_date" binding:"required"`
+}
+
+func (ctl *SchedulingController) DetectPhaseTransitions(ctx *gin.Context) {
+	centerID := ctx.GetUint(global.CenterIDKey)
+	if centerID == 0 {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Center ID required",
+		})
+		return
+	}
+
+	var req DetectPhaseTransitionsRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Invalid request parameters: " + err.Error(),
+		})
+		return
+	}
+
+	transitions, err := ctl.expansionService.DetectPhaseTransitions(ctx, centerID, req.OfferingID, req.StartDate, req.EndDate)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
+			Code:    500,
+			Message: err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, global.ApiResponse{
+		Code:    0,
+		Message: "OK",
+		Datas:   transitions,
+	})
+}
