@@ -443,36 +443,36 @@ const handleDrop = async (hour: number, date: string) => {
 
   if (sourceKey !== targetKey && teacherStore.schedule) {
     const day = teacherStore.schedule.days.find(d => d.date === date)
-    console.log('[handleDrop] day found:', !!day, 'item has data.id:', !!draggedItem.value.data?.id)
-    if (day && draggedItem.value.data?.id) {
-      const duration = parseInt(draggedItem.value.end_time.split(':')[0]) - parseInt(draggedItem.value.start_time.split(':')[0])
-      const newEndHour = hour + duration
-      const newStartTime = `${hour.toString().padStart(2, '0')}:00`
-      const newEndTime = `${newEndHour.toString().padStart(2, '0')}:00`
+    console.log('[handleDrop] day found:', !!day, 'draggedItem:', draggedItem.value)
+    if (day && draggedItem.value) {
+      const itemData = draggedItem.value.data
+      console.log('[handleDrop] itemData:', itemData)
+      const itemId = itemData?.id || draggedItem.value.id
+      console.log('[handleDrop] itemId:', itemId)
+      if (itemId) {
+        const duration = parseInt(draggedItem.value.end_time.split(':')[0]) - parseInt(draggedItem.value.start_time.split(':')[0])
+        const newEndHour = hour + duration
+        const newStartTime = `${hour.toString().padStart(2, '0')}:00`
+        const newEndTime = `${newEndHour.toString().padStart(2, '0')}:00`
 
-      console.log('[handleDrop] Calling moveScheduleItem with:', {
-        item_id: draggedItem.value.data.id,
-        item_type: draggedItem.value.type,
-        new_date: date,
-        new_start_time: newStartTime,
-        new_end_time: newEndTime,
-      })
+        console.log('[handleDrop] Calling moveScheduleItem with itemId:', itemId)
 
-      try {
-        await teacherStore.moveScheduleItem({
-          item_id: draggedItem.value.data.id,
-          item_type: draggedItem.value.type as 'SCHEDULE_RULE' | 'PERSONAL_EVENT' | 'CENTER_SESSION',
-          center_id: (draggedItem.value.data as any).center_id || 1,
-          new_date: date,
-          new_start_time: newStartTime,
-          new_end_time: newEndTime,
-        })
+        try {
+          await teacherStore.moveScheduleItem({
+            item_id: itemId,
+            item_type: draggedItem.value.type as 'SCHEDULE_RULE' | 'PERSONAL_EVENT' | 'CENTER_SESSION',
+            center_id: itemData?.center_id || (draggedItem.value as any).center_id || 1,
+            new_date: date,
+            new_start_time: newStartTime,
+            new_end_time: newEndTime,
+          })
 
-        await teacherStore.fetchSchedule()
-      } catch (error) {
-        console.error('Failed to move schedule:', error)
-        const notificationUI = useNotification()
-        notificationUI.showToast('更新失敗，請稍後再試', 'error')
+          await teacherStore.fetchSchedule()
+        } catch (error) {
+          console.error('Failed to move schedule:', error)
+          const notificationUI = useNotification()
+          notificationUI.showToast('更新失敗，請稍後再試', 'error')
+        }
       }
     }
   }
