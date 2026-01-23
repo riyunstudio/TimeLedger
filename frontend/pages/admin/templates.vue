@@ -179,7 +179,7 @@ const fetchTemplates = async () => {
   try {
     const api = useApi()
     const centerId = getCenterId()
-    const response = await api.get<{ code: number; datas: any[] }>(`/admin/templates`)
+    const response = await api.get<{ code: number; datas: any[] }>(`/admin/centers/${centerId}/templates`)
     templates.value = response.datas || []
   } catch (error) {
     console.error('Failed to fetch templates:', error)
@@ -191,7 +191,7 @@ const createTemplate = async () => {
   try {
     const api = useApi()
     const centerId = getCenterId()
-    await api.post(`/admin/templates`, form.value)
+    await api.post(`/admin/centers/${centerId}/templates`, form.value)
     showModal.value = false
     form.value = { name: '', row_type: 'ROOM' }
     await fetchTemplates()
@@ -209,7 +209,7 @@ const deleteTemplate = async (id: number) => {
   try {
     const api = useApi()
     const centerId = getCenterId()
-    await api.delete(`/admin/templates/${id}`)
+    await api.delete(`/admin/centers/${centerId}/templates/${id}`)
     await fetchTemplates()
   } catch (error) {
     console.error('Failed to delete template:', error)
@@ -222,7 +222,7 @@ const viewTemplate = async (template: any) => {
   try {
     const api = useApi()
     const centerId = getCenterId()
-    const response = await api.get<{ code: number; datas: any[] }>(`/admin/templates/${template.id}/cells`)
+    const response = await api.get<{ code: number; datas: any[] }>(`/admin/centers/${centerId}/templates/${template.id}/cells`)
     cells.value = response.datas || []
   } catch (error) {
     console.error('Failed to fetch cells:', error)
@@ -236,7 +236,7 @@ const addCells = async () => {
   try {
     const api = useApi()
     const centerId = getCenterId()
-    await api.post(`/admin/templates/${selectedTemplate.value.id}/cells`, [
+    await api.post(`/admin/centers/${centerId}/templates/${selectedTemplate.value.id}/cells`, [
       { row_no: 1, col_no: 1, start_time: '09:00', end_time: '10:00' }
     ])
     await viewTemplate(selectedTemplate.value)
