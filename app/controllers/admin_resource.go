@@ -15,22 +15,26 @@ import (
 
 type AdminResourceController struct {
 	BaseController
-	app               *app.App
-	centerRepository  *repositories.CenterRepository
-	courseRepository  *repositories.CourseRepository
-	roomRepository    *repositories.RoomRepository
-	holidayRepository *repositories.CenterHolidayRepository
-	auditLogRepo      *repositories.AuditLogRepository
+	app                *app.App
+	centerRepository   *repositories.CenterRepository
+	courseRepository   *repositories.CourseRepository
+	roomRepository     *repositories.RoomRepository
+	offeringRepository *repositories.OfferingRepository
+	holidayRepository  *repositories.CenterHolidayRepository
+	invitationRepo     *repositories.CenterInvitationRepository
+	auditLogRepo       *repositories.AuditLogRepository
 }
 
 func NewAdminResourceController(app *app.App) *AdminResourceController {
 	return &AdminResourceController{
-		app:               app,
-		centerRepository:  repositories.NewCenterRepository(app),
-		courseRepository:  repositories.NewCourseRepository(app),
-		roomRepository:    repositories.NewRoomRepository(app),
-		holidayRepository: repositories.NewCenterHolidayRepository(app),
-		auditLogRepo:      repositories.NewAuditLogRepository(app),
+		app:                app,
+		centerRepository:   repositories.NewCenterRepository(app),
+		courseRepository:   repositories.NewCourseRepository(app),
+		roomRepository:     repositories.NewRoomRepository(app),
+		offeringRepository: repositories.NewOfferingRepository(app),
+		holidayRepository:  repositories.NewCenterHolidayRepository(app),
+		invitationRepo:     repositories.NewCenterInvitationRepository(app),
+		auditLogRepo:       repositories.NewAuditLogRepository(app),
 	}
 }
 
@@ -798,5 +802,329 @@ func (ctl *AdminResourceController) DeleteHoliday(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, global.ApiResponse{
 		Code:    0,
 		Message: "Holiday deleted",
+	})
+}
+
+func (ctl *AdminResourceController) GetActiveRooms(ctx *gin.Context) {
+	centerID := ctl.getCenterID(ctx)
+	if centerID == 0 {
+		ctl.respondError(ctx, global.BAD_REQUEST, "Center ID required")
+		return
+	}
+
+	rooms, err := ctl.roomRepository.ListActiveByCenterID(ctx, centerID)
+	if err != nil {
+		ctl.respondError(ctx, errInfos.SQL_ERROR, "Failed to get active rooms")
+		return
+	}
+
+	ctx.JSON(http.StatusOK, global.ApiResponse{
+		Code:    0,
+		Message: "Success",
+		Datas:   rooms,
+	})
+}
+
+func (ctl *AdminResourceController) GetActiveCourses(ctx *gin.Context) {
+	centerID := ctl.getCenterID(ctx)
+	if centerID == 0 {
+		ctl.respondError(ctx, global.BAD_REQUEST, "Center ID required")
+		return
+	}
+
+	courses, err := ctl.courseRepository.ListActiveByCenterID(ctx, centerID)
+	if err != nil {
+		ctl.respondError(ctx, errInfos.SQL_ERROR, "Failed to get active courses")
+		return
+	}
+
+	ctx.JSON(http.StatusOK, global.ApiResponse{
+		Code:    0,
+		Message: "Success",
+		Datas:   courses,
+	})
+}
+
+func (ctl *AdminResourceController) GetActiveOfferings(ctx *gin.Context) {
+	centerID := ctl.getCenterID(ctx)
+	if centerID == 0 {
+		ctl.respondError(ctx, global.BAD_REQUEST, "Center ID required")
+		return
+	}
+
+	offerings, err := ctl.offeringRepository.ListActiveByCenterID(ctx, centerID)
+	if err != nil {
+		ctl.respondError(ctx, errInfos.SQL_ERROR, "Failed to get active offerings")
+		return
+	}
+
+	ctx.JSON(http.StatusOK, global.ApiResponse{
+		Code:    0,
+		Message: "Success",
+		Datas:   offerings,
+	})
+}
+
+func (ctl *AdminResourceController) ToggleCourseActive(ctx *gin.Context) {
+	centerID := ctl.getCenterID(ctx)
+	if centerID == 0 {
+		ctl.respondError(ctx, global.BAD_REQUEST, "Center ID required")
+		return
+	}
+
+	courseID, err := ctl.getUintParam(ctx, "course_id")
+	if err != nil {
+		ctl.respondError(ctx, global.BAD_REQUEST, "Invalid course ID")
+		return
+	}
+
+	var req ToggleActiveRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctl.respondError(ctx, errInfos.PARAMS_VALIDATE_ERROR, "Invalid request body")
+		return
+	}
+
+	if err := ctl.courseRepository.ToggleActive(ctx, courseID, centerID, req.IsActive); err != nil {
+		ctl.respondError(ctx, errInfos.SQL_ERROR, "Failed to toggle course active status")
+		return
+	}
+
+	adminID := ctx.GetUint(global.UserIDKey)
+	ctl.auditLogRepo.Create(ctx, models.AuditLog{
+		CenterID:   centerID,
+		ActorType:  "ADMIN",
+		ActorID:    adminID,
+		Action:     "TOGGLE_COURSE_ACTIVE",
+		TargetType: "Course",
+		TargetID:   courseID,
+		Payload: models.AuditPayload{
+			After: map[string]interface{}{
+				"is_active": req.IsActive,
+			},
+		},
+	})
+
+	ctx.JSON(http.StatusOK, global.ApiResponse{
+		Code:    0,
+		Message: "Course active status updated",
+	})
+}
+
+func (ctl *AdminResourceController) ToggleRoomActive(ctx *gin.Context) {
+	centerID := ctl.getCenterID(ctx)
+	if centerID == 0 {
+		ctl.respondError(ctx, global.BAD_REQUEST, "Center ID required")
+		return
+	}
+
+	roomID, err := ctl.getUintParam(ctx, "room_id")
+	if err != nil {
+		ctl.respondError(ctx, global.BAD_REQUEST, "Invalid room ID")
+		return
+	}
+
+	var req ToggleActiveRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctl.respondError(ctx, errInfos.PARAMS_VALIDATE_ERROR, "Invalid request body")
+		return
+	}
+
+	if err := ctl.roomRepository.ToggleActive(ctx, roomID, centerID, req.IsActive); err != nil {
+		ctl.respondError(ctx, errInfos.SQL_ERROR, "Failed to toggle room active status")
+		return
+	}
+
+	adminID := ctx.GetUint(global.UserIDKey)
+	ctl.auditLogRepo.Create(ctx, models.AuditLog{
+		CenterID:   centerID,
+		ActorType:  "ADMIN",
+		ActorID:    adminID,
+		Action:     "TOGGLE_ROOM_ACTIVE",
+		TargetType: "Room",
+		TargetID:   roomID,
+		Payload: models.AuditPayload{
+			After: map[string]interface{}{
+				"is_active": req.IsActive,
+			},
+		},
+	})
+
+	ctx.JSON(http.StatusOK, global.ApiResponse{
+		Code:    0,
+		Message: "Room active status updated",
+	})
+}
+
+func (ctl *AdminResourceController) ToggleOfferingActive(ctx *gin.Context) {
+	centerID := ctl.getCenterID(ctx)
+	if centerID == 0 {
+		ctl.respondError(ctx, global.BAD_REQUEST, "Center ID required")
+		return
+	}
+
+	offeringID, err := ctl.getUintParam(ctx, "offering_id")
+	if err != nil {
+		ctl.respondError(ctx, global.BAD_REQUEST, "Invalid offering ID")
+		return
+	}
+
+	var req ToggleActiveRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctl.respondError(ctx, errInfos.PARAMS_VALIDATE_ERROR, "Invalid request body")
+		return
+	}
+
+	if err := ctl.offeringRepository.ToggleActive(ctx, offeringID, centerID, req.IsActive); err != nil {
+		ctl.respondError(ctx, errInfos.SQL_ERROR, "Failed to toggle offering active status")
+		return
+	}
+
+	adminID := ctx.GetUint(global.UserIDKey)
+	ctl.auditLogRepo.Create(ctx, models.AuditLog{
+		CenterID:   centerID,
+		ActorType:  "ADMIN",
+		ActorID:    adminID,
+		Action:     "TOGGLE_OFFERING_ACTIVE",
+		TargetType: "Offering",
+		TargetID:   offeringID,
+		Payload: models.AuditPayload{
+			After: map[string]interface{}{
+				"is_active": req.IsActive,
+			},
+		},
+	})
+
+	ctx.JSON(http.StatusOK, global.ApiResponse{
+		Code:    0,
+		Message: "Offering active status updated",
+	})
+}
+
+type ToggleActiveRequest struct {
+	IsActive bool `json:"is_active" binding:"required"`
+}
+
+type InvitationStatsResponse struct {
+	Total         int64 `json:"total"`
+	Pending       int64 `json:"pending"`
+	Accepted      int64 `json:"accepted"`
+	Expired       int64 `json:"expired"`
+	Rejected      int64 `json:"rejected"`
+	RecentPending int64 `json:"recent_pending"`
+}
+
+func (ctl *AdminResourceController) GetInvitationStats(ctx *gin.Context) {
+	centerID := ctl.getCenterID(ctx)
+	if centerID == 0 {
+		ctl.respondError(ctx, global.BAD_REQUEST, "Center ID required")
+		return
+	}
+
+	now := time.Now()
+	thirtyDaysAgo := now.AddDate(0, 0, -30)
+
+	total, _ := ctl.invitationRepo.CountByCenterID(ctx, centerID)
+	pending, _ := ctl.invitationRepo.CountByStatus(ctx, centerID, "PENDING")
+	accepted, _ := ctl.invitationRepo.CountByStatus(ctx, centerID, "ACCEPTED")
+	expired, _ := ctl.invitationRepo.CountByStatus(ctx, centerID, "EXPIRED")
+	rejected, _ := ctl.invitationRepo.CountByStatus(ctx, centerID, "REJECTED")
+	recentPending, _ := ctl.invitationRepo.CountByDateRange(ctx, centerID, thirtyDaysAgo, now, "PENDING")
+
+	stats := InvitationStatsResponse{
+		Total:         total,
+		Pending:       pending,
+		Accepted:      accepted,
+		Expired:       expired,
+		Rejected:      rejected,
+		RecentPending: recentPending,
+	}
+
+	ctx.JSON(http.StatusOK, global.ApiResponse{
+		Code:    0,
+		Message: "Success",
+		Datas:   stats,
+	})
+}
+
+func (ctl *AdminResourceController) GetInvitations(ctx *gin.Context) {
+	centerID := ctl.getCenterID(ctx)
+	if centerID == 0 {
+		ctl.respondError(ctx, global.BAD_REQUEST, "Center ID required")
+		return
+	}
+
+	var req PaginationRequest
+	if err := ctx.ShouldBindQuery(&req); err != nil {
+		req.Page = 1
+		req.Limit = 20
+	}
+
+	status := ctx.Query("status")
+
+	invitations, total, err := ctl.invitationRepo.ListByCenterIDPaginated(ctx, centerID, int64(req.Page), int64(req.Limit), status)
+	if err != nil {
+		ctl.respondError(ctx, errInfos.SQL_ERROR, "Failed to get invitations")
+		return
+	}
+
+	ctx.JSON(http.StatusOK, global.ApiResponse{
+		Code:    0,
+		Message: "Success",
+		Datas: PaginationResponse{
+			Data:       invitations,
+			Total:      total,
+			Page:       req.Page,
+			Limit:      req.Limit,
+			TotalPages: (total + int64(req.Limit) - 1) / int64(req.Limit),
+		},
+	})
+}
+
+type PaginationRequest struct {
+	Page  int `form:"page"`
+	Limit int `form:"limit"`
+}
+
+type PaginationResponse struct {
+	Data       interface{} `json:"data"`
+	Total      int64       `json:"total"`
+	Page       int         `json:"page"`
+	Limit      int         `json:"limit"`
+	TotalPages int64       `json:"total_pages"`
+}
+
+func (ctl *AdminResourceController) getCenterID(ctx *gin.Context) uint {
+	centerID := ctx.GetUint(global.CenterIDKey)
+	if centerID == 0 {
+		if val, exists := ctx.Get(global.CenterIDKey); exists {
+			switch v := val.(type) {
+			case uint:
+				centerID = v
+			case uint64:
+				centerID = uint(v)
+			case int:
+				centerID = uint(v)
+			case float64:
+				centerID = uint(v)
+			}
+		}
+	}
+	return centerID
+}
+
+func (ctl *AdminResourceController) getUintParam(ctx *gin.Context, paramName string) (uint, error) {
+	paramStr := ctx.Param(paramName)
+	if paramStr == "" {
+		return 0, fmt.Errorf("parameter not found")
+	}
+	var result uint
+	_, err := fmt.Sscanf(paramStr, "%d", &result)
+	return result, err
+}
+
+func (ctl *AdminResourceController) respondError(ctx *gin.Context, code errInfos.ErrCode, message string) {
+	ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+		Code:    code,
+		Message: message,
 	})
 }

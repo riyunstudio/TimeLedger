@@ -36,6 +36,18 @@ func (rp *CourseRepository) ListByCenterID(ctx context.Context, centerID uint) (
 	return data, err
 }
 
+func (rp *CourseRepository) ListActiveByCenterID(ctx context.Context, centerID uint) ([]models.Course, error) {
+	var data []models.Course
+	err := rp.app.MySQL.RDB.WithContext(ctx).Where("center_id = ? AND is_active = ?", centerID, true).Find(&data).Error
+	return data, err
+}
+
+func (rp *CourseRepository) ToggleActive(ctx context.Context, id uint, centerID uint, isActive bool) error {
+	return rp.app.MySQL.WDB.WithContext(ctx).
+		Where("id = ? AND center_id = ?", id, centerID).
+		Update("is_active", isActive).Error
+}
+
 func (rp *CourseRepository) Create(ctx context.Context, data models.Course) (models.Course, error) {
 	err := rp.app.MySQL.WDB.WithContext(ctx).Create(&data).Error
 	return data, err

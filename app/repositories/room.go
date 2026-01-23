@@ -36,6 +36,18 @@ func (rp *RoomRepository) ListByCenterID(ctx context.Context, centerID uint) ([]
 	return data, err
 }
 
+func (rp *RoomRepository) ListActiveByCenterID(ctx context.Context, centerID uint) ([]models.Room, error) {
+	var data []models.Room
+	err := rp.app.MySQL.RDB.WithContext(ctx).Where("center_id = ? AND is_active = ?", centerID, true).Find(&data).Error
+	return data, err
+}
+
+func (rp *RoomRepository) ToggleActive(ctx context.Context, id uint, centerID uint, isActive bool) error {
+	return rp.app.MySQL.WDB.WithContext(ctx).
+		Where("id = ? AND center_id = ?", id, centerID).
+		Update("is_active", isActive).Error
+}
+
 func (rp *RoomRepository) Create(ctx context.Context, data models.Room) (models.Room, error) {
 	err := rp.app.MySQL.WDB.WithContext(ctx).Create(&data).Error
 	return data, err
