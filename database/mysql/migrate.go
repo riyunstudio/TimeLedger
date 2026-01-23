@@ -9,7 +9,7 @@ import (
 // AutoMigrate 自動建立資料表
 func (db *DB) AutoMigrate() {
 	// 先刪除有問題的資料表，讓 GORM 重新建立（解決外鍵類型不相容問題）
-	dropTablesForReschema(db)
+	// dropTablesForReschema(db)
 
 	if err := db.WDB.AutoMigrate(
 		&models.User{},
