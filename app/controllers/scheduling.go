@@ -9,6 +9,7 @@ import (
 	"timeLedger/app/repositories"
 	"timeLedger/app/services"
 	"timeLedger/global"
+	"timeLedger/global/errInfos"
 
 	"github.com/gin-gonic/gin"
 )
@@ -20,6 +21,7 @@ type SchedulingController struct {
 	expansionService  services.ScheduleExpansionService
 	exceptionService  services.ScheduleExceptionService
 	auditLogRepo      *repositories.AuditLogRepository
+	centerRepo        *repositories.CenterRepository
 }
 
 func NewSchedulingController(app *app.App) *SchedulingController {
@@ -29,6 +31,7 @@ func NewSchedulingController(app *app.App) *SchedulingController {
 		expansionService:  services.NewScheduleExpansionService(app),
 		exceptionService:  services.NewScheduleExceptionService(app),
 		auditLogRepo:      repositories.NewAuditLogRepository(app),
+		centerRepo:        repositories.NewCenterRepository(app),
 	}
 }
 
@@ -612,5 +615,89 @@ func (ctl *SchedulingController) DetectPhaseTransitions(ctx *gin.Context) {
 		Code:    0,
 		Message: "OK",
 		Datas:   transitions,
+	})
+}
+
+type CheckRuleLockStatusRequest struct {
+	RuleID        uint      `json:"rule_id" binding:"required"`
+	ExceptionDate time.Time `json:"exception_date" binding:"required"`
+}
+
+type CheckRuleLockStatusResponse struct {
+	IsLocked      bool       `json:"is_locked"`
+	LockReason    string     `json:"lock_reason,omitempty"`
+	LockAt        *time.Time `json:"lock_at,omitempty"`
+	Deadline      time.Time  `json:"deadline"`
+	DaysRemaining int        `json:"days_remaining"`
+}
+
+func (ctl *SchedulingController) CheckRuleLockStatus(ctx *gin.Context) {
+	centerID := ctx.GetUint(global.CenterIDKey)
+	if centerID == 0 {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Center ID required",
+		})
+		return
+	}
+
+	var req CheckRuleLockStatusRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Invalid request parameters: " + err.Error(),
+		})
+		return
+	}
+
+	scheduleRuleRepo := repositories.NewScheduleRuleRepository(ctl.app)
+	rule, err := scheduleRuleRepo.GetByID(ctx, req.RuleID)
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, global.ApiResponse{
+			Code:    errInfos.NOT_FOUND,
+			Message: "Rule not found",
+		})
+		return
+	}
+
+	if rule.CenterID != centerID {
+		ctx.JSON(http.StatusForbidden, global.ApiResponse{
+			Code:    errInfos.FORBIDDEN,
+			Message: "Rule does not belong to this center",
+		})
+		return
+	}
+
+	now := time.Now()
+	response := CheckRuleLockStatusResponse{
+		DaysRemaining: -1,
+	}
+
+	if rule.LockAt != nil && now.After(*rule.LockAt) {
+		response.IsLocked = true
+		response.LockReason = "已超過異動截止日"
+		response.LockAt = rule.LockAt
+	}
+
+	center, _ := ctl.centerRepo.GetByID(ctx, centerID)
+	leadDays := center.Settings.ExceptionLeadDays
+	if leadDays <= 0 {
+		leadDays = 14
+	}
+
+	deadline := req.ExceptionDate.AddDate(0, 0, -leadDays)
+	response.Deadline = deadline
+	daysRemaining := int(deadline.Sub(now).Hours() / 24)
+	response.DaysRemaining = daysRemaining
+
+	if daysRemaining < 0 && !response.IsLocked {
+		response.IsLocked = true
+		response.LockReason = fmt.Sprintf("已超過異動截止日（需提前 %d 天申請）", leadDays)
+	}
+
+	ctx.JSON(http.StatusOK, global.ApiResponse{
+		Code:    0,
+		Message: "OK",
+		Datas:   response,
 	})
 }

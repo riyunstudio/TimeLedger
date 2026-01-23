@@ -51,9 +51,9 @@
 | | 9.3 Exception Revoke | 撤回申請 | `[X] DONE` | ✅ TeacherController.RevokeException 已實作 |
 | | 9.4 Approval Workflow | 管理員審核 | `[X] DONE` | ✅ SchedulingController 已實作 |
 | | 9.5 Review Fields | 審核欄位 | `[X] DONE` | ✅ 已有 reviewed_at, reviewed_by, review_note 欄位 |
-| | **Stage 10** | **預約排課與截止鎖定** | `[ ] TODO` | 待開始 |
-| | 10.1 Locking Logic | `lock_at` 與 `exception_lead_days` | `[ ] TODO` | |
-| | 10.2 Lock UI | 按�禁用 | `[ ] TODO` | |
+| | **Stage 10** | **預約排課與截止鎖定** | `[COMPLETED]` | ✅ 完成 |
+| | 10.1 Locking Logic | `lock_at` 與 `exception_lead_days` | `[X] DONE` | ✅ CheckExceptionDeadline 已實作，支援規則鎖定與中心策略 |
+| | 10.2 Lock UI | 按鈕禁用 | `[X] DONE` | ✅ 新增 CheckRuleLockStatus API 供前端禁用按鈕 |
 | | **Stage 11** | **人才市場與智慧媒合** | `[COMPLETED]` | ✅ 完成 |
 | | 11.1 Migrations (Notes) | 建立 `center_teacher_notes` | `[X] DONE` | ✅ 完成 |
 | | 11.2 Talent Discovery | 全球老師搜尋 | `[X] DONE` | ✅ SmartMatchingController 已實作 |
@@ -229,8 +229,45 @@
 - `TestStage8_PhaseTransition_HolidayAwareness` - Phase 與假日關聯
 - 測試結果：**全部通過 (8/8 passed)**
 
+## 10. Stage 10 完整實作記錄 (Stage 10 Complete)
+
+### 10.1 Locking Logic ✅
+- `CheckExceptionDeadline()` 已存在於 `ScheduleExceptionService`
+- 支援規則級鎖定 (`lock_at`) 與中心級策略 (`exception_lead_days`)
+- 預設 14 天提前申請政策
+
+### 10.2 Lock UI API ✅
+**新增 Admin API** (`app/controllers/scheduling.go`):
+- `CheckRuleLockStatus()` - 管理員檢查規則鎖定狀態
+- 新增路由: `POST /api/v1/admin/scheduling/check-rule-lock`
+
+**新增 Teacher API** (`app/controllers/teacher.go`):
+- `CheckRuleLockStatus()` - 老師檢查是否可以提出異動
+- 新增路由: `POST /api/v1/teacher/scheduling/check-rule-lock`
+
+**API Response 格式**:
+```json
+{
+  "is_locked": true,
+  "lock_reason": "已超過異動截止日（需提前 14 天申請）",
+  "deadline": "2026-01-11T00:00:00Z",
+  "days_remaining": -4
+}
+```
+
+### 10.3 Stage 10 單元測試 ✅
+**建立 `testing/test/stage10_locking_test.go`**:
+- `TestStage10_LockingLogic` - 鎖定邏輯測試
+- `TestStage10_ExceptionLeadDays` - 提前天數計算測試
+- `TestStage10_CenterPolicy` - 中心策略測試
+- `TestStage10_CheckDeadlineLogic` - 截止日邏輯測試
+- `TestStage10_ScheduleRule_LockAt` - 規則鎖定欄位測試
+- `TestStage10_ExceptionRequest_Validation` - 異動請求驗證測試
+- 測試結果：**全部通過 (11/11 passed)**
+
 ### 下一步
-- 繼續 Stage 10: 預約排課與截止鎖定
+- 持續優化現有功能
+- 處理 Stage 4.5 循環編輯功能 (8.5)
 
 ## 4. 已知問題 (Known Issues)
 

@@ -1619,3 +1619,75 @@ func generateInviteToken() string {
 	}
 	return fmt.Sprintf("%x", b)
 }
+
+type CheckTeacherRuleLockRequest struct {
+	RuleID        uint   `json:"rule_id" binding:"required"`
+	ExceptionDate string `json:"exception_date" binding:"required"`
+}
+
+type CheckTeacherRuleLockResponse struct {
+	IsLocked      bool       `json:"is_locked"`
+	LockReason    string     `json:"lock_reason,omitempty"`
+	Deadline      *time.Time `json:"deadline,omitempty"`
+	DaysRemaining int        `json:"days_remaining"`
+}
+
+func (ctl *TeacherController) CheckRuleLockStatus(ctx *gin.Context) {
+	teacherID := ctx.GetUint(global.UserIDKey)
+	if teacherID == 0 {
+		ctx.JSON(http.StatusUnauthorized, global.ApiResponse{
+			Code:    errInfos.UNAUTHORIZED,
+			Message: "Teacher ID not found",
+		})
+		return
+	}
+
+	var req CheckTeacherRuleLockRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    errInfos.PARAMS_VALIDATE_ERROR,
+			Message: "Invalid request parameters",
+		})
+		return
+	}
+
+	rule, err := ctl.scheduleRuleRepo.GetByID(ctx, req.RuleID)
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, global.ApiResponse{
+			Code:    errInfos.NOT_FOUND,
+			Message: "Rule not found",
+		})
+		return
+	}
+
+	exceptionDate, err := time.Parse("2006-01-02", req.ExceptionDate)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    errInfos.PARAMS_VALIDATE_ERROR,
+			Message: "Invalid date format, expected YYYY-MM-DD",
+		})
+		return
+	}
+
+	allowed, reasonStr, _ := ctl.exceptionService.CheckExceptionDeadline(ctx, rule.CenterID, req.RuleID, exceptionDate)
+
+	response := CheckTeacherRuleLockResponse{
+		IsLocked:   !allowed,
+		LockReason: reasonStr,
+	}
+
+	if !allowed {
+		ctx.JSON(http.StatusOK, global.ApiResponse{
+			Code:    0,
+			Message: "Rule is locked",
+			Datas:   response,
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, global.ApiResponse{
+		Code:    0,
+		Message: "Rule is available for exception",
+		Datas:   response,
+	})
+}

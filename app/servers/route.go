@@ -70,6 +70,7 @@ func (s *Server) LoadRoutes() {
 		{http.MethodGet, "/api/v1/teacher/exceptions", s.action.teacher.GetExceptions, []gin.HandlerFunc{authMiddleware.Authenticate()}},
 		{http.MethodPost, "/api/v1/teacher/exceptions", s.action.teacher.CreateException, []gin.HandlerFunc{authMiddleware.Authenticate()}},
 		{http.MethodPost, "/api/v1/teacher/exceptions/:id/revoke", s.action.teacher.RevokeException, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+		{http.MethodPost, "/api/v1/teacher/scheduling/check-rule-lock", s.action.teacher.CheckRuleLockStatus, []gin.HandlerFunc{authMiddleware.Authenticate()}},
 
 		// Teacher - Admin
 		{http.MethodGet, "/api/v1/teachers", s.action.teacher.ListTeachers, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireAdmin()}},
@@ -111,6 +112,7 @@ func (s *Server) LoadRoutes() {
 		{http.MethodGet, "/api/v1/admin/centers/:id/exceptions", s.action.scheduling.GetExceptionsByDateRange, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodPost, "/api/v1/admin/centers/:id/expand-rules", s.action.scheduling.ExpandRules, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodPost, "/api/v1/admin/centers/:id/detect-phase-transitions", s.action.scheduling.DetectPhaseTransitions, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodPost, "/api/v1/admin/scheduling/check-rule-lock", s.action.scheduling.CheckRuleLockStatus, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 
 		// Admin - Resources
 		{http.MethodGet, "/api/v1/admin/rooms", s.action.adminResource.GetRooms, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
