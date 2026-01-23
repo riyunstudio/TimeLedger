@@ -43,9 +43,12 @@ func (rp *CourseRepository) ListActiveByCenterID(ctx context.Context, centerID u
 }
 
 func (rp *CourseRepository) ToggleActive(ctx context.Context, id uint, centerID uint, isActive bool) error {
-	return rp.app.MySQL.WDB.WithContext(ctx).
+	result := rp.app.MySQL.WDB.WithContext(ctx).
+		Model(&models.Course{}).
 		Where("id = ? AND center_id = ?", id, centerID).
-		Update("is_active", isActive).Error
+		Update("is_active", isActive)
+
+	return result.Error
 }
 
 func (rp *CourseRepository) Create(ctx context.Context, data models.Course) (models.Course, error) {

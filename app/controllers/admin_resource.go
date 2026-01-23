@@ -885,7 +885,7 @@ func (ctl *AdminResourceController) ToggleCourseActive(ctx *gin.Context) {
 	}
 
 	if err := ctl.courseRepository.ToggleActive(ctx, courseID, centerID, req.IsActive); err != nil {
-		ctl.respondError(ctx, errInfos.SQL_ERROR, "Failed to toggle course active status")
+		ctl.respondError(ctx, errInfos.SQL_ERROR, "Failed to toggle course active status: "+err.Error())
 		return
 	}
 
@@ -1001,7 +1001,7 @@ func (ctl *AdminResourceController) ToggleOfferingActive(ctx *gin.Context) {
 }
 
 type ToggleActiveRequest struct {
-	IsActive bool `json:"is_active" binding:"required"`
+	IsActive bool `json:"is_active"`
 }
 
 type InvitationStatsResponse struct {
