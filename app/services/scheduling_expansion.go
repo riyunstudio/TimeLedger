@@ -455,3 +455,421 @@ func (s *ScheduleExceptionServiceImpl) GetPendingExceptions(ctx context.Context,
 
 	return exceptions, err
 }
+
+type ScheduleRecurrenceServiceImpl struct {
+	BaseService
+	app           *app.App
+	ruleRepo      *repositories.ScheduleRuleRepository
+	exceptionRepo *repositories.ScheduleExceptionRepository
+	expansionSvc  ScheduleExpansionService
+	auditLogRepo  *repositories.AuditLogRepository
+	offeringRepo  *repositories.OfferingRepository
+}
+
+func NewScheduleRecurrenceService(app *app.App) ScheduleRecurrenceService {
+	svc := &ScheduleRecurrenceServiceImpl{
+		app:           app,
+		ruleRepo:      repositories.NewScheduleRuleRepository(app),
+		exceptionRepo: repositories.NewScheduleExceptionRepository(app),
+		expansionSvc:  NewScheduleExpansionService(app),
+		auditLogRepo:  repositories.NewAuditLogRepository(app),
+		offeringRepo:  repositories.NewOfferingRepository(app),
+	}
+	return svc
+}
+
+func (s *ScheduleRecurrenceServiceImpl) PreviewAffectedSessions(ctx context.Context, ruleID uint, editDate time.Time, mode RecurrenceEditMode) (RecurrenceEditPreview, error) {
+	rule, err := s.ruleRepo.GetByID(ctx, ruleID)
+	if err != nil {
+		return RecurrenceEditPreview{}, err
+	}
+
+	preview := RecurrenceEditPreview{
+		Mode: mode,
+	}
+
+	switch mode {
+	case RecurrenceEditSingle:
+		preview.AffectedCount = 1
+		preview.AffectedDates = []time.Time{editDate}
+	case RecurrenceEditFuture:
+		futureDates, err := s.getFutureOccurrences(rule, editDate)
+		if err != nil {
+			return RecurrenceEditPreview{}, err
+		}
+		preview.AffectedCount = len(futureDates)
+		preview.AffectedDates = futureDates
+		preview.WillCreateRule = true
+	case RecurrenceEditAll:
+		allDates, err := s.getAllOccurrences(rule)
+		if err != nil {
+			return RecurrenceEditPreview{}, err
+		}
+		preview.AffectedCount = len(allDates)
+		preview.AffectedDates = allDates
+	}
+
+	return preview, nil
+}
+
+func (s *ScheduleRecurrenceServiceImpl) getFutureOccurrences(rule models.ScheduleRule, fromDate time.Time) ([]time.Time, error) {
+	var dates []time.Time
+	current := fromDate
+
+	effectiveEnd := rule.EffectiveRange.EndDate
+	if effectiveEnd.IsZero() {
+		return dates, nil
+	}
+
+	for !current.After(effectiveEnd) {
+		currentWeekday := int(current.Weekday())
+		if currentWeekday == 0 {
+			currentWeekday = 7
+		}
+		if currentWeekday == rule.Weekday {
+			dates = append(dates, current)
+		}
+		current = current.AddDate(0, 0, 1)
+	}
+
+	return dates, nil
+}
+
+func (s *ScheduleRecurrenceServiceImpl) getAllOccurrences(rule models.ScheduleRule) ([]time.Time, error) {
+	var dates []time.Time
+	current := rule.EffectiveRange.StartDate
+
+	effectiveEnd := rule.EffectiveRange.EndDate
+	if effectiveEnd.IsZero() {
+		return dates, nil
+	}
+
+	for !current.After(effectiveEnd) {
+		currentWeekday := int(current.Weekday())
+		if currentWeekday == 0 {
+			currentWeekday = 7
+		}
+		if currentWeekday == rule.Weekday {
+			dates = append(dates, current)
+		}
+		current = current.AddDate(0, 0, 1)
+	}
+
+	return dates, nil
+}
+
+func (s *ScheduleRecurrenceServiceImpl) EditRecurringSchedule(ctx context.Context, centerID uint, teacherID uint, req RecurrenceEditRequest) (RecurrenceEditResult, error) {
+	rule, err := s.ruleRepo.GetByID(ctx, req.RuleID)
+	if err != nil {
+		return RecurrenceEditResult{}, err
+	}
+
+	result := RecurrenceEditResult{
+		Mode:             req.Mode,
+		CancelExceptions: []models.ScheduleException{},
+		AddExceptions:    []models.ScheduleException{},
+		AffectedCount:    0,
+	}
+
+	switch req.Mode {
+	case RecurrenceEditSingle:
+		cancelExc, addExc, err := s.editSingle(ctx, centerID, teacherID, rule, req)
+		if err != nil {
+			return RecurrenceEditResult{}, err
+		}
+		result.CancelExceptions = append(result.CancelExceptions, cancelExc)
+		result.AddExceptions = append(result.AddExceptions, addExc)
+		result.AffectedCount = 1
+
+	case RecurrenceEditFuture:
+		newRule, cancelExcs, addExcs, err := s.editFuture(ctx, centerID, teacherID, rule, req)
+		if err != nil {
+			return RecurrenceEditResult{}, err
+		}
+		result.NewRule = newRule
+		result.CancelExceptions = cancelExcs
+		result.AddExceptions = addExcs
+		preview, _ := s.PreviewAffectedSessions(ctx, req.RuleID, req.EditDate, RecurrenceEditFuture)
+		result.AffectedCount = preview.AffectedCount
+
+	case RecurrenceEditAll:
+		updatedRule, err := s.editAll(ctx, centerID, teacherID, rule, req)
+		if err != nil {
+			return RecurrenceEditResult{}, err
+		}
+		result.UpdatedRule = updatedRule
+		preview, _ := s.PreviewAffectedSessions(ctx, req.RuleID, req.EditDate, RecurrenceEditAll)
+		result.AffectedCount = preview.AffectedCount
+	}
+
+	return result, nil
+}
+
+func (s *ScheduleRecurrenceServiceImpl) editSingle(ctx context.Context, centerID uint, teacherID uint, rule models.ScheduleRule, req RecurrenceEditRequest) (models.ScheduleException, models.ScheduleException, error) {
+	cancelExc := models.ScheduleException{
+		CenterID:     centerID,
+		RuleID:       req.RuleID,
+		OriginalDate: req.EditDate,
+		Type:         "CANCEL",
+		Status:       "PENDING",
+		Reason:       req.Reason,
+	}
+	createdCancel, err := s.exceptionRepo.Create(ctx, cancelExc)
+	if err != nil {
+		return models.ScheduleException{}, models.ScheduleException{}, err
+	}
+
+	newStartAt := time.Date(req.EditDate.Year(), req.EditDate.Month(), req.EditDate.Day(), 0, 0, 0, 0, time.UTC)
+	newEndAt := time.Date(req.EditDate.Year(), req.EditDate.Month(), req.EditDate.Day(), 0, 0, 0, 0, time.UTC)
+
+	if req.NewStartTime != "" {
+		parsedStart, _ := time.Parse("15:04:05", req.NewStartTime)
+		newStartAt = time.Date(req.EditDate.Year(), req.EditDate.Month(), req.EditDate.Day(),
+			parsedStart.Hour(), parsedStart.Minute(), 0, 0, time.UTC)
+	}
+	if req.NewEndTime != "" {
+		parsedEnd, _ := time.Parse("15:04:05", req.NewEndTime)
+		newEndAt = time.Date(req.EditDate.Year(), req.EditDate.Month(), req.EditDate.Day(),
+			parsedEnd.Hour(), parsedEnd.Minute(), 0, 0, time.UTC)
+	}
+
+	addExc := models.ScheduleException{
+		CenterID:     centerID,
+		RuleID:       req.RuleID,
+		OriginalDate: req.EditDate,
+		Type:         "ADD",
+		Status:       "PENDING",
+		NewStartAt:   &newStartAt,
+		NewEndAt:     &newEndAt,
+		NewTeacherID: req.NewTeacherID,
+		NewRoomID:    req.NewRoomID,
+		Reason:       req.Reason,
+	}
+	createdAdd, err := s.exceptionRepo.Create(ctx, addExc)
+	if err != nil {
+		return createdCancel, models.ScheduleException{}, err
+	}
+
+	s.auditLogRepo.Create(ctx, models.AuditLog{
+		CenterID:   centerID,
+		ActorType:  "TEACHER",
+		ActorID:    teacherID,
+		Action:     "EDIT_SINGLE_OCCURRENCE",
+		TargetType: "ScheduleException",
+		TargetID:   createdCancel.ID,
+		Payload:    models.AuditPayload{After: fmt.Sprintf("Edit single occurrence for rule %d on %s", req.RuleID, req.EditDate.Format("2006-01-02"))},
+	})
+
+	return createdCancel, createdAdd, nil
+}
+
+func (s *ScheduleRecurrenceServiceImpl) editFuture(ctx context.Context, centerID uint, teacherID uint, rule models.ScheduleRule, req RecurrenceEditRequest) (*models.ScheduleRule, []models.ScheduleException, []models.ScheduleException, error) {
+	preview, err := s.PreviewAffectedSessions(ctx, req.RuleID, req.EditDate, RecurrenceEditFuture)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	var cancelExcs []models.ScheduleException
+	var addExcs []models.ScheduleException
+
+	for _, date := range preview.AffectedDates {
+		cancelExc := models.ScheduleException{
+			CenterID:     centerID,
+			RuleID:       req.RuleID,
+			OriginalDate: date,
+			Type:         "CANCEL",
+			Status:       "PENDING",
+			Reason:       req.Reason,
+		}
+		createdCancel, err := s.exceptionRepo.Create(ctx, cancelExc)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		cancelExcs = append(cancelExcs, createdCancel)
+
+		newStartAt := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.UTC)
+		newEndAt := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.UTC)
+
+		startTime := req.NewStartTime
+		if startTime == "" {
+			startTime = rule.StartTime
+		}
+		endTime := req.NewEndTime
+		if endTime == "" {
+			endTime = rule.EndTime
+		}
+
+		parsedStart, _ := time.Parse("15:04:05", startTime)
+		newStartAt = time.Date(date.Year(), date.Month(), date.Day(),
+			parsedStart.Hour(), parsedStart.Minute(), 0, 0, time.UTC)
+		parsedEnd, _ := time.Parse("15:04:05", endTime)
+		newEndAt = time.Date(date.Year(), date.Month(), date.Day(),
+			parsedEnd.Hour(), parsedEnd.Minute(), 0, 0, time.UTC)
+
+		newTeacherID := req.NewTeacherID
+		if newTeacherID == nil {
+			newTeacherID = rule.TeacherID
+		}
+		newRoomID := req.NewRoomID
+		if newRoomID == nil {
+			newRoomIDVal := rule.RoomID
+			newRoomID = &newRoomIDVal
+		}
+
+		addExc := models.ScheduleException{
+			CenterID:     centerID,
+			RuleID:       req.RuleID,
+			OriginalDate: date,
+			Type:         "ADD",
+			Status:       "PENDING",
+			NewStartAt:   &newStartAt,
+			NewEndAt:     &newEndAt,
+			NewTeacherID: newTeacherID,
+			NewRoomID:    newRoomID,
+			Reason:       req.Reason,
+		}
+		createdAdd, err := s.exceptionRepo.Create(ctx, addExc)
+		if err != nil {
+			return nil, cancelExcs, nil, err
+		}
+		addExcs = append(addExcs, createdAdd)
+	}
+
+	newRule := models.ScheduleRule{
+		CenterID:       centerID,
+		OfferingID:     rule.OfferingID,
+		TeacherID:      req.NewTeacherID,
+		RoomID:         *req.NewRoomID,
+		Weekday:        rule.Weekday,
+		StartTime:      req.NewStartTime,
+		EndTime:        req.NewEndTime,
+		EffectiveRange: models.DateRange{StartDate: req.EditDate, EndDate: rule.EffectiveRange.EndDate},
+	}
+
+	if req.NewTeacherID == nil {
+		newRule.TeacherID = rule.TeacherID
+	}
+	if req.NewStartTime == "" {
+		newRule.StartTime = rule.StartTime
+	}
+	if req.NewEndTime == "" {
+		newRule.EndTime = rule.EndTime
+	}
+	if req.NewRoomID == nil {
+		newRule.RoomID = rule.RoomID
+	}
+
+	createdRule, err := s.ruleRepo.Create(ctx, newRule)
+	if err != nil {
+		return nil, cancelExcs, addExcs, err
+	}
+
+	s.auditLogRepo.Create(ctx, models.AuditLog{
+		CenterID:   centerID,
+		ActorType:  "TEACHER",
+		ActorID:    teacherID,
+		Action:     "EDIT_FUTURE_OCCURRENCES",
+		TargetType: "ScheduleRule",
+		TargetID:   createdRule.ID,
+		Payload:    models.AuditPayload{After: fmt.Sprintf("Create new rule %d for future occurrences from %s", createdRule.ID, req.EditDate.Format("2006-01-02"))},
+	})
+
+	return &createdRule, cancelExcs, addExcs, nil
+}
+
+func (s *ScheduleRecurrenceServiceImpl) editAll(ctx context.Context, centerID uint, teacherID uint, rule models.ScheduleRule, req RecurrenceEditRequest) (*models.ScheduleRule, error) {
+	if req.NewTeacherID != nil {
+		rule.TeacherID = req.NewTeacherID
+	}
+	if req.NewRoomID != nil {
+		rule.RoomID = *req.NewRoomID
+	}
+	if req.NewStartTime != "" {
+		rule.StartTime = req.NewStartTime
+	}
+	if req.NewEndTime != "" {
+		rule.EndTime = req.NewEndTime
+	}
+
+	err := s.ruleRepo.Update(ctx, rule)
+	if err != nil {
+		return nil, err
+	}
+
+	s.auditLogRepo.Create(ctx, models.AuditLog{
+		CenterID:   centerID,
+		ActorType:  "TEACHER",
+		ActorID:    teacherID,
+		Action:     "EDIT_ALL_OCCURRENCES",
+		TargetType: "ScheduleRule",
+		TargetID:   rule.ID,
+		Payload:    models.AuditPayload{After: fmt.Sprintf("Update all occurrences for rule %d", rule.ID)},
+	})
+
+	return &rule, nil
+}
+
+func (s *ScheduleRecurrenceServiceImpl) DeleteRecurringSchedule(ctx context.Context, centerID uint, teacherID uint, ruleID uint, editDate time.Time, mode RecurrenceEditMode, reason string) (RecurrenceEditResult, error) {
+	result := RecurrenceEditResult{
+		Mode:             mode,
+		CancelExceptions: []models.ScheduleException{},
+		AffectedCount:    0,
+	}
+
+	switch mode {
+	case RecurrenceEditSingle:
+		cancelExc := models.ScheduleException{
+			CenterID:     centerID,
+			RuleID:       ruleID,
+			OriginalDate: editDate,
+			Type:         "CANCEL",
+			Status:       "PENDING",
+			Reason:       reason,
+		}
+		created, err := s.exceptionRepo.Create(ctx, cancelExc)
+		if err != nil {
+			return RecurrenceEditResult{}, err
+		}
+		result.CancelExceptions = append(result.CancelExceptions, created)
+		result.AffectedCount = 1
+
+	case RecurrenceEditFuture:
+		preview, _ := s.PreviewAffectedSessions(ctx, ruleID, editDate, RecurrenceEditFuture)
+		for _, date := range preview.AffectedDates {
+			cancelExc := models.ScheduleException{
+				CenterID:     centerID,
+				RuleID:       ruleID,
+				OriginalDate: date,
+				Type:         "CANCEL",
+				Status:       "PENDING",
+				Reason:       reason,
+			}
+			created, err := s.exceptionRepo.Create(ctx, cancelExc)
+			if err != nil {
+				return RecurrenceEditResult{}, err
+			}
+			result.CancelExceptions = append(result.CancelExceptions, created)
+		}
+		result.AffectedCount = preview.AffectedCount
+
+	case RecurrenceEditAll:
+		err := s.ruleRepo.Delete(ctx, ruleID)
+		if err != nil {
+			return RecurrenceEditResult{}, err
+		}
+		preview, _ := s.PreviewAffectedSessions(ctx, ruleID, editDate, RecurrenceEditAll)
+		result.AffectedCount = preview.AffectedCount
+	}
+
+	s.auditLogRepo.Create(ctx, models.AuditLog{
+		CenterID:   centerID,
+		ActorType:  "TEACHER",
+		ActorID:    teacherID,
+		Action:     "DELETE_RECURRING_SCHEDULE",
+		TargetType: "ScheduleRule",
+		TargetID:   ruleID,
+		Payload:    models.AuditPayload{After: fmt.Sprintf("Delete recurring schedule mode=%s, affected=%d", mode, result.AffectedCount)},
+	})
+
+	return result, nil
+}

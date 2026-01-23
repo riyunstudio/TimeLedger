@@ -71,6 +71,9 @@ func (s *Server) LoadRoutes() {
 		{http.MethodPost, "/api/v1/teacher/exceptions", s.action.teacher.CreateException, []gin.HandlerFunc{authMiddleware.Authenticate()}},
 		{http.MethodPost, "/api/v1/teacher/exceptions/:id/revoke", s.action.teacher.RevokeException, []gin.HandlerFunc{authMiddleware.Authenticate()}},
 		{http.MethodPost, "/api/v1/teacher/scheduling/check-rule-lock", s.action.teacher.CheckRuleLockStatus, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+		{http.MethodPost, "/api/v1/teacher/scheduling/preview-recurrence-edit", s.action.teacher.PreviewRecurrenceEdit, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+		{http.MethodPost, "/api/v1/teacher/scheduling/edit-recurring", s.action.teacher.EditRecurringSchedule, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+		{http.MethodPost, "/api/v1/teacher/scheduling/delete-recurring", s.action.teacher.DeleteRecurringSchedule, []gin.HandlerFunc{authMiddleware.Authenticate()}},
 
 		// Teacher - Admin
 		{http.MethodGet, "/api/v1/teachers", s.action.teacher.ListTeachers, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireAdmin()}},

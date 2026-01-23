@@ -109,3 +109,58 @@ type PhaseTransition struct {
 	NextEndTime   string    `json:"next_end_time,omitempty"`
 	HasGap        bool      `json:"has_gap"`
 }
+
+type RecurrenceEditMode string
+
+const (
+	RecurrenceEditSingle RecurrenceEditMode = "SINGLE"
+	RecurrenceEditFuture RecurrenceEditMode = "FUTURE"
+	RecurrenceEditAll    RecurrenceEditMode = "ALL"
+)
+
+type RecurrenceEditRequest struct {
+	RuleID       uint               `json:"rule_id" binding:"required"`
+	EditDate     time.Time          `json:"edit_date" binding:"required"`
+	Mode         RecurrenceEditMode `json:"mode" binding:"required,oneof=SINGLE FUTURE ALL"`
+	NewStartTime string             `json:"new_start_time,omitempty"`
+	NewEndTime   string             `json:"new_end_time,omitempty"`
+	NewRoomID    *uint              `json:"new_room_id,omitempty"`
+	NewTeacherID *uint              `json:"new_teacher_id,omitempty"`
+	Reason       string             `json:"reason"`
+}
+
+type RecurrenceEditPreview struct {
+	Mode           RecurrenceEditMode `json:"mode"`
+	AffectedCount  int                `json:"affected_count"`
+	AffectedDates  []time.Time        `json:"affected_dates"`
+	WillCreateRule bool               `json:"will_create_rule,omitempty"`
+	NewRuleID      *uint              `json:"new_rule_id,omitempty"`
+}
+
+type RecurrenceEditResult struct {
+	Mode             RecurrenceEditMode         `json:"mode"`
+	CancelExceptions []models.ScheduleException `json:"cancel_exceptions"`
+	AddExceptions    []models.ScheduleException `json:"add_exceptions,omitempty"`
+	UpdatedRule      *models.ScheduleRule       `json:"updated_rule,omitempty"`
+	NewRule          *models.ScheduleRule       `json:"new_rule,omitempty"`
+	AffectedCount    int                        `json:"affected_count"`
+}
+
+type ScheduleRecurrenceService interface {
+	// PreviewAffectedSessions 預覽將被影響的場次
+	// 根據編輯模式和日期，返回受影響的場次列表
+	PreviewAffectedSessions(ctx context.Context, ruleID uint, editDate time.Time, mode RecurrenceEditMode) (RecurrenceEditPreview, error)
+
+	// EditRecurringSchedule 編輯循環排課
+	// 支援 SINGLE/FUTURE/ALL 三種模式
+	// SINGLE: 產生 CANCEL + ADD 例外單
+	// FUTURE: 產生 CANCEL + ADD 例外單，並創建新規則
+	// ALL: 修改規則的有效範圍或基本設定
+	EditRecurringSchedule(ctx context.Context, centerID uint, teacherID uint, req RecurrenceEditRequest) (RecurrenceEditResult, error)
+
+	// DeleteRecurringSchedule 刪除循環排課
+	// SINGLE: 產生 CANCEL 例外單
+	// FUTURE: 產生 CANCEL 例外單，並創建新規則（空規則或調整有效範圍）
+	// ALL: 軟刪除規則
+	DeleteRecurringSchedule(ctx context.Context, centerID uint, teacherID uint, ruleID uint, editDate time.Time, mode RecurrenceEditMode, reason string) (RecurrenceEditResult, error)
+}

@@ -26,6 +26,7 @@ type TeacherController struct {
 	exceptionRepo     *repositories.ScheduleExceptionRepository
 	exceptionService  services.ScheduleExceptionService
 	expansionService  services.ScheduleExpansionService
+	recurrenceService services.ScheduleRecurrenceService
 	auditLogRepo      *repositories.AuditLogRepository
 	skillRepo         *repositories.TeacherSkillRepository
 	certificateRepo   *repositories.TeacherCertificateRepository
@@ -42,6 +43,7 @@ func NewTeacherController(app *app.App) *TeacherController {
 		exceptionRepo:     repositories.NewScheduleExceptionRepository(app),
 		exceptionService:  services.NewScheduleExceptionService(app),
 		expansionService:  services.NewScheduleExpansionService(app),
+		recurrenceService: services.NewScheduleRecurrenceService(app),
 		auditLogRepo:      repositories.NewAuditLogRepository(app),
 		skillRepo:         repositories.NewTeacherSkillRepository(app),
 		certificateRepo:   repositories.NewTeacherCertificateRepository(app),
@@ -1689,5 +1691,159 @@ func (ctl *TeacherController) CheckRuleLockStatus(ctx *gin.Context) {
 		Code:    0,
 		Message: "Rule is available for exception",
 		Datas:   response,
+	})
+}
+
+type PreviewRecurrenceEditRequest struct {
+	RuleID   uint   `json:"rule_id" binding:"required"`
+	EditDate string `json:"edit_date" binding:"required"`
+	Mode     string `json:"mode" binding:"required,oneof=SINGLE FUTURE ALL"`
+}
+
+func (ctl *TeacherController) PreviewRecurrenceEdit(ctx *gin.Context) {
+	teacherID := ctx.GetUint(global.UserIDKey)
+	if teacherID == 0 {
+		ctx.JSON(http.StatusUnauthorized, global.ApiResponse{
+			Code:    errInfos.UNAUTHORIZED,
+			Message: "Teacher ID not found",
+		})
+		return
+	}
+
+	var req PreviewRecurrenceEditRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    errInfos.PARAMS_VALIDATE_ERROR,
+			Message: "Invalid request parameters",
+		})
+		return
+	}
+
+	editDate, err := time.Parse("2006-01-02", req.EditDate)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    errInfos.PARAMS_VALIDATE_ERROR,
+			Message: "Invalid date format, expected YYYY-MM-DD",
+		})
+		return
+	}
+
+	preview, err := ctl.recurrenceService.PreviewAffectedSessions(ctx, req.RuleID, editDate, services.RecurrenceEditMode(req.Mode))
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
+			Code:    errInfos.SYSTEM_ERROR,
+			Message: "Failed to preview affected sessions",
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, global.ApiResponse{
+		Code:    0,
+		Message: "Preview generated",
+		Datas:   preview,
+	})
+}
+
+func (ctl *TeacherController) EditRecurringSchedule(ctx *gin.Context) {
+	teacherID := ctx.GetUint(global.UserIDKey)
+	if teacherID == 0 {
+		ctx.JSON(http.StatusUnauthorized, global.ApiResponse{
+			Code:    errInfos.UNAUTHORIZED,
+			Message: "Teacher ID not found",
+		})
+		return
+	}
+
+	var req services.RecurrenceEditRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    errInfos.PARAMS_VALIDATE_ERROR,
+			Message: "Invalid request parameters",
+		})
+		return
+	}
+
+	rule, err := ctl.scheduleRuleRepo.GetByID(ctx, req.RuleID)
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, global.ApiResponse{
+			Code:    errInfos.NOT_FOUND,
+			Message: "Rule not found",
+		})
+		return
+	}
+
+	result, err := ctl.recurrenceService.EditRecurringSchedule(ctx, rule.CenterID, teacherID, req)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
+			Code:    errInfos.SYSTEM_ERROR,
+			Message: err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, global.ApiResponse{
+		Code:    0,
+		Message: "Schedule edited successfully",
+		Datas:   result,
+	})
+}
+
+type DeleteRecurringScheduleRequest struct {
+	RuleID   uint   `json:"rule_id" binding:"required"`
+	EditDate string `json:"edit_date" binding:"required"`
+	Mode     string `json:"mode" binding:"required,oneof=SINGLE FUTURE ALL"`
+	Reason   string `json:"reason"`
+}
+
+func (ctl *TeacherController) DeleteRecurringSchedule(ctx *gin.Context) {
+	teacherID := ctx.GetUint(global.UserIDKey)
+	if teacherID == 0 {
+		ctx.JSON(http.StatusUnauthorized, global.ApiResponse{
+			Code:    errInfos.UNAUTHORIZED,
+			Message: "Teacher ID not found",
+		})
+		return
+	}
+
+	var req DeleteRecurringScheduleRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    errInfos.PARAMS_VALIDATE_ERROR,
+			Message: "Invalid request parameters",
+		})
+		return
+	}
+
+	editDate, err := time.Parse("2006-01-02", req.EditDate)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    errInfos.PARAMS_VALIDATE_ERROR,
+			Message: "Invalid date format, expected YYYY-MM-DD",
+		})
+		return
+	}
+
+	rule, err := ctl.scheduleRuleRepo.GetByID(ctx, req.RuleID)
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, global.ApiResponse{
+			Code:    errInfos.NOT_FOUND,
+			Message: "Rule not found",
+		})
+		return
+	}
+
+	result, err := ctl.recurrenceService.DeleteRecurringSchedule(ctx, rule.CenterID, teacherID, req.RuleID, editDate, services.RecurrenceEditMode(req.Mode), req.Reason)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
+			Code:    errInfos.SYSTEM_ERROR,
+			Message: err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, global.ApiResponse{
+		Code:    0,
+		Message: "Schedule deleted successfully",
+		Datas:   result,
 	})
 }
