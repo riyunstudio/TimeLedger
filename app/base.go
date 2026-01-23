@@ -30,7 +30,7 @@ func Initialize() *App {
 
 	mysql := mysql.Initialize(env)
 	mysql.AutoMigrate()
-	mysql.Seeds(tools)
+	// mysql.Seeds(tools)
 
 	redis := redis.Initialize(env)
 

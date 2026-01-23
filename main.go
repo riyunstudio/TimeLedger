@@ -10,7 +10,6 @@ import (
 	"timeLedger/app/console"
 	"timeLedger/app/servers"
 	_ "timeLedger/docs"
-	"timeLedger/grpc"
 
 	_ "github.com/joho/godotenv/autoload"
 )
@@ -56,11 +55,11 @@ func main() {
 	gin.Start()
 
 	// gRPC server (optional)
-	grpcEnabled := os.Getenv("GRPC_ENABLED")
-	if grpcEnabled != "false" {
-		grpcSrv := grpc.Initialize(app)
-		grpcSrv.Start()
-	}
+	// grpcEnabled := os.Getenv("GRPC_ENABLED")
+	// if grpcEnabled != "false" {
+	// 	grpcSrv := grpc.Initialize(app)
+	// 	grpcSrv.Start()
+	// }
 
 	// 優雅退出
 	signals := make(chan os.Signal, 1)
