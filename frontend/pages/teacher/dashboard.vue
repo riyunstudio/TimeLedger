@@ -443,7 +443,18 @@ const handleDrop = async (hour: number, date: string) => {
     const day = teacherStore.schedule.days.find(d => d.date === date)
     if (day && draggedItem.value) {
       const itemData = draggedItem.value.data
-      const itemId = itemData?.id || draggedItem.value.id
+      let itemId = itemData?.id || draggedItem.value.id
+
+      // Handle string IDs like "center_1023_rule_344_20260122"
+      if (typeof itemId === 'string') {
+        const numericMatch = itemId.match(/_(\d+)$/)
+        if (numericMatch) {
+          itemId = parseInt(numericMatch[1])
+        } else {
+          itemId = parseInt(itemId.replace(/\D/g, '')) || 0
+        }
+      }
+
       if (itemId) {
         const duration = parseInt(draggedItem.value.end_time.split(':')[0]) - parseInt(draggedItem.value.start_time.split(':')[0])
         const newEndHour = hour + duration
