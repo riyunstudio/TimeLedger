@@ -5,9 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"gitlab.en.mcbwvx.com/frame/teemo/tools"
-	gormMysql "gorm.io/driver/mysql"
-	"gorm.io/gorm"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -22,8 +19,13 @@ import (
 	"timeLedger/global"
 	"timeLedger/global/errInfos"
 
-	"github.com/gin-gonic/gin"
+	"gitlab.en.mcbwvx.com/frame/teemo/tools"
+	gormMysql "gorm.io/driver/mysql"
+	"gorm.io/gorm"
+
 	mockRedis "timeLedger/testing/redis"
+
+	"github.com/gin-gonic/gin"
 )
 
 func setupIntegrationTestApp() (*app.App, *gorm.DB, func()) {
@@ -60,7 +62,7 @@ func setupIntegrationTestApp() (*app.App, *gorm.DB, func()) {
 		Env:   nil,
 		Err:   e,
 		Tools: tool,
-		Mysql: &mysql.DB{WDB: mysqlDB, RDB: mysqlDB},
+		MySQL: &mysql.DB{WDB: mysqlDB, RDB: mysqlDB},
 		Redis: &redis.Redis{DB0: rdb},
 		Api:   nil,
 		Rpc:   nil,

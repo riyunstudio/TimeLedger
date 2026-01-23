@@ -40,7 +40,7 @@ func TestCenterRepository_CRUD(t *testing.T) {
 		Env:   nil,
 		Err:   e,
 		Tools: tool,
-		Mysql: &mysql.DB{WDB: mysqlDB, RDB: mysqlDB},
+		MySQL: &mysql.DB{WDB: mysqlDB, RDB: mysqlDB},
 		Redis: &redis.Redis{DB0: rdb},
 		Api:   nil,
 		Rpc:   nil,
