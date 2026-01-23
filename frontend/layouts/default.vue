@@ -45,6 +45,10 @@
 </template>
 
 <script setup lang="ts">
+const showHeader = ref(true)
+const showNav = ref(true)
+const notificationUI = useNotification()
+
 definePageMeta({
   middleware: ['auth-teacher'],
 })

@@ -23,6 +23,11 @@ export const useTeacherStore = defineStore('teacher', () => {
   const exceptions = ref<ScheduleException[]>([])
   const isMock = ref(false)
 
+  const checkMockMode = () => {
+    if (typeof window === 'undefined') return false
+    return localStorage.getItem('timeledger_mock_mode') === 'true'
+  }
+
   const getWeekStart = (date: Date): Date => {
     const d = new Date(date)
     const day = d.getDay()
@@ -79,6 +84,9 @@ export const useTeacherStore = defineStore('teacher', () => {
     ]
     currentCenter.value = centers.value[0].center || null
     isMock.value = true
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('timeledger_mock_mode', 'true')
+    }
   }
 
   const loadMockSchedule = () => {
@@ -137,7 +145,7 @@ export const useTeacherStore = defineStore('teacher', () => {
   }
 
   const fetchCenters = async () => {
-    if (isMock.value) return
+    if (isMock.value || checkMockMode()) return
 
     try {
       const api = useApi()
@@ -159,7 +167,7 @@ export const useTeacherStore = defineStore('teacher', () => {
   }
 
   const fetchSchedule = async () => {
-    if (isMock.value) {
+    if (isMock.value || checkMockMode()) {
       loadMockSchedule()
       return
     }
@@ -213,7 +221,7 @@ export const useTeacherStore = defineStore('teacher', () => {
   }
 
   const fetchExceptions = async (status?: string) => {
-    if (isMock.value) {
+    if (isMock.value || checkMockMode()) {
       exceptions.value = [
         {
           id: 1,
@@ -268,7 +276,7 @@ export const useTeacherStore = defineStore('teacher', () => {
   const sessionNote = ref<SessionNote | null>(null)
 
   const fetchSessionNote = async (ruleId: number, sessionDate: string) => {
-    if (isMock.value) {
+    if (isMock.value || checkMockMode()) {
       sessionNote.value = {
         id: 1,
         center_id: 0,
@@ -319,7 +327,7 @@ export const useTeacherStore = defineStore('teacher', () => {
   const personalEvents = ref<PersonalEvent[]>([])
 
   const fetchPersonalEvents = async () => {
-    if (isMock.value) {
+    if (isMock.value || checkMockMode()) {
       personalEvents.value = [
         {
           id: 1,
@@ -371,7 +379,7 @@ export const useTeacherStore = defineStore('teacher', () => {
   const skills = ref<TeacherSkill[]>([])
 
   const fetchSkills = async () => {
-    if (isMock.value) {
+    if (isMock.value || checkMockMode()) {
       skills.value = [
         { id: 1, teacher_id: 1, skill_name: '鋼琴', level: 'Advanced', hashtags: [] },
         { id: 2, teacher_id: 1, skill_name: '小提琴', level: 'Intermediate', hashtags: [] },
@@ -404,7 +412,7 @@ export const useTeacherStore = defineStore('teacher', () => {
   const certificates = ref<TeacherCertificate[]>([])
 
   const fetchCertificates = async () => {
-    if (isMock.value) {
+    if (isMock.value || checkMockMode()) {
       certificates.value = [
         { id: 1, teacher_id: 1, certificate_name: '鋼琴檢定證書', issued_by: '音樂協會', issued_date: '2023-06-15' },
       ]
@@ -440,7 +448,7 @@ export const useTeacherStore = defineStore('teacher', () => {
   const profile = ref<Teacher | null>(null)
 
   const fetchProfile = async () => {
-    if (isMock.value) {
+    if (isMock.value || checkMockMode()) {
       profile.value = {
         id: 1,
         name: '老師1',
@@ -499,6 +507,44 @@ export const useTeacherStore = defineStore('teacher', () => {
     }
   }
 
+  const moveScheduleItem = async (data: {
+    item_id: number
+    item_type: 'SCHEDULE_RULE' | 'PERSONAL_EVENT' | 'CENTER_SESSION'
+    center_id: number
+    new_date: string
+    new_start_time: string
+    new_end_time: string
+    update_mode?: 'SINGLE' | 'FUTURE' | 'ALL'
+  }) => {
+    if (isMock.value || checkMockMode()) {
+      await fetchSchedule()
+      return
+    }
+
+    const api = useApi()
+    const endpoint = data.item_type === 'PERSONAL_EVENT'
+      ? `/teacher/me/personal-events/${data.item_id}`
+      : `/teacher/schedule/${data.item_id}/move`
+
+    const body: any = {
+      new_date: data.new_date,
+      new_start_time: data.new_start_time,
+      new_end_time: data.new_end_time,
+    }
+
+    if (data.item_type === 'PERSONAL_EVENT') {
+      body.update_mode = data.update_mode || 'SINGLE'
+      body.start_at = `${data.new_date}T${data.new_start_time}:00`
+      body.end_at = `${data.new_date}T${data.new_end_time}:00`
+    }
+
+    if (data.item_type === 'PERSONAL_EVENT') {
+      await api.patch(endpoint, body)
+    } else {
+      await api.post(endpoint, body)
+    }
+  }
+
   return {
     centers,
     currentCenter,
@@ -538,5 +584,6 @@ export const useTeacherStore = defineStore('teacher', () => {
     updateProfile,
     fetchNotifications,
     markNotificationRead,
+    moveScheduleItem,
   }
 })

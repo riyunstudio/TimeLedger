@@ -1,252 +1,261 @@
 <template>
-   <div class="min-h-screen bg-slate-900">
+  <div class="flex items-center justify-between mb-6">
+    <button
+      @click="changeWeek(-1)"
+      class="glass-btn p-2 rounded-lg shrink-0"
+    >
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+      </svg>
+    </button>
 
-    <main class="p-4 pb-24 max-w-4xl mx-auto">
-      <div class="flex items-center justify-between mb-6">
+    <h2 class="text-lg sm:text-xl font-semibold text-slate-100 truncate px-2">
+      {{ teacherStore.weekLabel }}
+    </h2>
+
+    <button
+      @click="changeWeek(1)"
+      class="glass-btn p-2 rounded-lg shrink-0"
+    >
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+      </svg>
+    </button>
+  </div>
+
+  <div class="flex items-center justify-end mb-4">
+    <div class="glass rounded-lg p-1 flex">
+      <button
+        @click="viewMode = 'grid'"
+        class="px-3 py-1.5 rounded-md text-sm font-medium transition-all"
+        :class="viewMode === 'grid' ? 'bg-primary-500 text-white' : 'text-slate-400 hover:text-slate-200'"
+      >
+        <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+        </svg>
+        網格
+      </button>
+      <button
+        @click="viewMode = 'list'"
+        class="px-3 py-1.5 rounded-md text-sm font-medium transition-all"
+        :class="viewMode === 'list' ? 'bg-primary-500 text-white' : 'text-slate-400 hover:text-slate-200'"
+      >
+        <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+        </svg>
+        列表
+      </button>
+    </div>
+  </div>
+
+  <div
+    v-if="teacherStore.schedule"
+    class="space-y-4"
+  >
+    <!-- Grid View -->
+    <div
+      v-if="viewMode === 'grid'"
+      class="glass-card p-3 sm:p-4 overflow-x-auto"
+    >
+      <!-- Mobile Navigation for Grid -->
+      <div v-if="isMobile" class="flex items-center justify-between mb-2">
         <button
-          @click="changeWeek(-1)"
+          @click="changeGridDay(-1)"
           class="glass-btn p-2 rounded-lg shrink-0"
         >
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
           </svg>
         </button>
-
-        <h2 class="text-lg sm:text-xl font-semibold text-slate-100 truncate px-2">
-          {{ teacherStore.weekLabel }}
-        </h2>
-
+        <span class="text-sm font-medium text-slate-200">{{ gridDayLabel }}</span>
         <button
-          @click="changeWeek(1)"
+          @click="changeGridDay(1)"
           class="glass-btn p-2 rounded-lg shrink-0"
         >
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
           </svg>
         </button>
       </div>
 
-      <div class="flex items-center justify-end mb-4">
-        <div class="glass rounded-lg p-1 flex">
-          <button
-            @click="viewMode = 'grid'"
-            class="px-3 py-1.5 rounded-md text-sm font-medium transition-all"
-            :class="viewMode === 'grid' ? 'bg-primary-500 text-white' : 'text-slate-400 hover:text-slate-200'"
+      <div class="min-w-[350px] sm:min-w-[500px]">
+        <div class="grid" :class="gridColsClass" gap-0.5 sm:gap-1>
+          <!-- Header Row -->
+          <div class="p-1 sm:p-2 text-center bg-white/5 rounded-tl-lg">
+            <span class="text-[10px] text-slate-400"></span>
+          </div>
+          <div
+            v-for="day in displayWeekDays"
+            :key="day.date"
+            class="p-1 sm:p-2 text-center bg-white/5"
           >
-            <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-            </svg>
-            網格
-          </button>
-          <button
-            @click="viewMode = 'list'"
-            class="px-3 py-1.5 rounded-md text-sm font-medium transition-all"
-            :class="viewMode === 'list' ? 'bg-primary-500 text-white' : 'text-slate-400 hover:text-slate-200'"
-          >
-            <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-            </svg>
-            列表
-          </button>
-        </div>
-      </div>
-
-      <div
-        v-if="teacherStore.schedule"
-        class="space-y-4"
-      >
-        <!-- Grid View -->
-        <div
-          v-if="viewMode === 'grid'"
-          class="glass-card p-3 sm:p-4 overflow-x-auto"
-        >
-          <!-- Mobile Navigation for Grid -->
-          <div v-if="isMobile" class="flex items-center justify-between mb-2">
-            <button
-              @click="changeGridDay(-1)"
-              class="glass-btn p-2 rounded-lg shrink-0"
-            >
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-            <span class="text-sm font-medium text-slate-200">{{ gridDayLabel }}</span>
-            <button
-              @click="changeGridDay(1)"
-              class="glass-btn p-2 rounded-lg shrink-0"
-            >
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
+            <div class="text-[10px] text-slate-400">{{ day.weekday }}</div>
+            <div class="text-[clamp(10px,2vw,14px)] font-medium text-slate-100">{{ day.day }}</div>
           </div>
 
-          <div class="min-w-[350px] sm:min-w-[500px]">
-            <div class="grid" :class="gridColsClass" gap-0.5 sm:gap-1>
-              <!-- Header Row -->
-              <div class="p-1 sm:p-2 text-center bg-white/5 rounded-tl-lg">
-                <span class="text-[10px] text-slate-400"></span>
-              </div>
-              <div
-                v-for="day in displayWeekDays"
-                :key="day.date"
-                class="p-1 sm:p-2 text-center bg-white/5"
-              >
-                <div class="text-[10px] text-slate-400">{{ day.weekday }}</div>
-                <div class="text-[clamp(10px,2vw,14px)] font-medium text-slate-100">{{ day.day }}</div>
-              </div>
-
-              <!-- Time Slots -->
-              <template v-for="hour in timeSlots" :key="hour">
-                <div class="p-1 sm:p-2 flex items-center justify-center border-t border-white/5">
-                  <span class="text-[clamp(9px,1.8vw,12px)] text-slate-500">{{ hour }}:00</span>
-                </div>
-                
-                <div
-                  v-for="day in displayWeekDays"
-                  :key="`${hour}-${day.date}`"
-                  class="p-0.5 min-h-[45px] sm:min-h-[50px] border-t border-l border-white/5 relative"
-                  :class="getGridCellClass(day.date, hour)"
-                >
-                  <div
-                    v-for="item in getScheduleItemsAt(day.date, hour)"
-                    :key="item.id"
-                    class="rounded p-1 text-xs cursor-pointer hover:opacity-80 transition-opacity"
-                    :class="getItemBgClass(item)"
-                    @click="openItemDetail(item)"
-                  >
-                    <div class="font-medium text-[clamp(10px,2vw,14px)] truncate text-white leading-tight">{{ item.title }}</div>
-                    <div class="text-[9px] sm:text-[10px] text-slate-300 truncate">{{ item.start_time }}</div>
-                  </div>
-                </div>
-              </template>
-            </div>
-          </div>
-        </div>
-
-        <!-- List View - Daily View -->
-        <div v-else class="space-y-4">
-          <div class="flex items-center justify-between mb-4">
-            <button
-              @click="changeListDay(-1)"
-              class="glass-btn p-2 rounded-lg"
-            >
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-
-            <h3 class="text-lg font-semibold text-slate-100">
-              {{ formatDate(listCurrentDate) }}
-            </h3>
-
-            <button
-              @click="changeListDay(1)"
-              class="glass-btn p-2 rounded-lg"
-            >
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-          </div>
-
-          <div class="glass-card p-4">
-            <div
-              v-if="currentDayItems.length === 0"
-              class="text-center py-12 text-slate-500"
-            >
-              今日無行程
+          <!-- Time Slots -->
+          <template v-for="hour in timeSlots" :key="hour">
+            <div class="p-1 sm:p-2 flex items-center justify-center border-t border-white/5">
+              <span class="text-[clamp(9px,1.8vw,12px)] text-slate-500">{{ hour }}:00</span>
             </div>
 
             <div
-              v-else
-              class="space-y-3"
+              v-for="day in displayWeekDays"
+              :key="`${hour}-${day.date}`"
+              class="p-0.5 min-h-[45px] sm:min-h-[50px] border-t border-l border-white/5 relative"
+              :class="getGridCellClass(day.date, hour)"
+              @dragenter.prevent="handleDragEnter(hour, day.date)"
+              @dragleave.prevent="handleDragLeave"
+              @drop.prevent="handleDrop(hour, day.date)"
+              @dragover.prevent
             >
               <div
-                v-for="item in currentDayItems"
+                v-for="item in getScheduleItemsAt(day.date, hour)"
                 :key="item.id"
-                class="border rounded-xl p-4 cursor-pointer hover:bg-white/5 transition-all"
-                :class="getItemBorderClass(item)"
+                class="rounded p-1 text-xs cursor-grab hover:opacity-80 transition-opacity"
+                :class="getItemBgClass(item)"
+                draggable="true"
+                @dragstart="handleDragStart(item, hour, day.date, $event)"
+                @dragend="handleDragEnd"
                 @click="openItemDetail(item)"
               >
-                <div class="flex items-start gap-4">
-                  <div class="flex-shrink-0 w-16 text-center">
-                    <div class="text-xs text-slate-500 mb-1">{{ item.start_time }}</div>
-                    <div class="text-xs text-slate-600">-</div>
-                    <div class="text-xs text-slate-500 mt-1">{{ item.end_time }}</div>
-                  </div>
-                  
-                  <div class="flex-1 min-w-0">
-                    <div class="flex items-center gap-2 mb-1">
-                      <span
-                        class="w-2 h-2 rounded-full"
-                        :style="{ backgroundColor: item.color || '#10B981' }"
-                      ></span>
-                      <h4 class="font-medium text-slate-100 truncate">
-                        {{ item.title }}
-                        <span v-if="(item.data as any)?.center_name" class="text-primary-400 font-normal">@{{ (item.data as any).center_name }}</span>
-                      </h4>
-                    </div>
-                    <p v-if="item.type === 'SCHEDULE_RULE'" class="text-sm text-slate-400">
-                      課程時段
-                    </p>
-                    <p v-else class="text-sm text-slate-400">
-                      個人行程
-                    </p>
-                  </div>
+                <div class="font-medium text-[clamp(10px,2vw,14px)] truncate text-white leading-tight">{{ item.title }}</div>
+                <div class="text-[9px] sm:text-[10px] text-slate-300 truncate">{{ item.start_time }}</div>
+              </div>
 
-                  <div
-                    v-if="item.status"
-                    class="flex-shrink-0 px-2 py-1 rounded-full text-xs font-medium"
-                    :class="getStatusClass(item.status)"
-                  >
-                    {{ getStatusText(item.status) }}
-                  </div>
+              <div
+                v-if="isDragging && isTargetCell(hour, day.date)"
+                class="absolute inset-0 border-2 border-dashed border-primary-500/50 bg-primary-500/10 flex items-center justify-center rounded"
+              >
+                <span class="text-xs text-primary-400">放置</span>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+    </div>
+
+    <!-- List View - Daily View -->
+    <div v-else class="space-y-4">
+      <div class="flex items-center justify-between mb-4">
+        <button
+          @click="changeListDay(-1)"
+          class="glass-btn p-2 rounded-lg"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+
+        <h3 class="text-lg font-semibold text-slate-100">
+          {{ formatDate(listCurrentDate) }}
+        </h3>
+
+        <button
+          @click="changeListDay(1)"
+          class="glass-btn p-2 rounded-lg"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="glass-card p-4">
+        <div
+          v-if="currentDayItems.length === 0"
+          class="text-center py-12 text-slate-500"
+        >
+          今日無行程
+        </div>
+
+        <div
+          v-else
+          class="space-y-3"
+        >
+          <div
+            v-for="item in currentDayItems"
+            :key="item.id"
+            class="border rounded-xl p-4 cursor-pointer hover:bg-white/5 transition-all"
+            :class="getItemBorderClass(item)"
+            @click="openItemDetail(item)"
+          >
+            <div class="flex items-start gap-4">
+              <div class="flex-shrink-0 w-16 text-center">
+                <div class="text-xs text-slate-500 mb-1">{{ item.start_time }}</div>
+                <div class="text-xs text-slate-600">-</div>
+                <div class="text-xs text-slate-500 mt-1">{{ item.end_time }}</div>
+              </div>
+
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 mb-1">
+                  <span
+                    class="w-2 h-2 rounded-full"
+                    :style="{ backgroundColor: item.color || '#10B981' }"
+                  ></span>
+                  <h4 class="font-medium text-slate-100 truncate">
+                    {{ item.title }}
+                    <span v-if="(item.data as any)?.center_name" class="text-primary-400 font-normal">@{{ (item.data as any).center_name }}</span>
+                  </h4>
                 </div>
+                <p v-if="item.type === 'SCHEDULE_RULE'" class="text-sm text-slate-400">
+                  課程時段
+                </p>
+                <p v-else class="text-sm text-slate-400">
+                  個人行程
+                </p>
+              </div>
+
+              <div
+                v-if="item.status"
+                class="flex-shrink-0 px-2 py-1 rounded-full text-xs font-medium"
+                :class="getStatusClass(item.status)"
+              >
+                {{ getStatusText(item.status) }}
               </div>
             </div>
           </div>
         </div>
       </div>
-
-      <div
-        v-else
-        class="text-center py-12 text-slate-500"
-      >
-        載入中...
-      </div>
-    </main>
-
-    <button
-      @click="showPersonalEventModal = true"
-      class="fixed bottom-24 md:bottom-6 right-6 w-14 h-14 rounded-full bg-gradient-to-r from-primary-500 to-secondary-500 flex items-center justify-center shadow-xl hover:scale-110 transition-transform duration-300 z-50"
-    >
-      <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-      </svg>
-    </button>
-
-    <PersonalEventModal
-      v-if="showPersonalEventModal"
-      @close="showPersonalEventModal = false"
-    />
-
-    <NotificationDropdown
-      v-if="notificationUI.show.value"
-      @close="notificationUI.close()"
-    />
-
-    <TeacherSidebar
-      v-if="sidebarStore.isOpen.value"
-      @close="sidebarStore.close()"
-    />
-    <SessionNoteModal
-      :is-open="showSessionNoteModal"
-      :schedule-item="selectedScheduleItem"
-      @close="handleNoteModalClose"
-      @saved="handleNoteModalSaved"
-    />
+    </div>
   </div>
+
+  <div
+    v-else
+    class="text-center py-12 text-slate-500"
+  >
+    載入中...
+  </div>
+
+  <button
+    @click="showPersonalEventModal = true"
+    class="fixed bottom-24 md:bottom-6 right-6 w-14 h-14 rounded-full bg-gradient-to-r from-primary-500 to-secondary-500 flex items-center justify-center shadow-xl hover:scale-110 transition-transform duration-300 z-50"
+  >
+    <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+    </svg>
+  </button>
+
+  <PersonalEventModal
+    v-if="showPersonalEventModal"
+    @close="showPersonalEventModal = false"
+  />
+
+  <NotificationDropdown
+    v-if="notificationUI.show.value"
+    @close="notificationUI.close()"
+  />
+
+  <TeacherSidebar
+    v-if="sidebarStore.isOpen.value"
+    @close="sidebarStore.close()"
+  />
+  <SessionNoteModal
+    :is-open="showSessionNoteModal"
+    :schedule-item="selectedScheduleItem"
+    @close="handleNoteModalClose"
+    @saved="handleNoteModalSaved"
+  />
 </template>
 
 <script setup lang="ts">
@@ -392,6 +401,80 @@ const openItemDetail = (item: ScheduleItem) => {
 const showSessionNoteModal = ref(false)
 const selectedScheduleItem = ref<ScheduleItem | null>(null)
 
+const isDragging = ref(false)
+const dragTarget = ref<{ time: number, date: string } | null>(null)
+const draggedItem = ref<ScheduleItem | null>(null)
+const sourceDate = ref<string>('')
+const sourceHour = ref<number>(0)
+
+const handleDragStart = (item: ScheduleItem, hour: number, date: string, event: DragEvent) => {
+  isDragging.value = true
+  draggedItem.value = item
+  sourceHour.value = hour
+  sourceDate.value = date
+  event.dataTransfer?.setData('application/json', JSON.stringify({
+    type: 'schedule',
+    item,
+    sourceHour: hour,
+    sourceDate: date,
+  }))
+}
+
+const handleDragEnd = () => {
+  isDragging.value = false
+  dragTarget.value = null
+  draggedItem.value = null
+}
+
+const handleDragEnter = (hour: number, date: string) => {
+  dragTarget.value = { time: hour, date }
+}
+
+const handleDragLeave = () => {
+}
+
+const handleDrop = async (hour: number, date: string) => {
+  if (!isDragging.value || !draggedItem.value) return
+
+  const sourceKey = `${sourceHour.value}-${sourceDate.value}`
+  const targetKey = `${hour}-${date}`
+
+  if (sourceKey !== targetKey && teacherStore.schedule) {
+    const day = teacherStore.schedule.days.find(d => d.date === date)
+    if (day && draggedItem.value.data?.id) {
+      const duration = parseInt(draggedItem.value.end_time.split(':')[0]) - parseInt(draggedItem.value.start_time.split(':')[0])
+      const newEndHour = hour + duration
+      const newStartTime = `${hour.toString().padStart(2, '0')}:00`
+      const newEndTime = `${newEndHour.toString().padStart(2, '0')}:00`
+
+      try {
+        await teacherStore.moveScheduleItem({
+          item_id: draggedItem.value.data.id,
+          item_type: draggedItem.value.type as 'SCHEDULE_RULE' | 'PERSONAL_EVENT' | 'CENTER_SESSION',
+          center_id: (draggedItem.value.data as any).center_id || 1,
+          new_date: date,
+          new_start_time: newStartTime,
+          new_end_time: newEndTime,
+        })
+
+        await teacherStore.fetchSchedule()
+      } catch (error) {
+        console.error('Failed to move schedule:', error)
+        const notificationUI = useNotification()
+        notificationUI.showToast('更新失敗，請稍後再試', 'error')
+      }
+    }
+  }
+
+  isDragging.value = false
+  dragTarget.value = null
+  draggedItem.value = null
+}
+
+const isTargetCell = (hour: number, date: string): boolean => {
+  return dragTarget.value?.time === hour && dragTarget.value?.date === date
+}
+
 const handleNoteModalClose = () => {
   showSessionNoteModal.value = false
   selectedScheduleItem.value = null
@@ -465,10 +548,17 @@ onMounted(() => {
   }
   checkMobile()
   window.addEventListener('resize', checkMobile)
-  
+
+  // Check if we need to load mock data (if in mock mode but store wasn't initialized)
+  const teacherStore = useTeacherStore()
+  if (typeof window !== 'undefined' && localStorage.getItem('timeledger_mock_mode') === 'true') {
+    teacherStore.loadMockCenters()
+    teacherStore.loadMockSchedule()
+  }
+
   teacherStore.fetchCenters()
   teacherStore.fetchSchedule()
-  
+
   if (teacherStore.schedule?.days.length) {
     listCurrentDate.value = teacherStore.schedule.days[0].date
   }

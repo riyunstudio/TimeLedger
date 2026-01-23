@@ -1,7 +1,7 @@
 <template>
-  <div class="min-h-screen bg-gradient-mesh">
+  <NuxtLayout>
     <NuxtPage />
-  </div>
+  </NuxtLayout>
 </template>
 
 <script setup lang="ts">
