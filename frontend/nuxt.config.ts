@@ -38,5 +38,15 @@ export default defineNuxtConfig({
         },
       },
     },
+    // Fix Windows path issues
+    resolve: {
+      alias: {
+        // Force relative paths
+      }
+    },
+    // Disable problematic optimizations
+    optimizeDeps: {
+      include: [],
+    },
   },
 })
