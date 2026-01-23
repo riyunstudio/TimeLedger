@@ -1,259 +1,253 @@
 <template>
-  <div class="min-h-screen bg-slate-900">
-    <TeacherHeader />
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h2 class="text-2xl font-bold text-white mb-1">匯出課表</h2>
+      <p class="text-slate-400 text-sm">預覽並下載您的詳細課表</p>
+    </div>
+    <div class="flex gap-3">
+      <button
+        @click="router.push('/teacher/dashboard')"
+        class="px-4 py-2 rounded-lg bg-white/5 text-white hover:bg-white/10 transition-colors"
+      >
+        返回
+      </button>
+      <button
+        @click="handleDownloadPDF"
+        class="px-4 py-2 rounded-lg bg-primary-500 text-white hover:bg-primary-600 transition-colors flex items-center gap-2"
+      >
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+        </svg>
+        下載 PDF
+      </button>
+      <button
+        @click="handleDownloadImage"
+        class="px-4 py-2 rounded-lg bg-secondary-500 text-white hover:bg-secondary-600 transition-colors flex items-center gap-2"
+      >
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+        下載圖片
+      </button>
+    </div>
+  </div>
 
-    <main class="p-4 pb-32 max-w-7xl mx-auto">
-      <div class="flex items-center justify-between mb-6">
-        <div>
-          <h2 class="text-2xl font-bold text-white mb-1">匯出課表</h2>
-          <p class="text-slate-400 text-sm">預覽並下載您的詳細課表</p>
+  <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+    <div class="lg:col-span-3">
+      <div ref="scheduleRef" class="glass-card p-8" :class="currentTheme.cardGradient">
+        <div class="flex items-center justify-between mb-8 pb-6" :class="currentTheme.borderClass">
+          <div class="flex items-center gap-4">
+            <div class="w-16 h-16 rounded-full flex items-center justify-center" :class="currentTheme.avatarClass">
+              <span class="text-2xl font-bold text-white">{{ authStore.user?.name?.charAt(0) || 'T' }}</span>
+            </div>
+            <div>
+              <h1 class="text-2xl font-bold" :class="currentTheme.titleClass">{{ authStore.user?.name }}</h1>
+              <p class="text-sm" :class="currentTheme.subtitleClass">個人課表</p>
+              <div v-if="options.showPersonalInfo" class="flex gap-2 mt-2">
+                <span class="px-2 py-0.5 rounded-full text-xs" :class="currentTheme.tagClass">鋼琴</span>
+                <span class="px-2 py-0.5 rounded-full text-xs" :class="currentTheme.tagClass2">古典</span>
+                <span class="px-2 py-0.5 rounded-full text-xs" :class="currentTheme.tagClass3">樂理</span>
+              </div>
+            </div>
+          </div>
+          <div class="text-right">
+            <p class="text-sm" :class="currentTheme.subtitleClass">匯出日期</p>
+            <p class="font-medium" :class="currentTheme.titleClass">{{ formatDate(new Date()) }}</p>
+          </div>
         </div>
-        <div class="flex gap-3">
+
+        <div class="mb-6">
+          <div class="flex items-center gap-2 mb-4">
+            <span class="font-medium" :class="currentTheme.titleClass">{{ weekLabel }}</span>
+            <div class="flex gap-1">
+              <button
+                @click="changeWeek(-1)"
+                class="p-1 rounded transition-colors"
+                :class="currentTheme.buttonClass"
+              >
+                <svg class="w-4 h-4" :class="currentTheme.iconClass" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <button
+                @click="changeWeek(1)"
+                class="p-1 rounded transition-colors"
+                :class="currentTheme.buttonClass"
+              >
+                <svg class="w-4 h-4" :class="currentTheme.iconClass" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="space-y-6">
+          <div
+            v-for="day in scheduleDays"
+            :key="day.date"
+            class="rounded-xl overflow-hidden"
+          >
+            <div class="flex items-center justify-between px-4 py-3" :class="currentTheme.dayHeaderClass">
+              <div class="flex items-center gap-3">
+                <span class="font-semibold" :class="currentTheme.dayTextClass">{{ formatWeekday(day.date) }}</span>
+                <span :class="currentTheme.subtitleClass">{{ formatMonthDay(day.date) }}</span>
+              </div>
+              <span :class="currentTheme.subtitleClass">{{ day.items.length }} 課程</span>
+            </div>
+
+            <div v-if="day.items.length > 0" :class="currentTheme.divideClass">
+              <div
+                v-for="item in day.items"
+                :key="item.id"
+                class="flex items-center px-4 py-4 relative overflow-hidden"
+                :class="[currentTheme.itemClass, currentTheme.itemGradient]"
+              >
+                <div class="absolute left-0 top-0 bottom-0 w-1" :class="currentTheme.itemAccentClass"></div>
+                <div class="w-20 flex-shrink-0">
+                  <div class="font-medium bg-clip-text text-transparent" :class="currentTheme.timeGradient">{{ item.start_time }}</div>
+                  <div class="text-sm" :class="currentTheme.subtitleClass">{{ item.end_time }}</div>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2 mb-1 flex-wrap">
+                    <span
+                      class="w-2 h-2 rounded-full flex-shrink-0"
+                      :style="{ backgroundColor: item.color || '#10B981' }"
+                    ></span>
+                    <h4 class="font-medium truncate" :class="currentTheme.itemTitleClass">
+                      {{ item.title }}
+                      <span v-if="item.center_name" class="font-normal" :class="currentTheme.centerClass">{{ item.center_name }}</span>
+                    </h4>
+                    <span
+                      v-if="item.status && item.status !== 'APPROVED'"
+                      class="px-2 py-0.5 rounded-full text-xs flex-shrink-0"
+                      :class="getStatusClass(item.status)"
+                    >
+                      {{ getStatusText(item.status) }}
+                    </span>
+                  </div>
+                  <div class="flex items-center gap-2 text-sm flex-wrap">
+                    <span v-if="item.type === 'PERSONAL_EVENT'" :class="currentTheme.personalClass">個人行程</span>
+                    <template v-else>
+                      <span :class="currentTheme.subtitleClass">課程時段</span>
+                    </template>
+                  </div>
+                </div>
+                <div class="flex-shrink-0 text-right ml-4">
+                  <p class="text-sm bg-clip-text text-transparent font-medium" :class="currentTheme.timeGradient">
+                    {{ getDuration(item.start_time, item.end_time) }}
+                  </p>
+                  <p class="text-xs" :class="currentTheme.subtitleClass">分鐘</p>
+                </div>
+              </div>
+            </div>
+
+            <div v-else class="px-4 py-8 text-center" :class="currentTheme.emptyClass">
+              休息日
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-8 pt-6 flex items-center justify-between" :class="currentTheme.borderClass">
+          <div class="flex gap-4">
+            <div class="flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full" :class="currentTheme.statusDotGradient"></span>
+              <span class="text-sm" :class="currentTheme.subtitleClass">已確認</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full" :class="currentTheme.pendingDotGradient"></span>
+              <span class="text-sm" :class="currentTheme.subtitleClass">待審核</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full" :class="currentTheme.rejectedDotGradient"></span>
+              <span class="text-sm" :class="currentTheme.subtitleClass">已拒絕</span>
+            </div>
+          </div>
+          <p class="text-sm" :class="currentTheme.subtitleClass">TimeLedger 課表管理系統</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="lg:col-span-1 space-y-4">
+      <div class="glass-card p-4">
+        <h3 class="text-white font-semibold mb-4">選擇風格</h3>
+        <div class="grid grid-cols-2 gap-2">
+          <button
+            v-for="theme in themes"
+            :key="theme.id"
+            @click="selectedTheme = theme.id"
+            class="p-3 rounded-lg text-left transition-all"
+            :class="selectedTheme === theme.id ? 'bg-primary-500/20 border-2 border-primary-500' : 'bg-white/5 border-2 border-transparent hover:bg-white/10'"
+          >
+            <div
+              class="w-full h-8 rounded mb-2"
+              :style="{ background: theme.preview }"
+            ></div>
+            <p class="text-xs font-medium" :class="selectedTheme === theme.id ? 'text-primary-400' : 'text-slate-300'">
+              {{ theme.name }}
+            </p>
+          </button>
+        </div>
+      </div>
+
+      <div class="glass-card p-4">
+        <h3 class="text-white font-semibold mb-4">匯出選項</h3>
+        <div class="space-y-4">
+          <label class="flex items-center gap-3 cursor-pointer">
+            <input type="checkbox" v-model="options.showPersonalInfo" class="accent-primary-500 w-4 h-4" />
+            <span class="text-slate-300 text-sm">顯示個人資訊</span>
+          </label>
+          <label class="flex items-center gap-3 cursor-pointer">
+            <input type="checkbox" v-model="options.showStats" class="accent-primary-500 w-4 h-4" />
+            <span class="text-slate-300 text-sm">顯示統計資料</span>
+          </label>
+          <label class="flex items-center gap-3 cursor-pointer">
+            <input type="checkbox" v-model="options.includeNotes" class="accent-primary-500 w-4 h-4" />
+            <span class="text-slate-300 text-sm">包含備註</span>
+          </label>
+        </div>
+      </div>
+
+      <div v-if="options.showStats" class="glass-card p-4">
+        <h3 class="text-white font-semibold mb-4">本週統計</h3>
+        <div class="space-y-3">
+          <div class="flex justify-between">
+            <span class="text-slate-400 text-sm">總課程數</span>
+            <span class="text-white font-medium">{{ totalLessons }}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-400 text-sm">總時數</span>
+            <span class="text-white font-medium">{{ totalHours }} 小時</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-400 text-sm">教學天數</span>
+            <span class="text-white font-medium">{{ teachingDays }} 天</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="glass-card p-4">
+        <h3 class="text-white font-semibold mb-4">快速操作</h3>
+        <div class="space-y-2">
           <button
             @click="router.push('/teacher/dashboard')"
-            class="px-4 py-2 rounded-lg bg-white/5 text-white hover:bg-white/10 transition-colors"
+            class="w-full px-4 py-2 rounded-lg bg-white/5 text-white hover:bg-white/10 transition-colors text-left text-sm"
           >
-            返回
+            查看完整課表
           </button>
           <button
-            @click="handleDownloadPDF"
-            class="px-4 py-2 rounded-lg bg-primary-500 text-white hover:bg-primary-600 transition-colors flex items-center gap-2"
+            @click="router.push('/teacher/exceptions')"
+            class="w-full px-4 py-2 rounded-lg bg-white/5 text-white hover:bg-white/10 transition-colors text-left text-sm"
           >
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
-            下載 PDF
-          </button>
-          <button
-            @click="handleDownloadImage"
-            class="px-4 py-2 rounded-lg bg-secondary-500 text-white hover:bg-secondary-600 transition-colors flex items-center gap-2"
-          >
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            下載圖片
+            例外申請
           </button>
         </div>
       </div>
-
-      <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        <div class="lg:col-span-3">
-          <div ref="scheduleRef" class="glass-card p-8" :class="currentTheme.cardGradient">
-            <div class="flex items-center justify-between mb-8 pb-6" :class="currentTheme.borderClass">
-              <div class="flex items-center gap-4">
-                <div class="w-16 h-16 rounded-full flex items-center justify-center" :class="currentTheme.avatarClass">
-                  <span class="text-2xl font-bold text-white">{{ authStore.user?.name?.charAt(0) || 'T' }}</span>
-                </div>
-                <div>
-                  <h1 class="text-2xl font-bold" :class="currentTheme.titleClass">{{ authStore.user?.name }}</h1>
-                  <p class="text-sm" :class="currentTheme.subtitleClass">個人課表</p>
-                  <div v-if="options.showPersonalInfo" class="flex gap-2 mt-2">
-                    <span class="px-2 py-0.5 rounded-full text-xs" :class="currentTheme.tagClass">鋼琴</span>
-                    <span class="px-2 py-0.5 rounded-full text-xs" :class="currentTheme.tagClass2">古典</span>
-                    <span class="px-2 py-0.5 rounded-full text-xs" :class="currentTheme.tagClass3">樂理</span>
-                  </div>
-                </div>
-              </div>
-              <div class="text-right">
-                <p class="text-sm" :class="currentTheme.subtitleClass">匯出日期</p>
-                <p class="font-medium" :class="currentTheme.titleClass">{{ formatDate(new Date()) }}</p>
-              </div>
-            </div>
-
-            <div class="mb-6">
-              <div class="flex items-center gap-2 mb-4">
-                <span class="font-medium" :class="currentTheme.titleClass">{{ weekLabel }}</span>
-                <div class="flex gap-1">
-                  <button
-                    @click="changeWeek(-1)"
-                    class="p-1 rounded transition-colors"
-                    :class="currentTheme.buttonClass"
-                  >
-                    <svg class="w-4 h-4" :class="currentTheme.iconClass" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-                    </svg>
-                  </button>
-                  <button
-                    @click="changeWeek(1)"
-                    class="p-1 rounded transition-colors"
-                    :class="currentTheme.buttonClass"
-                  >
-                    <svg class="w-4 h-4" :class="currentTheme.iconClass" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div class="space-y-6">
-              <div
-                v-for="day in scheduleDays"
-                :key="day.date"
-                class="rounded-xl overflow-hidden"
-              >
-                <div class="flex items-center justify-between px-4 py-3" :class="currentTheme.dayHeaderClass">
-                  <div class="flex items-center gap-3">
-                    <span class="font-semibold" :class="currentTheme.dayTextClass">{{ formatWeekday(day.date) }}</span>
-                    <span :class="currentTheme.subtitleClass">{{ formatMonthDay(day.date) }}</span>
-                  </div>
-                  <span :class="currentTheme.subtitleClass">{{ day.items.length }} 課程</span>
-                </div>
-
-                <div v-if="day.items.length > 0" :class="currentTheme.divideClass">
-                  <div
-                    v-for="item in day.items"
-                    :key="item.id"
-                    class="flex items-center px-4 py-4 relative overflow-hidden"
-                    :class="[currentTheme.itemClass, currentTheme.itemGradient]"
-                  >
-                    <div class="absolute left-0 top-0 bottom-0 w-1" :class="currentTheme.itemAccentClass"></div>
-                    <div class="w-20 flex-shrink-0">
-                      <div class="font-medium bg-clip-text text-transparent" :class="currentTheme.timeGradient">{{ item.start_time }}</div>
-                      <div class="text-sm" :class="currentTheme.subtitleClass">{{ item.end_time }}</div>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                      <div class="flex items-center gap-2 mb-1 flex-wrap">
-                        <span
-                          class="w-2 h-2 rounded-full flex-shrink-0"
-                          :style="{ backgroundColor: item.color || '#10B981' }"
-                        ></span>
-                        <h4 class="font-medium truncate" :class="currentTheme.itemTitleClass">
-                          {{ item.title }}
-                          <span v-if="item.center_name" class="font-normal" :class="currentTheme.centerClass">{{ item.center_name }}</span>
-                        </h4>
-                        <span
-                          v-if="item.status && item.status !== 'APPROVED'"
-                          class="px-2 py-0.5 rounded-full text-xs flex-shrink-0"
-                          :class="getStatusClass(item.status)"
-                        >
-                          {{ getStatusText(item.status) }}
-                        </span>
-                      </div>
-                      <div class="flex items-center gap-2 text-sm flex-wrap">
-                        <span v-if="item.type === 'PERSONAL_EVENT'" :class="currentTheme.personalClass">個人行程</span>
-                        <template v-else>
-                          <span :class="currentTheme.subtitleClass">課程時段</span>
-                        </template>
-                      </div>
-                    </div>
-                    <div class="flex-shrink-0 text-right ml-4">
-                      <p class="text-sm bg-clip-text text-transparent font-medium" :class="currentTheme.timeGradient">
-                        {{ getDuration(item.start_time, item.end_time) }}
-                      </p>
-                      <p class="text-xs" :class="currentTheme.subtitleClass">分鐘</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div v-else class="px-4 py-8 text-center" :class="currentTheme.emptyClass">
-                  休息日
-                </div>
-              </div>
-            </div>
-
-            <div class="mt-8 pt-6 flex items-center justify-between" :class="currentTheme.borderClass">
-              <div class="flex gap-4">
-                <div class="flex items-center gap-2">
-                  <span class="w-3 h-3 rounded-full" :class="currentTheme.statusDotGradient"></span>
-                  <span class="text-sm" :class="currentTheme.subtitleClass">已確認</span>
-                </div>
-                <div class="flex items-center gap-2">
-                  <span class="w-3 h-3 rounded-full" :class="currentTheme.pendingDotGradient"></span>
-                  <span class="text-sm" :class="currentTheme.subtitleClass">待審核</span>
-                </div>
-                <div class="flex items-center gap-2">
-                  <span class="w-3 h-3 rounded-full" :class="currentTheme.rejectedDotGradient"></span>
-                  <span class="text-sm" :class="currentTheme.subtitleClass">已拒絕</span>
-                </div>
-              </div>
-              <p class="text-sm" :class="currentTheme.subtitleClass">TimeLedger 課表管理系統</p>
-            </div>
-          </div>
-        </div>
-
-        <div class="lg:col-span-1 space-y-4">
-          <div class="glass-card p-4">
-            <h3 class="text-white font-semibold mb-4">選擇風格</h3>
-            <div class="grid grid-cols-2 gap-2">
-              <button
-                v-for="theme in themes"
-                :key="theme.id"
-                @click="selectedTheme = theme.id"
-                class="p-3 rounded-lg text-left transition-all"
-                :class="selectedTheme === theme.id ? 'bg-primary-500/20 border-2 border-primary-500' : 'bg-white/5 border-2 border-transparent hover:bg-white/10'"
-              >
-                <div
-                  class="w-full h-8 rounded mb-2"
-                  :style="{ background: theme.preview }"
-                ></div>
-                <p class="text-xs font-medium" :class="selectedTheme === theme.id ? 'text-primary-400' : 'text-slate-300'">
-                  {{ theme.name }}
-                </p>
-              </button>
-            </div>
-          </div>
-
-          <div class="glass-card p-4">
-            <h3 class="text-white font-semibold mb-4">匯出選項</h3>
-            <div class="space-y-4">
-              <label class="flex items-center gap-3 cursor-pointer">
-                <input type="checkbox" v-model="options.showPersonalInfo" class="accent-primary-500 w-4 h-4" />
-                <span class="text-slate-300 text-sm">顯示個人資訊</span>
-              </label>
-              <label class="flex items-center gap-3 cursor-pointer">
-                <input type="checkbox" v-model="options.showStats" class="accent-primary-500 w-4 h-4" />
-                <span class="text-slate-300 text-sm">顯示統計資料</span>
-              </label>
-              <label class="flex items-center gap-3 cursor-pointer">
-                <input type="checkbox" v-model="options.includeNotes" class="accent-primary-500 w-4 h-4" />
-                <span class="text-slate-300 text-sm">包含備註</span>
-              </label>
-            </div>
-          </div>
-
-          <div v-if="options.showStats" class="glass-card p-4">
-            <h3 class="text-white font-semibold mb-4">本週統計</h3>
-            <div class="space-y-3">
-              <div class="flex justify-between">
-                <span class="text-slate-400 text-sm">總課程數</span>
-                <span class="text-white font-medium">{{ totalLessons }}</span>
-              </div>
-              <div class="flex justify-between">
-                <span class="text-slate-400 text-sm">總時數</span>
-                <span class="text-white font-medium">{{ totalHours }} 小時</span>
-              </div>
-              <div class="flex justify-between">
-                <span class="text-slate-400 text-sm">教學天數</span>
-                <span class="text-white font-medium">{{ teachingDays }} 天</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="glass-card p-4">
-            <h3 class="text-white font-semibold mb-4">快速操作</h3>
-            <div class="space-y-2">
-              <button
-                @click="router.push('/teacher/dashboard')"
-                class="w-full px-4 py-2 rounded-lg bg-white/5 text-white hover:bg-white/10 transition-colors text-left text-sm"
-              >
-                查看完整課表
-              </button>
-              <button
-                @click="router.push('/teacher/exceptions')"
-                class="w-full px-4 py-2 rounded-lg bg-white/5 text-white hover:bg-white/10 transition-colors text-left text-sm"
-              >
-                例外申請
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </main>
-
-    <NotificationDropdown v-if="notificationUI.show.value" @close="notificationUI.close()" />
-    <TeacherSidebar v-if="sidebarStore.isOpen.value" @close="sidebarStore.close()" />
+    </div>
   </div>
+
+  <NotificationDropdown v-if="notificationUI.show.value" @close="notificationUI.close()" />
+  <TeacherSidebar v-if="sidebarStore.isOpen.value" @close="sidebarStore.close()" />
 </template>
 
 <script setup lang="ts">
