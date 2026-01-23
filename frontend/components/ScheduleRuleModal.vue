@@ -191,17 +191,18 @@ const fetchData = async () => {
   try {
     const api = useApi()
     const centerId = getCenterId()
-    
-    const [coursesRes, roomsRes, teachersRes] = await Promise.all([
-      api.get<{ code: number; datas: any[] }>(`/admin/courses`),
+
+    const [offeringsRes, roomsRes, teachersRes] = await Promise.all([
+      api.get<{ code: number; datas: any }>(`/admin/offerings`),
       api.get<{ code: number; datas: any[] }>(`/admin/rooms`),
       api.get<{ code: number; datas: any[] }>('/teachers')
     ])
-    
-    offerings.value = coursesRes.datas || []
+
+    // offerings API 返回的是 { offerings: [], pagination: {} }
+    offerings.value = (offeringsRes.datas?.offerings || [])
     rooms.value = roomsRes.datas || []
     teachers.value = teachersRes.datas || []
-    
+
     console.log('載入資料:', {
       centerId,
       offerings: offerings.value.length,
