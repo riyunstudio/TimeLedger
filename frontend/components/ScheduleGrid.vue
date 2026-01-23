@@ -151,13 +151,36 @@ const weekDays = [
   { value: 7, name: '週日' },
 ]
 
-const schedules = ref<Record<string, any>>({
-  '9-1': { id: 1, offering_name: '鋼琴基礎', teacher_name: 'Alice', room_id: 1 },
-  '10-1': { id: 2, offering_name: '鋼琴基礎', teacher_name: 'Alice', room_id: 1 },
-  '14-1': { id: 3, offering_name: '鋼琴進階', teacher_name: 'Alice', room_id: 1 },
-  '15-3': { id: 4, offering_name: '小提琴', teacher_name: 'Bob', room_id: 2 },
-  '16-3': { id: 5, offering_name: '小提琴', teacher_name: 'Bob', room_id: 2 },
-})
+const schedules = ref<Record<string, any>>({})
+const { getCenterId } = useCenterId()
+
+const fetchSchedules = async () => {
+  try {
+    const api = useApi()
+    const centerId = getCenterId()
+    const response = await api.get<{ code: number; datas: any[] }>(`/admin/centers/${centerId}/rules`)
+    const rules = response.datas || []
+
+    // 將規則轉換為 schedule map
+    const scheduleMap: Record<string, any> = {}
+    rules.forEach((rule: any) => {
+      rule.weekdays?.forEach((day: number) => {
+        const key = `${rule.start_time.split(':')[0]}-${day}`
+        scheduleMap[key] = {
+          id: rule.id,
+          offering_name: rule.offering?.name || '-',
+          teacher_name: rule.teacher?.name || '-',
+          room_id: rule.room_id,
+          ...rule,
+        }
+      })
+    })
+    schedules.value = scheduleMap
+  } catch (error) {
+    console.error('Failed to fetch schedules:', error)
+    schedules.value = {}
+  }
+}
 
 const changeWeek = (delta: number) => {
   weekStart.value = getWeekStart(new Date(weekStart.value.getTime() + delta * 7 * 24 * 60 * 60 * 1000))
@@ -271,6 +294,10 @@ const formatDate = (date: Date): string => {
 }
 
 const handleRuleCreated = () => {
-  console.log('Schedule rule created')
+  fetchSchedules()
 }
+
+onMounted(() => {
+  fetchSchedules()
+})
 </script>

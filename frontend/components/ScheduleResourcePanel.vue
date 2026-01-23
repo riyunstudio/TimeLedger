@@ -77,33 +77,40 @@ import { ref, computed } from 'vue'
 
 const activeTab = ref('offering')
 const searchQuery = ref('')
+const { getCenterId } = useCenterId()
 
-const offernings = ref([
-  { id: 1, name: '鋼琴基礎', subtitle: '鋼琴 · 30分鐘', tag: 'Piano' },
-  { id: 2, name: '鋼琴進階', subtitle: '鋼琴 · 60分鐘', tag: 'Piano' },
-  { id: 3, name: '小提琴入門', subtitle: '小提琴 · 45分鐘', tag: 'Violin' },
-  { id: 4, name: '樂理課程', subtitle: '樂理 · 60分鐘', tag: 'Theory' },
-])
+const offerings = ref<any[]>([])
+const teachers = ref<any[]>([])
+const rooms = ref<any[]>([])
 
-const teachers = ref([
-  { id: 1, name: 'Alice', subtitle: '鋼琴 · 高級', tag: 'ACTIVE' },
-  { id: 2, name: 'Bob', subtitle: '鋼琴 · 中級', tag: 'ACTIVE' },
-  { id: 3, name: 'Carol', subtitle: '小提琴 · 專家', tag: 'ACTIVE' },
-  { id: 4, name: 'David', subtitle: '樂理 · 初級', tag: 'INACTIVE' },
-])
+const fetchData = async () => {
+  try {
+    const api = useApi()
+    const centerId = getCenterId()
 
-const rooms = ref([
-  { id: 1, name: 'Room A', subtitle: '容量: 5 人', tag: 'AVAILABLE' },
-  { id: 2, name: 'Room B', subtitle: '容量: 8 人', tag: 'AVAILABLE' },
-  { id: 3, name: 'Room C', subtitle: '容量: 4 人', tag: 'BUSY' },
-])
+    const [offeringsRes, teachersRes, roomsRes] = await Promise.all([
+      api.get<{ code: number; datas: any }>(`/admin/offerings`),
+      api.get<{ code: number; datas: any[] }>('/teachers'),
+      api.get<{ code: number; datas: any[] }>(`/admin/rooms`)
+    ])
+
+    offerings.value = offeringsRes.datas?.offerings || []
+    teachers.value = teachersRes.datas || []
+    rooms.value = roomsRes.datas || []
+  } catch (error) {
+    console.error('Failed to fetch data:', error)
+    offerings.value = []
+    teachers.value = []
+    rooms.value = []
+  }
+}
 
 const filteredItems = computed(() => {
   let items: any[] = []
 
   switch (activeTab.value) {
     case 'offering':
-      items = offernings.value
+      items = offerings.value
       break
     case 'teacher':
       items = teachers.value
@@ -116,12 +123,16 @@ const filteredItems = computed(() => {
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
     items = items.filter(item =>
-      (item.name || item.title).toLowerCase().includes(query) ||
+      (item.name || item.title)?.toLowerCase().includes(query) ||
       item.subtitle?.toLowerCase().includes(query)
     )
   }
 
   return items
+})
+
+onMounted(() => {
+  fetchData()
 })
 
 const getTabName = (): string => {

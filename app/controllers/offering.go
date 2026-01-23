@@ -122,9 +122,20 @@ func (ctl *OfferingController) CreateOffering(ctx *gin.Context) {
 		return
 	}
 
+	// 獲取課程名稱作為 offering 的名稱
+	course, err := ctl.courseRepository.GetByID(ctl.makeCtx(ctx), req.CourseID)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Course not found",
+		})
+		return
+	}
+
 	offering := models.Offering{
 		CenterID:            centerID,
 		CourseID:            req.CourseID,
+		Name:                course.Name, // 使用課程名稱作為班別名稱
 		DefaultRoomID:       req.DefaultRoomID,
 		DefaultTeacherID:    req.DefaultTeacherID,
 		AllowBufferOverride: req.AllowBufferOverride,
@@ -152,6 +163,7 @@ func (ctl *OfferingController) CreateOffering(ctx *gin.Context) {
 		Payload: models.AuditPayload{
 			After: map[string]interface{}{
 				"course_id":             req.CourseID,
+				"course_name":           course.Name,
 				"default_room_id":       req.DefaultRoomID,
 				"default_teacher_id":    req.DefaultTeacherID,
 				"allow_buffer_override": req.AllowBufferOverride,
