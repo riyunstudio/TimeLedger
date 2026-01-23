@@ -24,12 +24,34 @@
           />
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">開始日期</label>
+            <input
+              v-model="form.start_date"
+              type="date"
+              class="input-field text-sm sm:text-base"
+              required
+            />
+          </div>
+
           <div>
             <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">開始時間</label>
             <input
-              v-model="form.start_at"
-              type="datetime-local"
+              v-model="form.start_time"
+              type="time"
+              class="input-field text-sm sm:text-base"
+              required
+            />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">結束日期</label>
+            <input
+              v-model="form.end_date"
+              type="date"
               class="input-field text-sm sm:text-base"
               required
             />
@@ -38,8 +60,8 @@
           <div>
             <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">結束時間</label>
             <input
-              v-model="form.end_at"
-              type="datetime-local"
+              v-model="form.end_time"
+              type="time"
               class="input-field text-sm sm:text-base"
               required
             />
@@ -55,15 +77,6 @@
             <option value="BIWEEKLY">每兩週</option>
             <option value="MONTHLY">每月</option>
           </select>
-        </div>
-
-        <div v-if="form.recurrence !== 'NONE'">
-          <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">結束日期</label>
-          <input
-            v-model="form.recurrence_end"
-            type="date"
-            class="input-field text-sm sm:text-base"
-          />
         </div>
 
         <div>
@@ -110,12 +123,15 @@ const emit = defineEmits<{
 const teacherStore = useTeacherStore()
 const loading = ref(false)
 
+const now = new Date()
+
 const form = ref({
   title: '',
-  start_at: '',
-  end_at: '',
+  start_date: now.toISOString().split('T')[0],
+  start_time: now.toTimeString().slice(0, 5),
+  end_date: now.toISOString().split('T')[0],
+  end_time: new Date(now.getTime() + 60 * 60 * 1000).toTimeString().slice(0, 5),
   recurrence: 'NONE' as 'NONE' | 'DAILY' | 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY',
-  recurrence_end: '',
   color_hex: '#6366F1',
 })
 
@@ -129,9 +145,9 @@ const colors = [
   '#EC4899',
 ]
 
-const formatDateTimeForApi = (datetimeLocal: string): string => {
-  if (!datetimeLocal) return ''
-  return new Date(datetimeLocal).toISOString()
+const formatDateTimeForApi = (date: string, time: string): string => {
+  if (!date || !time) return ''
+  return new Date(`${date}T${time}:00`).toISOString()
 }
 
 const handleSubmit = async () => {
@@ -140,8 +156,8 @@ const handleSubmit = async () => {
   try {
     const data = {
       title: form.value.title,
-      start_at: formatDateTimeForApi(form.value.start_at),
-      end_at: formatDateTimeForApi(form.value.end_at),
+      start_at: formatDateTimeForApi(form.value.start_date, form.value.start_time),
+      end_at: formatDateTimeForApi(form.value.end_date, form.value.end_time),
       color_hex: form.value.color_hex,
     }
 
@@ -149,7 +165,6 @@ const handleSubmit = async () => {
       (data as any).recurrence_rule = {
         type: form.value.recurrence,
         interval: 1,
-        until: form.value.recurrence_end || undefined,
       }
     }
 
