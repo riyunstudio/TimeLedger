@@ -1,7 +1,5 @@
 <template>
   <div class="min-h-screen bg-slate-900">
-    <AdminHeader />
-
     <main class="p-6">
       <h1 class="text-2xl font-bold text-white mb-6">智慧媒合</h1>
 
@@ -11,7 +9,7 @@
           <form @submit.prevent="findMatches" class="space-y-4">
             <div>
               <label class="block text-slate-300 mb-2">課程時段</label>
-              <div class="grid grid-cols-2 gap-4">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label class="block text-slate-400 text-sm mb-1">開始時間</label>
                   <input

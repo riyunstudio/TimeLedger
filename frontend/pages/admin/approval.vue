@@ -1,7 +1,5 @@
 <template>
   <div class="min-h-screen bg-slate-900">
-    <AdminHeader />
-
     <main class="p-6 max-w-7xl mx-auto">
       <div class="mb-8">
         <h1 class="text-3xl font-bold text-slate-100 mb-2">
@@ -12,7 +10,7 @@
         </p>
       </div>
 
-      <div class="mb-6 flex gap-3">
+      <div class="mb-6 flex flex-col sm:flex-row gap-3">
         <button
           @click="activeFilter = 'all'"
           class="glass-btn px-4 py-2 rounded-xl text-sm font-medium"

@@ -1,9 +1,7 @@
 <template>
   <div class="min-h-screen bg-slate-900">
-    <AdminHeader />
-
     <main class="p-6">
-      <div class="flex items-center justify-between mb-6">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <h1 class="text-2xl font-bold text-white">課表模板</h1>
         <button
           @click="showModal = true"

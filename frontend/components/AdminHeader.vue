@@ -2,10 +2,18 @@
   <header class="glass sticky top-0 z-40 border-b border-white/10">
     <div class="flex items-center justify-between px-4 py-3 max-w-7xl mx-auto">
       <div class="flex items-center gap-3">
+        <button
+          @click="handleToggleSidebar"
+          class="p-2 rounded-lg hover:bg-white/10 transition-colors"
+        >
+          <svg class="w-5 h-5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
         <h1 class="text-xl font-bold bg-gradient-to-r from-primary-500 to-secondary-500 bg-clip-text text-transparent">TimeLedger</h1>
       </div>
 
-      <nav class="flex items-center gap-6">
+      <nav class="hidden md:flex items-center gap-6">
         <NuxtLink
           to="/admin/dashboard"
           class="text-slate-300 hover:text-primary-400 transition-colors font-medium"
@@ -69,10 +77,18 @@
 const router = useRouter()
 const authStore = useAuthStore()
 
+const emit = defineEmits<{
+  toggleSidebar: []
+}>()
+
 const handleLogout = () => {
   if (confirm('確定要登出嗎？')) {
     authStore.logout()
     router.push('/admin/login')
   }
+}
+
+const handleToggleSidebar = () => {
+  emit('toggleSidebar')
 }
 </script>
