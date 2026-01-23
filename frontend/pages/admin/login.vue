@@ -74,11 +74,11 @@
 </template>
 
 <script setup lang="ts">
- definePageMeta({
-   layout: 'blank',
- })
+definePageMeta({
+  layout: false,
+})
 
- const authStore = useAuthStore()
+const authStore = useAuthStore()
 const router = useRouter()
 
 const email = ref('admin@timeledger.com')
