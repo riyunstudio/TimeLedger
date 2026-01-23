@@ -522,26 +522,21 @@ export const useTeacherStore = defineStore('teacher', () => {
     }
 
     const api = useApi()
-    const endpoint = data.item_type === 'PERSONAL_EVENT'
-      ? `/teacher/me/personal-events/${data.item_id}`
-      : `/teacher/schedule/${data.item_id}/move`
-
-    const body: any = {
-      new_date: data.new_date,
-      new_start_time: data.new_start_time,
-      new_end_time: data.new_end_time,
-    }
 
     if (data.item_type === 'PERSONAL_EVENT') {
-      body.update_mode = data.update_mode || 'SINGLE'
-      body.start_at = `${data.new_date}T${data.new_start_time}:00`
-      body.end_at = `${data.new_date}T${data.new_end_time}:00`
-    }
-
-    if (data.item_type === 'PERSONAL_EVENT') {
-      await api.patch(endpoint, body)
+      await api.patch(`/teacher/me/personal-events/${data.item_id}`, {
+        start_at: `${data.new_date}T${data.new_start_time}:00`,
+        end_at: `${data.new_date}T${data.new_end_time}:00`,
+        update_mode: data.update_mode || 'SINGLE',
+      })
     } else {
-      await api.post(endpoint, body)
+      await api.post(`/teacher/scheduling/edit-recurring`, {
+        rule_id: data.item_id,
+        edit_date: data.new_date,
+        mode: data.update_mode || 'SINGLE',
+        new_start_time: data.new_start_time,
+        new_end_time: data.new_end_time,
+      })
     }
   }
 
