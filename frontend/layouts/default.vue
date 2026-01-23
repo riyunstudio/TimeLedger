@@ -2,7 +2,7 @@
   <div class="min-h-screen bg-slate-900 pb-20 md:pb-0">
     <TeacherHeader v-if="showHeader" />
 
-    <main class="p-4 md:p-6 max-w-4xl mx-auto">
+    <main class="p-4 md:p-6 w-full">
       <slot />
     </main>
 
