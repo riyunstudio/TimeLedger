@@ -6,10 +6,12 @@
       <slot />
     </main>
 
-    <AdminSidebar v-if="showSidebar" />
+    <AdminSidebar />
   </div>
 </template>
 
 <script setup lang="ts">
-const showSidebar = ref(true)
+definePageMeta({
+  middleware: ['auth-admin'],
+})
 </script>
