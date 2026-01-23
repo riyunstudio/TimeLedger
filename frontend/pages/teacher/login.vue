@@ -54,6 +54,19 @@
         <p class="text-gray-300">LINE User ID: <code class="bg-gray-600 px-2 py-0.5 rounded text-blue-300">LINE_TEACHER_001</code></p>
         <p class="text-gray-300 mt-1">Access Token: <code class="bg-gray-600 px-2 py-0.5 rounded text-blue-300">mock_token</code></p>
       </div>
+
+      <div class="mt-4 pt-4 border-t border-gray-600">
+        <button
+          @click="handleMockLogin"
+          :disabled="loading"
+          class="w-full bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 disabled:bg-gray-600 transition-colors flex items-center justify-center gap-2"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+          </svg>
+          Mock 登入 (無需後端)
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -64,6 +77,7 @@
  })
 
  const router = useRouter()
+const teacherStore = useTeacherStore()
 
 const lineUserId = ref('LINE_TEACHER_001')
 const accessToken = ref('mock_token')
@@ -106,6 +120,42 @@ async function handleLogin() {
   } catch (err) {
     console.error('Login error:', err)
     error.value = err.data?.message || err.message || '登入失敗，請稍後再試'
+  } finally {
+    loading.value = false
+  }
+}
+
+async function handleMockLogin() {
+  loading.value = true
+  error.value = ''
+  success.value = false
+  
+  try {
+    // Mock 登入 - 加載模擬數據
+    teacherStore.loadMockCenters()
+    teacherStore.loadMockSchedule()
+    
+    // 設置 Mock 用戶數據
+    const mockUser = {
+      id: 1,
+      name: 'Mock Teacher',
+      email: 'teacher@timeledger.com',
+      line_user_id: 'LINE_TEACHER_001',
+      center_id: 1,
+    }
+    
+    localStorage.setItem('teacher_token', 'mock-teacher-token-' + Date.now())
+    localStorage.setItem('teacher_user', JSON.stringify(mockUser))
+    localStorage.setItem('current_user_type', 'teacher')
+    
+    success.value = true
+    
+    setTimeout(() => {
+      router.push('/teacher/dashboard')
+    }, 500)
+  } catch (err) {
+    console.error('Mock login error:', err)
+    error.value = 'Mock 登入失敗'
   } finally {
     loading.value = false
   }
