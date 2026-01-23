@@ -88,6 +88,7 @@
 const showModal = ref(false)
 const loading = ref(true)
 const rules = ref<any[]>([])
+const { getCenterId } = useCenterId()
 
 const fetchRules = async () => {
   loading.value = true
