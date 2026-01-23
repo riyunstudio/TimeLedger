@@ -434,28 +434,21 @@ const handleDragLeave = () => {
 }
 
 const handleDrop = async (hour: number, date: string) => {
-  console.log('[handleDrop] Called - hour:', hour, 'date:', date, 'isDragging:', isDragging.value, 'draggedItem:', !!draggedItem.value)
   if (!isDragging.value || !draggedItem.value) return
 
   const sourceKey = `${sourceHour.value}-${sourceDate.value}`
   const targetKey = `${hour}-${date}`
-  console.log('[handleDrop] sourceKey:', sourceKey, 'targetKey:', targetKey)
 
   if (sourceKey !== targetKey && teacherStore.schedule) {
     const day = teacherStore.schedule.days.find(d => d.date === date)
-    console.log('[handleDrop] day found:', !!day, 'draggedItem:', draggedItem.value)
     if (day && draggedItem.value) {
       const itemData = draggedItem.value.data
-      console.log('[handleDrop] itemData:', itemData)
       const itemId = itemData?.id || draggedItem.value.id
-      console.log('[handleDrop] itemId:', itemId)
       if (itemId) {
         const duration = parseInt(draggedItem.value.end_time.split(':')[0]) - parseInt(draggedItem.value.start_time.split(':')[0])
         const newEndHour = hour + duration
         const newStartTime = `${hour.toString().padStart(2, '0')}:00`
         const newEndTime = `${newEndHour.toString().padStart(2, '0')}:00`
-
-        console.log('[handleDrop] Calling moveScheduleItem with itemId:', itemId)
 
         try {
           await teacherStore.moveScheduleItem({

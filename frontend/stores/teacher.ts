@@ -516,16 +516,10 @@ export const useTeacherStore = defineStore('teacher', () => {
     new_end_time: string
     update_mode?: 'SINGLE' | 'FUTURE' | 'ALL'
   }) => {
-    const inMockMode = isMock.value || checkMockMode()
-    console.log('[moveScheduleItem] inMockMode:', inMockMode, 'isMock:', isMock.value, 'checkMockMode():', checkMockMode())
-
-    if (inMockMode) {
-      console.log('[moveScheduleItem] Mock mode - skipping API call, refreshing local schedule')
+    if (isMock.value || checkMockMode()) {
       await fetchSchedule()
       return
     }
-
-    console.log('[moveScheduleItem] Calling API for real mode')
 
     const api = useApi()
     const endpoint = data.item_type === 'PERSONAL_EVENT'
@@ -543,8 +537,6 @@ export const useTeacherStore = defineStore('teacher', () => {
       body.start_at = `${data.new_date}T${data.new_start_time}:00`
       body.end_at = `${data.new_date}T${data.new_end_time}:00`
     }
-
-    console.log('[moveScheduleItem] API endpoint:', endpoint, 'body:', JSON.stringify(body))
 
     if (data.item_type === 'PERSONAL_EVENT') {
       await api.patch(endpoint, body)
