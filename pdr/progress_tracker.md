@@ -412,3 +412,60 @@
 - 需要添加更多單元測試覆蓋
 - 部分 Controller 可能過於複雜，可考慮拆分
 - 部分 Repository 的測試需要完善（當前被 skip）
+
+## 7. 整合測試 (Integration Tests)
+
+### 新增整合測試文件
+- `testing/test/integration_full_workflow_test.go` - 完整的整合測試涵蓋多個工作流程
+
+### 測試案例
+
+#### TestIntegration_CenterAdminFullWorkflow
+- 管理員登入認證
+- 創建教室
+- 創建課程
+- 獲取教室和課程列表
+
+#### TestIntegration_TeacherFullWorkflow
+- 老師獲取個人檔案
+- 獲取老師課表
+- 獲取老師異動申請
+
+#### TestIntegration_ScheduleRuleCreation
+- 創建排課規則
+- 獲取排課規則
+- 展開排課規則
+
+#### TestIntegration_ResourceToggleAndInvitationStats
+- 獲取活躍教室列表
+- 切換課程活躍狀態
+- 獲取邀請統計
+- 獲取邀請列表
+
+#### TestIntegration_ValidationAndException
+- 檢查重疊（空結果）
+- 完整校驗
+- 偵測階段過渡
+- 檢查規則鎖定狀態
+
+### 修復的問題
+
+1. **ToggleActive 綁定問題**
+   - 問題：`binding:"required"` 標籤在 `bool` 類型為 `false` 時導致驗證失敗
+   - 解決：移除 `binding:"required"` 標籤，因為客戶端總是會傳遞 `is_active` 欄位
+
+2. **GORM Update 問題**
+   - 問題：`Update()` 方法需要指定模型才能正確解析欄位
+   - 解決：添加 `Model(&models.Course{})` 來提供正確的表結構
+
+3. **時間格式問題**
+   - 問題：整合測試中使用 `2006-01-02` 格式，但 API 期望 RFC3339 格式
+   - 解決：改用 `time.RFC3339` 格式
+
+4. **上下文缺少 UserTypeKey**
+   - 問題：測試中管理員端點需要 `global.UserTypeKey` 設置為 "ADMIN"
+   - 解決：在測試中添加 `c.Set(global.UserTypeKey, "ADMIN")`
+
+5. **CheckRuleLockStatus 錯誤的 ID**
+   - 問題：測試使用 `createdOffering.ID` 但 API 需要 `rule_id`
+   - 解決：創建 `ScheduleRule` 並使用其 ID
