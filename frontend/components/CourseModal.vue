@@ -29,7 +29,7 @@
             <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">課程時長</label>
             <div class="flex items-center gap-2">
               <input
-                v-model.number="form.default_duration"
+                v-model.number="form.duration"
                 type="number"
                 min="15"
                 step="15"
@@ -135,7 +135,7 @@ const loading = ref(false)
 const { getCenterId } = useCenterId()
 const form = ref({
   name: props.course?.name || '',
-  default_duration: props.course?.default_duration || 60,
+  duration: props.course?.default_duration || 60,
   color_hex: props.course?.color_hex || '#3B82F6',
   teacher_buffer_min: props.course?.teacher_buffer_min || 10,
   room_buffer_min: props.course?.room_buffer_min || 5,
@@ -145,7 +145,7 @@ watch(() => props.course, (newCourse) => {
   if (newCourse) {
     form.value = {
       name: newCourse.name,
-      default_duration: newCourse.default_duration || 60,
+      duration: newCourse.default_duration || 60,
       color_hex: newCourse.color_hex || '#3B82F6',
       teacher_buffer_min: newCourse.teacher_buffer_min,
       room_buffer_min: newCourse.room_buffer_min,
@@ -153,7 +153,7 @@ watch(() => props.course, (newCourse) => {
   } else {
     form.value = {
       name: '',
-      default_duration: 60,
+      duration: 60,
       color_hex: '#3B82F6',
       teacher_buffer_min: 10,
       room_buffer_min: 5,
@@ -169,7 +169,7 @@ const handleSubmit = async () => {
     const centerId = getCenterId()
     const courseData = {
       name: form.value.name,
-      default_duration: form.value.default_duration,
+      duration: form.value.duration,
       color_hex: form.value.color_hex,
       teacher_buffer_min: form.value.teacher_buffer_min,
       room_buffer_min: form.value.room_buffer_min,
