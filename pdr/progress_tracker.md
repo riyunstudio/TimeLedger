@@ -40,11 +40,11 @@
 | | **Stage 7** | **排課引擎 III - 週期過渡** | `[COMPLETED]` | ✅ 完成 |
 | | 7.1 Phase Support | `effective_start/end` 邏輯 | `[X] DONE` | ✅ ScheduleExpansionService 已實作 effective_range 檢查 |
 | | 7.2 Transition Flow | 過渡介面 | `[X] DONE` | ✅ 新增 DetectPhaseTransitions API 與 PhaseTransition struct |
-| | **Stage 8** | **國定假日與自動化邏輯** | `[ ] TODO` | 待開始 |
-| | 8.1 Migrations (Holidays) | 建立 `center_holidays` | `[ ] TODO` | |
-| | 8.2 Holiday CRUD | 假日管理 | `[ ] TODO` | |
-| | 8.3 Bulk Import | 批量匯入 | `[ ] TODO` | |
-| | 8.4 Auto-Filter | 自動過濾 | `[ ] TODO` | |
+| | **Stage 8** | **國定假日與自動化邏輯** | `[COMPLETED]` | ✅ 完成 |
+| | 8.1 Migrations (Holidays) | 建立 `center_holidays` | `[X] DONE` | ✅ CenterHoliday model 與 repository 已存在 |
+| | 8.2 Holiday CRUD | 假日管理 | `[X] DONE` | ✅ 新增 GetHolidays, CreateHoliday, DeleteHoliday API |
+| | 8.3 Bulk Import | 批量匯入 | `[X] DONE` | ✅ BulkCreateHolidays API 已實作 |
+| | 8.4 Auto-Filter | 自動過濾 | `[X] DONE` | ✅ ExpandRules 現在會標記假日並過濾顯示 |
 | | **Stage 9** | **異動審核與狀態機** | `[COMPLETED]` | ✅ 完成 |
 | | 9.1 Migrations (Exceptions) | 建立 `schedule_exceptions` | `[X] DONE` | ✅ 完成 |
 | | 9.2 Exception API | 老師申請異動 | `[X] DONE` | ✅ TeacherController 已實作 |
@@ -193,8 +193,44 @@
 - `TestStage7_DateRange_Scan` - 測試 DateRange 的序列化
 - 測試結果：**全部通過 (10/10 passed)**
 
+## 8. Stage 8 完整實作記錄 (Stage 8 Complete)
+
+### 8.1 Holiday Migrations ✅
+- `CenterHoliday` model 已存在 (`app/models/center_holiday.go`)
+- `CenterHolidayRepository` 已存在，包含完整 CRUD 方法
+
+### 8.2 Holiday CRUD API ✅
+**新增 `app/controllers/admin_resource.go`**:
+- `GetHolidays()` - 取得中心假日列表（支援日期範圍篩選）
+- `CreateHoliday()` - 建立單一假日
+- `DeleteHoliday()` - 刪除假日
+
+**新增 API Routes**:
+- `GET /api/v1/admin/centers/:id/holidays`
+- `POST /api/v1/admin/centers/:id/holidays`
+- `DELETE /api/v1/admin/centers/:id/holidays/:holiday_id`
+
+### 8.3 Bulk Import ✅
+- `BulkCreateHolidays()` API 已存在
+- 支援跳過重複日期 (`BulkCreateWithSkipDuplicate`)
+
+### 8.4 Auto-Filter 假日行程 ✅
+**更新 `app/services/scheduling_expansion.go`**:
+- `ExpandRules()` 現在會載入並標記假日
+- 新增 `IsHoliday` 欄位到 `ExpandedSchedule`
+- 前端可根據 `is_holiday` 顯示灰色斜紋背景
+
+### 8.5 Stage 8 單元測試 ✅
+**建立 `testing/test/stage8_holiday_test.go`**:
+- `TestStage8_CenterHoliday_Model` - 模型驗證
+- `TestStage8_HolidayFiltering_Logic` - 假日過濾邏輯
+- `TestStage8_BulkImport_Logic` - 批量匯入邏輯
+- `TestStage8_ExpandedSchedule_HolidayField` - 課表展開假日欄位
+- `TestStage8_PhaseTransition_HolidayAwareness` - Phase 與假日關聯
+- 測試結果：**全部通過 (8/8 passed)**
+
 ### 下一步
-- 繼續 Stage 8: 國定假日與自動化邏輯
+- 繼續 Stage 10: 預約排課與截止鎖定
 
 ## 4. 已知問題 (Known Issues)
 

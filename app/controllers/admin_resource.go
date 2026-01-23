@@ -598,3 +598,205 @@ type BulkCreateHolidaysResponse struct {
 	TotalSkipped   int                    `json:"total_skipped"`
 	Holidays       []models.CenterHoliday `json:"holidays"`
 }
+
+type GetHolidaysRequest struct {
+	StartDate string `form:"start_date"`
+	EndDate   string `form:"end_date"`
+}
+
+func (ctl *AdminResourceController) GetHolidays(ctx *gin.Context) {
+	centerIDStr := ctx.Param("id")
+	var centerID uint
+	if _, err := fmt.Sscanf(centerIDStr, "%d", &centerID); err != nil {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Invalid center ID",
+		})
+		return
+	}
+
+	var req GetHolidaysRequest
+	if err := ctx.ShouldBindQuery(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Invalid query parameters",
+		})
+		return
+	}
+
+	var holidays []models.CenterHoliday
+	var err error
+
+	if req.StartDate != "" && req.EndDate != "" {
+		startDate, _ := time.Parse("2006-01-02", req.StartDate)
+		endDate, _ := time.Parse("2006-01-02", req.EndDate)
+		holidays, err = ctl.holidayRepository.ListByDateRange(ctx, centerID, startDate, endDate)
+	} else {
+		holidays, err = ctl.holidayRepository.ListByCenterID(ctx, centerID)
+	}
+
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
+			Code:    errInfos.SQL_ERROR,
+			Message: ctl.app.Err.New(errInfos.SQL_ERROR).Msg,
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, global.ApiResponse{
+		Code:    0,
+		Message: "OK",
+		Datas:   holidays,
+	})
+}
+
+type CreateHolidayRequest struct {
+	Date string `json:"date" binding:"required"`
+	Name string `json:"name" binding:"required"`
+}
+
+func (ctl *AdminResourceController) CreateHoliday(ctx *gin.Context) {
+	centerIDStr := ctx.Param("id")
+	var centerID uint
+	if _, err := fmt.Sscanf(centerIDStr, "%d", &centerID); err != nil {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Invalid center ID",
+		})
+		return
+	}
+
+	var req CreateHolidayRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    errInfos.PARAMS_VALIDATE_ERROR,
+			Message: "Invalid request body",
+		})
+		return
+	}
+
+	parsedDate, err := time.Parse("2006-01-02", req.Date)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    errInfos.PARAMS_VALIDATE_ERROR,
+			Message: "Invalid date format, expected YYYY-MM-DD",
+		})
+		return
+	}
+
+	exists, err := ctl.holidayRepository.ExistsByCenterAndDate(ctx, centerID, parsedDate)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
+			Code:    errInfos.SQL_ERROR,
+			Message: ctl.app.Err.New(errInfos.SQL_ERROR).Msg,
+		})
+		return
+	}
+
+	if exists {
+		ctx.JSON(http.StatusConflict, global.ApiResponse{
+			Code:    errInfos.DUPLICATE,
+			Message: "Holiday already exists for this date",
+		})
+		return
+	}
+
+	holiday := models.CenterHoliday{
+		CenterID: centerID,
+		Date:     parsedDate,
+		Name:     req.Name,
+	}
+
+	created, err := ctl.holidayRepository.Create(ctx, holiday)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
+			Code:    errInfos.SQL_ERROR,
+			Message: ctl.app.Err.New(errInfos.SQL_ERROR).Msg,
+		})
+		return
+	}
+
+	adminID := ctx.GetUint(global.UserIDKey)
+	ctl.auditLogRepo.Create(ctx, models.AuditLog{
+		CenterID:   centerID,
+		ActorType:  "ADMIN",
+		ActorID:    adminID,
+		Action:     "CREATE_HOLIDAY",
+		TargetType: "CenterHoliday",
+		TargetID:   created.ID,
+		Payload: models.AuditPayload{
+			After: holiday,
+		},
+	})
+
+	ctx.JSON(http.StatusOK, global.ApiResponse{
+		Code:    0,
+		Message: "Holiday created",
+		Datas:   created,
+	})
+}
+
+func (ctl *AdminResourceController) DeleteHoliday(ctx *gin.Context) {
+	centerIDStr := ctx.Param("id")
+	var centerID uint
+	if _, err := fmt.Sscanf(centerIDStr, "%d", &centerID); err != nil {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Invalid center ID",
+		})
+		return
+	}
+
+	holidayIDStr := ctx.Param("holiday_id")
+	var holidayID uint
+	if _, err := fmt.Sscanf(holidayIDStr, "%d", &holidayID); err != nil {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Invalid holiday ID",
+		})
+		return
+	}
+
+	holiday, err := ctl.holidayRepository.GetByID(ctx, holidayID)
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, global.ApiResponse{
+			Code:    errInfos.NOT_FOUND,
+			Message: "Holiday not found",
+		})
+		return
+	}
+
+	if holiday.CenterID != centerID {
+		ctx.JSON(http.StatusForbidden, global.ApiResponse{
+			Code:    errInfos.FORBIDDEN,
+			Message: "Holiday does not belong to this center",
+		})
+		return
+	}
+
+	if err := ctl.holidayRepository.Delete(ctx, holidayID); err != nil {
+		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
+			Code:    errInfos.SQL_ERROR,
+			Message: ctl.app.Err.New(errInfos.SQL_ERROR).Msg,
+		})
+		return
+	}
+
+	adminID := ctx.GetUint(global.UserIDKey)
+	ctl.auditLogRepo.Create(ctx, models.AuditLog{
+		CenterID:   centerID,
+		ActorType:  "ADMIN",
+		ActorID:    adminID,
+		Action:     "DELETE_HOLIDAY",
+		TargetType: "CenterHoliday",
+		TargetID:   holidayID,
+		Payload: models.AuditPayload{
+			Before: holiday,
+		},
+	})
+
+	ctx.JSON(http.StatusOK, global.ApiResponse{
+		Code:    0,
+		Message: "Holiday deleted",
+	})
+}

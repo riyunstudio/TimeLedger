@@ -119,6 +119,12 @@ func (s *Server) LoadRoutes() {
 		{http.MethodPost, "/api/v1/admin/courses", s.action.adminResource.CreateCourse, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodDelete, "/api/v1/admin/courses/:course_id", s.action.adminResource.DeleteCourse, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 
+		// Admin - Holidays
+		{http.MethodGet, "/api/v1/admin/centers/:id/holidays", s.action.adminResource.GetHolidays, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodPost, "/api/v1/admin/centers/:id/holidays", s.action.adminResource.CreateHoliday, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodDelete, "/api/v1/admin/centers/:id/holidays/:holiday_id", s.action.adminResource.DeleteHoliday, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodPost, "/api/v1/admin/centers/:id/holidays/bulk", s.action.adminResource.BulkCreateHolidays, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+
 		// Smart Matching
 		{http.MethodPost, "/api/v1/admin/smart-matching/matches", s.action.smartMatching.FindMatches, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodGet, "/api/v1/admin/smart-matching/talent/search", s.action.smartMatching.SearchTalent, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},

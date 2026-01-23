@@ -17,6 +17,7 @@ type ScheduleExpansionServiceImpl struct {
 	exceptionRepo    *repositories.ScheduleExceptionRepository
 	auditLogRepo     *repositories.AuditLogRepository
 	centerRepo       *repositories.CenterRepository
+	holidayRepo      *repositories.CenterHolidayRepository
 }
 
 func NewScheduleExpansionService(app *app.App) ScheduleExpansionService {
@@ -26,11 +27,18 @@ func NewScheduleExpansionService(app *app.App) ScheduleExpansionService {
 		exceptionRepo:    repositories.NewScheduleExceptionRepository(app),
 		auditLogRepo:     repositories.NewAuditLogRepository(app),
 		centerRepo:       repositories.NewCenterRepository(app),
+		holidayRepo:      repositories.NewCenterHolidayRepository(app),
 	}
 }
 
 func (s *ScheduleExpansionServiceImpl) ExpandRules(ctx context.Context, rules []models.ScheduleRule, startDate, endDate time.Time, centerID uint) []ExpandedSchedule {
 	var schedules []ExpandedSchedule
+
+	holidays, _ := s.holidayRepo.ListByDateRange(ctx, centerID, startDate, endDate)
+	holidaySet := make(map[string]bool)
+	for _, h := range holidays {
+		holidaySet[h.Date.Format("2006-01-02")] = true
+	}
 
 	for _, rule := range rules {
 		if rule.Weekday == 0 {
@@ -57,6 +65,9 @@ func (s *ScheduleExpansionServiceImpl) ExpandRules(ctx context.Context, rules []
 				}
 
 				if isWithinEffectiveRange {
+					dateStr := date.Format("2006-01-02")
+					isHoliday := holidaySet[dateStr]
+
 					exceptions, _ := s.exceptionRepo.GetByRuleAndDate(ctx, rule.ID, date)
 					hasException := len(exceptions) > 0
 
@@ -67,6 +78,7 @@ func (s *ScheduleExpansionServiceImpl) ExpandRules(ctx context.Context, rules []
 						EndTime:      rule.EndTime,
 						RoomID:       rule.RoomID,
 						TeacherID:    rule.TeacherID,
+						IsHoliday:    isHoliday,
 						HasException: hasException,
 					}
 
