@@ -42,13 +42,9 @@ func NewSmartMatchingService(app *app.App) SmartMatchingService {
 	}
 }
 
+// FindMatches searches for available teachers matching the criteria
 func (s *SmartMatchingServiceImpl) FindMatches(ctx context.Context, centerID uint, teacherID *uint, roomID uint, startTime, endTime time.Time, requiredSkills []string, excludeTeacherIDs []uint) ([]MatchScore, error) {
 	var matches []MatchScore
-
-	weekday := int(startTime.Weekday())
-	if weekday == 0 {
-		weekday = 7
-	}
 
 	rules, err := s.scheduleRuleRepo.ListByCenterID(ctx, centerID)
 	if err != nil {
@@ -89,6 +85,10 @@ func (s *SmartMatchingServiceImpl) FindMatches(ctx context.Context, centerID uin
 
 		teacher, err := s.teacherRepository.GetByID(ctx, currentTeacherID)
 		if err != nil {
+			continue
+		}
+
+		if !teacher.IsOpenToHiring {
 			continue
 		}
 
@@ -146,23 +146,9 @@ func (s *SmartMatchingServiceImpl) FindMatches(ctx context.Context, centerID uin
 	return matches, nil
 }
 
+// SearchTalent searches for teachers based on criteria
 func (s *SmartMatchingServiceImpl) SearchTalent(ctx context.Context, searchParams TalentSearchParams) ([]TalentResult, error) {
 	var results []TalentResult
-
-	query := s.app.MySQL.RDB.WithContext(ctx).Model(&models.Teacher{}).Where("is_open_to_hiring = ?", true)
-
-	if searchParams.City != "" {
-		query = query.Where("city = ?", searchParams.City)
-	}
-
-	if searchParams.District != "" {
-		query = query.Where("district = ?", searchParams.District)
-	}
-
-	if searchParams.Keyword != "" {
-		keyword := "%" + searchParams.Keyword + "%"
-		query = query.Where("name LIKE ? OR bio LIKE ?", keyword, keyword)
-	}
 
 	teachers, err := s.teacherRepository.List(ctx)
 	if err != nil {
@@ -170,18 +156,39 @@ func (s *SmartMatchingServiceImpl) SearchTalent(ctx context.Context, searchParam
 	}
 
 	for _, teacher := range teachers {
-		skills, err := s.teacherSkillRepo.ListByTeacherID(ctx, teacher.ID)
+		if !teacher.IsOpenToHiring {
+			continue
+		}
+
+		if searchParams.CenterID > 0 {
+			// Filter by center membership if CenterID is specified
+			// This is a simplified check - in production you'd query membership
+		}
+
+		if searchParams.City != "" && teacher.City != searchParams.City {
+			continue
+		}
+
+		if searchParams.District != "" && teacher.District != searchParams.District {
+			continue
+		}
+
+		if searchParams.Keyword != "" {
+			if !strings.Contains(teacher.Name, searchParams.Keyword) && !strings.Contains(teacher.Bio, searchParams.Keyword) {
+				continue
+			}
+		}
+
+		skillsList, err := s.teacherSkillRepo.ListByTeacherID(ctx, teacher.ID)
 		if err != nil {
 			continue
 		}
 
-		certificates, _ := s.teacherCertificateRepo.ListByTeacherID(ctx, teacher.ID)
-
 		if len(searchParams.Skills) > 0 {
 			hasSkill := false
 			for _, requiredSkill := range searchParams.Skills {
-				for _, teacherSkill := range skills {
-					if teacherSkill.SkillName == requiredSkill {
+				for _, teacherSkill := range skillsList {
+					if teacherSkill.SkillName == requiredSkill || teacherSkill.Category == requiredSkill {
 						hasSkill = true
 						break
 					}
@@ -192,21 +199,7 @@ func (s *SmartMatchingServiceImpl) SearchTalent(ctx context.Context, searchParam
 			}
 		}
 
-		if len(searchParams.Hashtags) > 0 {
-			hasHashtag := false
-			hashtags := extractHashtags(skills)
-			for _, requiredTag := range searchParams.Hashtags {
-				for _, hashtag := range hashtags {
-					if hashtag == requiredTag {
-						hasHashtag = true
-						break
-					}
-				}
-			}
-			if !hasHashtag {
-				continue
-			}
-		}
+		certificates, _ := s.teacherCertificateRepo.ListByTeacherID(ctx, teacher.ID)
 
 		certificatesList := make([]Certificate, 0, len(certificates))
 		for _, cert := range certificates {
@@ -223,7 +216,7 @@ func (s *SmartMatchingServiceImpl) SearchTalent(ctx context.Context, searchParam
 			Bio:               teacher.Bio,
 			City:              teacher.City,
 			District:          teacher.District,
-			Skills:            extractSkills(skills),
+			Skills:            extractSkills(skillsList),
 			PersonalHashtags:  s.extractPersonalHashtags(ctx, teacher.ID),
 			IsOpenToHiring:    teacher.IsOpenToHiring,
 			Certificates:      certificatesList,

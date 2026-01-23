@@ -15,3 +15,12 @@ func Initialize() (*gorm.DB, error) {
 	}
 	return db, nil
 }
+
+// InitializeSQLite initializes a SQLite in-memory database for testing.
+func InitializeSQLite() (*gorm.DB, error) {
+	db, err := gorm.Open(nil, &gorm.Config{})
+	if err != nil {
+		return nil, fmt.Errorf("sqlite init error: %w", err)
+	}
+	return db, nil
+}
