@@ -1,7 +1,7 @@
 <template>
   <div class="h-full flex flex-col glass-card overflow-hidden">
-    <div class="p-4 border-b border-white/10">
-      <div class="flex items-center justify-between">
+    <div class="p-4 border-b border-white/10 shrink-0">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div class="flex items-center gap-4">
           <button
             @click="changeWeek(-1)"

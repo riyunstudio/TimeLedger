@@ -1,7 +1,7 @@
 <template>
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-    <ScheduleResourcePanel class="col-span-1" />
-    <ScheduleGrid class="col-span-2" />
+  <div class="h-full flex flex-col lg:flex-row gap-6">
+    <ScheduleGrid class="flex-1 min-w-0" />
+    <ScheduleResourcePanel class="lg:w-80 shrink-0" />
   </div>
 
   <ScheduleDetailPanel />

@@ -1,84 +1,81 @@
 <template>
-   <div class="min-h-screen bg-slate-900">
- 
-     <main class="p-6">
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <h1 class="text-2xl font-bold text-white">課程時段管理</h1>
-        <button
-          @click="showModal = true"
-          class="px-4 py-2 rounded-lg bg-primary-500 text-white hover:bg-primary-600 transition-colors"
-        >
-          新增時段
-        </button>
+  <div class="p-4 md:p-6">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+      <h1 class="text-2xl font-bold text-white">課程時段管理</h1>
+      <button
+        @click="showModal = true"
+        class="px-4 py-2 rounded-lg bg-primary-500 text-white hover:bg-primary-600 transition-colors"
+      >
+        新增時段
+      </button>
+    </div>
+
+    <div class="glass-card p-6">
+      <div v-if="loading" class="text-center py-8 text-slate-400">
+        載入中...
       </div>
 
-      <div class="glass-card p-6">
-        <div v-if="loading" class="text-center py-8 text-slate-400">
-          載入中...
-        </div>
-
-        <div v-else-if="rules.length === 0" class="text-center py-8 text-slate-400">
-          尚未建立課程時段
-        </div>
-
-        <div v-else class="overflow-x-auto">
-          <table class="w-full">
-            <thead>
-              <tr class="text-left text-slate-400 text-sm border-b border-white/10">
-                <th class="pb-3 pl-2">課程</th>
-                <th class="pb-3">星期</th>
-                <th class="pb-3">時間</th>
-                <th class="pb-3">教室</th>
-                <th class="pb-3">老師</th>
-                <th class="pb-3">狀態</th>
-                <th class="pb-3 pr-2 text-right">操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="rule in rules"
-                :key="rule.id"
-                class="border-b border-white/5 hover:bg-white/5"
-              >
-                <td class="py-3 pl-2 text-white">{{ rule.offering?.name || '-' }}</td>
-                <td class="py-3 text-slate-300">{{ getWeekdayText(rule.weekday) }}</td>
-                <td class="py-3 text-slate-300">{{ rule.start_time }} - {{ rule.end_time }}</td>
-                <td class="py-3 text-slate-300">{{ rule.room?.name || '-' }}</td>
-                <td class="py-3 text-slate-300">{{ rule.teacher?.name || '-' }}</td>
-                <td class="py-3">
-                  <span
-                    class="px-2 py-1 rounded-full text-xs"
-                    :class="getStatusClass(rule)"
-                  >
-                    {{ getStatusText(rule) }}
-                  </span>
-                </td>
-                <td class="py-3 pr-2 text-right">
-                  <button
-                    @click="deleteRule(rule.id)"
-                    class="text-critical-500 hover:text-critical-400"
-                  >
-                    刪除
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+      <div v-else-if="rules.length === 0" class="text-center py-8 text-slate-400">
+        尚未建立課程時段
       </div>
-    </main>
 
-    <ScheduleRuleModal
-      v-if="showModal"
-      @close="showModal = false"
-      @saved="fetchRules"
-    />
-
-    <NotificationDropdown
-      v-if="notificationUI.show.value"
-      @close="notificationUI.close()"
-    />
+      <div v-else class="overflow-x-auto -mx-6">
+        <table class="w-full min-w-[600px]">
+          <thead>
+            <tr class="text-left text-slate-400 text-sm border-b border-white/10">
+              <th class="pb-3 pl-4">課程</th>
+              <th class="pb-3">星期</th>
+              <th class="pb-3">時間</th>
+              <th class="pb-3">教室</th>
+              <th class="pb-3">老師</th>
+              <th class="pb-3">狀態</th>
+              <th class="pb-3 pr-4 text-right">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="rule in rules"
+              :key="rule.id"
+              class="border-b border-white/5 hover:bg-white/5"
+            >
+              <td class="py-3 pl-4 text-white">{{ rule.offering?.name || '-' }}</td>
+              <td class="py-3 text-slate-300">{{ getWeekdayText(rule.weekday) }}</td>
+              <td class="py-3 text-slate-300">{{ rule.start_time }} - {{ rule.end_time }}</td>
+              <td class="py-3 text-slate-300">{{ rule.room?.name || '-' }}</td>
+              <td class="py-3 text-slate-300">{{ rule.teacher?.name || '-' }}</td>
+              <td class="py-3">
+                <span
+                  class="px-2 py-1 rounded-full text-xs"
+                  :class="getStatusClass(rule)"
+                >
+                  {{ getStatusText(rule) }}
+                </span>
+              </td>
+              <td class="py-3 pr-4 text-right">
+                <button
+                  @click="deleteRule(rule.id)"
+                  class="text-critical-500 hover:text-critical-400"
+                >
+                  刪除
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
   </div>
+
+  <ScheduleRuleModal
+    v-if="showModal"
+    @close="showModal = false"
+    @saved="fetchRules"
+  />
+
+  <NotificationDropdown
+    v-if="notificationUI.show.value"
+    @close="notificationUI.close()"
+  />
 </template>
 
 <script setup lang="ts">
