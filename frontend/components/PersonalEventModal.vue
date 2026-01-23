@@ -24,45 +24,45 @@
           />
         </div>
 
-        <div class="grid grid-cols-2 gap-4">
-          <div>
+        <div class="flex gap-4">
+          <div class="flex-1">
             <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">開始日期</label>
             <input
               v-model="form.start_date"
               type="date"
-              class="input-field text-sm sm:text-base"
+              class="input-field text-sm sm:text-base w-full"
               required
             />
           </div>
 
-          <div>
+          <div class="flex-1">
             <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">開始時間</label>
             <input
               v-model="form.start_time"
               type="time"
-              class="input-field text-sm sm:text-base"
+              class="input-field text-sm sm:text-base w-full"
               required
             />
           </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-4">
-          <div>
+        <div class="flex gap-4">
+          <div class="flex-1">
             <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">結束日期</label>
             <input
               v-model="form.end_date"
               type="date"
-              class="input-field text-sm sm:text-base"
+              class="input-field text-sm sm:text-base w-full"
               required
             />
           </div>
 
-          <div>
+          <div class="flex-1">
             <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">結束時間</label>
             <input
               v-model="form.end_time"
               type="time"
-              class="input-field text-sm sm:text-base"
+              class="input-field text-sm sm:text-base w-full"
               required
             />
           </div>
