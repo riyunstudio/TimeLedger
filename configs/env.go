@@ -19,6 +19,8 @@ type Env struct {
 	ServerHost string
 	ServerPort string
 
+	JWTSecret string
+
 	MysqlMasterHost string
 	MysqlMasterPort string
 	MysqlMasterUser string
@@ -62,6 +64,8 @@ func LoadEnv() *Env {
 		ServerName: os.Getenv("SERVER_NAME"),
 		ServerHost: os.Getenv("SERVER_HOST"),
 		ServerPort: os.Getenv("SERVER_PORT"),
+
+		JWTSecret: os.Getenv("JWT_SECRET"),
 
 		MysqlMasterHost: os.Getenv("MYSQL_MASTER_HOST"),
 		MysqlMasterPort: os.Getenv("MYSQL_MASTER_PORT"),

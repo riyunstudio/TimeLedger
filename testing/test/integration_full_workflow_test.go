@@ -129,7 +129,7 @@ func TestIntegration_CenterAdminFullWorkflow(t *testing.T) {
 	}
 	t.Logf("Created admin user: ID=%d", createdAdmin.ID)
 
-	authService := services.NewMockAuthService(appInstance)
+	authService := services.NewAuthService(appInstance)
 	adminResourceController := controllers.NewAdminResourceController(appInstance)
 	_ = authService
 	_ = adminResourceController
@@ -2310,7 +2310,7 @@ func TestIntegration_AuthRefreshAndLogout(t *testing.T) {
 	}
 	_, _ = adminUserRepo.Create(ctx, adminUser)
 
-	authService := services.NewMockAuthService(appInstance)
+	authService := services.NewAuthService(appInstance)
 	authController := controllers.NewAuthController(appInstance, authService)
 
 	t.Run("Step1_RefreshToken", func(t *testing.T) {

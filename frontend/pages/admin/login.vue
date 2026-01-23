@@ -48,19 +48,6 @@
          </button>
        </form>
 
-       <div class="mt-4 pt-4 border-t border-white/10">
-         <button
-           @click="handleMockLogin"
-           :disabled="loading"
-           class="w-full glass-btn flex items-center justify-center gap-2 text-sm"
-         >
-           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-           </svg>
-           Mock 登入 (無需後端)
-         </button>
-       </div>
-
       <div class="mt-6 text-center">
         <NuxtLink
           to="/"
@@ -103,27 +90,5 @@ const handleLogin = async () => {
   } finally {
     loading.value = false
   }
-}
-
-const handleMockLogin = () => {
-  loading.value = true
-
-  setTimeout(() => {
-    // Mock 登入 - 使用假的 token 和用戶資料
-    authStore.login({
-      user: {
-        id: 1,
-        name: 'Mock Admin',
-        email: 'admin@example.com',
-        role: 'admin',
-        center_id: 1,
-      },
-      token: 'mock-token-' + Date.now(),
-    })
-    // 儲存 center_id 到 localStorage
-    localStorage.setItem('center_id', '1')
-    router.push('/admin/dashboard')
-    loading.value = false
-  }, 500)
 }
 </script>

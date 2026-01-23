@@ -11,10 +11,10 @@ import (
 
 type ScheduleRule struct {
 	ID             uint           `gorm:"primaryKey" json:"id"`
-	CenterID       uint           `gorm:"type:bigint;not null;index:idx_center_weekday_time" json:"center_id"`
-	OfferingID     uint           `gorm:"type:bigint;not null;index" json:"offering_id"`
-	TeacherID      *uint          `gorm:"type:bigint;index:idx_teacher_time" json:"teacher_id"`
-	RoomID         uint           `gorm:"type:bigint;not null;index:idx_room_time" json:"room_id"`
+	CenterID       uint           `gorm:"not null;index:idx_center_weekday_time" json:"center_id"`
+	OfferingID     uint           `gorm:"not null;index" json:"offering_id"`
+	TeacherID      *uint          `gorm:"index:idx_teacher_time" json:"teacher_id"`
+	RoomID         uint           `gorm:"not null;index:idx_room_time" json:"room_id"`
 	Weekday        int            `gorm:"type:tinyint;not null;index:idx_center_weekday_time" json:"weekday"`
 	StartTime      string         `gorm:"type:varchar(10);not null;index:idx_center_weekday_time" json:"start_time"`
 	EndTime        string         `gorm:"type:varchar(10);not null" json:"end_time"`
@@ -23,6 +23,11 @@ type ScheduleRule struct {
 	CreatedAt      time.Time      `gorm:"type:datetime;not null" json:"created_at"`
 	UpdatedAt      time.Time      `gorm:"type:datetime;not null" json:"updated_at"`
 	DeletedAt      gorm.DeletedAt `gorm:"index" json:"-"`
+
+	// 關聯
+	Offering Offering `gorm:"foreignKey:OfferingID" json:"offering,omitempty"`
+	Teacher  Teacher  `gorm:"foreignKey:TeacherID" json:"teacher,omitempty"`
+	Room     Room     `gorm:"foreignKey:RoomID" json:"room,omitempty"`
 
 	Exceptions []ScheduleException `gorm:"foreignKey:RuleID" json:"exceptions,omitempty"`
 }

@@ -172,7 +172,7 @@ const fetchExceptions = async () => {
     const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0)
     const startDate = firstDayOfMonth.toISOString().split('T')[0]
     const endDate = lastDayOfMonth.toISOString().split('T')[0]
-    const response = await api.get<{ code: number; datas: any[] }>(`/admin/exceptions?start_date=${startDate}&end_date=${endDate}`)
+    const response = await api.get<{ code: number; datas: any[] }>(`/admin/centers/${centerId}/exceptions?start_date=${startDate}&end_date=${endDate}`)
     exceptions.value = response.datas || []
   } catch (error) {
     console.error('Failed to fetch exceptions:', error)

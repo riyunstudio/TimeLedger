@@ -20,20 +20,35 @@ func NewScheduleRuleRepository(app *app.App) *ScheduleRuleRepository {
 
 func (rp *ScheduleRuleRepository) GetByID(ctx context.Context, id uint) (models.ScheduleRule, error) {
 	var data models.ScheduleRule
-	err := rp.app.MySQL.RDB.WithContext(ctx).Preload("Exceptions").Where("id = ?", id).First(&data).Error
+	err := rp.app.MySQL.RDB.WithContext(ctx).
+		Preload("Offering").
+		Preload("Room").
+		Preload("Teacher").
+		Preload("Exceptions").
+		Where("id = ?", id).First(&data).Error
 	return data, err
 }
 
 func (rp *ScheduleRuleRepository) GetByIDAndCenterID(ctx context.Context, id uint, centerID uint) (models.ScheduleRule, error) {
 	var data models.ScheduleRule
-	err := rp.app.MySQL.RDB.WithContext(ctx).Preload("Exceptions").
+	err := rp.app.MySQL.RDB.WithContext(ctx).
+		Preload("Offering").
+		Preload("Room").
+		Preload("Teacher").
+		Preload("Exceptions").
 		Where("id = ? AND center_id = ?", id, centerID).First(&data).Error
 	return data, err
 }
 
 func (rp *ScheduleRuleRepository) ListByCenterID(ctx context.Context, centerID uint) ([]models.ScheduleRule, error) {
 	var data []models.ScheduleRule
-	err := rp.app.MySQL.RDB.WithContext(ctx).Where("center_id = ?", centerID).Find(&data).Error
+	err := rp.app.MySQL.RDB.WithContext(ctx).
+		Preload("Offering").
+		Preload("Room").
+		Preload("Teacher").
+		Where("center_id = ?", centerID).
+		Order("weekday ASC, start_time ASC").
+		Find(&data).Error
 	return data, err
 }
 

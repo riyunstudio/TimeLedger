@@ -119,14 +119,14 @@
 針對您提到的「初期先 Mock 登入」以避免開發卡點，以下是詳細方案與隱憂評估：
 
 #### **1. 實作方案 (Implementation)**
-*   **後端**: 建立 `AuthService` Interface，初期注入 `MockAuthService`。提供一個 `/auth/dev-login` 接口，傳入 `user_id` 即可獲得該用戶的 JWT。
+*   **後端**: 建立 `AuthService` Interface，實作 `AuthService`。提供一個 `/auth/dev-login` 接口，傳入 `user_id` 即可獲得該用戶的 JWT。
 *   **前端**: 依據 `ENV` 切換，若為 `DEV` 則跳過 `liff.init()`，由 API 獲取固定 Token。
 
 #### **2. 潛在隱憂與配套措施 (Risks & Mitigations)**
 | 隱憂項目 | 影響 | 配套措施 (Mitigations) |
 |:---|:---|:---|
 | **Payload 差異** | LINE 傳回的 Claims (如 `sub`, `email`) 可能與 Mock 資料欄位不同。 | **統一 DTO**: 定義嚴格的 `IdentInfo` 物件，Auth Service 必須將 LINE 或 Mock 資料統一轉為此格式，後續邏輯不依賴原始 Payload。 |
-| **自動註冊流程** | 本地開發跳過真實 Callback，可能漏掉「新用戶自動建立」的處理邏輯。 | **完整路徑 Mock**: `MockAuthService` 應模擬「查表 -> 若無則 Insert」的完整資料庫行為，而非僅回傳 Token。 |
+| **自動註冊流程** | 本地開發跳過真實 Callback，可能漏掉「新用戶自動建立」的處理邏輯。 | **完整路徑 Mock**: `AuthService` 應模擬「查表 -> 若無則 Insert」的完整資料庫行為，而非僅回傳 Token。 |
 | **LIFF SDK 依賴** | 前端有些邏輯依賴 LIFF 環境 (如獲取瀏覽器外殼資訊)。 | **抽象封裝**: 前端建立 `useAuth()` Composable，將 `liff` 調用封裝在內，在 Mock 模式下回傳預設值。 |
 | **串接整合痛點** | 到 Stage 2 才接真實 LINE 可能發現設定問題 (如白名單、網域)。 | **提前驗證環境**: 雖使用 Mock 開發，但應在 **Stage 1 結束前** 先完成一個簡單的「LINE Connectivity Test」腳本，確保憑證有效。 |
 

@@ -14,12 +14,12 @@
 | | 1.4 Tests (TDD) | Models、Repository、Components、Layouts 單元測試 | `[X] DONE` | ✅ 完成 |
 | | **Stage 2** | **老師身份與專業檔案** | `[COMPLETED]` | ✅ 完成 |
 | | 2.1 Migrations (Skills & Certs) | 建立 `teacher_skills`, `hashtags`, `teacher_certificates` | `[X] DONE` | ✅ 完成 |
-| | 2.2 Auth Implementation | LINE Login (LIFF Silent), JWT 適配器 | `[X] DONE` | ✅ MockAuthService 已實作 |
+| | 2.2 Auth Implementation | LINE Login (LIFF Silent), JWT 適配器 | `[X] DONE` | ✅ AuthService 已實作 |
 | | 2.3 Profile Logic | Hashtag 字典同步邏輯 | `[X] DONE` | ✅ HashtagRepository 已有基本方法 |
 | | 2.4 Profile UI | 個人頁面 UI | `[X] DONE` | ✅ 已有 `/teacher/profile` 頁面 |
 | | **Stage 3** | **中心管理與邀請流** | `[COMPLETED]` | ✅ 完成 |
 | | 3.1 Migrations (Admin & Membership) | 建立 `admin_users`, `center_memberships`, `center_invitations` | `[X] DONE` | ✅ 完成 |
-| | 3.2 Admin Auth | Email/Password 登入 | `[X] DONE` | ✅ MockAuthService 已實作 |
+| | 3.2 Admin Auth | Email/Password 登入 | `[X] DONE` | ✅ AuthService 已實作 |
 | | 3.3 Staff Management | 管理員帳號 CRUD | `[X] DONE` | ✅ AdminUserController 已實作 |
 | | 3.4 Invitation Flow | 產生邀請碼 | `[X] DONE` | ✅ TeacherController.InviteTeacher 已實作 |
 | | 3.5 Invitation Rejection | 拒絕邀請流程 | `[X] DONE` | ✅ 已實作相關 API |
@@ -405,7 +405,7 @@
 ✅ Monorepo 結構（後端根目錄 + frontend 子目錄）
 ✅ 原子化開發（每個功能獨立完成）
 ✅ **TDD 優先**：先寫測試，再實作（Stage 1 已完成）
-✅ Interface-based Auth Service（MockAuthService 用於開發）
+✅ Interface-based Auth Service（AuthService 用於生產環境）
 ✅ **No Code Without Tests**：Stage 1 所有核心組件都有對應測試
 
 ### 待改進項目

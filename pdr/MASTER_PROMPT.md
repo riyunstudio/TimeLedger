@@ -28,7 +28,7 @@
 5.  **Quality Assurance**:
     - **No Code Without Tests**: Every Service or Logic module (especially Scheduling) MUST have corresponding unit tests.
     - **Layered Design (Service Pattern)**: Strictly follow the layered architecture defined in `pdr/docs/DEV_GUIDELINES.md`. Use `app/services/user.go` as the **Golden Template** for all Service implementations.
-    - **Authentication (Mock First)**: 初期開發時，應採用 **Interface-based Auth Service**。實作一個 `MockAuthService` 讓系統先運作，確保業邏輯與 UI 不被 LINE 憑證卡住。
+    - **Authentication (Mock First)**: 初期開發時，應採用 **Interface-based Auth Service**。實作一個 `AuthService` 讓系統先運作，確保業務邏輯與 UI 不被 LINE 憑證卡住。
     - **Stage Validation**: A stage is not "Done" until its testing checklist in `pdr/Stages.md` is complete.
     - **Documentation Feedback Loop (Gap Handling)**: If you discover a required API, field, or logic missing from the PDR documents during implementation, you MUST NOT make assumptions or "hidden" code changes. Instead:
         1. **Pause** development.

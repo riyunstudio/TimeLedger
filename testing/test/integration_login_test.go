@@ -111,7 +111,7 @@ func TestIntegration_AdminLoginAndCRUD(t *testing.T) {
 		t.Fatalf("Failed to create admin user: %v", err)
 	}
 
-	authService := services.NewMockAuthService(appInstance)
+	authService := services.NewAuthService(appInstance)
 
 	t.Run("Step1_AdminLogin_Success", func(t *testing.T) {
 		authController := controllers.NewAuthController(appInstance, authService)
@@ -323,7 +323,7 @@ func TestIntegration_RefreshToken(t *testing.T) {
 	}
 	createdAdmin, _ := adminUserRepo.Create(ctx, adminUser)
 
-	authService := services.NewMockAuthService(appInstance)
+	authService := services.NewAuthService(appInstance)
 
 	t.Run("RefreshToken_InvalidToken", func(t *testing.T) {
 		authController := controllers.NewAuthController(appInstance, authService)

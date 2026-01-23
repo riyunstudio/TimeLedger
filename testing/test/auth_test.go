@@ -95,7 +95,7 @@ func TestAuthController_AdminLogin_Success(t *testing.T) {
 		MySQL: &dbmysql.DB{WDB: db, RDB: db},
 	}
 
-	authService := services.NewMockAuthService(testApp)
+	authService := services.NewAuthService(testApp)
 	adminRepo := repositories.NewAdminUserRepository(testApp)
 
 	response, err := authService.AdminLogin(context.Background(), admin.Email, "password123")
@@ -129,7 +129,7 @@ func TestAuthController_AdminLogin_InvalidPassword(t *testing.T) {
 		MySQL: &dbmysql.DB{WDB: db, RDB: db},
 	}
 
-	authService := services.NewMockAuthService(testApp)
+	authService := services.NewAuthService(testApp)
 
 	_, err := authService.AdminLogin(context.Background(), admin.Email, "wrongpassword")
 	if err == nil {
@@ -147,7 +147,7 @@ func TestAuthController_AdminLogin_AdminNotFound(t *testing.T) {
 		MySQL: &dbmysql.DB{WDB: db, RDB: db},
 	}
 
-	authService := services.NewMockAuthService(testApp)
+	authService := services.NewAuthService(testApp)
 
 	_, err := authService.AdminLogin(context.Background(), "nonexistent@test.com", "password123")
 	if err == nil {
@@ -168,7 +168,7 @@ func TestAuthController_TeacherLineLogin_Success(t *testing.T) {
 		MySQL: &dbmysql.DB{WDB: db, RDB: db},
 	}
 
-	authService := services.NewMockAuthService(testApp)
+	authService := services.NewAuthService(testApp)
 
 	response, err := authService.TeacherLineLogin(context.Background(), lineUserID, "mock-token")
 	if err != nil {
@@ -192,7 +192,7 @@ func TestAuthController_TeacherLineLogin_TeacherNotFound(t *testing.T) {
 		MySQL: &dbmysql.DB{WDB: db, RDB: db},
 	}
 
-	authService := services.NewMockAuthService(testApp)
+	authService := services.NewAuthService(testApp)
 
 	_, err := authService.TeacherLineLogin(context.Background(), "UNKNOWN_USER", "mock-token")
 	if err == nil {
@@ -213,7 +213,7 @@ func TestAuthController_RefreshToken_Success(t *testing.T) {
 		MySQL: &dbmysql.DB{WDB: db, RDB: db},
 	}
 
-	authService := services.NewMockAuthService(testApp)
+	authService := services.NewAuthService(testApp)
 
 	loginResponse, err := authService.TeacherLineLogin(context.Background(), lineUserID, "mock-token")
 	if err != nil {
@@ -238,7 +238,7 @@ func TestAuthController_RefreshToken_InvalidToken(t *testing.T) {
 		MySQL: &dbmysql.DB{WDB: db, RDB: db},
 	}
 
-	authService := services.NewMockAuthService(testApp)
+	authService := services.NewAuthService(testApp)
 
 	_, err := authService.RefreshToken(context.Background(), "invalid-token")
 	if err == nil {
@@ -254,7 +254,7 @@ func TestAuthController_Logout_Success(t *testing.T) {
 		MySQL: &dbmysql.DB{WDB: db, RDB: db},
 	}
 
-	authService := services.NewMockAuthService(testApp)
+	authService := services.NewAuthService(testApp)
 
 	err := authService.Logout(context.Background(), "any-token")
 	if err != nil {
@@ -274,7 +274,7 @@ func TestAuthController_TokenValidation(t *testing.T) {
 		MySQL: &dbmysql.DB{WDB: db, RDB: db},
 	}
 
-	authService := services.NewMockAuthService(testApp)
+	authService := services.NewAuthService(testApp)
 
 	loginResponse, err := authService.TeacherLineLogin(context.Background(), lineUserID, "mock-token")
 	if err != nil {
@@ -306,7 +306,7 @@ func TestAuthController_AdminTokenValidation(t *testing.T) {
 		MySQL: &dbmysql.DB{WDB: db, RDB: db},
 	}
 
-	authService := services.NewMockAuthService(testApp)
+	authService := services.NewAuthService(testApp)
 
 	loginResponse, err := authService.AdminLogin(context.Background(), admin.Email, "password123")
 	if err != nil {

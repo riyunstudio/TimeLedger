@@ -6,17 +6,17 @@ import (
 
 type ScheduleException struct {
 	ID           uint       `gorm:"primaryKey" json:"id"`
-	CenterID     uint       `gorm:"type:bigint;not null;index" json:"center_id"`
-	RuleID       uint       `gorm:"type:bigint;not null;index:idx_rule_date" json:"rule_id"`
+	CenterID     uint       `gorm:"not null;index" json:"center_id"`
+	RuleID       uint       `gorm:"not null;index:idx_rule_date" json:"rule_id"`
 	OriginalDate time.Time  `gorm:"type:date;not null;index:idx_rule_date" json:"original_date"`
 	Type         string     `gorm:"type:varchar(20);not null" json:"type"`
 	Status       string     `gorm:"type:varchar(20);default:'PENDING';not null" json:"status"`
 	NewStartAt   *time.Time `gorm:"type:datetime" json:"new_start_at"`
 	NewEndAt     *time.Time `gorm:"type:datetime" json:"new_end_at"`
-	NewTeacherID *uint      `gorm:"type:bigint" json:"new_teacher_id"`
-	NewRoomID    *uint      `gorm:"type:bigint" json:"new_room_id"`
+	NewTeacherID *uint      `json:"new_teacher_id"`
+	NewRoomID    *uint      `json:"new_room_id"`
 	Reason       string     `gorm:"type:text" json:"reason"`
-	ReviewedBy   *uint      `gorm:"type:bigint" json:"reviewed_by"`
+	ReviewedBy   *uint      `json:"reviewed_by"`
 	ReviewedAt   *time.Time `gorm:"type:datetime" json:"reviewed_at"`
 	ReviewNote   string     `gorm:"type:text" json:"review_note"`
 	CreatedAt    time.Time  `gorm:"type:datetime;not null" json:"created_at"`

@@ -8,11 +8,9 @@ import (
 	"timeLedger/app"
 	"timeLedger/app/repositories"
 	jwt "timeLedger/libs/jwt"
-
-	_ "github.com/joho/godotenv/autoload"
 )
 
-type MockAuthService struct {
+type authService struct {
 	BaseService
 	app               *app.App
 	adminRepository   *repositories.AdminUserRepository
@@ -20,16 +18,16 @@ type MockAuthService struct {
 	jwt               *jwt.JWT
 }
 
-func NewMockAuthService(app *app.App) *MockAuthService {
-	return &MockAuthService{
+func NewAuthService(app *app.App) *authService {
+	return &authService{
 		app:               app,
 		adminRepository:   repositories.NewAdminUserRepository(app),
 		teacherRepository: repositories.NewTeacherRepository(app),
-		jwt:               jwt.NewJWT("mock-secret-key-for-development"),
+		jwt:               jwt.NewJWT(app.Env.JWTSecret),
 	}
 }
 
-func (s *MockAuthService) AdminLogin(ctx context.Context, email, password string) (LoginResponse, error) {
+func (s *authService) AdminLogin(ctx context.Context, email, password string) (LoginResponse, error) {
 	admin, err := s.adminRepository.GetByEmail(ctx, email)
 	if err != nil {
 		return LoginResponse{}, errors.New("admin not found")
@@ -66,7 +64,7 @@ func (s *MockAuthService) AdminLogin(ctx context.Context, email, password string
 	}, nil
 }
 
-func (s *MockAuthService) TeacherLineLogin(ctx context.Context, lineUserID, accessToken string) (LoginResponse, error) {
+func (s *authService) TeacherLineLogin(ctx context.Context, lineUserID, accessToken string) (LoginResponse, error) {
 	teacher, err := s.teacherRepository.GetByLineUserID(ctx, lineUserID)
 	if err != nil {
 		return LoginResponse{}, errors.New("teacher not found")
@@ -95,15 +93,15 @@ func (s *MockAuthService) TeacherLineLogin(ctx context.Context, lineUserID, acce
 	}, nil
 }
 
-func (s *MockAuthService) GenerateToken(claims jwt.Claims) (string, error) {
+func (s *authService) GenerateToken(claims jwt.Claims) (string, error) {
 	return s.jwt.GenerateToken(claims)
 }
 
-func (s *MockAuthService) ValidateToken(tokenString string) (*jwt.Claims, error) {
+func (s *authService) ValidateToken(tokenString string) (*jwt.Claims, error) {
 	return s.jwt.ValidateToken(tokenString)
 }
 
-func (s *MockAuthService) RefreshToken(ctx context.Context, token string) (LoginResponse, error) {
+func (s *authService) RefreshToken(ctx context.Context, token string) (LoginResponse, error) {
 	claims, err := s.ValidateToken(token)
 	if err != nil {
 		return LoginResponse{}, err
@@ -142,6 +140,6 @@ func (s *MockAuthService) RefreshToken(ctx context.Context, token string) (Login
 	}
 }
 
-func (s *MockAuthService) Logout(ctx context.Context, token string) error {
+func (s *authService) Logout(ctx context.Context, token string) error {
 	return nil
 }

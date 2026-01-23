@@ -35,7 +35,7 @@ type actions struct {
 
 // 載入路由
 func (s *Server) LoadRoutes() {
-	authService := services.NewMockAuthService(s.app)
+	authService := services.NewAuthService(s.app)
 	authMiddleware := middleware.NewAuthMiddleware(s.app, authService)
 
 	s.routes = []route{
@@ -207,7 +207,7 @@ func (s *Server) NewControllers() {
 	controllers.NewBaseController(s.app)
 	s.action.user = controllers.NewUserController(s.app)
 
-	authService := services.NewMockAuthService(s.app)
+	authService := services.NewAuthService(s.app)
 	s.action.auth = controllers.NewAuthController(s.app, authService)
 	s.action.teacher = controllers.NewTeacherController(s.app)
 	s.action.adminResource = controllers.NewAdminResourceController(s.app)
