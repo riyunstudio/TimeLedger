@@ -1,6 +1,5 @@
 <template>
-  <div class="min-h-screen bg-slate-900">
-    <TeacherHeader ref="headerRef" />
+   <div class="min-h-screen bg-slate-900">
 
     <main class="p-4 pb-24 max-w-4xl mx-auto">
       <div class="flex items-center justify-between mb-6">
@@ -220,7 +219,7 @@
 
     <button
       @click="showPersonalEventModal = true"
-      class="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-gradient-to-r from-primary-500 to-secondary-500 flex items-center justify-center shadow-xl hover:scale-110 transition-transform duration-300 z-50"
+      class="fixed bottom-24 md:bottom-6 right-6 w-14 h-14 rounded-full bg-gradient-to-r from-primary-500 to-secondary-500 flex items-center justify-center shadow-xl hover:scale-110 transition-transform duration-300 z-50"
     >
       <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -251,13 +250,14 @@
 </template>
 
 <script setup lang="ts">
-import type { ScheduleItem, WeekSchedule } from '~/types'
+ import type { ScheduleItem, WeekSchedule } from '~/types'
+ 
+ definePageMeta({
+   middleware: 'auth-teacher',
+   layout: 'default',
+ })
 
-definePageMeta({
-  middleware: 'auth-teacher',
-})
-
-const teacherStore = useTeacherStore()
+ const teacherStore = useTeacherStore()
 const sidebarStore = useSidebar()
 const notificationUI = useNotification()
 const showPersonalEventModal = ref(false)

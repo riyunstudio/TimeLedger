@@ -59,11 +59,11 @@
 </template>
 
 <script setup>
-definePageMeta({
-  layout: false
-})
+ definePageMeta({
+   layout: 'blank'
+ })
 
-const router = useRouter()
+ const router = useRouter()
 
 const lineUserId = ref('LINE_TEACHER_001')
 const accessToken = ref('mock_token')

@@ -1,8 +1,7 @@
 <template>
-  <div class="min-h-screen bg-slate-900">
-    <AdminHeader />
-
-    <main class="p-6">
+   <div class="min-h-screen bg-slate-900">
+ 
+     <main class="p-6">
       <div class="flex items-center justify-between mb-6">
         <h1 class="text-2xl font-bold text-white">課程時段管理</h1>
         <button
@@ -83,11 +82,12 @@
 </template>
 
 <script setup lang="ts">
-definePageMeta({
-  middleware: 'auth-admin',
-})
+ definePageMeta({
+   middleware: 'auth-admin',
+   layout: 'admin',
+ })
 
-const notificationUI = useNotification()
+ const notificationUI = useNotification()
 const showModal = ref(false)
 const loading = ref(true)
 const rules = ref<any[]>([])

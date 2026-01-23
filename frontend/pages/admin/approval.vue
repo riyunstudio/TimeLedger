@@ -140,11 +140,12 @@
 </template>
 
 <script setup lang="ts">
-definePageMeta({
-  middleware: 'auth-admin',
-})
+ definePageMeta({
+   middleware: 'auth-admin',
+   layout: 'admin',
+ })
 
-const activeFilter = ref('all')
+ const activeFilter = ref('all')
 const showReviewModal = ref<any>(null)
 const showDetailModal = ref<any>(null)
 const notificationUI = useNotification()

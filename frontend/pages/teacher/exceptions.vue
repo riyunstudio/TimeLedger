@@ -83,11 +83,12 @@
 <script setup lang="ts">
 import type { ScheduleException } from '~/types'
 
-definePageMeta({
-  middleware: 'auth-teacher',
-})
+ definePageMeta({
+   middleware: 'auth-teacher',
+   layout: 'default',
+ })
 
-const teacherStore = useTeacherStore()
+ const teacherStore = useTeacherStore()
 const sidebarStore = useSidebar()
 const notificationUI = useNotification()
 const showModal = ref(false)

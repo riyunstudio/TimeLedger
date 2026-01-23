@@ -57,10 +57,11 @@
 </template>
 
 <script setup lang="ts">
-definePageMeta({
-  middleware: 'auth-admin',
-})
+ definePageMeta({
+   middleware: 'auth-admin',
+   layout: 'admin',
+ })
 
-const activeTab = ref('rooms')
+ const activeTab = ref('rooms')
 const notificationUI = useNotification()
 </script>

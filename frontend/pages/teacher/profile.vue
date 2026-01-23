@@ -162,11 +162,12 @@
 </template>
 
 <script setup lang="ts">
-definePageMeta({
-  middleware: 'auth-teacher',
-})
+ definePageMeta({
+   middleware: 'auth-teacher',
+   layout: 'default',
+ })
 
-const authStore = useAuthStore()
+ const authStore = useAuthStore()
 const teacherStore = useTeacherStore()
 const sidebarStore = useSidebar()
 const notificationUI = useNotification()

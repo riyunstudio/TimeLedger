@@ -37,7 +37,7 @@ func (s *ScheduleValidationServiceImpl) CheckOverlap(ctx context.Context, center
 	startTimeStr := startTime.Format("15:04:05")
 	endTimeStr := endTime.Format("15:04:05")
 
-	query := s.app.Mysql.RDB.WithContext(ctx).Model(&models.ScheduleRule{}).
+	query := s.app.MySQL.RDB.WithContext(ctx).Model(&models.ScheduleRule{}).
 		Where("center_id = ?", centerID).
 		Where("weekday = ?", weekday).
 		Where("start_time < ?", endTimeStr).
@@ -220,7 +220,7 @@ func (s *ScheduleValidationServiceImpl) getPreviousSessionEndTime(ctx context.Co
 	startTimeStr := beforeTime.Format("15:04:05")
 
 	var rule models.ScheduleRule
-	err := s.app.Mysql.RDB.WithContext(ctx).
+	err := s.app.MySQL.RDB.WithContext(ctx).
 		Where("center_id = ?", centerID).
 		Where("teacher_id = ?", teacherID).
 		Where("weekday = ?", weekday).
@@ -244,7 +244,7 @@ func (s *ScheduleValidationServiceImpl) getPreviousSessionEndTimeByRoom(ctx cont
 	startTimeStr := beforeTime.Format("15:04:05")
 
 	var rule models.ScheduleRule
-	err := s.app.Mysql.RDB.WithContext(ctx).
+	err := s.app.MySQL.RDB.WithContext(ctx).
 		Where("center_id = ?", centerID).
 		Where("room_id = ?", roomID).
 		Where("weekday = ?", weekday).

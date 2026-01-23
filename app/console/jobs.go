@@ -49,7 +49,7 @@ func (j *ScheduleReminderJob) Handle(cronExpr string) error {
 	weekEndDate := weekStartDate.Add(24 * time.Hour)
 
 	var rules []models.ScheduleRule
-	query := j.app.Mysql.RDB.
+	query := j.app.MySQL.RDB.
 		Preload("Exceptions").
 		Where("weekday = ? AND effective_range_start_date <= ? AND effective_range_end_date >= ?",
 			weekday, weekStartDate, weekEndDate)
@@ -110,7 +110,7 @@ func (j *ExceptionReviewJob) Repositories() {
 
 func (j *ExceptionReviewJob) Handle(cronExpr string) error {
 	var exceptions []models.ScheduleException
-	err := j.app.Mysql.RDB.
+	err := j.app.MySQL.RDB.
 		Where("status = ? AND created_at < ?", "PENDING", time.Now().Add(-24*time.Hour)).
 		Find(&exceptions).Error
 	if err != nil {
@@ -150,7 +150,7 @@ func (j *CleanupOldNotificationsJob) Repositories() {
 func (j *CleanupOldNotificationsJob) Handle(cronExpr string) error {
 	cutoffDate := time.Now().AddDate(0, -3, 0)
 
-	err := j.app.Mysql.WDB.
+	err := j.app.MySQL.WDB.
 		Where("created_at < ? AND is_read = ?", cutoffDate, true).
 		Delete(&models.Notification{}).Error
 	if err != nil {

@@ -19,11 +19,12 @@
 </template>
 
 <script setup lang="ts">
-definePageMeta({
-  middleware: 'auth-admin',
-})
+ definePageMeta({
+   middleware: 'auth-admin',
+   layout: 'admin',
+ })
 
-const notificationStore = useNotificationStore()
+ const notificationStore = useNotificationStore()
 const notificationUI = useNotification()
 
 onMounted(() => {

@@ -19,7 +19,7 @@ func NewUserRepository(app *app.App) *UserRepository {
 }
 
 func (rp *UserRepository) Get(ctx context.Context, cond models.User) (data models.User, err error) {
-	query := rp.app.Mysql.RDB.WithContext(ctx).Model(&rp.model)
+	query := rp.app.MySQL.RDB.WithContext(ctx).Model(&rp.model)
 	if cond.ID != 0 {
 		query.Where("id = ?", cond.ID)
 	}
@@ -31,10 +31,10 @@ func (rp *UserRepository) Get(ctx context.Context, cond models.User) (data model
 }
 
 func (rp *UserRepository) Create(ctx context.Context, data models.User) (models.User, error) {
-	err := rp.app.Mysql.WDB.WithContext(ctx).Model(&rp.model).Create(&data).Error
+	err := rp.app.MySQL.WDB.WithContext(ctx).Model(&rp.model).Create(&data).Error
 	return data, err
 }
 
 func (rp *UserRepository) UpdateById(ctx context.Context, data models.User) error {
-	return rp.app.Mysql.WDB.WithContext(ctx).Model(&rp.model).Where("id", data.ID).Updates(&data).Error
+	return rp.app.MySQL.WDB.WithContext(ctx).Model(&rp.model).Where("id", data.ID).Updates(&data).Error
 }

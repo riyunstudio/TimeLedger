@@ -236,7 +236,7 @@ func (ctl *TeacherController) GetCenters(ctx *gin.Context) {
 	var centerResources []resources.CenterMembershipResource
 	for _, m := range memberships {
 		var center models.Center
-		ctl.app.Mysql.RDB.WithContext(ctx).First(&center, m.CenterID)
+		ctl.app.MySQL.RDB.WithContext(ctx).First(&center, m.CenterID)
 		centerResources = append(centerResources, resources.CenterMembershipResource{
 			ID:         m.ID,
 			CenterID:   m.CenterID,
@@ -586,7 +586,7 @@ func (ctl *TeacherController) GetExceptions(ctx *gin.Context) {
 	}
 
 	var exceptions []models.ScheduleException
-	query := ctl.app.Mysql.RDB.WithContext(ctx).
+	query := ctl.app.MySQL.RDB.WithContext(ctx).
 		Table("schedule_exceptions").
 		Select("schedule_exceptions.*").
 		Joins("JOIN center_memberships ON center_memberships.center_id = schedule_exceptions.center_id").
@@ -1575,7 +1575,7 @@ func (ctl *TeacherController) InviteTeacher(ctx *gin.Context) {
 		ExpiresAt: expiresAt,
 	}
 
-	if err := ctl.app.Mysql.WDB.WithContext(ctx).Create(&invitation).Error; err != nil {
+	if err := ctl.app.MySQL.WDB.WithContext(ctx).Create(&invitation).Error; err != nil {
 		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
 			Code:    500,
 			Message: "Failed to create invitation",

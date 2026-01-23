@@ -15,7 +15,7 @@ type App struct {
 	Env   *configs.Env
 	Err   *errInfos.ErrInfo
 	Tools *tools.Tools
-	Mysql *mysql.DB
+	MySQL *mysql.DB
 	Redis *redis.Redis
 	Api   *apis.Api
 	Rpc   *rpc.Rpc
@@ -42,7 +42,7 @@ func Initialize() *App {
 		Env:   env,
 		Err:   e,
 		Tools: tools,
-		Mysql: mysql,
+		MySQL: mysql,
 		Redis: redis,
 		Api:   api,
 		Rpc:   rpc,

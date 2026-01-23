@@ -13,13 +13,13 @@ import (
 func main() {
 	a := app.Initialize()
 	defer func() {
-		sqlDB, _ := a.Mysql.WDB.DB()
+		sqlDB, _ := a.MySQL.WDB.DB()
 		sqlDB.Close()
 	}()
 
 	// 檢查是否已存在
 	var existing models.CenterMembership
-	result := a.Mysql.WDB.Where("center_id = ? AND teacher_id = ?", 1, 40).First(&existing)
+	result := a.MySQL.WDB.Where("center_id = ? AND teacher_id = ?", 1, 40).First(&existing)
 	if result.Error == nil {
 		fmt.Println("會籍已存在，無需重複建立")
 		os.Exit(0)
@@ -34,7 +34,7 @@ func main() {
 		UpdatedAt: time.Now(),
 	}
 
-	if err := a.Mysql.WDB.Create(&membership).Error; err != nil {
+	if err := a.MySQL.WDB.Create(&membership).Error; err != nil {
 		log.Fatal("建立會籍失敗:", err)
 	}
 

@@ -149,7 +149,7 @@ func (s *SmartMatchingServiceImpl) FindMatches(ctx context.Context, centerID uin
 func (s *SmartMatchingServiceImpl) SearchTalent(ctx context.Context, searchParams TalentSearchParams) ([]TalentResult, error) {
 	var results []TalentResult
 
-	query := s.app.Mysql.RDB.WithContext(ctx).Model(&models.Teacher{}).Where("is_open_to_hiring = ?", true)
+	query := s.app.MySQL.RDB.WithContext(ctx).Model(&models.Teacher{}).Where("is_open_to_hiring = ?", true)
 
 	if searchParams.City != "" {
 		query = query.Where("city = ?", searchParams.City)

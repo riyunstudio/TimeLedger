@@ -18,31 +18,31 @@ func NewPersonalEventRepository(app *app.App) *PersonalEventRepository {
 
 func (r *PersonalEventRepository) ListByTeacherID(ctx context.Context, teacherID uint) ([]models.PersonalEvent, error) {
 	var events []models.PersonalEvent
-	err := r.app.Mysql.RDB.WithContext(ctx).Where("teacher_id = ?", teacherID).Order("start_at ASC").Find(&events).Error
+	err := r.app.MySQL.RDB.WithContext(ctx).Where("teacher_id = ?", teacherID).Order("start_at ASC").Find(&events).Error
 	return events, err
 }
 
 func (r *PersonalEventRepository) GetByID(ctx context.Context, id uint) (*models.PersonalEvent, error) {
 	var event models.PersonalEvent
-	err := r.app.Mysql.RDB.WithContext(ctx).First(&event, id).Error
+	err := r.app.MySQL.RDB.WithContext(ctx).First(&event, id).Error
 	return &event, err
 }
 
 func (r *PersonalEventRepository) Create(ctx context.Context, event *models.PersonalEvent) error {
-	return r.app.Mysql.WDB.WithContext(ctx).Create(event).Error
+	return r.app.MySQL.WDB.WithContext(ctx).Create(event).Error
 }
 
 func (r *PersonalEventRepository) Update(ctx context.Context, event *models.PersonalEvent) error {
-	return r.app.Mysql.WDB.WithContext(ctx).Save(event).Error
+	return r.app.MySQL.WDB.WithContext(ctx).Save(event).Error
 }
 
 func (r *PersonalEventRepository) Delete(ctx context.Context, id uint) error {
-	return r.app.Mysql.WDB.WithContext(ctx).Delete(&models.PersonalEvent{}, id).Error
+	return r.app.MySQL.WDB.WithContext(ctx).Delete(&models.PersonalEvent{}, id).Error
 }
 
 func (r *PersonalEventRepository) GetByTeacherAndDateRange(ctx context.Context, teacherID uint, startDate, endDate time.Time) ([]models.PersonalEvent, error) {
 	var events []models.PersonalEvent
-	err := r.app.Mysql.RDB.WithContext(ctx).
+	err := r.app.MySQL.RDB.WithContext(ctx).
 		Where("teacher_id = ? AND start_at >= ? AND start_at < ?", teacherID, startDate, endDate).
 		Order("start_at ASC").
 		Find(&events).Error
@@ -59,7 +59,7 @@ type UpdateEventRequest struct {
 
 func (r *PersonalEventRepository) UpdateFutureOccurrences(ctx context.Context, eventID uint, teacherID uint, req UpdateEventRequest, updatedAt time.Time) (int64, error) {
 	var event models.PersonalEvent
-	if err := r.app.Mysql.RDB.WithContext(ctx).First(&event, eventID).Error; err != nil {
+	if err := r.app.MySQL.RDB.WithContext(ctx).First(&event, eventID).Error; err != nil {
 		return 0, err
 	}
 
@@ -82,7 +82,7 @@ func (r *PersonalEventRepository) UpdateFutureOccurrences(ctx context.Context, e
 		updates["end_at"] = *req.EndAt
 	}
 
-	result := r.app.Mysql.WDB.WithContext(ctx).
+	result := r.app.MySQL.WDB.WithContext(ctx).
 		Model(&models.PersonalEvent{}).
 		Where("id = ? AND teacher_id = ? AND start_at >= ?", eventID, teacherID, event.StartAt).
 		Updates(updates)
@@ -110,7 +110,7 @@ func (r *PersonalEventRepository) UpdateAllOccurrences(ctx context.Context, even
 		updates["end_at"] = *req.EndAt
 	}
 
-	result := r.app.Mysql.WDB.WithContext(ctx).
+	result := r.app.MySQL.WDB.WithContext(ctx).
 		Model(&models.PersonalEvent{}).
 		Where("id = ? AND teacher_id = ?", eventID, teacherID).
 		Updates(updates)

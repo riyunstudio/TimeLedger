@@ -194,11 +194,12 @@
 </template>
 
 <script setup lang="ts">
-definePageMeta({
-  middleware: 'auth-admin',
-})
+ definePageMeta({
+   middleware: 'auth-admin',
+   layout: 'admin',
+ })
 
-const notificationUI = useNotification()
+ const notificationUI = useNotification()
 const searching = ref(false)
 const talentSearching = ref(false)
 const hasSearched = ref(false)

@@ -257,11 +257,12 @@
 </template>
 
 <script setup lang="ts">
-definePageMeta({
-  middleware: 'auth-teacher',
-})
+ definePageMeta({
+   middleware: 'auth-teacher',
+   layout: 'default',
+ })
 
-interface Theme {
+ interface Theme {
   id: string
   name: string
   preview: string

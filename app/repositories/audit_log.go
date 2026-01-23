@@ -19,13 +19,13 @@ func NewAuditLogRepository(app *app.App) *AuditLogRepository {
 
 func (r *AuditLogRepository) Create(ctx context.Context, log models.AuditLog) (models.AuditLog, error) {
 	log.Timestamp = time.Now()
-	err := r.app.Mysql.WDB.WithContext(ctx).Create(&log).Error
+	err := r.app.MySQL.WDB.WithContext(ctx).Create(&log).Error
 	return log, err
 }
 
 func (r *AuditLogRepository) ListByCenterID(ctx context.Context, centerID uint, limit, offset int) ([]models.AuditLog, error) {
 	var logs []models.AuditLog
-	query := r.app.Mysql.RDB.WithContext(ctx).Where("center_id = ?", centerID)
+	query := r.app.MySQL.RDB.WithContext(ctx).Where("center_id = ?", centerID)
 	if limit > 0 {
 		query = query.Limit(limit)
 	}
@@ -38,7 +38,7 @@ func (r *AuditLogRepository) ListByCenterID(ctx context.Context, centerID uint, 
 
 func (r *AuditLogRepository) ListByActor(ctx context.Context, actorType string, actorID uint, limit int) ([]models.AuditLog, error) {
 	var logs []models.AuditLog
-	query := r.app.Mysql.RDB.WithContext(ctx).Where("actor_type = ? AND actor_id = ?", actorType, actorID)
+	query := r.app.MySQL.RDB.WithContext(ctx).Where("actor_type = ? AND actor_id = ?", actorType, actorID)
 	if limit > 0 {
 		query = query.Limit(limit)
 	}
@@ -48,7 +48,7 @@ func (r *AuditLogRepository) ListByActor(ctx context.Context, actorType string, 
 
 func (r *AuditLogRepository) ListByDateRange(ctx context.Context, centerID uint, start, end time.Time) ([]models.AuditLog, error) {
 	var logs []models.AuditLog
-	err := r.app.Mysql.RDB.WithContext(ctx).
+	err := r.app.MySQL.RDB.WithContext(ctx).
 		Where("center_id = ? AND timestamp >= ? AND timestamp <= ?", centerID, start, end).
 		Order("timestamp DESC").
 		Find(&logs).Error
@@ -57,17 +57,17 @@ func (r *AuditLogRepository) ListByDateRange(ctx context.Context, centerID uint,
 
 func (r *AuditLogRepository) GetByID(ctx context.Context, id uint) (models.AuditLog, error) {
 	var log models.AuditLog
-	err := r.app.Mysql.RDB.WithContext(ctx).First(&log, id).Error
+	err := r.app.MySQL.RDB.WithContext(ctx).First(&log, id).Error
 	return log, err
 }
 
 func (r *AuditLogRepository) Delete(ctx context.Context, id uint) error {
-	return r.app.Mysql.WDB.WithContext(ctx).Delete(&models.AuditLog{}, id).Error
+	return r.app.MySQL.WDB.WithContext(ctx).Delete(&models.AuditLog{}, id).Error
 }
 
 func (r *AuditLogRepository) CountByCenter(ctx context.Context, centerID uint) (int64, error) {
 	var count int64
-	err := r.app.Mysql.RDB.WithContext(ctx).Model(&models.AuditLog{}).
+	err := r.app.MySQL.RDB.WithContext(ctx).Model(&models.AuditLog{}).
 		Where("center_id = ?", centerID).
 		Count(&count).Error
 	return count, err
