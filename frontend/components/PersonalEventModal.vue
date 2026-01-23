@@ -1,10 +1,10 @@
 <template>
   <div class="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 bg-black/50 backdrop-blur-sm" @click.self="emit('close')">
     <div class="glass-card w-full max-w-lg sm:max-w-xl max-h-[90vh] overflow-y-auto animate-spring" @click.stop>
-      <div class="flex items-center justify-between p-4 border-b border-white/10 sticky top-0 bg-slate-900/95 backdrop-blur-sm z-10">
-        <h3 class="text-lg font-semibold text-slate-100">
-          新增個人行程
-        </h3>
+        <div class="flex items-center justify-between p-4 border-b border-white/10 sticky top-0 bg-slate-900/95 backdrop-blur-sm z-10">
+          <h3 class="text-lg font-semibold text-slate-100">
+            {{ isEditing ? '編輯個人行程' : '新增個人行程' }}
+          </h3>
         <button @click="emit('close')" class="p-2 rounded-lg hover:bg-white/10 transition-colors">
           <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -36,10 +36,10 @@
           </div>
 
           <div class="flex-1">
-            <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">開始時間</label>
+            <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">結束日期</label>
             <input
-              v-model="form.start_time"
-              type="time"
+              v-model="form.end_date"
+              type="date"
               class="input-field text-sm sm:text-base w-full"
               required
             />
@@ -48,10 +48,10 @@
 
         <div class="flex gap-4">
           <div class="flex-1">
-            <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">結束日期</label>
+            <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">開始時間</label>
             <input
-              v-model="form.end_date"
-              type="date"
+              v-model="form.start_time"
+              type="time"
               class="input-field text-sm sm:text-base w-full"
               required
             />
@@ -116,12 +116,19 @@
 </template>
 
 <script setup lang="ts">
+const props = defineProps<{
+  editingEvent?: any
+}>()
+
 const emit = defineEmits<{
   close: []
+  saved: []
 }>()
 
 const teacherStore = useTeacherStore()
 const loading = ref(false)
+
+const isEditing = computed(() => !!props.editingEvent)
 
 const now = new Date()
 
@@ -134,6 +141,35 @@ const form = ref({
   recurrence: 'NONE' as 'NONE' | 'DAILY' | 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY',
   color_hex: '#6366F1',
 })
+
+// Initialize form based on editing mode
+const initializeForm = () => {
+  if (props.editingEvent) {
+    const startDate = new Date(props.editingEvent.start_at)
+    const endDate = new Date(props.editingEvent.end_at)
+    form.value = {
+      title: props.editingEvent.title || '',
+      start_date: startDate.toISOString().split('T')[0],
+      start_time: startDate.toTimeString().slice(0, 5),
+      end_date: endDate.toISOString().split('T')[0],
+      end_time: endDate.toTimeString().slice(0, 5),
+      recurrence: props.editingEvent.recurrence_rule?.frequency || 'NONE',
+      color_hex: props.editingEvent.color || '#6366F1',
+    }
+  } else {
+    form.value = {
+      title: '',
+      start_date: now.toISOString().split('T')[0],
+      start_time: now.toTimeString().slice(0, 5),
+      end_date: now.toISOString().split('T')[0],
+      end_time: new Date(now.getTime() + 60 * 60 * 1000).toTimeString().slice(0, 5),
+      recurrence: 'NONE' as 'NONE' | 'DAILY' | 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY',
+      color_hex: '#6366F1',
+    }
+  }
+}
+
+watch(() => props.editingEvent, initializeForm, { immediate: true })
 
 const colors = [
   '#6366F1',
@@ -163,16 +199,25 @@ const handleSubmit = async () => {
 
     if (form.value.recurrence !== 'NONE') {
       (data as any).recurrence_rule = {
-        type: form.value.recurrence,
+        frequency: form.value.recurrence,
         interval: 1,
       }
     }
 
-    await teacherStore.createPersonalEvent(data)
+    if (isEditing.value) {
+      // Update existing event
+      await teacherStore.updatePersonalEvent(props.editingEvent.id, data)
+    } else {
+      // Create new event
+      await teacherStore.createPersonalEvent(data)
+    }
     await teacherStore.fetchPersonalEvents()
+    await teacherStore.fetchSchedule()
+    alert('儲存成功')
+    emit('saved')
     emit('close')
   } catch (error) {
-    console.error('Failed to create personal event:', error)
+    console.error('Failed to save personal event:', error)
     alert('儲存失敗，請稍後再試')
   } finally {
     loading.value = false

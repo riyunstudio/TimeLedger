@@ -1095,7 +1095,36 @@ func (ctl *TeacherController) GetPersonalEvents(ctx *gin.Context) {
 		return
 	}
 
-	events, err := ctl.personalEventRepo.ListByTeacherID(ctx, teacherID)
+	fromStr := ctx.Query("from")
+	toStr := ctx.Query("to")
+
+	var events []models.PersonalEvent
+	var err error
+
+	if fromStr != "" && toStr != "" {
+		from, err := time.Parse("2006-01-02", fromStr)
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+				Code:    400,
+				Message: "Invalid from date format",
+			})
+			return
+		}
+		to, err := time.Parse("2006-01-02", toStr)
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+				Code:    400,
+				Message: "Invalid to date format",
+			})
+			return
+		}
+		// Add one day to to date to make it inclusive
+		to = to.AddDate(0, 0, 1)
+		events, err = ctl.personalEventRepo.GetByTeacherAndDateRange(ctx, teacherID, from, to)
+	} else {
+		events, err = ctl.personalEventRepo.ListByTeacherID(ctx, teacherID)
+	}
+
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
 			Code:    500,

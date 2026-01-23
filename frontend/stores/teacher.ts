@@ -281,7 +281,7 @@ export const useTeacherStore = defineStore('teacher', () => {
         id: 1,
         center_id: 0,
         rule_id: ruleId,
-        date: sessionDate,
+        session_date: sessionDate,
         content: '上次教到第3頁',
         prep_note: '記得帶講義',
         created_at: new Date().toISOString(),
@@ -350,7 +350,63 @@ export const useTeacherStore = defineStore('teacher', () => {
       const response = await api.get<{ code: number; message: string; datas: PersonalEvent[] }>(
         `/teacher/me/personal-events?from=${formatDate(weekStart.value)}&to=${formatDate(weekEnd.value)}`
       )
-      personalEvents.value = response.datas || []
+      const events = response.datas || []
+
+      // Expand recurring events
+      const currentWeekStart = new Date(weekStart.value!)
+      const currentWeekEnd = new Date(weekEnd.value!)
+      currentWeekEnd.setHours(23, 59, 59, 999)
+
+      const expandedEvents: PersonalEvent[] = []
+
+      events.forEach(event => {
+        if (!event.recurrence_rule) {
+          expandedEvents.push(event)
+          return
+        }
+
+        const { frequency, interval = 1 } = event.recurrence_rule
+        const startDate = new Date(event.start_at)
+        const endDate = new Date(event.end_at)
+        const duration = endDate.getTime() - startDate.getTime()
+
+        let currentDate = new Date(startDate)
+
+        while (currentDate <= currentWeekEnd) {
+          if (currentDate >= currentWeekStart) {
+            const instanceEnd = new Date(currentDate.getTime() + duration)
+            expandedEvents.push({
+              ...event,
+              id: `${event.id}_${currentDate.toISOString().split('T')[0]}`,
+              start_at: currentDate.toISOString(),
+              end_at: instanceEnd.toISOString(),
+            })
+          }
+
+          // Advance based on recurrence frequency
+          switch (frequency) {
+            case 'DAILY':
+              currentDate.setDate(currentDate.getDate() + interval)
+              break
+            case 'WEEKLY':
+              currentDate.setDate(currentDate.getDate() + (7 * interval))
+              break
+            case 'BIWEEKLY':
+              currentDate.setDate(currentDate.getDate() + (14 * interval))
+              break
+            case 'MONTHLY':
+              currentDate.setMonth(currentDate.getMonth() + interval)
+              break
+            default:
+              currentDate = new Date(currentWeekEnd.getTime() + 1) // Stop loop
+          }
+        }
+      })
+
+      personalEvents.value = expandedEvents.filter(event => {
+        const eventStart = new Date(event.start_at)
+        return eventStart >= currentWeekStart && eventStart <= currentWeekEnd
+      })
     } catch (error) {
       console.error('Failed to fetch personal events:', error)
     }
@@ -366,14 +422,36 @@ export const useTeacherStore = defineStore('teacher', () => {
   }) => {
     const api = useApi()
     const response = await api.post<{ code: number; message: string; datas: PersonalEvent }>('/teacher/me/personal-events', data)
-    personalEvents.value.push(response.datas)
-    return response.datas
+    const newEvent = response.datas
+    // Ensure recurrence_rule is included if sent
+    if (data.recurrence_rule && !newEvent.recurrence_rule) {
+      newEvent.recurrence_rule = data.recurrence_rule
+    }
+    personalEvents.value.push(newEvent)
+    return newEvent
   }
 
   const deletePersonalEvent = async (eventId: number) => {
     const api = useApi()
     await api.delete(`/teacher/me/personal-events/${eventId}`)
     personalEvents.value = personalEvents.value.filter(e => e.id !== eventId)
+  }
+
+  const updatePersonalEvent = async (eventId: number, data: {
+    title: string
+    start_at: string
+    end_at: string
+    color_hex?: string
+    recurrence_rule?: RecurrenceRule
+  }) => {
+    const api = useApi()
+    const updateData = { ...data, update_mode: 'SINGLE' }
+    const response = await api.put<{ code: number; message: string; datas: PersonalEvent }>(`/teacher/me/personal-events/${eventId}`, updateData)
+    const index = personalEvents.value.findIndex(e => e.id === eventId)
+    if (index !== -1) {
+      personalEvents.value[index] = response.datas
+    }
+    return response.datas
   }
 
   const skills = ref<TeacherSkill[]>([])
@@ -524,7 +602,7 @@ export const useTeacherStore = defineStore('teacher', () => {
     const api = useApi()
 
     if (data.item_type === 'PERSONAL_EVENT') {
-      await api.patch(`/teacher/me/personal-events/${data.item_id}`, {
+      await api.put(`/teacher/me/personal-events/${data.item_id}`, {
         start_at: `${data.new_date}T${data.new_start_time}:00`,
         end_at: `${data.new_date}T${data.new_end_time}:00`,
         update_mode: data.update_mode || 'SINGLE',
@@ -568,6 +646,7 @@ export const useTeacherStore = defineStore('teacher', () => {
     formatDate,
     fetchPersonalEvents,
     createPersonalEvent,
+    updatePersonalEvent,
     deletePersonalEvent,
     fetchSkills,
     createSkill,

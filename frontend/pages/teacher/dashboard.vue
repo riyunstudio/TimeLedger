@@ -238,7 +238,9 @@
 
   <PersonalEventModal
     v-if="showPersonalEventModal"
-    @close="showPersonalEventModal = false"
+    :editing-event="editingEvent"
+    @close="showPersonalEventModal = false; editingEvent = null"
+    @saved="handlePersonalEventSaved"
   />
 
   <NotificationDropdown
@@ -270,6 +272,7 @@
 const sidebarStore = useSidebar()
 const notificationUI = useNotification()
 const showPersonalEventModal = ref(false)
+const editingEvent = ref<any>(null)
 const viewMode = ref('grid')
 const listCurrentDate = ref('')
 const isMobile = ref(false)
@@ -341,10 +344,42 @@ const changeListDay = (delta: number) => {
 
 const getScheduleItemsAt = (date: string, hour: number): ScheduleItem[] => {
   const day = teacherStore.schedule?.days.find(d => d.date === date)
-  if (!day) return []
-  
+  let items: ScheduleItem[] = day?.items || []
+
+  // Add personal events
+  const personalEventsAtHour = teacherStore.personalEvents
+    .filter(event => {
+      const eventDateObj = new Date(event.start_at)
+      const eventDate = eventDateObj.toISOString().split('T')[0]
+      if (eventDate !== date) return false
+      const localStartHour = eventDateObj.getHours()
+      const localEndHour = new Date(event.end_at).getHours()
+      return hour >= localStartHour && hour < localEndHour
+    })
+    .map(event => {
+      const startDateObj = new Date(event.start_at)
+      const endDateObj = new Date(event.end_at)
+      return {
+        id: event.id,
+        type: 'PERSONAL_EVENT' as const,
+        title: event.title,
+        date: date,
+        start_time: `${startDateObj.getHours().toString().padStart(2, '0')}:${startDateObj.getMinutes().toString().padStart(2, '0')}`,
+        end_time: `${endDateObj.getHours().toString().padStart(2, '0')}:${endDateObj.getMinutes().toString().padStart(2, '0')}`,
+        room_id: 0,
+        teacher_id: event.teacher_id,
+        center_id: 0,
+        center_name: '',
+        status: 'APPROVED' as const,
+        color: event.color,
+        data: event,
+      }
+    })
+
+  items = items.concat(personalEventsAtHour)
+
   const hourNum = hour
-  return day.items.filter(item => {
+  return items.filter(item => {
     const startHour = parseInt(item.start_time.split(':')[0])
     const endHour = parseInt(item.end_time.split(':')[0])
     return hourNum >= startHour && hourNum < endHour
@@ -386,6 +421,7 @@ const changeWeek = (delta: number) => {
       listCurrentDate.value = teacherStore.schedule.days[0].date
     }
   })
+  teacherStore.fetchPersonalEvents()
 }
 
 const openItemDetail = (item: ScheduleItem) => {
@@ -393,6 +429,10 @@ const openItemDetail = (item: ScheduleItem) => {
   if ((item.type === 'SCHEDULE_RULE' || item.type === 'CENTER_SESSION') && item.data?.id) {
     selectedScheduleItem.value = item
     showSessionNoteModal.value = true
+  } else if (item.type === 'PERSONAL_EVENT') {
+    // 編輯個人行程
+    editingEvent.value = item.data as any
+    showPersonalEventModal.value = true
   } else {
     console.log('Open item detail:', item)
   }
@@ -465,7 +505,7 @@ const handleDrop = async (hour: number, date: string) => {
           await teacherStore.moveScheduleItem({
             item_id: itemId,
             item_type: draggedItem.value.type as 'SCHEDULE_RULE' | 'PERSONAL_EVENT' | 'CENTER_SESSION',
-            center_id: itemData?.center_id || (draggedItem.value as any).center_id || 1,
+            center_id: draggedItem.value.center_id || 1,
             new_date: date,
             new_start_time: newStartTime,
             new_end_time: newEndTime,
@@ -474,8 +514,7 @@ const handleDrop = async (hour: number, date: string) => {
           await teacherStore.fetchSchedule()
         } catch (error) {
           console.error('Failed to move schedule:', error)
-          const notificationUI = useNotification()
-          notificationUI.showToast('更新失敗，請稍後再試', 'error')
+          alert('更新失敗，請稍後再試')
         }
       }
     }
@@ -497,6 +536,12 @@ const handleNoteModalClose = () => {
 
 const handleNoteModalSaved = () => {
   // Optionally refresh or show toast
+}
+
+const handlePersonalEventSaved = () => {
+  // Refresh personal events and schedule
+  teacherStore.fetchPersonalEvents()
+  teacherStore.fetchSchedule()
 }
 
 const formatDate = (dateStr: string): string => {
@@ -573,6 +618,7 @@ onMounted(() => {
 
   teacherStore.fetchCenters()
   teacherStore.fetchSchedule()
+  teacherStore.fetchPersonalEvents()
 
   if (teacherStore.schedule?.days.length) {
     listCurrentDate.value = teacherStore.schedule.days[0].date
