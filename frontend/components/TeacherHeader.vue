@@ -1,6 +1,6 @@
 <template>
   <header class="glass sticky top-0 z-40 border-b border-white/10">
-    <div class="flex items-center justify-between px-4 py-3 max-w-4xl mx-auto">
+    <div class="flex items-center justify-between px-4 py-3 w-full">
       <button
         @click="sidebarStore.toggle()"
         class="p-2 rounded-lg hover:bg-white/10 transition-colors"
