@@ -352,8 +352,8 @@ export const useTeacherStore = defineStore('teacher', () => {
     title: string
     start_at: string
     end_at: string
-    color?: string
-    notes?: string
+    is_all_day?: boolean
+    color_hex?: string
     recurrence_rule?: RecurrenceRule
   }) => {
     const api = useApi()
@@ -388,7 +388,7 @@ export const useTeacherStore = defineStore('teacher', () => {
     }
   }
 
-  const createSkill = async (data: { skill_name: string; level: string; hashtag_ids?: number[] }) => {
+  const createSkill = async (data: { category: string; skill_name: string; level: string; hashtag_ids?: number[] }) => {
     const api = useApi()
     const response = await api.post<{ code: number; message: string; datas: TeacherSkill }>('/teacher/me/skills', data)
     skills.value.push(response.datas)
@@ -421,10 +421,9 @@ export const useTeacherStore = defineStore('teacher', () => {
   }
 
   const createCertificate = async (data: {
-    certificate_name: string
-    issued_by?: string
-    issued_date?: string
+    name: string
     file_url?: string
+    issued_at?: string
   }) => {
     const api = useApi()
     const response = await api.post<{ code: number; message: string; datas: TeacherCertificate }>('/teacher/me/certificates', data)

@@ -73,22 +73,12 @@
               v-for="color in colors"
               :key="color"
               type="button"
-              @click="form.color = color"
+              @click="form.color_hex = color"
               class="w-10 h-10 rounded-xl transition-transform hover:scale-110"
-              :class="form.color === color ? 'ring-2 ring-white' : ''"
+              :class="form.color_hex === color ? 'ring-2 ring-white' : ''"
               :style="{ backgroundColor: color }"
             />
           </div>
-        </div>
-
-        <div>
-          <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">備註</label>
-          <textarea
-            v-model="form.notes"
-            placeholder="選填"
-            rows="3"
-            class="input-field resize-none text-sm sm:text-base"
-          />
         </div>
 
         <div class="flex gap-3 pt-2">
@@ -126,8 +116,7 @@ const form = ref({
   end_at: '',
   recurrence: 'NONE' as 'NONE' | 'DAILY' | 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY',
   recurrence_end: '',
-  color: '#6366F1',
-  notes: '',
+  color_hex: '#6366F1',
 })
 
 const colors = [
@@ -153,15 +142,14 @@ const handleSubmit = async () => {
       title: form.value.title,
       start_at: formatDateTimeForApi(form.value.start_at),
       end_at: formatDateTimeForApi(form.value.end_at),
-      color: form.value.color,
-      notes: form.value.notes,
+      color_hex: form.value.color_hex,
     }
 
     if (form.value.recurrence !== 'NONE') {
       (data as any).recurrence_rule = {
-        frequency: form.value.recurrence,
+        type: form.value.recurrence,
         interval: 1,
-        end_date: form.value.recurrence_end || undefined,
+        until: form.value.recurrence_end || undefined,
       }
     }
 

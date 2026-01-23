@@ -16,7 +16,7 @@
         <div>
           <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">證照名稱</label>
           <input
-            v-model="form.certificate_name"
+            v-model="form.name"
             type="text"
             placeholder="例：ABRSM Grade 8"
             class="input-field text-sm sm:text-base"
@@ -25,20 +25,10 @@
         </div>
 
         <div>
-          <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">發證機構</label>
-          <input
-            v-model="form.issued_by"
-            type="text"
-            placeholder="例：ABRSM、RCM..."
-            class="input-field text-sm sm:text-base"
-          />
-        </div>
-
-        <div>
           <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">發證日期</label>
           <input
-            v-model="form.issued_date"
-            type="date"
+            v-model="form.issued_at"
+            type="datetime-local"
             class="input-field text-sm sm:text-base"
           />
         </div>
@@ -98,10 +88,14 @@ const fileInput = ref<HTMLInputElement>()
 const fileName = ref('')
 
 const form = ref({
-  certificate_name: '',
-  issued_by: '',
-  issued_date: '',
+  name: '',
+  issued_at: '',
 })
+
+const formatDateTimeForApi = (datetimeLocal: string): string => {
+  if (!datetimeLocal) return ''
+  return new Date(datetimeLocal).toISOString()
+}
 
 const triggerFileInput = () => {
   fileInput.value?.click()
@@ -123,10 +117,9 @@ const handleSubmit = async () => {
       : undefined
 
     await teacherStore.createCertificate({
-      certificate_name: form.value.certificate_name,
-      issued_by: form.value.issued_by || undefined,
-      issued_date: form.value.issued_date || undefined,
+      name: form.value.name,
       file_url: fileUrl,
+      issued_at: formatDateTimeForApi(form.value.issued_at),
     })
 
     await teacherStore.fetchCertificates()

@@ -14,6 +14,19 @@
 
       <form @submit.prevent="handleSubmit" class="p-4 space-y-4">
         <div>
+          <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">技能類別</label>
+          <select v-model="form.category" class="input-field text-sm sm:text-base" required>
+            <option value="">請選擇類別</option>
+            <option value="MUSIC">音樂 (MUSIC)</option>
+            <option value="ART">美術 (ART)</option>
+            <option value="DANCE">舞蹈 (DANCE)</option>
+            <option value="LANGUAGE">語言 (LANGUAGE)</option>
+            <option value="SPORTS">運動 (SPORTS)</option>
+            <option value="OTHER">其他 (OTHER)</option>
+          </select>
+        </div>
+
+        <div>
           <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">技能名稱</label>
           <input
             v-model="form.skill_name"
@@ -64,6 +77,7 @@ const emit = defineEmits<{
 const teacherStore = useTeacherStore()
 const loading = ref(false)
 const form = ref({
+  category: '' as 'MUSIC' | 'ART' | 'DANCE' | 'LANGUAGE' | 'SPORTS' | 'OTHER' | '',
   skill_name: '',
   level: 'Intermediate' as 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert',
 })
