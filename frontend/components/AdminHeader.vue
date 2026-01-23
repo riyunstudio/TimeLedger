@@ -13,6 +13,18 @@
         <h1 class="text-xl font-bold bg-gradient-to-r from-primary-500 to-secondary-500 bg-clip-text text-transparent">TimeLedger</h1>
       </div>
 
+      <!-- Mobile menu button -->
+      <button
+        @click="mobileMenuOpen = !mobileMenuOpen"
+        class="md:hidden p-2 rounded-lg hover:bg-white/10 transition-colors"
+      >
+        <svg class="w-5 h-5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path v-if="!mobileMenuOpen" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+          <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+
+      <!-- Desktop nav -->
       <nav class="hidden md:flex items-center gap-6">
         <NuxtLink
           to="/admin/dashboard"
@@ -58,6 +70,60 @@
         </NuxtLink>
       </nav>
 
+      <!-- Mobile nav -->
+      <div v-if="mobileMenuOpen" class="md:hidden absolute top-full left-0 right-0 bg-slate-800/95 backdrop-blur-sm border-b border-white/10">
+        <nav class="flex flex-col p-4 space-y-2">
+          <NuxtLink
+            to="/admin/dashboard"
+            class="block px-4 py-2 rounded-lg text-slate-300 hover:text-primary-400 hover:bg-white/10 transition-colors font-medium"
+            active-class="text-primary-500 bg-primary-500/10"
+            @click="mobileMenuOpen = false"
+          >
+            課表
+          </NuxtLink>
+          <NuxtLink
+            to="/admin/schedules"
+            class="block px-4 py-2 rounded-lg text-slate-300 hover:text-primary-400 hover:bg-white/10 transition-colors font-medium"
+            active-class="text-primary-500 bg-primary-500/10"
+            @click="mobileMenuOpen = false"
+          >
+            課程時段
+          </NuxtLink>
+          <NuxtLink
+            to="/admin/templates"
+            class="block px-4 py-2 rounded-lg text-slate-300 hover:text-primary-400 hover:bg-white/10 transition-colors font-medium"
+            active-class="text-primary-500 bg-primary-500/10"
+            @click="mobileMenuOpen = false"
+          >
+            課課模板
+          </NuxtLink>
+          <NuxtLink
+            to="/admin/resources"
+            class="block px-4 py-2 rounded-lg text-slate-300 hover:text-primary-400 hover:bg-white/10 transition-colors font-medium"
+            active-class="text-primary-500 bg-primary-500/10"
+            @click="mobileMenuOpen = false"
+          >
+            資源管理
+          </NuxtLink>
+          <NuxtLink
+            to="/admin/approval"
+            class="block px-4 py-2 rounded-lg text-slate-300 hover:text-primary-400 hover:bg-white/10 transition-colors font-medium"
+            active-class="text-primary-500 bg-primary-500/10"
+            @click="mobileMenuOpen = false"
+          >
+            審核中心
+          </NuxtLink>
+          <NuxtLink
+            to="/admin/matching"
+            class="block px-4 py-2 rounded-lg text-slate-300 hover:text-primary-400 hover:bg-white/10 transition-colors font-medium"
+            active-class="text-primary-500 bg-primary-500/10"
+            @click="mobileMenuOpen = false"
+          >
+            智慧媒合
+          </NuxtLink>
+        </nav>
+      </div>
+
       <div class="flex items-center gap-3">
         <button
           @click="handleLogout"
@@ -80,6 +146,8 @@ const authStore = useAuthStore()
 const emit = defineEmits<{
   toggleSidebar: []
 }>()
+
+const mobileMenuOpen = ref(false)
 
 const handleLogout = () => {
   if (confirm('確定要登出嗎？')) {
