@@ -340,6 +340,10 @@
 </template>
 
 <script setup lang="ts">
+definePageMeta({
+  layout: false,
+})
+
 const config = useRuntimeConfig()
 const router = useRouter()
 const authStore = useAuthStore()
