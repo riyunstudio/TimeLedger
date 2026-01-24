@@ -423,16 +423,12 @@ const fetchSchedules = async () => {
     const response = await api.get<{ code: number; datas: any[] }>('/admin/rules')
     const rules = response.datas || []
 
-    console.log('Fetched rules:', rules)
-
     // 將規則轉換為 schedule map
     const scheduleMap: Record<string, any> = {}
     rules.forEach((rule: any) => {
       const day = rule.weekday
-      console.log('Processing rule:', { id: rule.id, weekday: day, start_time: rule.start_time, offering: rule.offering?.name })
       if (day) {
         const hour = rule.start_time ? parseInt(rule.start_time.split(':')[0]) : null
-        console.log('Parsed hour:', hour, 'day:', day, 'key:', `${hour}-${day}`)
         if (hour !== null) {
           const key = `${hour}-${day}`
           scheduleMap[key] = {
@@ -451,8 +447,6 @@ const fetchSchedules = async () => {
       }
     })
     schedules.value = scheduleMap
-    console.log('Schedule map created:', scheduleMap)
-    console.log('WeekDays array:', weekDays)
   } catch (error) {
     console.error('Failed to fetch schedules:', error)
     schedules.value = {}
@@ -599,15 +593,5 @@ const handleRuleCreated = () => {
 onMounted(() => {
   fetchSchedules()
   fetchAllResources()
-
-  // 暴露調試方法到 window
-  ;(window as any).debugSchedules = () => {
-    console.log('schedules.value:', schedules.value)
-    console.log('filteredSchedules.value:', filteredSchedules.value)
-    console.log('timeSlots:', timeSlots)
-    console.log('weekDays:', weekDays)
-    console.log('getScheduleAt(9, 1):', getScheduleAt(9, 1))
-    console.log('getScheduleAt(9, 2):', getScheduleAt(9, 2))
-  }
 })
 </script>

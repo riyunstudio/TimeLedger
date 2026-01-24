@@ -584,6 +584,84 @@ func (ctl *SchedulingController) CreateRule(ctx *gin.Context) {
 	}
 
 	scheduleRuleRepo := repositories.NewScheduleRuleRepository(ctl.app)
+
+	// 計算檢查日期（從開始日期起的未來一週）
+	checkDate := startDate
+
+	// 檢查每個 weekday 是否有衝突
+	var overlappingRules []models.ScheduleRule
+	var personalEventConflicts []models.PersonalEvent
+	for _, weekday := range req.Weekdays {
+		// 找到該 weekday 的日期
+		current := checkDate
+		weekdayDiff := weekday - int(current.Weekday())
+		if weekdayDiff <= 0 {
+			weekdayDiff += 7
+		}
+		targetDate := current.AddDate(0, 0, weekdayDiff)
+
+		overlaps, eventConflicts, err := scheduleRuleRepo.CheckOverlap(ctx, centerID, req.RoomID, &req.TeacherID, weekday, req.StartTime, req.EndTime, nil, targetDate)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
+				Code:    500,
+				Message: "Failed to check overlap: " + err.Error(),
+			})
+			return
+		}
+		overlappingRules = append(overlappingRules, overlaps...)
+		personalEventConflicts = append(personalEventConflicts, eventConflicts...)
+	}
+
+	if len(overlappingRules) > 0 || len(personalEventConflicts) > 0 {
+		// 產生衝突訊息 - 去重，只顯示衝突的星期
+		conflictSet := make(map[string]bool) // 用於去重
+		conflictMessages := []string{}
+		
+		// 排課規則衝突
+		for _, rule := range overlappingRules {
+			dayNames := []string{"", "週一", "週二", "週三", "週四", "週五", "週六", "週日"}
+			key := fmt.Sprintf("rule-%d-%s-%s", rule.Weekday, rule.StartTime, rule.EndTime)
+			
+			if !conflictSet[key] {
+				conflictSet[key] = true
+				msg := fmt.Sprintf("%s %s-%s", dayNames[rule.Weekday], rule.StartTime, rule.EndTime)
+				if rule.TeacherID != nil {
+					msg += " 老師已有排課"
+				} else {
+					msg += " 教室已有排課"
+				}
+				conflictMessages = append(conflictMessages, msg)
+			}
+		}
+
+		// 個人行程衝突
+		for _, event := range personalEventConflicts {
+			key := fmt.Sprintf("event-%s", event.Title)
+			
+			if !conflictSet[key] {
+				conflictSet[key] = true
+				eventDate := event.StartAt
+				dayNames := []string{"", "週日", "週一", "週二", "週三", "週四", "週五", "週六"}
+				msg := fmt.Sprintf("%s %s-%s 「%s」",
+					dayNames[eventDate.Weekday()],
+					event.StartAt.Format("15:04"),
+					event.EndAt.Format("15:04"),
+					event.Title)
+				msg += " 老師個人行程"
+				conflictMessages = append(conflictMessages, msg)
+			}
+		}
+
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    40002, // OVERLAP error code
+			Message: "排課時間與現有規則或個人行程衝突",
+			Datas: map[string]interface{}{
+				"conflicts": conflictMessages,
+			},
+		})
+		return
+	}
+
 	var createdRules []models.ScheduleRule
 
 	for _, weekday := range req.Weekdays {

@@ -28,6 +28,71 @@
         </div>
       </div>
 
+      <!-- 衝突提示 -->
+      <div v-if="conflictError" class="p-4">
+        <div class="bg-critical-500/10 border border-critical-500/30 rounded-xl p-4 mb-4">
+          <div class="flex items-start gap-3">
+            <svg class="w-6 h-6 text-critical-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <div>
+              <h4 class="font-medium text-critical-500 mb-2">排課時間衝突</h4>
+              <p class="text-sm text-slate-400 mb-3">以下時間已有排課，請選擇其他時間或教室：</p>
+              <ul class="space-y-1">
+                <li v-for="(conflict, index) in conflictErrors" :key="index" class="text-sm text-slate-300 flex items-center gap-2">
+                  <span class="w-1.5 h-1.5 rounded-full bg-critical-500"></span>
+                  {{ conflict }}
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <button @click="conflictError = null; conflictErrors = []" class="btn-secondary w-full py-3 rounded-xl font-medium">
+          我知道了
+        </button>
+      </div>
+
+      <!-- 自定義 Alert 彈窗 -->
+      <div v-else-if="showAlert" class="p-4">
+        <div class="glass-card p-6">
+          <div class="flex items-start gap-4">
+            <!-- 警告圖示 -->
+            <div v-if="alertType === 'warning'" class="w-10 h-10 rounded-full bg-warning-500/20 flex items-center justify-center flex-shrink-0">
+              <svg class="w-6 h-6 text-warning-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <!-- 錯誤圖示 -->
+            <div v-else-if="alertType === 'error'" class="w-10 h-10 rounded-full bg-critical-500/20 flex items-center justify-center flex-shrink-0">
+              <svg class="w-6 h-6 text-critical-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </div>
+            <!-- 資訊圖示 -->
+            <div v-else class="w-10 h-10 rounded-full bg-primary-500/20 flex items-center justify-center flex-shrink-0">
+              <svg class="w-6 h-6 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            
+            <div class="flex-1">
+              <h4 v-if="alertTitle" class="font-medium text-white mb-2">{{ alertTitle }}</h4>
+              <p class="text-sm text-slate-400">{{ alertMessage }}</p>
+            </div>
+          </div>
+          
+          <div class="flex gap-3 mt-6">
+            <button 
+              @click="showAlert = false" 
+              class="flex-1 py-2.5 rounded-xl font-medium transition-all"
+              :class="alertType === 'error' ? 'btn-critical' : 'btn-primary'"
+            >
+              確定
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- 錯誤訊息 -->
       <div v-else-if="error" class="p-8 text-center">
         <div class="text-critical-500 mb-2">
@@ -217,6 +282,12 @@ const emit = defineEmits<{
 const loading = ref(false)
 const dataLoading = ref(true)
 const error = ref<string | null>(null)
+const conflictError = ref<string | null>(null)
+const conflictErrors = ref<string[]>([])
+const showAlert = ref(false)
+const alertTitle = ref('')
+const alertMessage = ref('')
+const alertType = ref<'info' | 'warning' | 'error'>('info')
 const showCreateModal = ref(true)
 const showEditModal = computed(() => !!props.editingRule)
 
@@ -299,13 +370,7 @@ const fetchData = async () => {
   error.value = null
 
   try {
-    console.log('等待載入資源資料...')
     await fetchAllResources()
-    console.log('載入資料完成:', {
-      offerings: offerings.value.length,
-      rooms: rooms.value.length,
-      teachers: teachers.value.length
-    })
   } catch (err: any) {
     console.error('Failed to fetch data:', err)
     error.value = err.message || '載入資料失敗'
@@ -328,14 +393,22 @@ const handleClose = () => {
   emit('close')
 }
 
+// 自定義 Alert 函數
+const customAlert = (message: string, title?: string, type: 'info' | 'warning' | 'error' = 'info') => {
+  alertTitle.value = title || (type === 'error' ? '操作失敗' : type === 'warning' ? '提醒' : '提示')
+  alertMessage.value = message
+  alertType.value = type
+  showAlert.value = true
+}
+
 const handleSubmit = async () => {
   if (form.value.weekdays.length === 0) {
-    alert('請至少選擇一個星期')
+    customAlert('請至少選擇一個星期', '驗證提醒', 'warning')
     return
   }
 
   if (!form.value.offering_id) {
-    alert('請選擇課程')
+    customAlert('請選擇課程', '驗證提醒', 'warning')
     return
   }
 
@@ -365,24 +438,27 @@ const handleSubmit = async () => {
       data.room_id = form.value.room_id
     }
 
-    console.log('提交排課規則資料:', JSON.stringify(data, null, 2))
-
     if (showEditModal.value && props.editingRule) {
       // 編輯模式
       await api.put(`/admin/rules/${props.editingRule.id}`, data)
-      console.log('排課規則更新成功')
       emit('updated')
     } else {
       // 新增模式
       await api.post('/admin/rules', data)
-      console.log('排課規則建立成功:',)
       emit('created')
     }
 
     handleClose()
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to save schedule rule:', error)
-    alert(showEditModal.value ? '更新失敗，請稍後再試' : '新增失敗，請稍後再試')
+    
+    // 處理衝突錯誤
+    if (error.response?.data?.code === 40002 || error.response?.data?.code === 'OVERLAP' || error.response?.data?.code === 20002) {
+      conflictError.value = error.response?.data?.message || '排課時間與現有規則衝突'
+      conflictErrors.value = error.response?.data?.datas?.conflicts || []
+    } else {
+      customAlert(showEditModal.value ? '更新失敗，請稍後再試' : '新增失敗，請稍後再試', '操作失敗', 'error')
+    }
   } finally {
     loading.value = false
   }

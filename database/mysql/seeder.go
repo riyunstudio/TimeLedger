@@ -110,11 +110,11 @@ func seedOneTeacher(db *DB) {
 	db.WDB.Where("name = ?", "莫札特音樂教室").First(&center)
 
 	membership := models.CenterMembership{
-		CenterID:   center.ID,
-		TeacherID:  teacher.ID,
-		Status:     "ACTIVE",
-		CreatedAt:  time.Now(),
-		UpdatedAt:  time.Now(),
+		CenterID:  center.ID,
+		TeacherID: teacher.ID,
+		Status:    "ACTIVE",
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
 	}
 	db.WDB.Create(&membership)
 

@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"time"
 	"timeLedger/app"
 	"timeLedger/app/models"
 )
@@ -66,6 +67,82 @@ func (rp *ScheduleRuleRepository) ListByRoomID(ctx context.Context, roomID uint,
 		Where("room_id = ? AND center_id = ?", roomID, centerID).
 		Find(&data).Error
 	return data, err
+}
+
+// CheckOverlap checks if there's an overlapping rule with the same room or teacher, or personal events
+func (rp *ScheduleRuleRepository) CheckOverlap(ctx context.Context, centerID uint, roomID uint, teacherID *uint, weekday int, startTime string, endTime string, excludeRuleID *uint, checkDate time.Time) ([]models.ScheduleRule, []models.PersonalEvent, error) {
+	var data []models.ScheduleRule
+	var personalEventConflicts []models.PersonalEvent
+
+	query := rp.app.MySQL.RDB.WithContext(ctx).
+		Where("center_id = ?", centerID).
+		Where("weekday = ?", weekday).
+		Where("deleted_at IS NULL")
+
+	// Check room overlap
+	roomQuery := query.Where("room_id = ?", roomID)
+	if excludeRuleID != nil {
+		roomQuery = roomQuery.Where("id != ?", *excludeRuleID)
+	}
+	
+	var roomRules []models.ScheduleRule
+	if err := roomQuery.Find(&roomRules).Error; err != nil {
+		return nil, nil, err
+	}
+
+	// Check time overlap for room rules
+	for _, rule := range roomRules {
+		if timesOverlap(rule.StartTime, rule.EndTime, startTime, endTime) {
+			data = append(data, rule)
+		}
+	}
+
+	// Check teacher overlap (if teacher_id is provided)
+	if teacherID != nil && *teacherID != 0 {
+		teacherQuery := query.Where("teacher_id = ?", *teacherID)
+		if excludeRuleID != nil {
+			teacherQuery = teacherQuery.Where("id != ?", *excludeRuleID)
+		}
+
+		var teacherRules []models.ScheduleRule
+		if err := teacherQuery.Find(&teacherRules).Error; err != nil {
+			return nil, nil, err
+		}
+
+		// Check time overlap for teacher rules
+		for _, rule := range teacherRules {
+			if timesOverlap(rule.StartTime, rule.EndTime, startTime, endTime) {
+				// Avoid duplicate entries if room and teacher are the same
+				exists := false
+				for _, existing := range data {
+					if existing.ID == rule.ID {
+						exists = true
+						break
+					}
+				}
+				if !exists {
+					data = append(data, rule)
+				}
+			}
+		}
+
+		// Check personal events for this teacher
+		personalEventRepo := NewPersonalEventRepository(rp.app)
+		events, err := personalEventRepo.CheckPersonalEventConflict(ctx, *teacherID, weekday, startTime, endTime, checkDate)
+		if err != nil {
+			return nil, nil, err
+		}
+		personalEventConflicts = events
+	}
+
+	return data, personalEventConflicts, nil
+}
+
+// timesOverlap checks if two time ranges overlap
+func timesOverlap(start1, end1, start2, end2 string) bool {
+	// Simple string comparison works for HH:MM format
+	// Returns true if ranges overlap (not just adjacent)
+	return start1 < end2 && end1 > start2
 }
 
 func (rp *ScheduleRuleRepository) Create(ctx context.Context, data models.ScheduleRule) (models.ScheduleRule, error) {
