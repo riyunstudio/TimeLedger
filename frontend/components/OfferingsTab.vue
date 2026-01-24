@@ -52,14 +52,24 @@
           </div>
         </div>
 
-        <p v-if="(offering as any).default_teacher_id" class="text-sm text-slate-300 mb-1">
+        <p v-if="offering.default_teacher_id" class="text-sm text-slate-300 mb-1">
           <span class="text-slate-400">預設老師：</span>
-          <span class="text-slate-100">Teacher {{ (offering as any).default_teacher_id }}</span>
+          <span class="text-slate-100">{{ getTeacherName(offering.default_teacher_id) }}</span>
         </p>
+        <p v-else class="text-sm text-slate-500 mb-1">
+          <span class="text-slate-400">預設老師：</span>
+          <span>未指定</span>
+        </p>
+
         <p v-if="offering.default_room_id" class="text-sm text-slate-300">
           <span class="text-slate-400">預設教室：</span>
-          <span class="text-slate-100">Room {{ offering.default_room_id }}</span>
+          <span class="text-slate-100">{{ getRoomName(offering.default_room_id) }}</span>
         </p>
+        <p v-else class="text-sm text-slate-500">
+          <span class="text-slate-400">預設教室：</span>
+          <span>未指定</span>
+        </p>
+
         <p v-if="!offering.allow_buffer_override" class="text-xs text-warning-500 mt-1">
           ⚠️ 不允許覆蓋緩衝時間
         </p>
@@ -79,6 +89,11 @@
 const showModal = ref(false)
 const editingOffering = ref<any>(null)
 const offerings = ref<any[]>([])
+
+// 資源快取
+const teachersCache = ref<Map<number, any>>(new Map())
+const roomsCache = ref<Map<number, any>>(new Map())
+
 const { getCenterId } = useCenterId()
 
 const handleDragStart = (offering: any, event: DragEvent) => {
@@ -87,6 +102,37 @@ const handleDragStart = (offering: any, event: DragEvent) => {
     item: offering,
   }))
   event.dataTransfer.effectAllowed = 'copy'
+}
+
+// 取得老師名稱
+const getTeacherName = (teacherId: number): string => {
+  const teacher = teachersCache.value.get(teacherId)
+  return teacher?.name || `老師 ${teacherId}`
+}
+
+// 取得教室名稱
+const getRoomName = (roomId: number): string => {
+  const room = roomsCache.value.get(roomId)
+  return room?.name || `教室 ${roomId}`
+}
+
+const fetchResources = async () => {
+  try {
+    const api = useApi()
+    const [teachersRes, roomsRes] = await Promise.all([
+      api.get<{ code: number; datas: any[] }>('/teachers'),
+      api.get<{ code: number; datas: any[] }>(`/admin/rooms`)
+    ])
+
+    teachersRes.datas?.forEach((t: any) => {
+      teachersCache.value.set(t.id, t)
+    })
+    roomsRes.datas?.forEach((r: any) => {
+      roomsCache.value.set(r.id, r)
+    })
+  } catch (error) {
+    console.error('Failed to fetch resources:', error)
+  }
 }
 
 const fetchOfferings = async () => {
@@ -132,6 +178,7 @@ const deleteOffering = async (offering: any) => {
 }
 
 onMounted(() => {
+  fetchResources()
   fetchOfferings()
 })
 </script>

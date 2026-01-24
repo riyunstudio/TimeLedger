@@ -49,7 +49,7 @@
         <div>
           <label class="block text-slate-300 mb-2 font-medium text-sm">預設老師（可選）</label>
           <select v-model="form.default_teacher_id" class="input-field text-sm">
-            <option :value="null">無</option>
+            <option :value="null">未指定</option>
             <option v-for="teacher in teachers" :key="teacher.id" :value="teacher.id">
               {{ teacher.name }}
             </option>
@@ -59,7 +59,7 @@
         <div>
           <label class="block text-slate-300 mb-2 font-medium text-sm">預設教室（可選）</label>
           <select v-model="form.default_room_id" class="input-field text-sm">
-            <option :value="null">無</option>
+            <option :value="null">未指定</option>
             <option v-for="room in rooms" :key="room.id" :value="room.id">
               {{ room.name }}
             </option>
