@@ -94,8 +94,7 @@ const fetchRules = async () => {
   loading.value = true
   try {
     const api = useApi()
-    const centerId = getCenterId()
-    const response = await api.get<{ code: number; datas: any[] }>(`/admin/centers/${centerId}/rules`)
+    const response = await api.get<{ code: number; datas: any[] }>('/admin/rules')
     rules.value = response.datas || []
   } catch (error) {
     console.error('Failed to fetch rules:', error)
@@ -109,8 +108,7 @@ const deleteRule = async (id: number) => {
 
   try {
     const api = useApi()
-    const centerId = getCenterId()
-    await api.delete(`/admin/centers/${centerId}/rules/${id}`)
+    await api.delete(`/admin/rules/${id}`)
     await fetchRules()
   } catch (error) {
     console.error('Failed to delete rule:', error)

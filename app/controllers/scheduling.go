@@ -430,12 +430,11 @@ func (ctl *SchedulingController) GetExceptionsByRule(ctx *gin.Context) {
 }
 
 func (ctl *SchedulingController) GetExceptionsByDateRange(ctx *gin.Context) {
-	centerID := ctx.Param("id")
-	var centerIDInt uint
-	if _, err := fmt.Sscanf(centerID, "%d", &centerIDInt); err != nil {
+	centerID := ctx.GetUint(global.CenterIDKey)
+	if centerID == 0 {
 		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
 			Code:    global.BAD_REQUEST,
-			Message: "Invalid center ID",
+			Message: "Center ID required",
 		})
 		return
 	}
@@ -461,7 +460,7 @@ func (ctl *SchedulingController) GetExceptionsByDateRange(ctx *gin.Context) {
 		return
 	}
 
-	exceptions, err := ctl.exceptionService.GetExceptionsByDateRange(ctx, centerIDInt, startDate, endDate)
+	exceptions, err := ctl.exceptionService.GetExceptionsByDateRange(ctx, centerID, startDate, endDate)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
 			Code:    500,
@@ -478,12 +477,11 @@ func (ctl *SchedulingController) GetExceptionsByDateRange(ctx *gin.Context) {
 }
 
 func (ctl *SchedulingController) ExpandRules(ctx *gin.Context) {
-	centerID := ctx.Param("id")
-	var centerIDInt uint
-	if _, err := fmt.Sscanf(centerID, "%d", &centerIDInt); err != nil {
+	centerID := ctx.GetUint(global.CenterIDKey)
+	if centerID == 0 {
 		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
 			Code:    global.BAD_REQUEST,
-			Message: "Invalid center ID",
+			Message: "Center ID required",
 		})
 		return
 	}
@@ -498,7 +496,7 @@ func (ctl *SchedulingController) ExpandRules(ctx *gin.Context) {
 	}
 
 	scheduleRuleRepo := repositories.NewScheduleRuleRepository(ctl.app)
-	rules, err := scheduleRuleRepo.ListByCenterID(ctx, centerIDInt)
+	rules, err := scheduleRuleRepo.ListByCenterID(ctx, centerID)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
 			Code:    500,
@@ -521,7 +519,7 @@ func (ctl *SchedulingController) ExpandRules(ctx *gin.Context) {
 		filteredRules = rules
 	}
 
-	expandedSchedules := ctl.expansionService.ExpandRules(ctx, filteredRules, req.StartDate, req.EndDate, centerIDInt)
+	expandedSchedules := ctl.expansionService.ExpandRules(ctx, filteredRules, req.StartDate, req.EndDate, centerID)
 
 	ctx.JSON(http.StatusOK, global.ApiResponse{
 		Code:    0,

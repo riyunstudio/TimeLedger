@@ -417,8 +417,7 @@ const clearViewMode = () => {
 const fetchSchedules = async () => {
   try {
     const api = useApi()
-    const centerId = getCenterId()
-    const response = await api.get<{ code: number; datas: any[] }>(`/admin/centers/${centerId}/rules`)
+    const response = await api.get<{ code: number; datas: any[] }>('/admin/rules')
     const rules = response.datas || []
 
     // 將規則轉換為 schedule map

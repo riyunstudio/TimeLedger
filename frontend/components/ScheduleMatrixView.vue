@@ -230,10 +230,9 @@ const formatTime = (hour: number): string => {
 const fetchData = async () => {
   try {
     const api = useApi()
-    const centerId = getCenterId()
 
     const [rulesRes, teachersRes, roomsRes] = await Promise.all([
-      api.get<{ code: number; datas: any[] }>(`/admin/centers/${centerId}/rules`),
+      api.get<{ code: number; datas: any[] }>('/admin/rules'),
       api.get<{ code: number; datas: any[] }>('/teachers'),
       api.get<{ code: number; datas: any[] }>(`/admin/rooms`)
     ])

@@ -329,7 +329,7 @@ const handleSubmit = async () => {
 
     console.log('提交排課規則資料:', JSON.stringify(data, null, 2))
 
-    const response = await api.post(`/admin/centers/${centerId}/rules`, data)
+    const response = await api.post('/admin/rules', data)
 
     console.log('排課規則建立成功:', response)
 

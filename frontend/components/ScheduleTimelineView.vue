@@ -425,11 +425,10 @@ const selectSession = (session: any) => {
 const fetchSessions = async () => {
   try {
     const api = useApi()
-    const centerId = getCenterId()
 
     // 取得排課規則
     const rulesRes = await api.get<{ code: number; datas: any[] }>(
-      `/admin/centers/${centerId}/rules`
+      '/admin/rules'
     )
 
     // 取得老師和教室

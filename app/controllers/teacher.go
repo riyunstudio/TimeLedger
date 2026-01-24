@@ -408,7 +408,7 @@ func (ctl *TeacherController) GetSchedule(ctx *gin.Context) {
 				schedule = append(schedule, TeacherScheduleItem{
 					ID:         fmt.Sprintf("center_%d_rule_%d_%s", m.CenterID, item.RuleID, item.Date.Format("20060102")),
 					Type:       "CENTER_SESSION",
-					Title:      fmt.Sprintf("Center Session"),
+					Title:      "Center Session",
 					Date:       item.Date.Format("2006-01-02"),
 					StartTime:  item.StartTime,
 					EndTime:    item.EndTime,
@@ -1449,22 +1449,61 @@ func (ctl *TeacherController) UpdatePersonalEvent(ctx *gin.Context) {
 	})
 }
 
-// ListTeachers 取得老師列表
+// ListTeachers 取得老師列表（根據當前登入 Admin 的中心過濾）
 // @Summary 取得老師列表
 // @Tags Admin
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Success 200 {object} global.ApiResponse{data=[]models.Teacher}
+// @Success 200 {object} global.ApiResponse{data=[]TeacherResponse}
 // @Router /api/v1/teachers [get]
 func (ctl *TeacherController) ListTeachers(ctx *gin.Context) {
-	teachers, err := ctl.teacherRepository.List(ctx)
+	// 從 JWT Token 取得 center_id
+	centerID := ctx.GetUint(global.CenterIDKey)
+	if centerID == 0 {
+		ctx.JSON(http.StatusUnauthorized, global.ApiResponse{
+			Code:    global.UNAUTHORIZED,
+			Message: "Center ID required",
+		})
+		return
+	}
+
+	// 取得該中心的所有會員老師 ID（包含 ACTIVE 和 INVITED 狀態）
+	teacherIDs, err := ctl.membershipRepo.ListTeacherIDsByCenterID(ctx, centerID)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
 			Code:    500,
-			Message: "Failed to get teachers",
+			Message: "Failed to get teacher IDs",
 		})
 		return
+	}
+
+	if len(teacherIDs) == 0 {
+		ctx.JSON(http.StatusOK, global.ApiResponse{
+			Code:    0,
+			Message: "Success",
+			Datas:   []TeacherResponse{},
+		})
+		return
+	}
+
+	// 取得老師詳細資料
+	teachers := make([]TeacherResponse, 0, len(teacherIDs))
+	for _, teacherID := range teacherIDs {
+		teacher, err := ctl.teacherRepository.GetByID(ctx, teacherID)
+		if err != nil {
+			continue
+		}
+
+		teachers = append(teachers, TeacherResponse{
+			ID:        teacher.ID,
+			Name:      teacher.Name,
+			Email:     teacher.Email,
+			City:      teacher.City,
+			District:  teacher.District,
+			Bio:       teacher.Bio,
+			CreatedAt: teacher.CreatedAt,
+		})
 	}
 
 	ctx.JSON(http.StatusOK, global.ApiResponse{

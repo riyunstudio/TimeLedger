@@ -156,30 +156,32 @@
           <!-- 評分 -->
           <div>
             <label class="block text-sm font-medium text-slate-300 mb-2">評分 (0-5 星)</label>
-            <div class="flex gap-2">
+            <div class="flex items-center gap-1">
               <button
-                v-for="star in 6"
-                :key="star - 1"
-                @click="editForm.rating = star - 1"
-                class="p-2 rounded-lg transition-colors"
-                :class="editForm.rating === star - 1 ? 'bg-primary-500/20' : 'hover:bg-white/5'"
+                v-for="star in 5"
+                :key="star"
+                @click="editForm.rating = star"
+                class="p-1 rounded-lg transition-colors"
+                :class="editForm.rating >= star ? 'bg-primary-500/20' : 'hover:bg-white/5'"
               >
-                <div class="flex">
-                  <template v-for="s in 5" :key="s">
-                    <svg
-                      class="w-6 h-6"
-                      :class="s <= (star - 1) ? 'text-warning-500' : 'text-slate-600'"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                    </svg>
-                  </template>
-                </div>
-                <span class="sr-only">{{ star - 1 }} 星</span>
+                <svg
+                  class="w-8 h-8"
+                  :class="editForm.rating >= star ? 'text-warning-500' : 'text-slate-600'"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                </svg>
+              </button>
+              <button
+                @click="editForm.rating = 0"
+                class="ml-2 px-3 py-1 rounded-lg text-sm transition-colors"
+                :class="editForm.rating === 0 ? 'bg-critical-500/20 text-critical-500' : 'bg-white/5 text-slate-400 hover:bg-white/10'"
+              >
+                清除
               </button>
             </div>
-            <p class="mt-2 text-sm text-slate-500">
+            <p class="mt-2 text-sm" :class="editForm.rating > 0 ? 'text-warning-400' : 'text-slate-500'">
               {{ ratingLabels[editForm.rating] }}
             </p>
           </div>
@@ -328,29 +330,28 @@ const averageRating = computed(() => {
 const fetchTeachers = async () => {
   loading.value = true
   try {
-    const centerId = getCenterId()
-    console.log('Fetch teachers for center:', centerId)
-
     const response = await api.get<{ code: number; datas: Teacher[] }>(
-      `/admin/centers/${centerId}/teachers`
+      '/teachers'
     )
     console.log('Teachers API response:', response)
 
     teachers.value = response.datas || []
 
-    // 為每位老師取得評分資料
-    for (const teacher of teachers.value) {
-      try {
-        const noteResponse = await api.get<{ code: number; datas: TeacherNote }>(
-          `/admin/teachers/${teacher.id}/note`
-        )
-        if (noteResponse.datas) {
-          teacher.note = noteResponse.datas
+    // 並行為每位老師取得評分資料
+    await Promise.all(
+      teachers.value.map(async (teacher) => {
+        try {
+          const noteResponse = await api.get<{ code: number; datas: TeacherNote }>(
+            `/admin/teachers/${teacher.id}/note`
+          )
+          if (noteResponse.datas) {
+            teacher.note = noteResponse.datas
+          }
+        } catch {
+          // 沒有評分資料是正常的
         }
-      } catch {
-        // 沒有評分資料是正常的
-      }
-    }
+      })
+    )
   } catch (error) {
     console.error('Failed to fetch teachers:', error)
     notificationUI.error('載入老師列表失敗')
@@ -360,8 +361,23 @@ const fetchTeachers = async () => {
   }
 }
 
-const openEditModal = (teacher: Teacher) => {
+const openEditModal = async (teacher: Teacher) => {
   editingTeacher.value = teacher
+
+  // 確保載入最新評分資料
+  if (!teacher.note) {
+    try {
+      const noteResponse = await api.get<{ code: number; datas: TeacherNote }>(
+        `/admin/teachers/${teacher.id}/note`
+      )
+      if (noteResponse.datas) {
+        teacher.note = noteResponse.datas
+      }
+    } catch {
+      // 沒有評分資料是正常的
+    }
+  }
+
   editForm.rating = teacher.note?.rating || 0
   editForm.internal_note = teacher.note?.internal_note || ''
   showEditModal.value = true

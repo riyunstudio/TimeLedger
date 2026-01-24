@@ -251,6 +251,20 @@ TeacherBuffer = max(
 
 ## 10. 資料隔離防護 (Data Isolation)
 
+### 核心原則：後端隔離，前端透明
+
+**資料隔離是後端的責任**，前端不應在 URL 中暴露 `center_id`。
+
+#### 後端職責
+1. JWT Token 包含 `center_id`（Admin 登入時由後端設定）
+2. 所有資料查詢必須根據 JWT Token 中的 `center_id` 自動過濾
+3. **嚴禁**依賴前端傳遞的 `center_id` 參數
+
+#### 前端職責
+1. **禁止**在 URL 中顯示 `center_id`
+2. **禁止**在 API 請求中傳遞 `center_id`
+3. 完全信任後端的資料隔離機制
+
 ### Hard Scope Check（強制 Scope 檢查）
 
 **Admin Request**：
@@ -263,6 +277,15 @@ TeacherBuffer = max(
 - JWT Claim 必須包含 `role: TEACHER`
 - 若存取 `schedule_sessions`，Query 必須內建 `WHERE center_id IN (teacher.joined_centers)`
 - 若存取 `personal_events`，Query 必須內建 `WHERE teacher_id = JWT.uid`
+
+### 範例：正確與錯誤的 API 設計
+
+| 類型 | 錯誤做法 | 正確做法 |
+|:---|:---|:---|
+| **前端呼叫** | `GET /admin/centers/1/teachers` | `GET /teachers` |
+| **後端實作** | 從 URL 取得 center_id | 從 JWT Token 取得 center_id |
+| **URL 顯示 center_id** | 是 | 否 |
+| **資料隔離依賴** | 前端傳遞參數 | JWT Token 自動過濾 |
 
 ### 敏感個資遮蔽
 - **Line User ID**：僅供系統綁定，不可回傳給前端
