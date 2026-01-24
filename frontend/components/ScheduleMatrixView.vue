@@ -27,27 +27,19 @@
         </div>
 
         <div class="flex items-center gap-4">
-          <!-- 切換回週曆 -->
-          <button
-            @click="$emit('switchToCalendar')"
-            class="px-3 py-1.5 rounded-lg text-sm bg-slate-700/50 text-slate-300 hover:text-white hover:bg-slate-600 transition-colors"
-          >
-            返回週曆
-          </button>
-
           <!-- 資源類型切換 -->
           <div class="flex items-center gap-1 bg-slate-800/80 rounded-lg p-1">
             <button
-              @click="resourceType = 'teacher'"
+              @click="$emit('update:resourceType', 'teacher')"
               class="px-3 py-1.5 rounded-md text-sm font-medium transition-all"
-              :class="resourceType === 'teacher' ? 'bg-primary-500 text-white' : 'text-slate-400 hover:text-white'"
+              :class="props.resourceType === 'teacher' ? 'bg-primary-500 text-white' : 'text-slate-400 hover:text-white'"
             >
               老師
             </button>
             <button
-              @click="resourceType = 'room'"
+              @click="$emit('update:resourceType', 'room')"
               class="px-3 py-1.5 rounded-md text-sm font-medium transition-all"
-              :class="resourceType === 'room' ? 'bg-primary-500 text-white' : 'text-slate-400 hover:text-white'"
+              :class="props.resourceType === 'room' ? 'bg-primary-500 text-white' : 'text-slate-400 hover:text-white'"
             >
               教室
             </button>
@@ -148,7 +140,7 @@
 
         <!-- 無資源時顯示 -->
         <div v-if="resourceList.length === 0" class="text-center py-12 text-slate-500">
-          沒有{{ resourceType === 'teacher' ? '老師' : '教室' }}資料
+          沒有{{ props.resourceType === 'teacher' ? '老師' : '教室' }}資料
         </div>
       </div>
     </div>
@@ -172,7 +164,12 @@
 <script setup lang="ts">
 const emit = defineEmits<{
   selectCell: { resource: any, time: number, weekday: number }
-  switchToCalendar: []
+  'update:resourceType': [value: 'teacher' | 'room']
+}>()
+
+// Props
+const props = defineProps<{
+  resourceType: 'teacher' | 'room'
 }>()
 
 const showCreateModal = ref(false)
@@ -181,7 +178,6 @@ const selectedSchedule = ref<any>(null)
 const dragTarget = ref<{ resourceId: number, time: number } | null>(null)
 const validationResults = ref<Record<string, any>>({})
 
-const resourceType = ref<'teacher' | 'room'>('teacher')
 const { getCenterId } = useCenterId()
 
 const timeSlots = [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]
@@ -224,7 +220,7 @@ const weekLabel = computed(() => {
 })
 
 const resourceList = computed(() => {
-  return resourceType.value === 'teacher' ? teachers.value : rooms.value
+  return props.resourceType === 'teacher' ? teachers.value : rooms.value
 })
 
 const formatTime = (hour: number): string => {
@@ -294,7 +290,7 @@ const getScheduleAt = (resourceId: number, time: number) => {
   }
 
   // 根據資源類型取得對應的排課 map
-  const scheduleMap = resourceType.value === 'teacher' ? schedules.value.teachers : schedules.value.rooms
+  const scheduleMap = props.resourceType === 'teacher' ? schedules.value.teachers : schedules.value.rooms
 
   // 搜尋所有星期
   for (const day of weekDays) {
@@ -307,7 +303,7 @@ const getScheduleAt = (resourceId: number, time: number) => {
 }
 
 const getCellClass = (resourceId: number, time: number): string => {
-  const scheduleMap = resourceType.value === 'teacher' ? schedules.value.teachers : schedules.value.rooms
+  const scheduleMap = props.resourceType === 'teacher' ? schedules.value.teachers : schedules.value.rooms
   const key = `${resourceId}-${time}`
   const validation = validationResults.value[key]
 
@@ -330,7 +326,7 @@ const getScheduleCardClass = (schedule: any): string => {
 }
 
 const selectSchedule = (resource: any, time: number) => {
-  const scheduleMap = resourceType.value === 'teacher' ? schedules.value.teachers : schedules.value.rooms
+  const scheduleMap = props.resourceType === 'teacher' ? schedules.value.teachers : schedules.value.rooms
 
   // 找到對應的星期
   for (const day of weekDays) {

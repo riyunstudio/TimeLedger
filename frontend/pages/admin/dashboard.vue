@@ -1,36 +1,25 @@
 <template>
   <div class="h-full flex flex-col lg:flex-row gap-6">
-    <!-- 週曆視圖 -->
-    <template v-if="viewMode === 'calendar'">
-      <ScheduleGrid
-        class="flex-1 min-w-0"
-        :view-mode="viewMode"
-        :selected-resource-id="selectedResourceId"
-        @update:view-mode="viewMode = $event"
-        @update:selected-resource-id="selectedResourceId = $event"
-      />
-      <ScheduleResourcePanel
-        class="lg:w-80 shrink-0"
-        :view-mode="resourcePanelViewMode"
-        @select-resource="handleSelectResource"
-      />
-    </template>
-
     <!-- 矩陣視圖 -->
-    <template v-else>
-      <ScheduleMatrixView
-        class="flex-1 min-w-0"
-        @switch-to-calendar="viewMode = 'calendar'"
-      />
-      <ScheduleResourcePanel
-        class="lg:w-80 shrink-0"
-        :view-mode="resourcePanelViewMode"
-        @select-resource="handleSelectResource"
-      />
-    </template>
+    <ScheduleMatrixView
+      class="flex-1 min-w-0"
+      v-model:resource-type="resourceType"
+      @select-cell="handleSelectResource"
+    />
+    <ScheduleResourcePanel
+      class="lg:w-80 shrink-0"
+      :view-mode="resourcePanelViewMode"
+      @select-resource="handleSelectResource"
+    />
   </div>
 
-  <ScheduleDetailPanel />
+  <ScheduleDetailPanel
+    v-if="selectedCell"
+    :time="selectedCell.time"
+    :weekday="selectedCell.weekday"
+    :schedule="selectedSchedule"
+    @close="selectedCell = null"
+  />
 
   <NotificationDropdown
     v-if="notificationUI.show.value"
@@ -47,25 +36,23 @@ definePageMeta({
 const notificationStore = useNotificationStore()
 const notificationUI = useNotification()
 
-// 視角模式：'calendar' | 'teacher_matrix' | 'room_matrix'
-const viewMode = ref<'calendar' | 'teacher_matrix' | 'room_matrix'>('calendar')
-// 選中的資源 ID（老師或教室）
-const selectedResourceId = ref<number | null>(null)
+// 資源類型：'teacher' | 'room'
+const resourceType = ref<'teacher' | 'room'>('teacher')
+
+// 選中的資源（用於詳情顯示）
+const selectedCell = ref<{ time: number; weekday: number; resource: any } | null>(null)
+const selectedSchedule = ref<any>(null)
 
 // 資源面板的視角模式
 const resourcePanelViewMode = computed(() => {
-  if (viewMode.value === 'teacher_matrix') return 'teacher'
-  if (viewMode.value === 'room_matrix') return 'room'
-  return 'offering'
+  return resourceType.value
 })
 
-const handleSelectResource = (resource: { type: 'teacher' | 'room', id: number } | null) => {
-  if (!resource) {
-    viewMode.value = 'calendar'
-    selectedResourceId.value = null
-  } else {
-    viewMode.value = resource.type === 'teacher' ? 'teacher_matrix' : 'room_matrix'
-    selectedResourceId.value = resource.id
+const handleSelectResource = (data: { resource: any; time: number; weekday: number } | null) => {
+  if (data) {
+    selectedCell.value = data
+    // 從 scheduleMap 中獲取完整的 schedule 資料
+    // 這部分由 ScheduleMatrixView 處理
   }
 }
 
