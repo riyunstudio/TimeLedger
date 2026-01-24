@@ -3,30 +3,39 @@
     <div class="p-4 border-b border-white/10 shrink-0">
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div class="flex items-center gap-4">
-          <button
-            @click="changeWeek(-1)"
-            class="p-2 rounded-lg hover:bg-white/10 transition-colors"
-          >
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
+          <!-- 週導航區域 -->
+          <div class="flex items-center gap-2">
+            <button
+              @click="changeWeek(-1)"
+              class="p-2 rounded-lg hover:bg-white/10 transition-colors"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
 
-          <h2 class="text-lg font-semibold text-slate-100">
-            {{ weekLabel }}
-          </h2>
+            <h2 class="text-lg font-semibold text-slate-100">
+              {{ weekLabel }}
+            </h2>
 
-          <button
-            @click="changeWeek(1)"
-            class="p-2 rounded-lg hover:bg-white/10 transition-colors"
-          >
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
-        </div>
+            <button
+              @click="changeWeek(1)"
+              class="p-2 rounded-lg hover:bg-white/10 transition-colors"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
 
-        <div class="flex items-center gap-4">
+            <!-- 週導航說明 -->
+            <HelpTooltip
+              placement="bottom"
+              title="週期導航"
+              description="查看不同週期的排課狀況，預設顯示本週。"
+              :usage="['點擊左右箭頭切換上週/下週', '可跨月、跨年查看', '所有視角共用同一週期']"
+            />
+          </div>
+
           <!-- 視角切換器 -->
           <div class="flex items-center gap-1 bg-slate-800/80 rounded-lg p-1">
             <button
@@ -53,23 +62,38 @@
           </div>
 
           <!-- 矩陣視角選擇器 -->
-          <select
-            v-if="viewMode !== 'calendar'"
-            v-model="selectedResourceIdModel"
-            class="px-3 py-1.5 rounded-lg text-sm bg-slate-800/80 border border-white/10 text-slate-300 focus:outline-none focus:border-primary-500"
-          >
-            <option :value="null">選擇{{ viewMode === 'teacher_matrix' ? '老師' : '教室' }}...</option>
-            <option v-for="resource in resourceList" :key="resource.id" :value="resource.id">
-              {{ resource.name }}
-            </option>
-          </select>
+          <div v-if="viewMode !== 'calendar'" class="flex items-center gap-2">
+            <select
+              v-model="selectedResourceIdModel"
+              class="px-3 py-1.5 rounded-lg text-sm bg-slate-800/80 border border-white/10 text-slate-300 focus:outline-none focus:border-primary-500"
+            >
+              <option :value="null">選擇{{ viewMode === 'teacher_matrix' ? '老師' : '教室' }}...</option>
+              <option v-for="resource in resourceList" :key="resource.id" :value="resource.id">
+                {{ resource.name }}
+              </option>
+            </select>
+            <HelpTooltip
+              :title="viewMode === 'teacher_matrix' ? '選擇老師' : '選擇教室'"
+              :description="`從已加入中心的${viewMode === 'teacher_matrix' ? '老師' : '教室'}中選擇，查看該${viewMode === 'teacher_matrix' ? '老師' : '教室'}的專屬排課表。`"
+              :usage="['從下拉選單選擇特定人員', '選擇後畫面會顯示該人員的排課', '可點擊右上角 X 清除篩選']"
+            />
+          </div>
 
-          <button
-            @click="showCreateModal = true"
-            class="btn-primary px-4 py-2 text-sm font-medium"
-          >
-            + 新增排課規則
-          </button>
+          <!-- 新增排課按鈕 -->
+          <div class="flex items-center gap-2 ml-auto">
+            <button
+              @click="showCreateModal = true"
+              class="btn-primary px-4 py-2 text-sm font-medium"
+            >
+              + 新增排課規則
+            </button>
+            <HelpTooltip
+              title="新增排課規則"
+              description="建立新的課程排課規則，設定課程、老師、教室、時間等資訊。"
+              :usage="['點擊按鈕開啟新增表單', '選擇課程、老師、教室', '設定每週固定上課日與時段', '設定有效期限後儲存']"
+              shortcut="Ctrl + N"
+            />
+          </div>
         </div>
       </div>
 
@@ -98,7 +122,8 @@
       @dragover.prevent="handleDragOver"
       @drop="handleDrop"
     >
-      <div class="min-w-[600px]">
+      <!-- 週曆視圖 -->
+      <div v-if="viewMode === 'calendar'" class="min-w-[600px]">
         <div class="grid grid-cols-[80px_repeat(7)] sticky top-0 z-10 bg-slate-800/90 backdrop-blur-sm">
           <div class="p-2 border-b border-white/10 text-center">
             <span class="text-xs text-slate-400">時段</span>
@@ -168,6 +193,92 @@
           </div>
         </div>
       </div>
+
+      <!-- 矩陣視圖（老師/教室） -->
+      <div v-else class="min-w-[800px]">
+        <div class="grid sticky top-0 z-10 bg-slate-800/90 backdrop-blur-sm" :style="{ gridTemplateColumns: `200px repeat(7, 1fr)` }">
+          <div class="p-3 border-b border-white/10">
+            <span class="text-sm font-medium text-slate-400">
+              {{ viewMode === 'teacher_matrix' ? '老師' : '教室' }}
+            </span>
+          </div>
+          <div
+            v-for="day in weekDays"
+            :key="day.value"
+            class="p-3 border-b border-white/10 text-center"
+          >
+            <span class="text-sm font-medium text-slate-100">{{ day.name }}</span>
+          </div>
+        </div>
+
+        <!-- 資源列表 -->
+        <div
+          v-for="resource in matrixResources"
+          :key="resource.id"
+          class="grid hover:bg-white/5"
+          :style="{ gridTemplateColumns: `200px repeat(7, 1fr)` }"
+        >
+          <!-- 資源名稱 -->
+          <div class="p-3 border-b border-white/5 border-r flex items-center">
+            <div class="flex items-center gap-2">
+              <div
+                class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium"
+                :class="viewMode === 'teacher_matrix' ? 'bg-primary-500/20 text-primary-400' : 'bg-amber-500/20 text-amber-400'"
+              >
+                {{ resource.name?.charAt(0) || '?' }}
+              </div>
+              <span class="text-sm text-slate-300">{{ resource.name }}</span>
+            </div>
+          </div>
+
+          <!-- 每週的排課 -->
+          <div
+            v-for="day in weekDays"
+            :key="`${resource.id}-${day.value}`"
+            class="p-1 min-h-[80px] border-b border-white/5 border-r relative"
+          >
+            <template v-for="time in timeSlots" :key="`${resource.id}-${day.value}-${time}`">
+              <div
+                v-if="getMatrixSchedule(resource.id, day.value, time)"
+                class="rounded p-1.5 text-xs cursor-pointer hover:opacity-80 transition-opacity group relative mb-1"
+                :class="getScheduleCardClass(getMatrixSchedule(resource.id, day.value, time))"
+                @click="selectSchedule(time, day.value)"
+              >
+                <!-- 簡短資訊 -->
+                <div class="font-medium truncate text-white">
+                  {{ getMatrixSchedule(resource.id, day.value, time)?.offering_name }}
+                </div>
+                <div class="text-slate-400 truncate text-[10px]">
+                  {{ formatTime(time) }} - {{ formatTime(time + 1) }}
+                </div>
+
+                <!-- 懸停 Tooltip -->
+                <div class="absolute z-50 left-0 bottom-full mb-2 hidden group-hover:block w-64">
+                  <div class="glass p-3 rounded-lg shadow-xl border border-white/10">
+                    <div class="font-medium text-white mb-2">{{ getMatrixSchedule(resource.id, day.value, time)?.offering_name }}</div>
+                    <div class="space-y-1 text-xs">
+                      <div class="flex justify-between text-slate-400">
+                        <span>{{ viewMode === 'teacher_matrix' ? '教室' : '老師' }}：</span>
+                        <span class="text-slate-200">{{ getMatrixSchedule(resource.id, day.value, time)?.room_name || getMatrixSchedule(resource.id, day.value, time)?.teacher_name }}</span>
+                      </div>
+                      <div class="flex justify-between text-slate-400">
+                        <span>時間：</span>
+                        <span class="text-slate-200">{{ formatTime(time) }} - {{ formatTime(time + 1) }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <!-- 空狀態 -->
+        <div v-if="matrixResources.length === 0" class="text-center py-12">
+          <div class="text-slate-500 mb-2">暫無{{ viewMode === 'teacher_matrix' ? '老師' : '教室' }}資料</div>
+          <div class="text-xs text-slate-600">請先{{ viewMode === 'teacher_matrix' ? '新增老師' : '新增教室' }}</div>
+        </div>
+      </div>
     </div>
 
     <ScheduleDetailPanel
@@ -231,6 +342,29 @@ const resourceList = computed(() => {
   }
   return []
 })
+
+// 矩陣視圖的資源列表
+const matrixResources = computed(() => {
+  if (props.viewMode === 'teacher_matrix') {
+    return Array.from(resourceCache.value.teachers.values())
+  } else if (props.viewMode === 'room_matrix') {
+    return Array.from(resourceCache.value.rooms.values())
+  }
+  return []
+})
+
+// 矩陣視圖：取得特定資源在特定時段的排課
+const getMatrixSchedule = (resourceId: number, day: number, time: number) => {
+  const schedule = filteredSchedules.value[`${time}-${day}`]
+  if (!schedule) return null
+
+  if (props.viewMode === 'teacher_matrix') {
+    return schedule.teacher_id === resourceId ? schedule : null
+  } else if (props.viewMode === 'room_matrix') {
+    return schedule.room_id === resourceId ? schedule : null
+  }
+  return null
+}
 
 const getWeekStart = (date: Date): Date => {
   const d = new Date(date)

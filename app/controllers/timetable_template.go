@@ -340,3 +340,136 @@ func (ctl *TimetableTemplateController) DeleteTemplate(ctx *gin.Context) {
 		Message: "Template deleted",
 	})
 }
+
+type ApplyTemplateRequest struct {
+	OfferingID   uint     `json:"offering_id" binding:"required"`
+	StartDate    string   `json:"start_date" binding:"required"`
+	EndDate      string   `json:"end_date" binding:"required"`
+	Weekdays     []int    `json:"weekdays" binding:"required"`
+	Duration     int      `json:"duration"`
+}
+
+func (ctl *TimetableTemplateController) ApplyTemplate(ctx *gin.Context) {
+	centerID, _ := ctx.Get("center_id")
+	templateIDStr := ctx.Param("templateId")
+
+	if templateIDStr == "" {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Template ID required",
+		})
+		return
+	}
+
+	var templateID uint
+	if _, err := fmt.Sscanf(templateIDStr, "%d", &templateID); err != nil || templateID == 0 {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Invalid template ID format",
+		})
+		return
+	}
+
+	centerIDUint, _ := centerID.(uint)
+
+	// 取得模板
+	template, err := ctl.templateRepository.GetByID(ctl.makeCtx(ctx), templateID)
+	if err != nil || template.CenterID != centerIDUint {
+		ctx.JSON(http.StatusNotFound, global.ApiResponse{
+			Code:    http.StatusNotFound,
+			Message: "Template not found",
+		})
+		return
+	}
+
+	// 取得模板中的 cells
+	cells, err := ctl.cellRepository.ListByTemplateID(ctl.makeCtx(ctx), templateID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
+			Code:    500,
+			Message: "Failed to get template cells",
+		})
+		return
+	}
+
+	// 解析請求
+	var req ApplyTemplateRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Invalid request body: " + err.Error(),
+		})
+		return
+	}
+
+	// 解析日期
+	startDate, _ := time.Parse("2006-01-02", req.StartDate)
+	endDate, _ := time.Parse("2006-01-02", req.EndDate)
+
+	// 為每個 weekday 和每個 cell 建立 schedule rule
+	var rules []models.ScheduleRule
+	for _, weekday := range req.Weekdays {
+		for _, cell := range cells {
+			// 解析 cell 的時間
+			cellStartTime := cell.StartTime
+			cellEndTime := cell.EndTime
+
+			rule := models.ScheduleRule{
+				CenterID:    centerIDUint,
+				OfferingID:  req.OfferingID,
+				TeacherID:   cell.TeacherID,
+				RoomID:      *cell.RoomID,
+				Weekday:     weekday,
+				StartTime:   cellStartTime,
+				EndTime:     cellEndTime,
+				EffectiveRange: models.DateRange{
+					StartDate: startDate,
+					EndDate:   endDate,
+				},
+				CreatedAt: time.Now(),
+				UpdatedAt: time.Now(),
+			}
+			rules = append(rules, rule)
+		}
+	}
+
+	// 建立 schedule rules
+	ruleRepo := repositories.NewScheduleRuleRepository(ctl.app)
+	createdRules, err := ruleRepo.BulkCreate(ctl.makeCtx(ctx), rules)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
+			Code:    500,
+			Message: "Failed to create schedule rules: " + err.Error(),
+		})
+		return
+	}
+
+	actorID := ctx.GetUint(global.UserIDKey)
+	ctl.auditLogRepo.Create(ctx, models.AuditLog{
+		CenterID:   centerIDUint,
+		ActorType:  "ADMIN",
+		ActorID:    actorID,
+		Action:     "TEMPLATE_APPLY",
+		TargetType: "ScheduleRule",
+		TargetID:   0,
+		Payload: models.AuditPayload{
+			After: map[string]interface{}{
+				"template_id":   templateID,
+				"offering_id":   req.OfferingID,
+				"start_date":    req.StartDate,
+				"end_date":      req.EndDate,
+				"weekdays":      req.Weekdays,
+				"rules_created": len(createdRules),
+			},
+		},
+	})
+
+	ctx.JSON(http.StatusOK, global.ApiResponse{
+		Code:    0,
+		Message: "Template applied successfully",
+		Datas: map[string]interface{}{
+			"rules_created": len(createdRules),
+			"template_name": template.Name,
+		},
+	})
+}

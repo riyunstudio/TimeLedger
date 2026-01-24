@@ -47,118 +47,204 @@
           </p>
         </div>
 
-        <div>
-          <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">規則名稱</label>
-          <input
-            v-model="form.name"
-            type="text"
-            placeholder="例：週一上午鋼琴課"
-            class="input-field text-sm sm:text-base"
-            required
+        <!-- 規則名稱 -->
+        <div class="flex items-start gap-2">
+          <div class="flex-1">
+            <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">規則名稱</label>
+            <input
+              v-model="form.name"
+              type="text"
+              placeholder="例：週一上午鋼琴課"
+              class="input-field text-sm sm:text-base"
+              required
+            />
+          </div>
+          <HelpTooltip
+            class="mt-6"
+            title="規則名稱"
+            description="為此排課規則命名，方便識別和管理。"
+            :usage="['輸入有意義的名稱', '如「週一上午鋼琴課」']"
           />
         </div>
 
+        <!-- 課程和老師 -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">課程</label>
-            <select v-model="form.offering_id" class="input-field text-sm sm:text-base" required>
-              <option value="">請選擇課程</option>
-              <option v-for="offering in offerings" :key="offering.id" :value="offering.id">
-                {{ offering.name || `班別 #${offering.id}` }}
-              </option>
-            </select>
+          <div class="flex items-start gap-2">
+            <div class="flex-1">
+              <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">課程</label>
+              <select v-model="form.offering_id" class="input-field text-sm sm:text-base" required>
+                <option value="">請選擇課程</option>
+                <option v-for="offering in offerings" :key="offering.id" :value="offering.id">
+                  {{ offering.name || `班別 #${offering.id}` }}
+                </option>
+              </select>
+            </div>
+            <HelpTooltip
+              class="mt-6"
+              title="選擇課程"
+              description="選擇要排課的課程班別。"
+              :usage="['選擇後自動帶入預設老師和教室']"
+            />
           </div>
 
-          <div>
-            <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">老師</label>
-            <select v-model="form.teacher_id" class="input-field text-sm sm:text-base">
-              <option value="">請選擇老師</option>
-              <option v-for="teacher in teachers" :key="teacher.id" :value="teacher.id">
-                {{ teacher.name }}
-              </option>
-            </select>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">教室</label>
-            <select v-model="form.room_id" class="input-field text-sm sm:text-base">
-              <option value="">請選擇教室</option>
-              <option v-for="room in rooms" :key="room.id" :value="room.id">
-                {{ room.name }}
-              </option>
-            </select>
-          </div>
-
-          <div>
-            <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">開始時間</label>
-            <input
-              v-model="form.start_time"
-              type="time"
-              class="input-field text-sm sm:text-base"
-              required
+          <div class="flex items-start gap-2">
+            <div class="flex-1">
+              <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">老師</label>
+              <select v-model="form.teacher_id" class="input-field text-sm sm:text-base">
+                <option value="">請選擇老師</option>
+                <option v-for="teacher in teachers" :key="teacher.id" :value="teacher.id">
+                  {{ teacher.name }}
+                </option>
+              </select>
+            </div>
+            <HelpTooltip
+              class="mt-6"
+              title="選擇老師"
+              description="指定上課的老師，可留空待後續指派。"
+              :usage="['選擇後會檢查老師時間衝突']"
             />
           </div>
         </div>
 
+        <!-- 教室和時間 -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">結束時間</label>
-            <input
-              v-model="form.end_time"
-              type="time"
-              class="input-field text-sm sm:text-base"
-              required
+          <div class="flex items-start gap-2">
+            <div class="flex-1">
+              <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">教室</label>
+              <select v-model="form.room_id" class="input-field text-sm sm:text-base">
+                <option value="">請選擇教室</option>
+                <option v-for="room in rooms" :key="room.id" :value="room.id">
+                  {{ room.name }}
+                </option>
+              </select>
+            </div>
+            <HelpTooltip
+              class="mt-6"
+              title="選擇教室"
+              description="指定上課的教室空間。"
+              :usage="['選擇後會檢查教室時間衝突']"
             />
           </div>
 
-          <div>
-            <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">課程時長（分鐘）</label>
-            <input
-              v-model.number="form.duration"
-              type="number"
-              min="30"
-              step="30"
-              class="input-field text-sm sm:text-base"
-              required
+          <div class="flex items-start gap-2">
+            <div class="flex-1">
+              <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">開始時間</label>
+              <input
+                v-model="form.start_time"
+                type="time"
+                class="input-field text-sm sm:text-base"
+                required
+              />
+            </div>
+            <HelpTooltip
+              class="mt-6"
+              title="開始時間"
+              description="課程開始的時間點。"
+              :usage="['格式：HH:mm，24小時制']"
             />
           </div>
         </div>
 
-        <div>
-          <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">重複星期</label>
-          <div class="flex flex-wrap gap-2">
-            <button
-              v-for="day in weekDays"
-              :key="day.value"
-              type="button"
-              @click="toggleDay(day.value)"
-              class="px-3 py-2 rounded-lg text-sm font-medium transition-all"
-              :class="form.weekdays.includes(day.value) ? 'bg-primary-500 text-white' : 'bg-slate-700/50 text-slate-400 hover:bg-slate-700'"
-            >
-              {{ day.name }}
-            </button>
-          </div>
-        </div>
-
+        <!-- 結束時間和時長 -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">開始日期</label>
-            <input
-              v-model="form.start_date"
-              type="date"
-              class="input-field text-sm sm:text-base"
-              required
+          <div class="flex items-start gap-2">
+            <div class="flex-1">
+              <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">結束時間</label>
+              <input
+                v-model="form.end_time"
+                type="time"
+                class="input-field text-sm sm:text-base"
+                required
+              />
+            </div>
+            <HelpTooltip
+              class="mt-6"
+              title="結束時間"
+              description="課程結束的時間點。"
+              :usage="['結束時間必須晚於開始時間']"
             />
           </div>
 
-          <div>
-            <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">結束日期</label>
-            <input
-              v-model="form.end_date"
-              type="date"
-              class="input-field text-sm sm:text-base"
+          <div class="flex items-start gap-2">
+            <div class="flex-1">
+              <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">課程時長（分鐘）</label>
+              <input
+                v-model.number="form.duration"
+                type="number"
+                min="30"
+                step="30"
+                class="input-field text-sm sm:text-base"
+                required
+              />
+            </div>
+            <HelpTooltip
+              class="mt-6"
+              title="課程時長"
+              description="課程持續的時間，以分鐘為單位。"
+              :usage="['建議時長：30/45/60/90分鐘']"
+            />
+          </div>
+        </div>
+
+        <!-- 重複星期 -->
+        <div class="flex items-start gap-2">
+          <div class="flex-1">
+            <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">重複星期</label>
+            <div class="flex flex-wrap gap-2">
+              <button
+                v-for="day in weekDays"
+                :key="day.value"
+                type="button"
+                @click="toggleDay(day.value)"
+                class="px-3 py-2 rounded-lg text-sm font-medium transition-all"
+                :class="form.weekdays.includes(day.value) ? 'bg-primary-500 text-white' : 'bg-slate-700/50 text-slate-400 hover:bg-slate-700'"
+              >
+                {{ day.name }}
+              </button>
+            </div>
+          </div>
+          <HelpTooltip
+            class="mt-6"
+            title="重複星期"
+            description="選擇此排課規則適用的星期幾。"
+            :usage="['可選擇多個星期', '形成每週重複的排課']"
+          />
+        </div>
+
+        <!-- 開始和結束日期 -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="flex items-start gap-2">
+            <div class="flex-1">
+              <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">開始日期</label>
+              <input
+                v-model="form.start_date"
+                type="date"
+                class="input-field text-sm sm:text-base"
+                required
+              />
+            </div>
+            <HelpTooltip
+              class="mt-6"
+              title="開始日期"
+              description="排課規則的生效起始日期。"
+              :usage="['通常設定為本週或下週的日期']"
+            />
+          </div>
+
+          <div class="flex items-start gap-2">
+            <div class="flex-1">
+              <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">結束日期</label>
+              <input
+                v-model="form.end_date"
+                type="date"
+                class="input-field text-sm sm:text-base"
+              />
+            </div>
+            <HelpTooltip
+              class="mt-6"
+              title="結束日期（可選）"
+              description="排課規則的結束日期，留空表示永久有效。"
+              :usage="['可設定限時課程的結束日期']"
             />
           </div>
         </div>

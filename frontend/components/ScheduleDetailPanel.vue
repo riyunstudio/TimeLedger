@@ -84,49 +84,73 @@
       </div>
 
       <div class="space-y-3">
-        <button
-          v-if="schedule"
-          @click="handleEdit"
-          class="w-full glass-btn py-3 rounded-xl font-medium flex items-center justify-center gap-2"
-        >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 0L21.828 3.172a2 2 0 010-2.828l-7-7a2 2 0 00-2.828 0L2.172 20.828a2 2 0 010 2.828l7 7a2 2 0 0012.828 0l7.172-7.172z" />
-          </svg>
-          編輯
-        </button>
+        <div v-if="schedule" class="flex items-center gap-2">
+          <button
+            @click="handleEdit"
+            class="flex-1 glass-btn py-3 rounded-xl font-medium flex items-center justify-center gap-2"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 0L21.828 3.172a2 2 0 010-2.828l-7-7a2 2 0 00-2.828 0L2.172 20.828a2 2 0 010 2.828l7 7a2 2 0 0012.828 0l7.172-7.172z" />
+            </svg>
+            編輯
+          </button>
+          <HelpTooltip
+            title="編輯排課"
+            description="修改已存在的排課規則資訊。"
+            :usage="['點擊開啟編輯模式', '可修改老師、教室、時間', '儲存後自動更新課表']"
+          />
+        </div>
 
-        <button
-          v-if="schedule"
-          @click="handleDelete"
-          class="w-full btn-critical py-3 rounded-xl font-medium flex items-center justify-center gap-2"
-        >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-          </svg>
-          刪除
-        </button>
+        <div v-if="schedule" class="flex items-center gap-2">
+          <button
+            @click="handleDelete"
+            class="flex-1 btn-critical py-3 rounded-xl font-medium flex items-center justify-center gap-2"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            刪除
+          </button>
+          <HelpTooltip
+            title="刪除排課"
+            description="移除已建立的排課規則。"
+            :usage="['點擊刪除按鈕', '系統會跳出確認訊息', '確認後將永久刪除']"
+          />
+        </div>
 
-        <button
-          v-if="!schedule && validation && validation.valid"
-          @click="handleCreate"
-          class="w-full btn-primary py-3 rounded-xl font-medium flex items-center justify-center gap-2"
-        >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-          </svg>
-          建立課程
-        </button>
+        <div v-if="!schedule && validation && validation.valid" class="flex items-center gap-2">
+          <button
+            @click="handleCreate"
+            class="flex-1 btn-primary py-3 rounded-xl font-medium flex items-center justify-center gap-2"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            建立課程
+          </button>
+          <HelpTooltip
+            title="建立課程"
+            description="在選定的時段建立新的排課。"
+            :usage="['確認時段無衝突後點擊', '選擇課程、老師、教室', '完成後課表自動更新']"
+          />
+        </div>
 
-        <button
-          v-if="!schedule && validation && validation.valid"
-          @click="handleFindSubstitute"
-          class="w-full btn-secondary py-3 rounded-xl font-medium flex items-center justify-center gap-2"
-        >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-          找代課老師
-        </button>
+        <div v-if="!schedule && validation && validation.valid" class="flex items-center gap-2">
+          <button
+            @click="handleFindSubstitute"
+            class="flex-1 btn-secondary py-3 rounded-xl font-medium flex items-center justify-center gap-2"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            找代課老師
+          </button>
+          <HelpTooltip
+            title="找代課老師"
+            description="智慧媒合可替代的老師人選。"
+            :usage="['系統會根據技能、時間評估', '顯示符合條件的老師列表', '可快速指派代課']"
+          />
+        </div>
       </div>
     </div>
 

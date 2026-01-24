@@ -97,3 +97,11 @@ func (rp *ScheduleRuleRepository) ListByOfferingID(ctx context.Context, offering
 		Find(&data).Error
 	return data, err
 }
+
+func (rp *ScheduleRuleRepository) BulkCreate(ctx context.Context, data []models.ScheduleRule) ([]models.ScheduleRule, error) {
+	if len(data) == 0 {
+		return data, nil
+	}
+	err := rp.app.MySQL.WDB.WithContext(ctx).Create(&data).Error
+	return data, err
+}

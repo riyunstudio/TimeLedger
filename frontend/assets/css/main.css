@@ -8,6 +8,22 @@
     font-family: 'Outfit', sans-serif;
   }
 
+  /* 修復 Windows 瀏覽器 select 選項文字顯示問題 */
+  select {
+    color-scheme: dark;
+  }
+
+  select option {
+    background-color: #1e293b;
+    color: #ffffff;
+    padding: 8px 12px;
+  }
+
+  select optgroup {
+    background-color: #0f172a;
+    color: #e2e8f0;
+  }
+
   .light body {
     @apply bg-slate-50 text-slate-900;
   }

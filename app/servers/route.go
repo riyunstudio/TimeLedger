@@ -95,6 +95,7 @@ func (s *Server) LoadRoutes() {
 		{http.MethodDelete, "/api/v1/admin/centers/:id/templates/:templateId", s.action.timetableTemplate.DeleteTemplate, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodGet, "/api/v1/admin/centers/:id/templates/:templateId/cells", s.action.timetableTemplate.GetCells, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodPost, "/api/v1/admin/centers/:id/templates/:templateId/cells", s.action.timetableTemplate.CreateCells, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodPost, "/api/v1/admin/centers/:id/templates/:templateId/apply", s.action.timetableTemplate.ApplyTemplate, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 
 		// Admin - Users
 		{http.MethodGet, "/api/v1/admin/centers/:id/users", s.action.adminUser.GetAdminUsers, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
