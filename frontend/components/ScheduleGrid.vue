@@ -26,7 +26,32 @@
           </button>
         </div>
 
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-4">
+          <!-- 視角切換器 -->
+          <div class="flex items-center gap-1 bg-slate-800/80 rounded-lg p-1">
+            <button
+              @click="clearViewMode"
+              class="px-3 py-1.5 rounded-md text-sm font-medium transition-all"
+              :class="viewMode === 'all' ? 'bg-primary-500 text-white' : 'text-slate-400 hover:text-white'"
+            >
+              全部
+            </button>
+            <button
+              @click="viewMode = 'teacher'"
+              class="px-3 py-1.5 rounded-md text-sm font-medium transition-all"
+              :class="viewMode === 'teacher' ? 'bg-primary-500 text-white' : 'text-slate-400 hover:text-white'"
+            >
+              老師
+            </button>
+            <button
+              @click="viewMode = 'room'"
+              class="px-3 py-1.5 rounded-md text-sm font-medium transition-all"
+              :class="viewMode === 'room' ? 'bg-primary-500 text-white' : 'text-slate-400 hover:text-white'"
+            >
+              教室
+            </button>
+          </div>
+
           <button
             @click="showCreateModal = true"
             class="btn-primary px-4 py-2 text-sm font-medium"
@@ -34,6 +59,25 @@
             + 新增排課規則
           </button>
         </div>
+      </div>
+
+      <!-- 選中資源提示 -->
+      <div
+        v-if="viewMode !== 'all' && selectedResourceName"
+        class="mt-3 flex items-center gap-2 px-3 py-2 bg-primary-500/10 border border-primary-500/30 rounded-lg"
+      >
+        <span class="text-sm text-primary-400">
+          {{ viewMode === 'teacher' ? '老師' : '教室' }}視角：
+        </span>
+        <span class="text-sm font-medium text-white">{{ selectedResourceName }}</span>
+        <button
+          @click="clearViewMode"
+          class="ml-auto p-1 hover:bg-white/10 rounded transition-colors"
+        >
+          <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
       </div>
     </div>
 
@@ -111,6 +155,13 @@
 <script setup lang="ts">
 const emit = defineEmits<{
   selectCell: { time: number, weekday: number }
+  selectResource: { type: 'teacher' | 'room', id: number } | null
+}>()
+
+// Props
+const props = defineProps<{
+  viewMode: 'all' | 'teacher' | 'room'
+  selectedResourceId: number | null
 }>()
 
 const showCreateModal = ref(false)
@@ -118,6 +169,12 @@ const selectedCell = ref<{ time: number, day: number } | null>(null)
 const selectedSchedule = ref<any>(null)
 const dragTarget = ref<{ time: number, day: number } | null>(null)
 const validationResults = ref<Record<string, any>>({})
+
+// 資源快取（用於顯示選中的資源名稱）
+const resourceCache = ref<{ teachers: Map<number, any>, rooms: Map<number, any> }>({
+  teachers: new Map(),
+  rooms: new Map(),
+})
 
 const getWeekStart = (date: Date): Date => {
   const d = new Date(date)
@@ -154,6 +211,19 @@ const weekDays = [
 const schedules = ref<Record<string, any>>({})
 const { getCenterId } = useCenterId()
 
+const selectedResourceName = computed(() => {
+  if (props.viewMode === 'teacher') {
+    return resourceCache.value.teachers.get(props.selectedResourceId)?.name || '未知老師'
+  } else if (props.viewMode === 'room') {
+    return resourceCache.value.rooms.get(props.selectedResourceId)?.name || '未知教室'
+  }
+  return ''
+})
+
+const clearViewMode = () => {
+  emit('selectResource', null)
+}
+
 const fetchSchedules = async () => {
   try {
     const api = useApi()
@@ -170,7 +240,9 @@ const fetchSchedules = async () => {
           id: rule.id,
           offering_name: rule.offering?.name || '-',
           teacher_name: rule.teacher?.name || '-',
+          teacher_id: rule.teacher_id,
           room_id: rule.room_id,
+          room_name: rule.room?.name || '-',
           ...rule,
         }
       })
@@ -182,6 +254,27 @@ const fetchSchedules = async () => {
   }
 }
 
+// 根據視角模式過濾排課
+const filteredSchedules = computed(() => {
+  if (props.viewMode === 'all' || !props.selectedResourceId) {
+    return schedules.value
+  }
+
+  const filtered: Record<string, any> = {}
+  Object.entries(schedules.value).forEach(([key, schedule]) => {
+    if (props.viewMode === 'teacher') {
+      if (schedule.teacher_id === props.selectedResourceId) {
+        filtered[key] = schedule
+      }
+    } else if (props.viewMode === 'room') {
+      if (schedule.room_id === props.selectedResourceId) {
+        filtered[key] = schedule
+      }
+    }
+  })
+  return filtered
+})
+
 const changeWeek = (delta: number) => {
   weekStart.value = getWeekStart(new Date(weekStart.value.getTime() + delta * 7 * 24 * 60 * 60 * 1000))
 }
@@ -191,7 +284,7 @@ const formatTime = (hour: number): string => {
 }
 
 const getScheduleAt = (time: number, weekday: number) => {
-  return schedules.value[`${time}-${weekday}`]
+  return filteredSchedules.value[`${time}-${weekday}`]
 }
 
 const getCellClass = (time: number, weekday: number): string => {
@@ -297,7 +390,27 @@ const handleRuleCreated = () => {
   fetchSchedules()
 }
 
+const fetchResourceCache = async () => {
+  try {
+    const api = useApi()
+    const [teachersRes, roomsRes] = await Promise.all([
+      api.get<{ code: number; datas: any[] }>('/teachers'),
+      api.get<{ code: number; datas: any[] }>(`/admin/rooms`)
+    ])
+
+    teachersRes.datas?.forEach((t: any) => {
+      resourceCache.value.teachers.set(t.id, t)
+    })
+    roomsRes.datas?.forEach((r: any) => {
+      resourceCache.value.rooms.set(r.id, r)
+    })
+  } catch (error) {
+    console.error('Failed to fetch resource cache:', error)
+  }
+}
+
 onMounted(() => {
   fetchSchedules()
+  fetchResourceCache()
 })
 </script>

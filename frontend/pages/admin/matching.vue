@@ -29,16 +29,28 @@
           </div>
 
           <div>
-            <label class="block text-slate-300 mb-2">教室</label>
-            <select
-              v-model="form.room_id"
-              class="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white"
-            >
-              <option value="">選擇教室</option>
-              <option v-for="room in rooms" :key="room.id" :value="room.id">
-                {{ room.name }}
-              </option>
-            </select>
+            <label class="block text-slate-300 mb-2">教室（可多選）</label>
+            <div class="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto p-2 rounded-lg bg-white/5 border border-white/10">
+              <label
+                v-for="room in rooms"
+                :key="room.id"
+                class="flex items-center gap-2 p-2 rounded-lg cursor-pointer hover:bg-white/10 transition-colors"
+              >
+                <input
+                  type="checkbox"
+                  :value="room.id"
+                  v-model="form.room_ids"
+                  class="w-4 h-4 rounded border-white/20 bg-white/10 text-primary-500 focus:ring-primary-500"
+                />
+                <span class="text-sm text-slate-300">{{ room.name }}</span>
+              </label>
+            </div>
+            <p v-if="form.room_ids.length === 0" class="text-xs text-slate-500 mt-1">
+              未選擇教室，將搜尋可用教室
+            </p>
+            <p v-else class="text-xs text-slate-500 mt-1">
+              已選擇 {{ form.room_ids.length }} 間教室
+            </p>
           </div>
 
           <div>
@@ -87,7 +99,7 @@
             :key="match.teacher_id"
             class="p-4 rounded-lg bg-white/5"
           >
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-2">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
               <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-full bg-gradient-to-br from-primary-500 to-secondary-500 flex items-center justify-center shrink-0">
                   <span class="text-white font-medium">{{ match.teacher_name?.charAt(0) || '?' }}</span>
@@ -102,18 +114,42 @@
               </div>
             </div>
 
-            <div class="flex flex-wrap items-center gap-3 text-sm text-slate-400">
-              <span>技能匹配: {{ match.skill_match }}%</span>
-              <span>評分: {{ match.rating || '-' }}</span>
+            <div class="flex flex-wrap items-center gap-3 text-sm text-slate-400 mb-3">
+              <span class="flex items-center gap-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                技能匹配: {{ match.skill_match }}%
+              </span>
+              <span class="flex items-center gap-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                </svg>
+                評分: {{ match.rating?.toFixed(1) || '-' }}
+              </span>
             </div>
 
-            <p v-if="match.notes" class="mt-2 text-sm text-slate-400">
+            <!-- 可用教室標註 -->
+            <div v-if="match.available_rooms?.length" class="mb-3">
+              <p class="text-xs text-slate-500 mb-2">可授課教室：</p>
+              <div class="flex flex-wrap gap-2">
+                <span
+                  v-for="room in match.available_rooms"
+                  :key="room.id"
+                  class="px-2 py-1 rounded-md text-xs bg-success-500/20 text-success-500"
+                >
+                  {{ room.name }}
+                </span>
+              </div>
+            </div>
+
+            <p v-if="match.notes" class="text-sm text-slate-400 mb-3">
               {{ match.notes }}
             </p>
 
             <button
               @click="selectTeacher(match)"
-              class="mt-3 w-full px-4 py-2 rounded-lg bg-primary-500/20 text-primary-500 hover:bg-primary-500/30 transition-colors text-sm"
+              class="w-full px-4 py-2 rounded-lg bg-primary-500/20 text-primary-500 hover:bg-primary-500/30 transition-colors text-sm"
             >
               選擇這位老師
             </button>
@@ -207,7 +243,7 @@ const { getCenterId } = useCenterId()
 const form = ref({
   start_time: '',
   end_time: '',
-  room_id: '',
+  room_ids: [] as number[],
   skills: ''
 })
 
@@ -217,8 +253,8 @@ const talentSearch = ref({
 })
 
 const findMatches = async () => {
-  if (!form.value.start_time || !form.value.end_time || !form.value.room_id) {
-    alert('請填寫開始時間、結束時間和教室')
+  if (!form.value.start_time || !form.value.end_time) {
+    alert('請填寫開始時間和結束時間')
     return
   }
 
@@ -230,7 +266,7 @@ const findMatches = async () => {
     const centerId = getCenterId()
     const response = await api.post<{ code: number; datas: any[] }>(`/admin/matching/teachers`, {
       center_id: parseInt(centerId),
-      room_id: parseInt(form.value.room_id),
+      room_ids: form.value.room_ids.length > 0 ? form.value.room_ids : undefined,
       start_time: new Date(form.value.start_time).toISOString(),
       end_time: new Date(form.value.end_time).toISOString(),
       required_skills: form.value.skills.split(',').map(s => s.trim()).filter(Boolean)
@@ -270,7 +306,7 @@ const clearForm = () => {
   form.value = {
     start_time: '',
     end_time: '',
-    room_id: '',
+    room_ids: [],
     skills: ''
   }
   hasSearched.value = false

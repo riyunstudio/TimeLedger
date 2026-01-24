@@ -38,6 +38,34 @@
       >
         已拒絕
       </button>
+
+      <div class="w-px bg-white/10 mx-2"></div>
+
+      <!-- 視角篩選 -->
+      <select
+        v-model="viewModeFilter"
+        class="glass-btn px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap bg-transparent"
+      >
+        <option value="">全部視角</option>
+        <optgroup label="老師">
+          <option v-for="teacher in teachers" :key="'t-' + teacher.id" :value="'teacher:' + teacher.id">
+            {{ teacher.name }}
+          </option>
+        </optgroup>
+        <optgroup label="教室">
+          <option v-for="room in rooms" :key="'r-' + room.id" :value="'room:' + room.id">
+            {{ room.name }}
+          </option>
+        </optgroup>
+      </select>
+
+      <button
+        v-if="viewModeFilter"
+        @click="viewModeFilter = ''"
+        class="glass-btn px-3 py-2 rounded-xl text-sm font-medium whitespace-nowrap text-slate-400 hover:text-white"
+      >
+        清除篩選
+      </button>
     </div>
 
     <div
@@ -136,12 +164,13 @@
 </template>
 
 <script setup lang="ts">
- definePageMeta({
-   middleware: 'auth-admin',
-   layout: 'admin',
- })
+definePageMeta({
+  middleware: 'auth-admin',
+  layout: 'admin',
+})
 
- const activeFilter = ref('all')
+const activeFilter = ref('all')
+const viewModeFilter = ref('')
 const showReviewModal = ref<any>(null)
 const showDetailModal = ref<any>(null)
 const notificationUI = useNotification()
@@ -149,13 +178,29 @@ const loading = ref(false)
 const { getCenterId } = useCenterId()
 
 const exceptions = ref<any[]>([])
+const teachers = ref<any[]>([])
+const rooms = ref<any[]>([])
 
 const filteredExceptions = computed(() => {
-  if (activeFilter.value === 'all') return exceptions.value
+  let result = exceptions.value
 
-  return exceptions.value.filter(exc => {
-    return exc.status === activeFilter.value.toUpperCase()
-  })
+  // 狀態過濾
+  if (activeFilter.value !== 'all') {
+    result = result.filter(exc => exc.status === activeFilter.value.toUpperCase())
+  }
+
+  // 視角過濾
+  if (viewModeFilter.value) {
+    const [type, id] = viewModeFilter.value.split(':')
+    const targetId = parseInt(id)
+    if (type === 'teacher') {
+      result = result.filter(exc => exc.teacher_id === targetId || exc.new_teacher_id === targetId)
+    } else if (type === 'room') {
+      result = result.filter(exc => exc.room_id === targetId)
+    }
+  }
+
+  return result
 })
 
 const pendingCount = computed(() => {
@@ -179,6 +224,20 @@ const fetchExceptions = async () => {
     exceptions.value = []
   } finally {
     loading.value = false
+  }
+}
+
+const fetchFilters = async () => {
+  try {
+    const api = useApi()
+    const [teachersRes, roomsRes] = await Promise.all([
+      api.get<{ code: number; datas: any[] }>('/teachers'),
+      api.get<{ code: number; datas: any[] }>(`/admin/rooms`)
+    ])
+    teachers.value = teachersRes.datas || []
+    rooms.value = roomsRes.datas || []
+  } catch (error) {
+    console.error('Failed to fetch filters:', error)
   }
 }
 
@@ -256,5 +315,6 @@ const handleRejected = () => {
 
 onMounted(() => {
   fetchExceptions()
+  fetchFilters()
 })
 </script>
