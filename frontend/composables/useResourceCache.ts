@@ -11,15 +11,16 @@ const resourceCache = ref<{
   loaded: false,
 })
 
-let fetchPromise: Promise<void> | null = null
+// 使用 ref 來確保在組件間共享同一個 Promise
+const fetchPromise = ref<Promise<void> | null>(null)
 
 export function useResourceCache() {
   const { getCenterId } = useCenterId()
 
   const fetchAllResources = async () => {
     // 如果已經在加載中，返回現有的 promise
-    if (fetchPromise) {
-      return fetchPromise
+    if (fetchPromise.value) {
+      return fetchPromise.value
     }
 
     // 如果已經加載過，直接返回
@@ -27,7 +28,8 @@ export function useResourceCache() {
       return
     }
 
-    fetchPromise = (async () => {
+    // 創建新的 promise
+    const promise = (async () => {
       try {
         const api = useApi()
         const centerId = getCenterId()
@@ -65,12 +67,13 @@ export function useResourceCache() {
       } catch (error) {
         console.error('Failed to fetch resources:', error)
         resourceCache.value.loaded = false
-        fetchPromise = null
+        fetchPromise.value = null
         throw error
       }
     })()
 
-    return fetchPromise
+    fetchPromise.value = promise
+    return promise
   }
 
   const getTeacherName = (teacherId: number): string => {

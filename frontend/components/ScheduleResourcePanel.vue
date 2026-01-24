@@ -129,9 +129,13 @@ const searchQuery = ref('')
 const selectedId = ref<number | null>(null)
 const { getCenterId } = useCenterId()
 
-const offerings = ref<any[]>([])
-const teachers = ref<any[]>([])
-const rooms = ref<any[]>([])
+// 使用共享的資源緩存
+const { resourceCache, fetchAllResources } = useResourceCache()
+
+// 從共享緩存取得資料
+const offerings = computed(() => resourceCache.value.offerings)
+const teachers = computed(() => Array.from(resourceCache.value.teachers.values()))
+const rooms = computed(() => Array.from(resourceCache.value.rooms.values()))
 
 // 監聽視角模式變化，自動切換到對應的 tab
 watch(() => props.viewMode, (newMode) => {
@@ -146,25 +150,7 @@ watch(() => props.viewMode, (newMode) => {
 })
 
 const fetchData = async () => {
-  try {
-    const api = useApi()
-    const centerId = getCenterId()
-
-    const [offeringsRes, teachersRes, roomsRes] = await Promise.all([
-      api.get<{ code: number; datas: any }>(`/admin/offerings`),
-      api.get<{ code: number; datas: any[] }>('/teachers'),
-      api.get<{ code: number; datas: any[] }>(`/admin/rooms`)
-    ])
-
-    offerings.value = offeringsRes.datas?.offerings || []
-    teachers.value = teachersRes.datas || []
-    rooms.value = roomsRes.datas || []
-  } catch (error) {
-    console.error('Failed to fetch data:', error)
-    offerings.value = []
-    teachers.value = []
-    rooms.value = []
-  }
+  await fetchAllResources()
 }
 
 const filteredItems = computed(() => {
