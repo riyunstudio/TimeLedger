@@ -263,9 +263,7 @@ const findMatches = async () => {
 
   try {
     const api = useApi()
-    const centerId = getCenterId()
-    const response = await api.post<{ code: number; datas: any[] }>(`/admin/matching/teachers`, {
-      center_id: parseInt(centerId),
+    const response = await api.post<{ code: number; datas: any[] }>(`/admin/smart-matching/matches`, {
       room_ids: form.value.room_ids.length > 0 ? form.value.room_ids : undefined,
       start_time: new Date(form.value.start_time).toISOString(),
       end_time: new Date(form.value.end_time).toISOString(),
@@ -285,9 +283,8 @@ const searchTalent = async () => {
 
   try {
     const api = useApi()
-    const centerId = getCenterId()
     const response = await api.get<{ code: number; datas: any[] }>(
-      `/admin/matching/teachers/search?city=${talentSearch.value.city}&skills=${talentSearch.value.skills}`
+      `/admin/smart-matching/talent/search?city=${talentSearch.value.city}&skills=${talentSearch.value.skills}`
     )
     talentResults.value = response.datas || []
   } catch (error) {

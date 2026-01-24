@@ -36,7 +36,6 @@ func NewSchedulingController(app *app.App) *SchedulingController {
 }
 
 type CheckOverlapRequest struct {
-	CenterID      uint      `json:"center_id" binding:"required"`
 	TeacherID     *uint     `json:"teacher_id"`
 	RoomID        uint      `json:"room_id" binding:"required"`
 	StartTime     time.Time `json:"start_time" binding:"required"`
@@ -45,7 +44,6 @@ type CheckOverlapRequest struct {
 }
 
 type CheckBufferRequest struct {
-	CenterID      uint      `json:"center_id" binding:"required"`
 	TeacherID     uint      `json:"teacher_id" binding:"required"`
 	RoomID        uint      `json:"room_id" binding:"required"`
 	PrevEndTime   time.Time `json:"prev_end_time" binding:"required"`
@@ -54,7 +52,6 @@ type CheckBufferRequest struct {
 }
 
 type CreateExceptionRequest struct {
-	CenterID     uint       `json:"center_id" binding:"required"`
 	RuleID       uint       `json:"rule_id" binding:"required"`
 	OriginalDate time.Time  `json:"original_date" binding:"required"`
 	Type         string     `json:"type" binding:"required"`
@@ -78,7 +75,6 @@ type ExpandRulesRequest struct {
 }
 
 type ValidateFullRequest struct {
-	CenterID            uint      `json:"center_id" binding:"required"`
 	TeacherID           *uint     `json:"teacher_id"`
 	RoomID              uint      `json:"room_id" binding:"required"`
 	CourseID            uint      `json:"course_id" binding:"required"`
@@ -98,7 +94,32 @@ func (ctl *SchedulingController) CheckOverlap(ctx *gin.Context) {
 		return
 	}
 
-	result, err := ctl.validationService.CheckOverlap(ctx, req.CenterID, req.TeacherID, req.RoomID, req.StartTime, req.EndTime, req.ExcludeRuleID)
+	// 從 JWT token 取得 center_id
+	centerID := ctx.GetUint(global.CenterIDKey)
+	if centerID == 0 {
+		if val, exists := ctx.Get(global.CenterIDKey); exists {
+			switch v := val.(type) {
+			case uint:
+				centerID = v
+			case uint64:
+				centerID = uint(v)
+			case int:
+				centerID = uint(v)
+			case float64:
+				centerID = uint(v)
+			}
+		}
+	}
+
+	if centerID == 0 {
+		ctx.JSON(http.StatusUnauthorized, global.ApiResponse{
+			Code:    global.UNAUTHORIZED,
+			Message: "Center ID not found in token",
+		})
+		return
+	}
+
+	result, err := ctl.validationService.CheckOverlap(ctx, centerID, req.TeacherID, req.RoomID, req.StartTime, req.EndTime, req.ExcludeRuleID)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
 			Code:    500,
@@ -124,7 +145,32 @@ func (ctl *SchedulingController) CheckTeacherBuffer(ctx *gin.Context) {
 		return
 	}
 
-	result, err := ctl.validationService.CheckTeacherBuffer(ctx, req.CenterID, req.TeacherID, req.PrevEndTime, req.NextStartTime, req.CourseID)
+	// 從 JWT token 取得 center_id
+	centerID := ctx.GetUint(global.CenterIDKey)
+	if centerID == 0 {
+		if val, exists := ctx.Get(global.CenterIDKey); exists {
+			switch v := val.(type) {
+			case uint:
+				centerID = v
+			case uint64:
+				centerID = uint(v)
+			case int:
+				centerID = uint(v)
+			case float64:
+				centerID = uint(v)
+			}
+		}
+	}
+
+	if centerID == 0 {
+		ctx.JSON(http.StatusUnauthorized, global.ApiResponse{
+			Code:    global.UNAUTHORIZED,
+			Message: "Center ID not found in token",
+		})
+		return
+	}
+
+	result, err := ctl.validationService.CheckTeacherBuffer(ctx, centerID, req.TeacherID, req.PrevEndTime, req.NextStartTime, req.CourseID)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
 			Code:    500,
@@ -150,7 +196,32 @@ func (ctl *SchedulingController) CheckRoomBuffer(ctx *gin.Context) {
 		return
 	}
 
-	result, err := ctl.validationService.CheckRoomBuffer(ctx, req.CenterID, req.RoomID, req.PrevEndTime, req.NextStartTime, req.CourseID)
+	// 從 JWT token 取得 center_id
+	centerID := ctx.GetUint(global.CenterIDKey)
+	if centerID == 0 {
+		if val, exists := ctx.Get(global.CenterIDKey); exists {
+			switch v := val.(type) {
+			case uint:
+				centerID = v
+			case uint64:
+				centerID = uint(v)
+			case int:
+				centerID = uint(v)
+			case float64:
+				centerID = uint(v)
+			}
+		}
+	}
+
+	if centerID == 0 {
+		ctx.JSON(http.StatusUnauthorized, global.ApiResponse{
+			Code:    global.UNAUTHORIZED,
+			Message: "Center ID not found in token",
+		})
+		return
+	}
+
+	result, err := ctl.validationService.CheckRoomBuffer(ctx, centerID, req.RoomID, req.PrevEndTime, req.NextStartTime, req.CourseID)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
 			Code:    500,
@@ -176,8 +247,33 @@ func (ctl *SchedulingController) ValidateFull(ctx *gin.Context) {
 		return
 	}
 
+	// 從 JWT token 取得 center_id
+	centerID := ctx.GetUint(global.CenterIDKey)
+	if centerID == 0 {
+		if val, exists := ctx.Get(global.CenterIDKey); exists {
+			switch v := val.(type) {
+			case uint:
+				centerID = v
+			case uint64:
+				centerID = uint(v)
+			case int:
+				centerID = uint(v)
+			case float64:
+				centerID = uint(v)
+			}
+		}
+	}
+
+	if centerID == 0 {
+		ctx.JSON(http.StatusUnauthorized, global.ApiResponse{
+			Code:    global.UNAUTHORIZED,
+			Message: "Center ID not found in token",
+		})
+		return
+	}
+
 	adminID := ctx.GetUint(global.UserIDKey)
-	result, err := ctl.validationService.ValidateFull(ctx, req.CenterID, req.TeacherID, req.RoomID, req.CourseID, req.StartTime, req.EndTime, req.ExcludeRuleID, req.AllowBufferOverride)
+	result, err := ctl.validationService.ValidateFull(ctx, centerID, req.TeacherID, req.RoomID, req.CourseID, req.StartTime, req.EndTime, req.ExcludeRuleID, req.AllowBufferOverride)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
 			Code:    500,
@@ -192,7 +288,7 @@ func (ctl *SchedulingController) ValidateFull(ctx *gin.Context) {
 	}
 
 	ctl.auditLogRepo.Create(ctx, models.AuditLog{
-		CenterID:   req.CenterID,
+		CenterID:   centerID,
 		ActorType:  "ADMIN",
 		ActorID:    adminID,
 		Action:     "VALIDATE_SCHEDULE",
@@ -228,8 +324,33 @@ func (ctl *SchedulingController) CreateException(ctx *gin.Context) {
 		return
 	}
 
+	// 從 JWT token 取得 center_id
+	centerID := ctx.GetUint(global.CenterIDKey)
+	if centerID == 0 {
+		if val, exists := ctx.Get(global.CenterIDKey); exists {
+			switch v := val.(type) {
+			case uint:
+				centerID = v
+			case uint64:
+				centerID = uint(v)
+			case int:
+				centerID = uint(v)
+			case float64:
+				centerID = uint(v)
+			}
+		}
+	}
+
+	if centerID == 0 {
+		ctx.JSON(http.StatusUnauthorized, global.ApiResponse{
+			Code:    global.UNAUTHORIZED,
+			Message: "Center ID not found in token",
+		})
+		return
+	}
+
 	adminID := ctx.GetUint(global.UserIDKey)
-	exception, err := ctl.exceptionService.CreateException(ctx, req.CenterID, adminID, req.RuleID, req.OriginalDate, req.Type, req.NewStartAt, req.NewEndAt, req.NewTeacherID, req.Reason)
+	exception, err := ctl.exceptionService.CreateException(ctx, centerID, adminID, req.RuleID, req.OriginalDate, req.Type, req.NewStartAt, req.NewEndAt, req.NewTeacherID, req.Reason)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
 			Code:    500,

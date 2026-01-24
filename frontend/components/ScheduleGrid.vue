@@ -411,12 +411,10 @@ const handleDrop = async (event: DragEvent) => {
 
   try {
     const api = useApi()
-    const centerId = getCenterId()
     const teacherId = type === 'teacher' ? item.id : (item.teacher_id || null)
     const roomId = type === 'room' ? item.id : (item.room_id || null)
     
     const response = await api.post<any>('/admin/scheduling/check-overlap', {
-      center_id: parseInt(centerId),
       teacher_id: teacherId,
       room_id: roomId,
       start_time: `${formatDate(weekStart.value)}T${formatTime(dragTarget.value.time)}:00`,

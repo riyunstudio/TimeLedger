@@ -21,7 +21,6 @@ type SmartMatchingController struct {
 }
 
 type FindMatchesRequest struct {
-	CenterID          uint      `json:"center_id" binding:"required"`
 	TeacherID         *uint     `json:"teacher_id"`
 	RoomID            uint      `json:"room_id" binding:"required"`
 	StartTime         time.Time `json:"start_time" binding:"required"`
@@ -56,7 +55,32 @@ func (ctl *SmartMatchingController) FindMatches(ctx *gin.Context) {
 		return
 	}
 
-	matches, err := ctl.smartMatchingSvc.FindMatches(ctx, req.CenterID, req.TeacherID, req.RoomID, req.StartTime, req.EndTime, req.RequiredSkills, req.ExcludeTeacherIDs)
+	// 從 JWT token 取得 center_id
+	centerID := ctx.GetUint(global.CenterIDKey)
+	if centerID == 0 {
+		if val, exists := ctx.Get(global.CenterIDKey); exists {
+			switch v := val.(type) {
+			case uint:
+				centerID = v
+			case uint64:
+				centerID = uint(v)
+			case int:
+				centerID = uint(v)
+			case float64:
+				centerID = uint(v)
+			}
+		}
+	}
+
+	if centerID == 0 {
+		ctx.JSON(http.StatusUnauthorized, global.ApiResponse{
+			Code:    global.UNAUTHORIZED,
+			Message: "Center ID not found in token",
+		})
+		return
+	}
+
+	matches, err := ctl.smartMatchingSvc.FindMatches(ctx, centerID, req.TeacherID, req.RoomID, req.StartTime, req.EndTime, req.RequiredSkills, req.ExcludeTeacherIDs)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
 			Code:    500,
@@ -67,7 +91,7 @@ func (ctl *SmartMatchingController) FindMatches(ctx *gin.Context) {
 
 	actorID := ctx.GetUint(global.UserIDKey)
 	ctl.auditLogRepo.Create(ctx, models.AuditLog{
-		CenterID:   req.CenterID,
+		CenterID:   centerID,
 		ActorType:  "ADMIN",
 		ActorID:    actorID,
 		Action:     "SMART_MATCH_FIND",
