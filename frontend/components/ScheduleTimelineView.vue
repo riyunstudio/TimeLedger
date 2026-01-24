@@ -1,0 +1,457 @@
+<template>
+  <div class="h-full flex flex-col glass-card overflow-hidden">
+    <!-- 頂部工具列 -->
+    <div class="p-4 border-b border-white/10 shrink-0">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <!-- 週導航 -->
+        <div class="flex items-center gap-4">
+          <button
+            @click="changeWeek(-1)"
+            class="p-2 rounded-lg hover:bg-white/10 transition-colors"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+
+          <h2 class="text-lg font-semibold text-slate-100">
+            {{ weekLabel }}
+          </h2>
+
+          <button
+            @click="changeWeek(1)"
+            class="p-2 rounded-lg hover:bg-white/10 transition-colors"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+
+          <button
+            @click="goToCurrentWeek"
+            class="px-3 py-1.5 rounded-lg text-sm bg-slate-700/50 text-slate-300 hover:text-white hover:bg-slate-600 transition-colors"
+          >
+            回到本週
+          </button>
+        </div>
+
+        <!-- 視圖控制 -->
+        <div class="flex items-center gap-4">
+          <!-- 資源類型切換 -->
+          <div class="flex items-center gap-1 bg-slate-800/80 rounded-lg p-1">
+            <button
+              @click="viewMode = 'all'"
+              class="px-3 py-1.5 rounded-md text-sm font-medium transition-all"
+              :class="viewMode === 'all' ? 'bg-primary-500 text-white' : 'text-slate-400 hover:text-white'"
+            >
+              全部
+            </button>
+            <button
+              @click="viewMode = 'teacher'"
+              class="px-3 py-1.5 rounded-md text-sm font-medium transition-all"
+              :class="viewMode === 'teacher' ? 'bg-primary-500 text-white' : 'text-slate-400 hover:text-white'"
+            >
+              老師
+            </button>
+            <button
+              @click="viewMode = 'room'"
+              class="px-3 py-1.5 rounded-md text-sm font-medium transition-all"
+              :class="viewMode === 'room' ? 'bg-primary-500 text-white' : 'text-slate-400 hover:text-white'"
+            >
+              教室
+            </button>
+          </div>
+
+          <!-- 資源選擇下拉 -->
+          <select
+            v-if="viewMode !== 'all'"
+            v-model="selectedResourceId"
+            class="px-3 py-1.5 rounded-lg text-sm bg-slate-800/80 border border-white/10 text-slate-300 focus:outline-none focus:border-primary-500"
+          >
+            <option :value="null">選擇{{ viewMode === 'teacher' ? '老師' : '教室' }}...</option>
+            <option v-for="resource in resourceList" :key="resource.id" :value="resource.id">
+              {{ resource.name }}
+            </option>
+          </select>
+
+          <button
+            @click="showCreateModal = true"
+            class="btn-primary px-4 py-2 text-sm font-medium"
+          >
+            + 新增排課規則
+          </button>
+        </div>
+      </div>
+
+      <!-- 已選資源提示 -->
+      <div
+        v-if="viewMode !== 'all' && selectedResourceName"
+        class="mt-3 flex items-center gap-2 px-3 py-2 bg-primary-500/10 border border-primary-500/30 rounded-lg"
+      >
+        <span class="text-sm text-primary-400">
+          {{ viewMode === 'teacher' ? '老師' : '教室' }}：
+        </span>
+        <span class="text-sm font-medium text-white">{{ selectedResourceName }}</span>
+        <button
+          @click="clearFilter"
+          class="ml-auto p-1 hover:bg-white/10 rounded transition-colors"
+        >
+          <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- 時間軸週曆 -->
+    <div class="flex-1 overflow-auto">
+      <div class="min-w-[900px]">
+        <!-- 表頭：星期 -->
+        <div class="grid" :style="{ gridTemplateColumns: `60px repeat(7, 1fr)` }">
+          <div class="p-3 border-b border-white/10 bg-slate-800/50"></div>
+          <div
+            v-for="day in weekDays"
+            :key="day.value"
+            class="p-3 border-b border-white/10 text-center bg-slate-800/50"
+          >
+            <div class="text-sm font-medium text-slate-300">{{ day.name }}</div>
+            <div class="text-xs text-slate-500">{{ getDayDate(day.value) }}</div>
+          </div>
+        </div>
+
+        <!-- 時間軸 -->
+        <div class="relative">
+          <!-- 時間標記 -->
+          <div
+            v-for="hour in timeSlots"
+            :key="hour"
+            class="grid absolute w-full"
+            :style="{
+              gridTemplateColumns: `60px repeat(7, 1fr)`,
+              top: `${(hour - 9) * 60}px`,
+              height: '60px'
+            }"
+          >
+            <div class="p-2 text-right text-xs text-slate-500 border-r border-white/5">
+              {{ formatTime(hour) }}
+            </div>
+            <div
+              v-for="day in weekDays"
+              :key="`${hour}-${day.value}`"
+              class="relative border-r border-white/5 border-b border-dashed border-white/10"
+            >
+              <!-- 小時線 -->
+              <div class="absolute inset-x-0 top-1/2 h-px bg-white/5"></div>
+            </div>
+          </div>
+
+          <!-- 課程卡片容器 -->
+          <div class="relative" :style="{ height: `${timeSlots.length * 60}px` }">
+            <!-- 課程卡片 -->
+            <div
+              v-for="session in filteredSessions"
+              :key="`${session.id}-${session.date}`"
+              class="absolute rounded-lg p-2 text-xs cursor-pointer hover:opacity-80 transition-opacity group"
+              :style="getSessionStyle(session)"
+              @click="selectSession(session)"
+            >
+              <div class="font-medium truncate text-white">
+                {{ session.offering_name }}
+              </div>
+              <div class="text-slate-400 truncate">
+                {{ session.time_range }}
+              </div>
+              <div v-if="viewMode === 'all'" class="text-slate-500 truncate">
+                {{ session.teacher_name }}
+              </div>
+
+              <!-- 懸停 Tooltip -->
+              <div class="absolute z-50 left-0 bottom-full mb-2 hidden group-hover:block w-64">
+                <div class="glass p-3 rounded-lg shadow-xl border border-white/10">
+                  <div class="font-medium text-white mb-2">{{ session.offering_name }}</div>
+                  <div class="space-y-1 text-xs">
+                    <div class="flex justify-between text-slate-400">
+                      <span>日期：</span>
+                      <span class="text-slate-200">{{ session.formatted_date }}</span>
+                    </div>
+                    <div class="flex justify-between text-slate-400">
+                      <span>時間：</span>
+                      <span class="text-slate-200">{{ session.time_range }}</span>
+                    </div>
+                    <div class="flex justify-between text-slate-400">
+                      <span>老師：</span>
+                      <span class="text-slate-200">{{ session.teacher_name }}</span>
+                    </div>
+                    <div class="flex justify-between text-slate-400">
+                      <span>教室：</span>
+                      <span class="text-slate-200">{{ session.room_name }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 課程詳情 Modal -->
+    <ScheduleDetailPanel
+      v-if="selectedSession"
+      :schedule="selectedSession"
+      @close="selectedSession = null"
+    />
+
+    <!-- 新增排課 Modal -->
+    <ScheduleRuleModal
+      v-if="showCreateModal"
+      @close="showCreateModal = false"
+      @created="handleRuleCreated"
+    />
+  </div>
+</template>
+
+<script setup lang="ts">
+const emit = defineEmits<{
+  'update:viewMode': [value: 'all' | 'teacher' | 'room']
+  'update:selectedResourceId': [value: number | null]
+}>()
+
+// Props
+const props = defineProps<{
+  viewMode: 'all' | 'teacher' | 'room'
+  selectedResourceId: number | null
+}>()
+
+// Computed with setter
+const viewModeModel = computed({
+  get: () => props.viewMode,
+  set: (value) => emit('update:viewMode', value)
+})
+
+const selectedResourceIdModel = computed({
+  get: () => props.selectedResourceId,
+  set: (value) => emit('update:selectedResourceId', value)
+})
+
+const showCreateModal = ref(false)
+const selectedSession = ref<any>(null)
+const { getCenterId } = useCenterId()
+
+const timeSlots = [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]
+
+const weekDays = [
+  { value: 1, name: '週一' },
+  { value: 2, name: '週二' },
+  { value: 3, name: '週三' },
+  { value: 4, name: '週四' },
+  { value: 5, name: '週五' },
+  { value: 6, name: '週六' },
+  { value: 7, name: '週日' },
+]
+
+const sessions = ref<any[]>([])
+const teachers = ref<any[]>([])
+const rooms = ref<any[]>([])
+const resourceCache = ref<{ teachers: Map<number, any>, rooms: Map<number, any> }>({
+  teachers: new Map(),
+  rooms: new Map(),
+})
+
+const getWeekStart = (date: Date): Date => {
+  const d = new Date(date)
+  const day = d.getDay()
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1)
+  return new Date(d.setDate(diff))
+}
+
+const weekStart = ref(getWeekStart(new Date()))
+const weekEnd = computed(() => {
+  const end = new Date(weekStart.value)
+  end.setDate(end.getDate() + 6)
+  return end
+})
+
+const weekLabel = computed(() => {
+  const start = weekStart.value.toLocaleDateString('zh-TW', { month: 'long', day: 'numeric' })
+  const end = weekEnd.value.toLocaleDateString('zh-TW', { month: 'long', day: 'numeric', year: 'numeric' })
+  return `${start} - ${end}`
+})
+
+const resourceList = computed(() => {
+  return viewModeModel.value === 'teacher'
+    ? Array.from(resourceCache.value.teachers.values())
+    : viewModeModel.value === 'room'
+      ? Array.from(resourceCache.value.rooms.value())
+      : []
+})
+
+const selectedResourceName = computed(() => {
+  if (props.viewMode === 'teacher') {
+    return resourceCache.value.teachers.get(props.selectedResourceId)?.name || ''
+  } else if (props.viewMode === 'room') {
+    return resourceCache.value.rooms.get(props.selectedResourceId)?.name || ''
+  }
+  return ''
+})
+
+const filteredSessions = computed(() => {
+  return sessions.value.filter(session => {
+    if (props.viewMode === 'all') return true
+    if (props.viewMode === 'teacher') {
+      return props.selectedResourceId ? session.teacher_id === props.selectedResourceId : true
+    }
+    if (props.viewMode === 'room') {
+      return props.selectedResourceId ? session.room_id === props.selectedResourceId : true
+    }
+    return true
+  })
+})
+
+const formatTime = (hour: number): string => {
+  return `${hour}:00`
+}
+
+const getDayDate = (weekday: number): string => {
+  const date = new Date(weekStart.value)
+  const diff = weekday - 1
+  date.setDate(date.getDate() + diff)
+  return date.getDate().toString()
+}
+
+const getSessionStyle = (session: any) => {
+  // 計算位置和高度
+  const [startHour, startMin] = session.start_time.split(':').map(Number)
+  const [endHour, endMin] = session.end_time.split(':').map(Number)
+
+  const startOffset = (startHour - 9) * 60 + startMin
+  const duration = (endHour - startHour) * 60 + (endMin - startMin)
+
+  // 計算星期位置（0-6）
+  const weekdayIndex = session.weekday - 1
+
+  // 每天寬度 = (100% - 60px) / 7
+  const dayWidth = `(100% - 60px) / 7`
+
+  return {
+    left: `calc(60px + ${weekdayIndex} * ${dayWidth})`,
+    width: `calc(${dayWidth} - 8px)`,
+    top: `${startOffset}px`,
+    height: `${duration}px`,
+    backgroundColor: getCourseColor(session.offering_name)
+  }
+}
+
+const getCourseColor = (courseName: string): string => {
+  const colors: Record<string, string> = {
+    '瑜珈': 'bg-emerald-500/80',
+    '瑜伽': 'bg-emerald-500/80',
+    '有氧': 'bg-blue-500/80',
+    '舞蹈': 'bg-purple-500/80',
+    '鋼琴': 'bg-amber-500/80',
+    '小提琴': 'bg-rose-500/80',
+    '游泳': 'bg-cyan-500/80',
+    '健身': 'bg-orange-500/80',
+    '拳擊': 'bg-red-500/80',
+    '芭蕾': 'bg-pink-500/80',
+  }
+
+  for (const [key, value] of Object.entries(colors)) {
+    if (courseName.includes(key)) return value
+  }
+  return 'bg-primary-500/80'
+}
+
+const changeWeek = (delta: number) => {
+  weekStart.value = getWeekStart(new Date(weekStart.value.getTime() + delta * 7 * 24 * 60 * 60 * 1000))
+  fetchSessions()
+}
+
+const goToCurrentWeek = () => {
+  weekStart.value = getWeekStart(new Date())
+  fetchSessions()
+}
+
+const clearFilter = () => {
+  viewModeModel.value = 'all'
+  selectedResourceIdModel.value = null
+}
+
+const selectSession = (session: any) => {
+  selectedSession.value = session
+}
+
+const fetchSessions = async () => {
+  try {
+    const api = useApi()
+    const centerId = getCenterId()
+
+    // 取得排課規則
+    const rulesRes = await api.get<{ code: number; datas: any[] }>(
+      `/admin/centers/${centerId}/rules`
+    )
+
+    // 取得老師和教室
+    const [teachersRes, roomsRes] = await Promise.all([
+      api.get<{ code: number; datas: any[] }>('/teachers'),
+      api.get<{ code: number; datas: any[] }>(`/admin/rooms`)
+    ])
+
+    teachers.value = teachersRes.datas || []
+    rooms.value = roomsRes.datas || []
+
+    // 更新快取
+    teachersRes.datas?.forEach((t: any) => resourceCache.value.teachers.set(t.id, t))
+    roomsRes.datas?.forEach((r: any) => resourceCache.value.rooms.set(r.id, r))
+
+    // 展開規則為 sessions
+    const sessionList: any[] = []
+    const rules = rulesRes.datas || []
+
+    rules.forEach((rule: any) => {
+      rule.weekdays?.forEach((day: number) => {
+        const startParts = rule.start_time.split(':')
+        const endParts = rule.end_time.split(':')
+
+        const startDate = new Date(weekStart.value)
+        startDate.setDate(startDate.getDate() + (day - 1))
+
+        sessionList.push({
+          id: rule.id,
+          rule_id: rule.id,
+          date: startDate.toISOString().split('T')[0],
+          formatted_date: startDate.toLocaleDateString('zh-TW', {
+            month: 'long',
+            day: 'numeric',
+            weekday: 'short'
+          }),
+          weekday: day,
+          start_time: rule.start_time,
+          end_time: rule.end_time,
+          time_range: `${rule.start_time} - ${rule.end_time}`,
+          offering_name: rule.offering?.name || '-',
+          offering_id: rule.offering_id,
+          teacher_id: rule.teacher_id,
+          teacher_name: rule.teacher?.name || '-',
+          room_id: rule.room_id,
+          room_name: rule.room?.name || '-',
+          color: getCourseColor(rule.offering?.name || '')
+        })
+      })
+    })
+
+    sessions.value = sessionList
+  } catch (error) {
+    console.error('Failed to fetch sessions:', error)
+    sessions.value = []
+  }
+}
+
+const handleRuleCreated = () => {
+  fetchSessions()
+}
+
+onMounted(() => {
+  fetchSessions()
+})
+</script>

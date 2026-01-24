@@ -1,10 +1,10 @@
 <template>
   <div class="h-full flex flex-col lg:flex-row gap-6">
-    <!-- 矩陣視圖 -->
-    <ScheduleMatrixView
+    <!-- 時間軸週曆 -->
+    <ScheduleTimelineView
       class="flex-1 min-w-0"
-      v-model:resource-type="resourceType"
-      @select-cell="handleSelectResource"
+      v-model:view-mode="viewMode"
+      v-model:selected-resource-id="selectedResourceId"
     />
     <ScheduleResourcePanel
       class="lg:w-80 shrink-0"
@@ -12,14 +12,6 @@
       @select-resource="handleSelectResource"
     />
   </div>
-
-  <ScheduleDetailPanel
-    v-if="selectedCell"
-    :time="selectedCell.time"
-    :weekday="selectedCell.weekday"
-    :schedule="selectedSchedule"
-    @close="selectedCell = null"
-  />
 
   <NotificationDropdown
     v-if="notificationUI.show.value"
@@ -36,23 +28,25 @@ definePageMeta({
 const notificationStore = useNotificationStore()
 const notificationUI = useNotification()
 
-// 資源類型：'teacher' | 'room'
-const resourceType = ref<'teacher' | 'room'>('teacher')
-
-// 選中的資源（用於詳情顯示）
-const selectedCell = ref<{ time: number; weekday: number; resource: any } | null>(null)
-const selectedSchedule = ref<any>(null)
+// 視圖模式：'all' | 'teacher' | 'room'
+const viewMode = ref<'all' | 'teacher' | 'room'>('all')
+// 選中的資源 ID
+const selectedResourceId = ref<number | null>(null)
 
 // 資源面板的視角模式
 const resourcePanelViewMode = computed(() => {
-  return resourceType.value
+  if (viewMode.value === 'teacher') return 'teacher'
+  if (viewMode.value === 'room') return 'room'
+  return 'offering'
 })
 
-const handleSelectResource = (data: { resource: any; time: number; weekday: number } | null) => {
-  if (data) {
-    selectedCell.value = data
-    // 從 scheduleMap 中獲取完整的 schedule 資料
-    // 這部分由 ScheduleMatrixView 處理
+const handleSelectResource = (resource: { type: 'teacher' | 'room', id: number } | null) => {
+  if (!resource) {
+    viewMode.value = 'all'
+    selectedResourceId.value = null
+  } else {
+    viewMode.value = resource.type
+    selectedResourceId.value = resource.id
   }
 }
 
