@@ -1,0 +1,49 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - heading "TimeLedger" [level=1] [ref=e7]
+      - navigation [ref=e8]:
+        - link "課表" [ref=e9] [cursor=pointer]:
+          - /url: /admin/dashboard
+        - link "課程時段" [ref=e10] [cursor=pointer]:
+          - /url: /admin/schedules
+        - link "課表模板" [ref=e11] [cursor=pointer]:
+          - /url: /admin/templates
+        - link "資源管理" [ref=e12] [cursor=pointer]:
+          - /url: /admin/resources
+        - link "審核中心" [ref=e13] [cursor=pointer]:
+          - /url: /admin/approval
+        - link "智慧媒合" [ref=e14] [cursor=pointer]:
+          - /url: /admin/matching
+      - button "登出" [ref=e16] [cursor=pointer]:
+        - img [ref=e17]
+        - generic [ref=e19]: 登出
+  - main [ref=e20]:
+    - generic [ref=e22]:
+      - generic [ref=e23]:
+        - heading "課程時段管理" [level=1] [ref=e24]
+        - button "新增時段" [ref=e25] [cursor=pointer]
+      - table [ref=e28]:
+        - rowgroup [ref=e29]:
+          - row "課程 星期 時間 教室 老師 狀態 操作" [ref=e30]:
+            - columnheader "課程" [ref=e31]
+            - columnheader "星期" [ref=e32]
+            - columnheader "時間" [ref=e33]
+            - columnheader "教室" [ref=e34]
+            - columnheader "老師" [ref=e35]
+            - columnheader "狀態" [ref=e36]
+            - columnheader "操作" [ref=e37]
+        - rowgroup [ref=e38]:
+          - row "鋼琴 一 09:00 - 10:00 教室A 王小明 進行中 刪除" [ref=e39]:
+            - cell "鋼琴" [ref=e40]
+            - cell "一" [ref=e41]
+            - cell "09:00 - 10:00" [ref=e42]
+            - cell "教室A" [ref=e43]
+            - cell "王小明" [ref=e44]
+            - cell "進行中" [ref=e45]
+            - cell "刪除" [ref=e46]:
+              - button "刪除" [ref=e47] [cursor=pointer]
+```

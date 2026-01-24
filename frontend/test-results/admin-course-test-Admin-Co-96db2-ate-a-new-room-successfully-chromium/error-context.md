@@ -1,0 +1,59 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - heading "TimeLedger" [level=1] [ref=e7]
+      - navigation [ref=e8]:
+        - link "課表" [ref=e9] [cursor=pointer]:
+          - /url: /admin/dashboard
+        - link "課程時段" [ref=e10] [cursor=pointer]:
+          - /url: /admin/schedules
+        - link "課表模板" [ref=e11] [cursor=pointer]:
+          - /url: /admin/templates
+        - link "資源管理" [ref=e12] [cursor=pointer]:
+          - /url: /admin/resources
+        - link "審核中心" [ref=e13] [cursor=pointer]:
+          - /url: /admin/approval
+        - link "智慧媒合" [ref=e14] [cursor=pointer]:
+          - /url: /admin/matching
+      - button "登出" [ref=e16] [cursor=pointer]:
+        - img [ref=e17]
+        - generic [ref=e19]: 登出
+  - main [ref=e20]:
+    - generic [ref=e22]:
+      - generic [ref=e23]:
+        - heading "資源管理" [level=1] [ref=e24]
+        - paragraph [ref=e25]: 管理教室、課程、待排課程、老師
+      - generic [ref=e26]:
+        - button "教室" [ref=e27] [cursor=pointer]
+        - button "課程" [ref=e28] [cursor=pointer]
+        - button "待排課程" [ref=e29] [cursor=pointer]
+        - button "老師" [ref=e30] [cursor=pointer]
+      - generic [ref=e31]:
+        - generic [ref=e32]:
+          - heading "教室列表" [level=2] [ref=e33]
+          - button "新增教室" [ref=e34] [cursor=pointer]:
+            - img [ref=e35]
+            - text: 新增教室
+        - generic [ref=e38]:
+          - generic [ref=e39]:
+            - generic [ref=e40]:
+              - heading "教室A" [level=3] [ref=e41]
+              - paragraph [ref=e42]: Room 498
+            - generic [ref=e43]:
+              - button [ref=e44] [cursor=pointer]:
+                - img [ref=e45]
+              - button [ref=e47] [cursor=pointer]:
+                - img [ref=e48]
+          - generic [ref=e50]:
+            - generic [ref=e51]:
+              - img [ref=e52]
+              - generic [ref=e54]: 容量
+              - generic [ref=e55]: 1 人
+            - generic [ref=e56]:
+              - img [ref=e57]
+              - generic [ref=e59]: 維修中
+          - generic [ref=e60]: 創建於：2026年1月24日
+```
