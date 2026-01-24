@@ -79,6 +79,7 @@ func (s *Server) LoadRoutes() {
 		{http.MethodGet, "/api/v1/teachers", s.action.teacher.ListTeachers, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireAdmin()}},
 		{http.MethodDelete, "/api/v1/teachers/:id", s.action.teacher.DeleteTeacher, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireAdmin()}},
 		{http.MethodPost, "/api/v1/admin/centers/:id/invitations", s.action.teacher.InviteTeacher, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodGet, "/api/v1/admin/centers/:id/teachers", s.action.adminResource.GetTeachers, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 
 		// Admin - Offerings
 		{http.MethodGet, "/api/v1/admin/offerings", s.action.offering.GetOfferings, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
@@ -141,6 +142,11 @@ func (s *Server) LoadRoutes() {
 		{http.MethodPost, "/api/v1/admin/centers/:id/holidays", s.action.adminResource.CreateHoliday, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodDelete, "/api/v1/admin/centers/:id/holidays/:holiday_id", s.action.adminResource.DeleteHoliday, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodPost, "/api/v1/admin/centers/:id/holidays/bulk", s.action.adminResource.BulkCreateHolidays, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+
+		// Admin - Teacher Notes (評分與備註)
+		{http.MethodGet, "/api/v1/admin/teachers/:teacher_id/note", s.action.adminResource.GetTeacherNote, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodPut, "/api/v1/admin/teachers/:teacher_id/note", s.action.adminResource.UpsertTeacherNote, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodDelete, "/api/v1/admin/teachers/:teacher_id/note", s.action.adminResource.DeleteTeacherNote, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 
 		// Smart Matching
 		{http.MethodPost, "/api/v1/admin/smart-matching/matches", s.action.smartMatching.FindMatches, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},

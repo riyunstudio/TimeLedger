@@ -49,6 +49,20 @@
         >
           Matching
         </NuxtLink>
+        <NuxtLink
+          to="/admin/holidays"
+          class="block px-4 py-2 rounded-lg bg-slate-700/50 hover:bg-slate-600 text-slate-300 hover:text-white transition-colors"
+          active-class="bg-primary-500/20 text-primary-400"
+        >
+          Holidays
+        </NuxtLink>
+        <NuxtLink
+          to="/admin/teacher-ratings"
+          class="block px-4 py-2 rounded-lg bg-slate-700/50 hover:bg-slate-600 text-slate-300 hover:text-white transition-colors"
+          active-class="bg-primary-500/20 text-primary-400"
+        >
+          Teacher Ratings
+        </NuxtLink>
         <a href="#" class="block px-4 py-2 rounded-lg bg-slate-700/50 hover:bg-slate-600 text-slate-300 hover:text-white transition-colors">
           Settings
         </a>
@@ -119,6 +133,22 @@
             @click="$emit('close')"
           >
             Matching
+          </NuxtLink>
+          <NuxtLink
+            to="/admin/holidays"
+            class="block px-4 py-2 rounded-lg bg-slate-700/50 hover:bg-slate-600 text-slate-300 hover:text-white transition-colors"
+            active-class="bg-primary-500/20 text-primary-400"
+            @click="$emit('close')"
+          >
+            Holidays
+          </NuxtLink>
+          <NuxtLink
+            to="/admin/teacher-ratings"
+            class="block px-4 py-2 rounded-lg bg-slate-700/50 hover:bg-slate-600 text-slate-300 hover:text-white transition-colors"
+            active-class="bg-primary-500/20 text-primary-400"
+            @click="$emit('close')"
+          >
+            Teacher Ratings
           </NuxtLink>
           <a href="#" class="block px-4 py-2 rounded-lg bg-slate-700/50 hover:bg-slate-600 text-slate-300 hover:text-white transition-colors">
             Settings
