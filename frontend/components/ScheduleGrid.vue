@@ -289,11 +289,13 @@
       @close="selectedCell = null"
     />
 
-    <ScheduleRuleModal
-      v-if="showCreateModal"
-      @close="showCreateModal = false"
-      @created="handleRuleCreated"
-    />
+    <Teleport to="body">
+      <ScheduleRuleModal
+        v-if="showCreateModal"
+        @close="showCreateModal = false"
+        @created="handleRuleCreated"
+      />
+    </Teleport>
   </div>
 </template>
 

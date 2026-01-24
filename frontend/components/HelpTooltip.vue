@@ -294,7 +294,7 @@ const arrowStyle = computed(() => {
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 99998;
+  z-index: 50;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -308,7 +308,7 @@ const arrowStyle = computed(() => {
   padding: 16px;
   border-radius: 12px;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1);
-  z-index: 99999;
+  z-index: 51;
   background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.98) 100%);
   backdrop-filter: blur(16px);
   pointer-events: auto;
@@ -320,6 +320,6 @@ const arrowStyle = computed(() => {
   height: 10px;
   background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.98) 100%);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  z-index: 100000;
+  z-index: 52;
 }
 </style>

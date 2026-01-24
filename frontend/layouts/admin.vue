@@ -15,10 +15,6 @@
 <script setup lang="ts">
 import { registerToast } from '~/composables/useToast'
 
-definePageMeta({
-  middleware: ['auth-admin'],
-})
-
 const toastRef = ref<any>(null)
 
 onMounted(() => {

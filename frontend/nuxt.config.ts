@@ -11,6 +11,10 @@ export default defineNuxtConfig({
 
   css: ['~/assets/css/main.css'],
 
+  tailwindcss: {
+    configPath: 'tailwind.config.js',
+  },
+
   app: {
     buildAssetsDir: '/_nuxt/',
     buildId: 'dev-' + Date.now(),
@@ -44,9 +48,13 @@ export default defineNuxtConfig({
         // Force relative paths
       }
     },
-    // Disable problematic optimizations
+    // Disable problematic optimizations for Windows
     optimizeDeps: {
       include: [],
+    },
+    // Fix module preload polyfill on Windows
+    modulePreload: {
+      polyfill: false,
     },
   },
 })

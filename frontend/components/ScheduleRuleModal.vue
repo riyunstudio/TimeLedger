@@ -37,7 +37,7 @@
       </div>
 
       <!-- 表單內容 -->
-      <form v-else @submit.prevent="handleSubmit" class="p-4 space-y-4">
+      <div v-show="!dataLoading && !error" class="p-4 space-y-4">
         <!-- 空資料提示 -->
         <div v-if="offerings.length === 0 || rooms.length === 0 || teachers.length === 0" class="mb-4 p-4 rounded-lg bg-warning-500/10 border border-warning-500/30">
           <p class="text-warning-500 text-sm">
@@ -265,7 +265,7 @@
             {{ loading ? '儲存中...' : '新增' }}
           </button>
         </div>
-      </form>
+      </div>
     </div>
   </div>
 </template>
