@@ -227,6 +227,7 @@ definePageMeta({
 })
 
 const notificationUI = useNotification()
+const { confirm: alertConfirm } = useAlert()
 const { getCenterId } = useCenterId()
 const api = useApi()
 
@@ -329,7 +330,7 @@ const handleBulkImport = async () => {
 }
 
 const deleteHoliday = async (id: number) => {
-  if (!confirm('確定要刪除這個假日嗎？')) return
+  if (!await alertConfirm('確定要刪除這個假日嗎？')) return
 
   try {
     const centerId = getCenterId()

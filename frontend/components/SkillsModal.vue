@@ -124,6 +124,8 @@
 </template>
 
 <script setup lang="ts">
+import { alertConfirm, alertError } from '~/composables/useAlert'
+
 const emit = defineEmits<{
   close: []
 }>()
@@ -150,7 +152,7 @@ const fetchData = async () => {
 }
 
 const deleteSkill = async (id: number) => {
-  if (!confirm('確定要刪除此技能？')) return
+  if (!await alertConfirm('確定要刪除此技能？')) return
 
   try {
     const api = useApi()
@@ -158,12 +160,12 @@ const deleteSkill = async (id: number) => {
     await fetchData()
   } catch (error) {
     console.error('Failed to delete skill:', error)
-    alert('刪除失敗')
+    await alertError('刪除失敗')
   }
 }
 
 const deleteCertificate = async (id: number) => {
-  if (!confirm('確定要刪除此證照？')) return
+  if (!await alertConfirm('確定要刪除此證照？')) return
 
   try {
     const api = useApi()
@@ -171,7 +173,7 @@ const deleteCertificate = async (id: number) => {
     await fetchData()
   } catch (error) {
     console.error('Failed to delete certificate:', error)
-    alert('刪除失敗')
+    await alertError('刪除失敗')
   }
 }
 

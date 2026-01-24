@@ -86,6 +86,8 @@
 </template>
 
 <script setup lang="ts">
+import { alertConfirm, alertError } from '~/composables/useAlert'
+
 const showModal = ref(false)
 const editingOffering = ref<any>(null)
 const offerings = ref<any[]>([])
@@ -162,7 +164,7 @@ const createNewOffering = () => {
 }
 
 const deleteOffering = async (offering: any) => {
-  if (!confirm(`確定要刪除待排課程「${offering.name}」嗎？`)) {
+  if (!await alertConfirm(`確定要刪除待排課程「${offering.name}」嗎？`)) {
     return
   }
 
@@ -173,7 +175,7 @@ const deleteOffering = async (offering: any) => {
     await fetchOfferings()
   } catch (error) {
     console.error('Failed to delete offering:', error)
-    alert('刪除失敗，請稍後再試')
+    await alertError('刪除失敗，請稍後再試')
   }
 }
 

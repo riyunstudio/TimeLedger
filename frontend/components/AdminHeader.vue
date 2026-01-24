@@ -162,13 +162,15 @@
 </template>
 
 <script setup lang="ts">
+import { alertConfirm } from '~/composables/useAlert'
+
 const router = useRouter()
 const authStore = useAuthStore()
 
 const mobileMenuOpen = ref(false)
 
-const handleLogout = () => {
-  if (confirm('確定要登出嗎？')) {
+const handleLogout = async () => {
+  if (await alertConfirm('確定要登出嗎？')) {
     authStore.logout()
     router.push('/admin/login')
   }

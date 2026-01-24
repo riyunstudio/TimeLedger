@@ -90,6 +90,9 @@ const loading = ref(true)
 const rules = ref<any[]>([])
 const { getCenterId } = useCenterId()
 
+// Alert composable
+const { error: alertError, confirm: alertConfirm } = useAlert()
+
 const fetchRules = async () => {
   loading.value = true
   try {
@@ -104,15 +107,15 @@ const fetchRules = async () => {
 }
 
 const deleteRule = async (id: number) => {
-  if (!confirm('確定要刪除此課程時段？')) return
+  if (!await alertConfirm('確定要刪除此課程時段？')) return
 
   try {
     const api = useApi()
     await api.delete(`/admin/rules/${id}`)
     await fetchRules()
-  } catch (error) {
-    console.error('Failed to delete rule:', error)
-    alert('刪除失敗')
+  } catch (err) {
+    console.error('Failed to delete rule:', err)
+    await alertError('刪除失敗，請稍後再試')
   }
 }
 

@@ -89,6 +89,9 @@ const editingCourse = ref<any>(null)
 const loading = ref(false)
 const { getCenterId } = useCenterId()
 
+// Alert composable
+const { error: alertError, confirm: alertConfirm } = useAlert()
+
 const courses = ref<any[]>([])
 
 const fetchCourses = async () => {
@@ -116,7 +119,7 @@ const editCourse = (course: any) => {
 }
 
 const deleteCourse = async (course: any) => {
-  if (!confirm(`確定要刪除課程「${course.name}」嗎？`)) {
+  if (!await alertConfirm(`確定要刪除課程「${course.name}」嗎？`)) {
     return
   }
 
@@ -125,9 +128,9 @@ const deleteCourse = async (course: any) => {
     const centerId = getCenterId()
     await api.delete(`/admin/courses/${course.id}`)
     await fetchCourses()
-  } catch (error) {
-    console.error('Failed to delete course:', error)
-    alert('刪除失敗，請稍後再試')
+  } catch (err) {
+    console.error('Failed to delete course:', err)
+    await alertError('刪除失敗，請稍後再試')
   }
 }
 </script>

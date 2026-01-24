@@ -85,6 +85,7 @@ import type { ScheduleException } from '~/types'
  const teacherStore = useTeacherStore()
 const sidebarStore = useSidebar()
 const notificationUI = useNotification()
+const { confirm: alertConfirm } = useAlert()
 const showModal = ref(false)
 const currentFilter = ref('')
 
@@ -157,7 +158,7 @@ const fetchExceptions = async () => {
 }
 
 const handleRevoke = async (id: number) => {
-  if (confirm('確定要撤回此申請嗎？')) {
+  if (await alertConfirm('確定要撤回此申請嗎？')) {
     await teacherStore.revokeException(id)
   }
 }

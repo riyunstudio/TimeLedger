@@ -249,6 +249,7 @@ definePageMeta({
 })
 
 const notificationUI = useNotification()
+const { confirm: alertConfirm } = useAlert()
 const { getCenterId } = useCenterId()
 const api = useApi()
 
@@ -419,7 +420,7 @@ const saveNote = async () => {
 }
 
 const deleteNote = async () => {
-  if (!editingTeacher.value || !confirm('確定要刪除這位老師的評分嗎？')) return
+  if (!editingTeacher.value || !await alertConfirm('確定要刪除這位老師的評分嗎？')) return
 
   saving.value = true
   try {

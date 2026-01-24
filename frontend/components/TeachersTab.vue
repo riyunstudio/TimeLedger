@@ -112,6 +112,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
+// Alert composable
+const { error: alertError, confirm: alertConfirm } = useAlert()
+
 const showInviteModal = ref(false)
 const searchQuery = ref('')
 const showMenu = ref<Record<number, boolean>>({})
@@ -156,7 +159,7 @@ const sendMessage = (teacher: any) => {
 }
 
 const removeTeacher = async (teacher: any) => {
-  if (!confirm(`確定要移除老師「${teacher.name}」嗎？此操作將刪除該老師的帳號。`)) {
+  if (!await alertConfirm(`確定要移除老師「${teacher.name}」嗎？此操作將刪除該老師的帳號。`)) {
     return
   }
 
@@ -165,9 +168,9 @@ const removeTeacher = async (teacher: any) => {
     await api.delete(`/teachers/${teacher.id}`)
     await fetchTeachers()
     showMenu.value[teacher.id] = false
-  } catch (error) {
-    console.error('Failed to remove teacher:', error)
-    alert('移除失敗，請稍後再試')
+  } catch (err) {
+    console.error('Failed to remove teacher:', err)
+    await alertError('移除失敗，請稍後再試')
   }
 }
 </script>

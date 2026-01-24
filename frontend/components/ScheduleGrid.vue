@@ -279,6 +279,9 @@ const emit = defineEmits<{
   'update:selectedResourceId': [value: number | null]
 }>()
 
+// Alert composable - renamed to avoid conflict with native confirm
+const { confirm: confirmDialog, error: alertError } = useAlert()
+
 // Props
 const props = defineProps<{
   viewMode: 'calendar' | 'teacher_matrix' | 'room_matrix'
@@ -315,7 +318,8 @@ const handleEdit = () => {
 }
 
 const handleDelete = async () => {
-  if (!selectedSchedule.value || !confirm('確定要刪除此排課規則？')) return
+  const confirmed = await confirmDialog('確定要刪除此排課規則？')
+  if (!confirmed || !selectedSchedule.value) return
 
   try {
     const api = useApi()
@@ -323,9 +327,9 @@ const handleDelete = async () => {
     selectedCell.value = null
     selectedSchedule.value = null
     await fetchSchedules()
-  } catch (error) {
-    console.error('Failed to delete rule:', error)
-    alert('刪除失敗')
+  } catch (err) {
+    console.error('Failed to delete rule:', err)
+    await alertError('刪除失敗，請稍後再試')
   }
 }
 

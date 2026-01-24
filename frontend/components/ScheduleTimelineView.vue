@@ -232,6 +232,9 @@ const emit = defineEmits<{
   'update:selectedResourceId': [value: number | null]
 }>()
 
+// Alert composable
+const { confirm: confirmDialog, error: alertError } = useAlert()
+
 // Props
 const props = defineProps<{
   viewMode: 'all' | 'teacher' | 'room'
@@ -263,16 +266,16 @@ const handleEdit = () => {
 }
 
 const handleDelete = async () => {
-  if (!selectedSession.value || !confirm('確定要刪除此排課規則？')) return
+  if (!selectedSession.value || !(await confirmDialog('確定要刪除此排課規則？'))) return
 
   try {
     const api = useApi()
     await api.delete(`/admin/rules/${selectedSession.value.id}`)
     selectedSession.value = null
     await fetchSessions()
-  } catch (error) {
-    console.error('Failed to delete rule:', error)
-    alert('刪除失敗')
+  } catch (err) {
+    console.error('Failed to delete rule:', err)
+    await alertError('刪除失敗，請稍後再試')
   }
 }
 

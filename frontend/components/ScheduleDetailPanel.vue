@@ -169,6 +169,8 @@
 </template>
 
 <script setup lang="ts">
+import { alertConfirm } from '~/composables/useAlert'
+
 const props = defineProps<{
   time?: number
   weekday?: number
@@ -194,8 +196,8 @@ const handleEdit = () => {
   emit('edit')
 }
 
-const handleDelete = () => {
-  if (confirm('確定要刪除此排課？')) {
+const handleDelete = async () => {
+  if (await alertConfirm('確定要刪除此排課？')) {
     emit('delete')
   }
 }

@@ -109,6 +109,9 @@ const editingRoom = ref<any>(null)
 const loading = ref(false)
 const { getCenterId } = useCenterId()
 
+// Alert composable
+const { error: alertError, confirm: alertConfirm } = useAlert()
+
 const rooms = ref<any[]>([])
 
 const fetchRooms = async () => {
@@ -136,15 +139,15 @@ const editRoom = (room: any) => {
 }
 
 const deleteRoom = async (id: number) => {
-  if (confirm('確定要刪除此教室？')) {
+  if (await alertConfirm('確定要刪除此教室？')) {
     try {
       const api = useApi()
       const centerId = getCenterId()
       await api.delete(`/admin/rooms/${id}`)
       rooms.value = rooms.value.filter(r => r.id !== id)
-    } catch (error) {
-      console.error('Failed to delete room:', error)
-      alert('刪除失敗，請稍後再試')
+    } catch (err) {
+      console.error('Failed to delete room:', err)
+      await alertError('刪除失敗，請稍後再試')
     }
   }
 }

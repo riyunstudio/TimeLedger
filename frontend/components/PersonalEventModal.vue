@@ -128,6 +128,9 @@ const emit = defineEmits<{
 const teacherStore = useTeacherStore()
 const loading = ref(false)
 
+// Alert composable
+const { success: alertSuccess, error: alertError } = useAlert()
+
 const isEditing = computed(() => !!props.editingEvent)
 
 const now = new Date()
@@ -213,12 +216,12 @@ const handleSubmit = async () => {
     }
     await teacherStore.fetchPersonalEvents()
     await teacherStore.fetchSchedule()
-    alert('儲存成功')
+    await alertSuccess('儲存成功')
     emit('saved')
     emit('close')
-  } catch (error) {
-    console.error('Failed to save personal event:', error)
-    alert('儲存失敗，請稍後再試')
+  } catch (err) {
+    console.error('Failed to save personal event:', err)
+    await alertError('儲存失敗，請稍後再試')
   } finally {
     loading.value = false
   }

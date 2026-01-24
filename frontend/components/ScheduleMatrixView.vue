@@ -182,6 +182,9 @@ const emit = defineEmits<{
   'update:resourceType': [value: 'teacher' | 'room']
 }>()
 
+// Alert composable
+const { confirm: confirmDialog, error: alertError } = useAlert()
+
 // Props
 const props = defineProps<{
   resourceType: 'teacher' | 'room'
@@ -203,7 +206,7 @@ const handleEdit = () => {
 }
 
 const handleDelete = async () => {
-  if (!selectedSchedule.value || !confirm('確定要刪除此排課規則？')) return
+  if (!selectedSchedule.value || !await confirmDialog('確定要刪除此排課規則？')) return
 
   try {
     const api = useApi()
@@ -211,9 +214,9 @@ const handleDelete = async () => {
     selectedCell.value = null
     selectedSchedule.value = null
     await fetchData()
-  } catch (error) {
-    console.error('Failed to delete rule:', error)
-    alert('刪除失敗')
+  } catch (err) {
+    console.error('Failed to delete rule:', err)
+    await alertError('刪除失敗，請稍後再試')
   }
 }
 

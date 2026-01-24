@@ -286,6 +286,7 @@ const offerings = ref<any[]>([])
 const creating = ref(false)
 const applying = ref(false)
 const { getCenterId } = useCenterId()
+const { confirm: alertConfirm, error: alertError } = useAlert()
 
 const applyForm = ref({
   templateId: 0,
@@ -334,14 +335,14 @@ const createTemplate = async () => {
     await fetchTemplates()
   } catch (error) {
     console.error('Failed to create template:', error)
-    alert('建立失敗')
+    await alertError('建立失敗')
   } finally {
     creating.value = false
   }
 }
 
 const deleteTemplate = async (id: number) => {
-  if (!confirm('確定要刪除此模板？')) return
+  if (!await alertConfirm('確定要刪除此模板？')) return
 
   try {
     const api = useApi()
@@ -350,7 +351,7 @@ const deleteTemplate = async (id: number) => {
     await fetchTemplates()
   } catch (error) {
     console.error('Failed to delete template:', error)
-    alert('刪除失敗')
+    await alertError('刪除失敗')
   }
 }
 

@@ -87,13 +87,15 @@
 </template>
 
 <script setup lang="ts">
+import { alertConfirm } from '~/composables/useAlert'
+
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 const sidebarStore = useSidebar()
 
-const handleLogout = () => {
-  if (confirm('確定要登出嗎？')) {
+const handleLogout = async () => {
+  if (await alertConfirm('確定要登出嗎？')) {
     sidebarStore.close()
     authStore.logout()
     router.push('/')
