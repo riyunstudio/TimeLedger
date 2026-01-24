@@ -120,10 +120,12 @@ func (s *Server) LoadRoutes() {
 		// Admin - Resources
 		{http.MethodGet, "/api/v1/admin/rooms", s.action.adminResource.GetRooms, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodPost, "/api/v1/admin/rooms", s.action.adminResource.CreateRoom, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodPut, "/api/v1/admin/rooms/:room_id", s.action.adminResource.UpdateRoom, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodGet, "/api/v1/admin/rooms/active", s.action.adminResource.GetActiveRooms, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodPatch, "/api/v1/admin/rooms/:room_id/toggle-active", s.action.adminResource.ToggleRoomActive, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodGet, "/api/v1/admin/courses", s.action.adminResource.GetCourses, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodPost, "/api/v1/admin/courses", s.action.adminResource.CreateCourse, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodPut, "/api/v1/admin/courses/:course_id", s.action.adminResource.UpdateCourse, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodDelete, "/api/v1/admin/courses/:course_id", s.action.adminResource.DeleteCourse, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodGet, "/api/v1/admin/courses/active", s.action.adminResource.GetActiveCourses, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodPatch, "/api/v1/admin/courses/:course_id/toggle-active", s.action.adminResource.ToggleCourseActive, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},

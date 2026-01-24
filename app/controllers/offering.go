@@ -224,15 +224,37 @@ func (ctl *OfferingController) UpdateOffering(ctx *gin.Context) {
 		return
 	}
 
-	offering := models.Offering{
-		CenterID:            centerID,
-		DefaultRoomID:       req.DefaultRoomID,
-		DefaultTeacherID:    req.DefaultTeacherID,
-		AllowBufferOverride: req.AllowBufferOverride,
-		UpdatedAt:           time.Now(),
+	// 查詢現有 offering
+	existingOffering, err := ctl.offeringRepository.GetByID(ctl.makeCtx(ctx), offeringID)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Offering not found",
+		})
+		return
 	}
 
-	if err := ctl.offeringRepository.Update(ctl.makeCtx(ctx), offering); err != nil {
+	// 驗證權限
+	if existingOffering.CenterID != centerID {
+		ctx.JSON(http.StatusForbidden, global.ApiResponse{
+			Code:    global.FORBIDDEN,
+			Message: "Permission denied",
+		})
+		return
+	}
+
+	// 更新字段
+	existingOffering.DefaultRoomID = req.DefaultRoomID
+	existingOffering.DefaultTeacherID = req.DefaultTeacherID
+	existingOffering.AllowBufferOverride = req.AllowBufferOverride
+	existingOffering.UpdatedAt = time.Now()
+
+	// 如果有提供 name，則更新
+	if req.Name != nil && *req.Name != "" {
+		existingOffering.Name = *req.Name
+	}
+
+	if err := ctl.offeringRepository.Update(ctl.makeCtx(ctx), existingOffering); err != nil {
 		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
 			Code:    500,
 			Message: "Failed to update offering",
@@ -260,14 +282,15 @@ func (ctl *OfferingController) UpdateOffering(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, global.ApiResponse{
 		Code:    0,
 		Message: "Offering updated",
-		Datas:   offering,
+		Datas:   existingOffering,
 	})
 }
 
 type UpdateOfferingRequest struct {
-	DefaultRoomID       *uint `json:"default_room_id"`
-	DefaultTeacherID    *uint `json:"default_teacher_id"`
-	AllowBufferOverride bool  `json:"allow_buffer_override"`
+	Name                *string `json:"name"`
+	DefaultRoomID       *uint   `json:"default_room_id"`
+	DefaultTeacherID    *uint   `json:"default_teacher_id"`
+	AllowBufferOverride bool    `json:"allow_buffer_override"`
 }
 
 type CopyOfferingRequest struct {

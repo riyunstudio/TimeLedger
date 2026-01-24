@@ -7,11 +7,23 @@
         <slot />
       </div>
     </main>
+
+    <ToastNotification ref="toastRef" />
   </div>
 </template>
 
 <script setup lang="ts">
+import { registerToast } from '~/composables/useToast'
+
 definePageMeta({
   middleware: ['auth-admin'],
+})
+
+const toastRef = ref<any>(null)
+
+onMounted(() => {
+  if (toastRef.value) {
+    registerToast(toastRef.value)
+  }
 })
 </script>

@@ -250,6 +250,78 @@ type CreateRoomRequest struct {
 	Capacity int    `json:"capacity" binding:"required"`
 }
 
+type UpdateRoomRequest struct {
+	Name     string `json:"name" binding:"required"`
+	Capacity int    `json:"capacity" binding:"required"`
+}
+
+// UpdateRoom 更新教室
+// @Summary 更新教室
+// @Tags Admin
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param room_id path int true "Room ID"
+// @Param request body UpdateRoomRequest true "教室資訊"
+// @Success 200 {object} global.ApiResponse{data=models.Room}
+// @Router /api/v1/admin/rooms/{room_id} [put]
+func (ctl *AdminResourceController) UpdateRoom(ctx *gin.Context) {
+	centerID := ctl.getCenterID(ctx)
+	roomID, err := ctl.getUintParam(ctx, "room_id")
+	if err != nil {
+		ctl.respondError(ctx, global.BAD_REQUEST, "Invalid room ID")
+		return
+	}
+
+	var req UpdateRoomRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctl.respondError(ctx, errInfos.PARAMS_VALIDATE_ERROR, "Invalid request body")
+		return
+	}
+
+	// 查詢現有教室
+	room, err := ctl.roomRepository.GetByID(ctx, roomID)
+	if err != nil {
+		ctl.respondError(ctx, errInfos.SQL_ERROR, "Room not found")
+		return
+	}
+
+	// 驗證權限
+	if room.CenterID != centerID {
+		ctl.respondError(ctx, global.FORBIDDEN, "Permission denied")
+		return
+	}
+
+	// 更新
+	room.Name = req.Name
+	room.Capacity = req.Capacity
+
+	if err := ctl.roomRepository.Update(ctx, room); err != nil {
+		ctl.respondError(ctx, errInfos.SQL_ERROR, "Failed to update room")
+		return
+	}
+
+	adminID := ctx.GetUint(global.UserIDKey)
+	ctl.auditLogRepo.Create(ctx, models.AuditLog{
+		CenterID:   centerID,
+		ActorType:  "ADMIN",
+		ActorID:    adminID,
+		Action:     "UPDATE_ROOM",
+		TargetType: "Room",
+		TargetID:   room.ID,
+		Payload: models.AuditPayload{
+			Before: models.Room{Name: "", Capacity: 0},
+			After:  room,
+		},
+	})
+
+	ctx.JSON(http.StatusOK, global.ApiResponse{
+		Code:    0,
+		Message: "Room updated",
+		Datas:   room,
+	})
+}
+
 // GetCourses 取得課程列表
 // @Summary 取得課程列表
 // @Tags Admin
@@ -389,6 +461,84 @@ type CreateCourseRequest struct {
 	ColorHex         string `json:"color_hex" binding:"required"`
 	RoomBufferMin    int    `json:"room_buffer_min" binding:"required"`
 	TeacherBufferMin int    `json:"teacher_buffer_min" binding:"required"`
+}
+
+type UpdateCourseRequest struct {
+	Name             string `json:"name" binding:"required"`
+	Duration         int    `json:"duration" binding:"required"`
+	ColorHex         string `json:"color_hex" binding:"required"`
+	RoomBufferMin    int    `json:"room_buffer_min" binding:"required"`
+	TeacherBufferMin int    `json:"teacher_buffer_min" binding:"required"`
+}
+
+// UpdateCourse 更新課程
+// @Summary 更新課程
+// @Tags Admin
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param course_id path int true "Course ID"
+// @Param request body UpdateCourseRequest true "課程資訊"
+// @Success 200 {object} global.ApiResponse{data=models.Course}
+// @Router /api/v1/admin/courses/{course_id} [put]
+func (ctl *AdminResourceController) UpdateCourse(ctx *gin.Context) {
+	centerID := ctl.getCenterID(ctx)
+	courseID, err := ctl.getUintParam(ctx, "course_id")
+	if err != nil {
+		ctl.respondError(ctx, global.BAD_REQUEST, "Invalid course ID")
+		return
+	}
+
+	var req UpdateCourseRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctl.respondError(ctx, errInfos.PARAMS_VALIDATE_ERROR, "Invalid request body")
+		return
+	}
+
+	// 查詢現有課程
+	course, err := ctl.courseRepository.GetByID(ctx, courseID)
+	if err != nil {
+		ctl.respondError(ctx, errInfos.SQL_ERROR, "Course not found")
+		return
+	}
+
+	// 驗證權限
+	if course.CenterID != centerID {
+		ctl.respondError(ctx, global.FORBIDDEN, "Permission denied")
+		return
+	}
+
+	// 更新
+	course.Name = req.Name
+	course.DefaultDuration = req.Duration
+	course.ColorHex = req.ColorHex
+	course.RoomBufferMin = req.RoomBufferMin
+	course.TeacherBufferMin = req.TeacherBufferMin
+
+	if err := ctl.courseRepository.Update(ctx, course); err != nil {
+		ctl.respondError(ctx, errInfos.SQL_ERROR, "Failed to update course")
+		return
+	}
+
+	adminID := ctx.GetUint(global.UserIDKey)
+	ctl.auditLogRepo.Create(ctx, models.AuditLog{
+		CenterID:   centerID,
+		ActorType:  "ADMIN",
+		ActorID:    adminID,
+		Action:     "UPDATE_COURSE",
+		TargetType: "Course",
+		TargetID:   course.ID,
+		Payload: models.AuditPayload{
+			Before: course,
+			After:  course,
+		},
+	})
+
+	ctx.JSON(http.StatusOK, global.ApiResponse{
+		Code:    0,
+		Message: "Course updated",
+		Datas:   course,
+	})
 }
 
 // DeleteCourse 刪除課程

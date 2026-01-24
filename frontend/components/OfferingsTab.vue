@@ -3,7 +3,7 @@
     <div class="flex items-center justify-between">
       <h2 class="text-xl font-semibold text-slate-100">待排課程</h2>
       <button
-        @click="showModal = true"
+        @click="createNewOffering"
         class="btn-primary px-4 py-2 text-sm font-medium flex items-center gap-2"
       >
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -107,6 +107,11 @@ const fetchOfferings = async () => {
 
 const editOffering = (offering: any) => {
   editingOffering.value = offering
+  showModal.value = true
+}
+
+const createNewOffering = () => {
+  editingOffering.value = null
   showModal.value = true
 }
 
