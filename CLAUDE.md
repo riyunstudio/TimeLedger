@@ -356,6 +356,7 @@ TeacherBuffer = max(
 ### 15.4 提交規範
 - 後端完成且測試通過 → **Commit**
 - 前端完成 → **再次 Commit**
+- **每次修改（包含小修正）都必須立即 commit**，避免累積大量未提交的變更
 - 每次 Commit 前必須更新 `pdr/progress_tracker.md`
 - Commit Message 格式：`feat(scope): 描述 (Ref: PDR章節)`
 
