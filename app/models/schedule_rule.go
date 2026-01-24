@@ -15,9 +15,11 @@ type ScheduleRule struct {
 	OfferingID     uint           `gorm:"not null;index" json:"offering_id"`
 	TeacherID      *uint          `gorm:"index:idx_teacher_time" json:"teacher_id"`
 	RoomID         uint           `gorm:"not null;index:idx_room_time" json:"room_id"`
+	Name           string         `gorm:"type:varchar(100)" json:"name"`
 	Weekday        int            `gorm:"type:tinyint;not null;index:idx_center_weekday_time" json:"weekday"`
 	StartTime      string         `gorm:"type:varchar(10);not null;index:idx_center_weekday_time" json:"start_time"`
 	EndTime        string         `gorm:"type:varchar(10);not null" json:"end_time"`
+	Duration       int            `gorm:"default:60" json:"duration"`
 	EffectiveRange DateRange      `gorm:"type:json;not null" json:"effective_range"`
 	LockAt         *time.Time     `gorm:"type:datetime;index" json:"lock_at"`
 	CreatedAt      time.Time      `gorm:"type:datetime;not null" json:"created_at"`

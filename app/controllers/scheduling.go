@@ -696,6 +696,270 @@ func (ctl *SchedulingController) DeleteRule(ctx *gin.Context) {
 	})
 }
 
+type UpdateRuleRequest struct {
+	Name       string  `json:"name"`
+	OfferingID uint    `json:"offering_id"`
+	TeacherID  *uint   `json:"teacher_id"`
+	RoomID     uint    `json:"room_id"`
+	StartTime  string  `json:"start_time"`
+	EndTime    string  `json:"end_time"`
+	Duration   int     `json:"duration"`
+	Weekdays   []int   `json:"weekdays"`
+	StartDate  string  `json:"start_date"`
+	EndDate    *string `json:"end_date"`
+}
+
+func (ctl *SchedulingController) UpdateRule(ctx *gin.Context) {
+	centerID := ctx.GetUint(global.CenterIDKey)
+	if centerID == 0 {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Center ID required",
+		})
+		return
+	}
+
+	ruleIDStr := ctx.Param("ruleId")
+	var ruleID uint
+	if _, err := fmt.Sscanf(ruleIDStr, "%d", &ruleID); err != nil {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Invalid rule ID",
+		})
+		return
+	}
+
+	var req UpdateRuleRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Invalid request parameters: " + err.Error(),
+		})
+		return
+	}
+
+	// 解析日期
+	var startDate, endDate time.Time
+	var err error
+
+	if req.StartDate != "" {
+		startDate, err = time.Parse("2006-01-02", req.StartDate)
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+				Code:    global.BAD_REQUEST,
+				Message: "Invalid start_date format",
+			})
+			return
+		}
+	}
+
+	if req.EndDate != nil && *req.EndDate != "" {
+		endDate, err = time.Parse("2006-01-02", *req.EndDate)
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+				Code:    global.BAD_REQUEST,
+				Message: "Invalid end_date format",
+			})
+			return
+		}
+	} else {
+		endDate = time.Date(2099, 12, 31, 0, 0, 0, 0, time.UTC)
+	}
+
+	scheduleRuleRepo := repositories.NewScheduleRuleRepository(ctl.app)
+
+	// 檢查規則是否存在且屬於該中心
+	existingRule, err := scheduleRuleRepo.GetByIDAndCenterID(ctx, ruleID, centerID)
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, global.ApiResponse{
+			Code:    errInfos.NOT_FOUND,
+			Message: "Rule not found",
+		})
+		return
+	}
+
+	// 找出同一組的所有規則（相同的 name 或 offering_id 和時間）
+	allRules, err := scheduleRuleRepo.ListByCenterID(ctx, centerID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
+			Code:    500,
+			Message: "Failed to fetch rules: " + err.Error(),
+		})
+		return
+	}
+
+	// 找出與當前規則相關聯的規則（相同的 offering_id、start_time、end_time）
+	var relatedRules []models.ScheduleRule
+	for _, rule := range allRules {
+		if rule.OfferingID == existingRule.OfferingID &&
+			rule.StartTime == existingRule.StartTime &&
+			rule.EndTime == existingRule.EndTime &&
+			rule.ID != existingRule.ID {
+			relatedRules = append(relatedRules, rule)
+		}
+	}
+
+	// 收集所有相關的 weekday
+	existingWeekdays := []int{existingRule.Weekday}
+	for _, rule := range relatedRules {
+		existingWeekdays = append(existingWeekdays, rule.Weekday)
+	}
+
+	// 轉換 req.Weekdays 為 map 便於查找
+	newWeekdayMap := make(map[int]bool)
+	for _, w := range req.Weekdays {
+		newWeekdayMap[w] = true
+	}
+
+	// 追蹤需要更新和創建的規則
+	var updatedRules []models.ScheduleRule
+	var createdRules []models.ScheduleRule
+	var deletedRuleIDs []uint
+
+	// 1. 處理現有規則：更新或標記刪除
+	for _, rule := range append(relatedRules, existingRule) {
+		if newWeekdayMap[rule.Weekday] {
+			// 這個 weekday 仍然需要保留，更新它
+			updatedRule := rule
+			if req.Name != "" {
+				updatedRule.Name = req.Name
+			}
+			if req.OfferingID != 0 {
+				updatedRule.OfferingID = req.OfferingID
+			}
+			if req.TeacherID != nil {
+				updatedRule.TeacherID = req.TeacherID
+			}
+			if req.RoomID != 0 {
+				updatedRule.RoomID = req.RoomID
+			}
+			if req.StartTime != "" {
+				updatedRule.StartTime = req.StartTime
+			}
+			if req.EndTime != "" {
+				updatedRule.EndTime = req.EndTime
+			}
+			if req.Duration != 0 {
+				updatedRule.Duration = req.Duration
+			}
+			updatedRule.EffectiveRange.StartDate = startDate
+			updatedRule.EffectiveRange.EndDate = endDate
+
+			updatedRules = append(updatedRules, updatedRule)
+			delete(newWeekdayMap, rule.Weekday)
+		} else {
+			// 這個 weekday 不再需要，標記刪除
+			deletedRuleIDs = append(deletedRuleIDs, rule.ID)
+		}
+	}
+
+	// 2. 創建新的規則
+	for weekday := range newWeekdayMap {
+		newRule := models.ScheduleRule{
+			CenterID:   centerID,
+			OfferingID: existingRule.OfferingID,
+			TeacherID:  existingRule.TeacherID,
+			RoomID:     existingRule.RoomID,
+			Name:       existingRule.Name,
+			Weekday:    weekday,
+			StartTime:  existingRule.StartTime,
+			EndTime:    existingRule.EndTime,
+			Duration:   existingRule.Duration,
+			EffectiveRange: models.DateRange{
+				StartDate: startDate,
+				EndDate:   endDate,
+			},
+		}
+		if req.Name != "" {
+			newRule.Name = req.Name
+		}
+		if req.OfferingID != 0 {
+			newRule.OfferingID = req.OfferingID
+		}
+		if req.TeacherID != nil {
+			newRule.TeacherID = req.TeacherID
+		}
+		if req.RoomID != 0 {
+			newRule.RoomID = req.RoomID
+		}
+		if req.StartTime != "" {
+			newRule.StartTime = req.StartTime
+		}
+		if req.EndTime != "" {
+			newRule.EndTime = req.EndTime
+		}
+		if req.Duration != 0 {
+			newRule.Duration = req.Duration
+		}
+		createdRules = append(createdRules, newRule)
+	}
+
+	// 3. 執行資料庫操作
+	// 先刪除
+	for _, id := range deletedRuleIDs {
+		if err := scheduleRuleRepo.Delete(ctx, id); err != nil {
+			ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
+				Code:    500,
+				Message: "Failed to delete rule: " + err.Error(),
+			})
+			return
+		}
+	}
+
+	// 更新
+	for _, rule := range updatedRules {
+		if err := scheduleRuleRepo.Update(ctx, rule); err != nil {
+			ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
+				Code:    500,
+				Message: "Failed to update rule: " + err.Error(),
+			})
+			return
+		}
+	}
+
+	// 創建
+	for _, rule := range createdRules {
+		if _, err := scheduleRuleRepo.Create(ctx, rule); err != nil {
+			ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
+				Code:    500,
+				Message: "Failed to create rule: " + err.Error(),
+			})
+			return
+		}
+	}
+
+	actorID := ctx.GetUint(global.UserIDKey)
+	ctl.auditLogRepo.Create(ctx, models.AuditLog{
+		CenterID:   centerID,
+		ActorType:  "ADMIN",
+		ActorID:    actorID,
+		Action:     "UPDATE_SCHEDULE_RULE",
+		TargetType: "ScheduleRule",
+		TargetID:   ruleID,
+		Payload: models.AuditPayload{
+			After: map[string]interface{}{
+				"weekdays":       req.Weekdays,
+				"updated_count":  len(updatedRules),
+				"created_count":  len(createdRules),
+				"deleted_count":  len(deletedRuleIDs),
+			},
+		},
+	})
+
+	// 返回所有更新後的規則
+	var allResultRules []models.ScheduleRule
+	allResultRules = append(allResultRules, updatedRules...)
+	for _, rule := range createdRules {
+		allResultRules = append(allResultRules, rule)
+	}
+
+	ctx.JSON(http.StatusOK, global.ApiResponse{
+		Code:    0,
+		Message: "Schedule rules updated successfully",
+		Datas:   allResultRules,
+	})
+}
+
 type DetectPhaseTransitionsRequest struct {
 	OfferingID uint      `json:"offering_id" binding:"required"`
 	StartDate  time.Time `json:"start_date" binding:"required"`

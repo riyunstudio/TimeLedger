@@ -110,6 +110,7 @@ func (s *Server) LoadRoutes() {
 		{http.MethodPost, "/api/v1/admin/scheduling/validate", s.action.scheduling.ValidateFull, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodGet, "/api/v1/admin/rules", s.action.scheduling.GetRules, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodPost, "/api/v1/admin/rules", s.action.scheduling.CreateRule, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodPut, "/api/v1/admin/rules/:ruleId", s.action.scheduling.UpdateRule, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodDelete, "/api/v1/admin/rules/:ruleId", s.action.scheduling.DeleteRule, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodPost, "/api/v1/admin/scheduling/exceptions", s.action.scheduling.CreateException, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodPost, "/api/v1/admin/scheduling/exceptions/:exceptionId/review", s.action.scheduling.ReviewException, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},

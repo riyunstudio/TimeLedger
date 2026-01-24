@@ -350,7 +350,7 @@ const handleSubmit = async () => {
       start_time: form.value.start_time,
       end_time: form.value.end_time,
       duration: form.value.duration,
-      weekday: form.value.weekdays[0],  // 編輯模式只支援單一 weekday
+      weekdays: form.value.weekdays,
       start_date: form.value.start_date,
       end_date: form.value.end_date || null,
     }
