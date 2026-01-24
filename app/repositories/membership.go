@@ -58,7 +58,7 @@ func (rp *CenterMembershipRepository) ListTeacherIDsByCenterID(ctx context.Conte
 	var membershipIDs []uint
 	err := rp.app.MySQL.RDB.WithContext(ctx).
 		Model(&models.CenterMembership{}).
-		Where("center_id = ? AND status = ?", centerID, "ACTIVE").
+		Where("center_id = ? AND status IN ?", centerID, []string{"ACTIVE", "INVITED"}).
 		Pluck("teacher_id", &membershipIDs).Error
 	return membershipIDs, err
 }

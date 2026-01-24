@@ -329,9 +329,13 @@ const fetchTeachers = async () => {
   loading.value = true
   try {
     const centerId = getCenterId()
+    console.log('Fetch teachers for center:', centerId)
+
     const response = await api.get<{ code: number; datas: Teacher[] }>(
       `/admin/centers/${centerId}/teachers`
     )
+    console.log('Teachers API response:', response)
+
     teachers.value = response.datas || []
 
     // 為每位老師取得評分資料
