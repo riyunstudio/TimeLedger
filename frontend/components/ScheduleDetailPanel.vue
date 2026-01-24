@@ -1,21 +1,24 @@
 <template>
-  <div
-    v-if="showPanel"
-    class="fixed right-0 top-0 h-[calc(100vh-80px)] w-80 glass-card border-l border-white/10 p-4 overflow-y-auto z-40"
-  >
-    <div class="flex items-center justify-between mb-4">
-      <h3 class="text-lg font-semibold text-slate-100">
-        {{ schedule ? schedule.offering_name : '選擇時段' }}
-      </h3>
-      <button
-        @click="$emit('close')"
-        class="p-2 rounded-lg hover:bg-white/10 transition-colors"
-      >
-        <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-        </svg>
-      </button>
-    </div>
+  <Teleport to="body">
+    <div
+      v-if="showPanel"
+      class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm isolate"
+      @click.self="$emit('close')"
+    >
+      <div class="glass-card w-full max-w-md max-h-[90vh] overflow-y-auto animate-spring" @click.stop>
+        <div class="flex items-center justify-between p-4 border-b border-white/10 sticky top-0 bg-slate-900/95 backdrop-blur-sm z-10">
+          <h3 class="text-lg font-semibold text-slate-100">
+            {{ schedule ? schedule.offering_name : '選擇時段' }}
+          </h3>
+          <button
+            @click="$emit('close')"
+            class="p-2 rounded-lg hover:bg-white/10 transition-colors"
+          >
+            <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
 
     <div v-if="schedule" class="space-y-4">
       <div class="glass p-3 rounded-xl">
@@ -31,7 +34,7 @@
           </div>
           <div class="flex justify-between">
             <span class="text-slate-400">教室</span>
-            <span class="text-slate-100">Room {{ schedule.room_id }}</span>
+            <span class="text-slate-100">{{ schedule.room_name }}</span>
           </div>
           <div class="flex justify-between">
             <span class="text-slate-400">時間</span>
@@ -160,7 +163,9 @@
     >
       點擊左側網格查看詳情
     </div>
+    </div>
   </div>
+  </Teleport>
 </template>
 
 <script setup lang="ts">

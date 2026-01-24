@@ -166,7 +166,10 @@
               </div>
 
               <!-- 懸停 Tooltip -->
-              <div class="absolute z-50 left-0 bottom-full mb-2 hidden group-hover:block w-64">
+              <div
+                v-if="!selectedSession"
+                class="absolute left-0 bottom-full mb-2 hidden group-hover:block w-64 z-[150] pointer-events-none"
+              >
                 <div class="glass p-3 rounded-lg shadow-xl border border-white/10">
                   <div class="font-medium text-white mb-2">{{ session.offering_name }}</div>
                   <div class="space-y-1 text-xs">
@@ -196,18 +199,30 @@
     </div>
 
     <!-- 課程詳情 Modal -->
-    <ScheduleDetailPanel
-      v-if="selectedSession"
-      :schedule="selectedSession"
-      @close="selectedSession = null"
-    />
+    <Teleport to="body">
+      <ScheduleDetailPanel
+        v-if="selectedSession"
+        :schedule="selectedSession"
+        @close="selectedSession = null"
+        @edit="handleEdit"
+        @delete="handleDelete"
+      />
+    </Teleport>
 
-    <!-- 新增排課 Modal -->
-    <ScheduleRuleModal
-      v-if="showCreateModal"
-      @close="showCreateModal = false"
-      @created="handleRuleCreated"
-    />
+    <!-- 新增/編輯排課 Modal -->
+    <Teleport to="body">
+      <ScheduleRuleModal
+        v-if="showCreateModal"
+        @close="showCreateModal = false"
+        @created="handleRuleCreated"
+      />
+      <ScheduleRuleModal
+        v-if="showEditModal"
+        :editing-rule="editingRule"
+        @close="showEditModal = false; editingRule = null"
+        @updated="handleRuleUpdated"
+      />
+    </Teleport>
   </div>
 </template>
 
@@ -235,8 +250,36 @@ const selectedResourceIdModel = computed({
 })
 
 const showCreateModal = ref(false)
+const showEditModal = ref(false)
+const editingRule = ref<any>(null)
 const selectedSession = ref<any>(null)
 const { getCenterId } = useCenterId()
+
+const handleEdit = () => {
+  if (selectedSession.value) {
+    editingRule.value = selectedSession.value
+    showEditModal.value = true
+  }
+}
+
+const handleDelete = async () => {
+  if (!selectedSession.value || !confirm('確定要刪除此排課規則？')) return
+
+  try {
+    const api = useApi()
+    await api.delete(`/admin/rules/${selectedSession.value.id}`)
+    selectedSession.value = null
+    await fetchSessions()
+  } catch (error) {
+    console.error('Failed to delete rule:', error)
+    alert('刪除失敗')
+  }
+}
+
+const handleRuleUpdated = async () => {
+  await fetchSessions()
+  selectedSession.value = null
+}
 
 const timeSlots = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
 
@@ -449,38 +492,41 @@ const fetchSessions = async () => {
     const rules = rulesRes.datas || []
 
     rules.forEach((rule: any) => {
-      rule.weekdays?.forEach((day: number) => {
-        const startParts = rule.start_time.split(':')
-        const endParts = rule.end_time.split(':')
+      // 後端返回的是 weekday（單一值），不是 weekdays 陣列
+      const day = rule.weekday
+      if (!day) return
 
-        const startDate = new Date(weekStart.value)
-        startDate.setDate(startDate.getDate() + (day - 1))
+      const startParts = rule.start_time.split(':')
+      const endParts = rule.end_time.split(':')
 
-        sessionList.push({
-          id: rule.id,
-          rule_id: rule.id,
-          date: startDate.toISOString().split('T')[0],
-          formatted_date: startDate.toLocaleDateString('zh-TW', {
-            month: 'long',
-            day: 'numeric',
-            weekday: 'short'
-          }),
-          weekday: day,
-          start_time: rule.start_time,
-          end_time: rule.end_time,
-          time_range: `${rule.start_time} - ${rule.end_time}`,
-          offering_name: rule.offering?.name || '-',
-          offering_id: rule.offering_id,
-          teacher_id: rule.teacher_id,
-          teacher_name: rule.teacher?.name || '-',
-          room_id: rule.room_id,
-          room_name: rule.room?.name || '-',
-          color: getCourseColor(rule.offering?.name || '')
-        })
+      const startDate = new Date(weekStart.value)
+      startDate.setDate(startDate.getDate() + (day - 1))
+
+      sessionList.push({
+        id: rule.id,
+        rule_id: rule.id,
+        date: startDate.toISOString().split('T')[0],
+        formatted_date: startDate.toLocaleDateString('zh-TW', {
+          month: 'long',
+          day: 'numeric',
+          weekday: 'short'
+        }),
+        weekday: day,
+        start_time: rule.start_time,
+        end_time: rule.end_time,
+        time_range: `${rule.start_time} - ${rule.end_time}`,
+        offering_name: rule.offering?.name || '-',
+        offering_id: rule.offering_id,
+        teacher_id: rule.teacher_id,
+        teacher_name: rule.teacher?.name || '-',
+        room_id: rule.room_id,
+        room_name: rule.room?.name || '-',
+        color: getCourseColor(rule.offering?.name || '')
       })
     })
 
     sessions.value = sessionList
+    console.log('Sessions loaded:', sessionList)
   } catch (error) {
     console.error('Failed to fetch sessions:', error)
     sessions.value = []

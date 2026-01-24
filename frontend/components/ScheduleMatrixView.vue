@@ -115,7 +115,10 @@
               </div>
 
               <!-- 懸停 Tooltip -->
-              <div class="absolute z-50 left-0 bottom-full mb-2 hidden group-hover:block w-64">
+              <div
+                v-if="!selectedCell"
+                class="absolute left-0 bottom-full mb-2 hidden group-hover:block w-64 z-[150] pointer-events-none"
+              >
                 <div class="glass p-3 rounded-lg shadow-xl border border-white/10">
                   <div class="font-medium text-white mb-2">{{ getScheduleAt(resource.id, time)?.offering_name }}</div>
                   <div class="space-y-1 text-xs">
@@ -145,19 +148,31 @@
       </div>
     </div>
 
-    <ScheduleDetailPanel
-      v-if="selectedCell"
-      :time="selectedCell.time"
-      :weekday="selectedCell.weekday"
-      :schedule="selectedSchedule"
-      @close="selectedCell = null"
-    />
+    <Teleport to="body">
+      <ScheduleDetailPanel
+        v-if="selectedCell"
+        :time="selectedCell.time"
+        :weekday="selectedCell.weekday"
+        :schedule="selectedSchedule"
+        @close="selectedCell = null"
+        @edit="handleEdit"
+        @delete="handleDelete"
+      />
+    </Teleport>
 
-    <ScheduleRuleModal
-      v-if="showCreateModal"
-      @close="showCreateModal = false"
-      @created="handleRuleCreated"
-    />
+    <Teleport to="body">
+      <ScheduleRuleModal
+        v-if="showCreateModal"
+        @close="showCreateModal = false"
+        @created="handleRuleCreated"
+      />
+      <ScheduleRuleModal
+        v-if="showEditModal"
+        :editing-rule="editingRule"
+        @close="showEditModal = false; editingRule = null"
+        @updated="handleRuleUpdated"
+      />
+    </Teleport>
   </div>
 </template>
 
@@ -173,10 +188,40 @@ const props = defineProps<{
 }>()
 
 const showCreateModal = ref(false)
+const showEditModal = ref(false)
+const editingRule = ref<any>(null)
 const selectedCell = ref<{ resource: any, time: number, weekday: number } | null>(null)
 const selectedSchedule = ref<any>(null)
 const dragTarget = ref<{ resourceId: number, time: number } | null>(null)
 const validationResults = ref<Record<string, any>>({})
+
+const handleEdit = () => {
+  if (selectedSchedule.value) {
+    editingRule.value = selectedSchedule.value
+    showEditModal.value = true
+  }
+}
+
+const handleDelete = async () => {
+  if (!selectedSchedule.value || !confirm('確定要刪除此排課規則？')) return
+
+  try {
+    const api = useApi()
+    await api.delete(`/admin/rules/${selectedSchedule.value.id}`)
+    selectedCell.value = null
+    selectedSchedule.value = null
+    await fetchData()
+  } catch (error) {
+    console.error('Failed to delete rule:', error)
+    alert('刪除失敗')
+  }
+}
+
+const handleRuleUpdated = async () => {
+  await fetchData()
+  selectedCell.value = null
+  selectedSchedule.value = null
+}
 
 const { getCenterId } = useCenterId()
 
@@ -248,28 +293,33 @@ const fetchData = async () => {
     const roomScheduleMap: Record<string, any> = {}
     const rules = rulesRes.datas || []
     rules.forEach((rule: any) => {
-      rule.weekdays?.forEach((day: number) => {
-        const time = rule.start_time.split(':')[0]
-        const scheduleData = {
-          id: rule.id,
-          offering_name: rule.offering?.name || '-',
-          teacher_name: rule.teacher?.name || '-',
-          teacher_id: rule.teacher_id,
-          room_id: rule.room_id,
-          room_name: rule.room?.name || '-',
-          ...rule,
-        }
+      // 後端返回的是 weekday（單一值），不是 weekdays 陣列
+      const day = rule.weekday
+      if (!day) return
 
-        // 根據資源類型分別存儲
-        if (rule.teacher_id) {
-          const key = `${rule.teacher_id}-${time}-${day}`
-          teacherScheduleMap[key] = scheduleData
-        }
-        if (rule.room_id) {
-          const key = `${rule.room_id}-${time}-${day}`
-          roomScheduleMap[key] = scheduleData
-        }
-      })
+      const time = rule.start_time.split(':')[0]
+      const scheduleData = {
+        id: rule.id,
+        offering_name: rule.offering?.name || '-',
+        teacher_name: rule.teacher?.name || '-',
+        teacher_id: rule.teacher_id,
+        room_id: rule.room_id,
+        room_name: rule.room?.name || '-',
+        weekday: day,
+        start_time: rule.start_time,
+        end_time: rule.end_time,
+        ...rule,
+      }
+
+      // 根據資源類型分別存儲
+      if (rule.teacher_id) {
+        const key = `${rule.teacher_id}-${time}-${day}`
+        teacherScheduleMap[key] = scheduleData
+      }
+      if (rule.room_id) {
+        const key = `${rule.room_id}-${time}-${day}`
+        roomScheduleMap[key] = scheduleData
+      }
     })
 
     // 存儲為包含兩個視圖的對象

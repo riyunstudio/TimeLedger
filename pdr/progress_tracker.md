@@ -469,3 +469,74 @@
 5. **CheckRuleLockStatus 錯誤的 ID**
    - 問題：測試使用 `createdOffering.ID` 但 API 需要 `rule_id`
    - 解決：創建 `ScheduleRule` 並使用其 ID
+
+## 13. 資料隔離與 UI 修復 (Data Isolation & UI Fixes) - 2026/01/24
+
+### 13.1 API 資料隔離原則 ✅
+**問題**：前端在 URL 中顯示 `center_id`，違反「後端隔離，前端透明」的資料隔離原則。
+
+**修復**：
+- 修改 `/teachers` API，從 JWT Token 取得 `center_id` 自動過濾資料
+- 修改 `/admin/rules`、`/admin/exceptions`、`/admin/expand-rules` 等排課相關 API
+- 更新前端移除 URL 中的 `center_id` 參數
+- 更新 `CLAUDE.md` 文件，明確定義「後端隔離，前端透明」原則
+
+**API 端點變更**：
+| 舊端點 | 新端點 |
+|:---|:---|
+| GET /api/v1/admin/centers/:id/rules | GET /api/v1/admin/rules |
+| POST /api/v1/admin/centers/:id/rules | POST /api/v1/admin/rules |
+| DELETE /api/v1/admin/centers/:id/rules/:ruleId | DELETE /api/v1/admin/rules/:ruleId |
+| GET /api/v1/admin/centers/:id/exceptions | GET /api/v1/admin/exceptions |
+| POST /api/v1/admin/centers/:id/expand-rules | POST /api/v1/admin/expand-rules |
+| POST /api/v1/admin/centers/:id/detect-phase-transitions | POST /api/v1/admin/detect-phase-transitions |
+
+### 13.2 課程時段渲染問題 ✅
+**問題**：後端 `ScheduleRule` 使用 `Weekday`（單一值），但前端預期 `weekdays`（陣列）。
+
+**修復**：
+- `ScheduleGrid.vue` - 修正資料解析邏輯
+- `ScheduleTimelineView.vue` - 修正資料解析邏輯
+- `ScheduleMatrixView.vue` - 修正資料解析邏輯
+
+### 13.3 老師評分頁面 UI 修復 ✅
+**問題**：星級跑版、編輯時沒有載入最新資料。
+
+**修復**：
+- 重新設計星級元件（5 顆可點擊星星 + 清除按鈕）
+- 確保開啟編輯 Modal 前先載入最新評分資料
+- 使用 `Promise.all()` 並行載入所有 note
+- 為 `useNotification` 新增 `success()` 和 `error()` 方法
+
+### 13.4 排課 Modal 和詳情面板修正 ✅
+**問題**：編輯彈窗被遮住、詳情面板跑版、懸浮 Tooltip 重複顯示。
+
+**修復**：
+- `ScheduleDetailPanel.vue`：
+  - 使用 `<Teleport to="body">` 移到 body 層級
+  - 改為置中顯示（而非右側）
+  - 添加背景遮罩效果
+  - 提高 `z-index` 至 100
+
+- `ScheduleRuleModal.vue`：
+  - 使用 `<Teleport to="body">`
+  - 添加 `isolate` 確保堆疊上下文正確
+
+- 所有排課元件（`ScheduleGrid`、`ScheduleMatrixView`、`ScheduleTimelineView`）：
+  - 詳情面板使用 Teleport
+  - 懸浮 Tooltip 添加 `pointer-events-none` 禁用 hover 效果
+
+### 13.5 資料庫 Seeder 修正 ✅
+**問題**：`ListTeachers` API 查無資料（缺少 `center_memberships` 關聯）。
+
+**修復**：
+- 在 `seedOneTeacher()` 中新增 `CenterMembership` 建立邏輯
+
+### 13.6 變更統計
+| 類型 | 數量 |
+|:---|:---:|
+| 修改檔案 | 12 個 |
+| 新增行數 | +154 行 |
+| 刪除行數 | -71 行 |
+
+**Commit**：`1301bd4 feat(backend): implement data isolation with JWT-based center_id`

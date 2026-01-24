@@ -168,27 +168,6 @@
               <div class="text-slate-400 truncate">
                 {{ getScheduleAt(time, day.value)?.teacher_name }}
               </div>
-
-              <!-- 懸停 Tooltip -->
-              <div class="absolute z-50 left-0 bottom-full mb-2 hidden group-hover:block w-64">
-                <div class="glass p-3 rounded-lg shadow-xl border border-white/10">
-                  <div class="font-medium text-white mb-2">{{ getScheduleAt(time, day.value)?.offering_name }}</div>
-                  <div class="space-y-1 text-xs">
-                    <div class="flex justify-between text-slate-400">
-                      <span>老師：</span>
-                      <span class="text-slate-200">{{ getScheduleAt(time, day.value)?.teacher_name }}</span>
-                    </div>
-                    <div class="flex justify-between text-slate-400">
-                      <span>教室：</span>
-                      <span class="text-slate-200">{{ getScheduleAt(time, day.value)?.room_name }}</span>
-                    </div>
-                    <div class="flex justify-between text-slate-400">
-                      <span>時間：</span>
-                      <span class="text-slate-200">{{ formatTime(time) }} - {{ formatTime(time + 1) }}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
         </div>
@@ -251,23 +230,6 @@
                 <div class="text-slate-400 truncate text-[10px]">
                   {{ formatTime(time) }} - {{ formatTime(time + 1) }}
                 </div>
-
-                <!-- 懸停 Tooltip -->
-                <div class="absolute z-50 left-0 bottom-full mb-2 hidden group-hover:block w-64">
-                  <div class="glass p-3 rounded-lg shadow-xl border border-white/10">
-                    <div class="font-medium text-white mb-2">{{ getMatrixSchedule(resource.id, day.value, time)?.offering_name }}</div>
-                    <div class="space-y-1 text-xs">
-                      <div class="flex justify-between text-slate-400">
-                        <span>{{ viewMode === 'teacher_matrix' ? '教室' : '老師' }}：</span>
-                        <span class="text-slate-200">{{ getMatrixSchedule(resource.id, day.value, time)?.room_name || getMatrixSchedule(resource.id, day.value, time)?.teacher_name }}</span>
-                      </div>
-                      <div class="flex justify-between text-slate-400">
-                        <span>時間：</span>
-                        <span class="text-slate-200">{{ formatTime(time) }} - {{ formatTime(time + 1) }}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
               </div>
             </template>
           </div>
@@ -281,19 +243,29 @@
       </div>
     </div>
 
-    <ScheduleDetailPanel
-      v-if="selectedCell"
-      :time="selectedCell.time"
-      :weekday="selectedCell.day"
-      :schedule="selectedSchedule"
-      @close="selectedCell = null"
-    />
+    <Teleport to="body">
+      <ScheduleDetailPanel
+        v-if="selectedCell"
+        :time="selectedCell.time"
+        :weekday="selectedCell.day"
+        :schedule="selectedSchedule"
+        @close="selectedCell = null"
+        @edit="handleEdit"
+        @delete="handleDelete"
+      />
+    </Teleport>
 
     <Teleport to="body">
       <ScheduleRuleModal
         v-if="showCreateModal"
         @close="showCreateModal = false"
         @created="handleRuleCreated"
+      />
+      <ScheduleRuleModal
+        v-if="showEditModal"
+        :editing-rule="editingRule"
+        @close="showEditModal = false; editingRule = null"
+        @updated="handleRuleUpdated"
       />
     </Teleport>
   </div>
@@ -327,10 +299,40 @@ const selectedResourceIdModel = computed({
 const { resourceCache, fetchAllResources } = useResourceCache()
 
 const showCreateModal = ref(false)
+const showEditModal = ref(false)
+const editingRule = ref<any>(null)
 const selectedCell = ref<{ time: number, day: number } | null>(null)
 const selectedSchedule = ref<any>(null)
 const dragTarget = ref<{ time: number, day: number } | null>(null)
 const validationResults = ref<Record<string, any>>({})
+
+const handleEdit = () => {
+  if (selectedSchedule.value) {
+    editingRule.value = selectedSchedule.value
+    showEditModal.value = true
+  }
+}
+
+const handleDelete = async () => {
+  if (!selectedSchedule.value || !confirm('確定要刪除此排課規則？')) return
+
+  try {
+    const api = useApi()
+    await api.delete(`/admin/rules/${selectedSchedule.value.id}`)
+    selectedCell.value = null
+    selectedSchedule.value = null
+    await fetchSchedules()
+  } catch (error) {
+    console.error('Failed to delete rule:', error)
+    alert('刪除失敗')
+  }
+}
+
+const handleRuleUpdated = async () => {
+  await fetchSchedules()
+  selectedCell.value = null
+  selectedSchedule.value = null
+}
 
 // 資源列表（根據視角模式動態取得）
 const resourceList = computed(() => {
@@ -423,20 +425,29 @@ const fetchSchedules = async () => {
     // 將規則轉換為 schedule map
     const scheduleMap: Record<string, any> = {}
     rules.forEach((rule: any) => {
-      rule.weekdays?.forEach((day: number) => {
-        const key = `${rule.start_time.split(':')[0]}-${day}`
-        scheduleMap[key] = {
-          id: rule.id,
-          offering_name: rule.offering?.name || '-',
-          teacher_name: rule.teacher?.name || '-',
-          teacher_id: rule.teacher_id,
-          room_id: rule.room_id,
-          room_name: rule.room?.name || '-',
-          ...rule,
+      // 後端返回的是 weekday（單一值），不是 weekdays 陣列
+      const day = rule.weekday
+      if (day) {
+        const hour = rule.start_time ? parseInt(rule.start_time.split(':')[0]) : null
+        if (hour) {
+          const key = `${hour}-${day}`
+          scheduleMap[key] = {
+            id: rule.id,
+            offering_name: rule.offering?.name || '-',
+            teacher_name: rule.teacher?.name || '-',
+            teacher_id: rule.teacher_id,
+            room_id: rule.room_id,
+            room_name: rule.room?.name || '-',
+            weekday: day,
+            start_time: rule.start_time,
+            end_time: rule.end_time,
+            ...rule,
+          }
         }
-      })
+      }
     })
     schedules.value = scheduleMap
+    console.log('Schedules loaded:', scheduleMap)
   } catch (error) {
     console.error('Failed to fetch schedules:', error)
     schedules.value = {}

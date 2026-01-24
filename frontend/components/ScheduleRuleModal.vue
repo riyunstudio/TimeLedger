@@ -1,16 +1,21 @@
 <template>
-  <div class="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" @click.self="emit('close')">
-    <div class="glass-card w-full max-w-lg sm:max-w-xl max-h-[90vh] overflow-y-auto animate-spring" @click.stop>
-      <div class="flex items-center justify-between p-4 border-b border-white/10 sticky top-0 bg-slate-900/95 backdrop-blur-sm z-10">
-        <h3 class="text-lg font-semibold text-slate-100">
-          新增排課規則
-        </h3>
-        <button @click="emit('close')" class="p-2 rounded-lg hover:bg-white/10 transition-colors">
-          <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
+  <Teleport to="body">
+    <div
+      v-if="showCreateModal || showEditModal"
+      class="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm isolate"
+      @click.self="handleClose"
+    >
+      <div class="glass-card w-full max-w-lg sm:max-w-xl max-h-[90vh] overflow-y-auto animate-spring" @click.stop>
+        <div class="flex items-center justify-between p-4 border-b border-white/10 sticky top-0 bg-slate-900/95 backdrop-blur-sm z-10">
+          <h3 class="text-lg font-semibold text-slate-100">
+            {{ showEditModal ? '編輯排課規則' : '新增排課規則' }}
+          </h3>
+          <button @click="handleClose" class="p-2 rounded-lg hover:bg-white/10 transition-colors">
+            <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
 
       <!-- 載入中 -->
       <div v-if="dataLoading" class="p-8 text-center">
@@ -178,7 +183,7 @@
         <div class="flex gap-3 pt-2">
           <button
             type="button"
-            @click="emit('close')"
+            @click="handleClose"
             class="flex-1 glass-btn py-2.5 sm:py-3 rounded-xl font-medium text-sm sm:text-base"
           >
             取消
@@ -188,23 +193,32 @@
             :disabled="loading"
             class="flex-1 btn-primary py-2.5 sm:py-3 rounded-xl font-medium text-sm sm:text-base"
           >
-            {{ loading ? '儲存中...' : '新增' }}
+            {{ loading ? '儲存中...' : (showEditModal ? '儲存修改' : '新增') }}
           </button>
         </div>
       </form>
     </div>
   </div>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
+// Props for create mode
+const props = defineProps<{
+  editingRule?: any | null
+}>()
+
 const emit = defineEmits<{
   close: []
   created: []
+  updated: []
 }>()
 
 const loading = ref(false)
 const dataLoading = ref(true)
 const error = ref<string | null>(null)
+const showCreateModal = ref(true)
+const showEditModal = computed(() => !!props.editingRule)
 
 const weekDays = [
   { value: 1, name: '週一' },
@@ -239,8 +253,28 @@ const rooms = computed(() => Array.from(resourceCache.value.rooms.values()))
 
 const { getCenterId } = useCenterId()
 
+// 載入編輯資料
+watch(() => props.editingRule, (rule) => {
+  if (rule) {
+    form.value = {
+      name: rule.name || '',
+      offering_id: String(rule.offering_id || ''),
+      teacher_id: rule.teacher_id || null,
+      room_id: rule.room_id || null,
+      start_time: rule.start_time || '09:00',
+      end_time: rule.end_time || '10:00',
+      duration: rule.duration || 60,
+      weekdays: [rule.weekday] || [1],
+      start_date: rule.effective_range?.start_date?.split('T')[0] || new Date().toISOString().split('T')[0],
+      end_date: rule.effective_range?.end_date?.split('T')[0] || '',
+    }
+  }
+}, { immediate: true })
+
 // 監聽課程選擇，自動帶入預設老師和教室
 watch(() => form.value.offering_id, (newOfferingId) => {
+  // 編輯模式不自動帶入預設值
+  if (showEditModal.value) return
   if (!newOfferingId) return
 
   const selectedOffering = offerings.value.find(o => o.id === parseInt(newOfferingId))
@@ -289,6 +323,11 @@ const toggleDay = (day: number) => {
   }
 }
 
+const handleClose = () => {
+  showCreateModal.value = false
+  emit('close')
+}
+
 const handleSubmit = async () => {
   if (form.value.weekdays.length === 0) {
     alert('請至少選擇一個星期')
@@ -304,7 +343,6 @@ const handleSubmit = async () => {
 
   try {
     const api = useApi()
-    const centerId = getCenterId()
 
     const data: any = {
       name: form.value.name,
@@ -312,7 +350,7 @@ const handleSubmit = async () => {
       start_time: form.value.start_time,
       end_time: form.value.end_time,
       duration: form.value.duration,
-      weekdays: form.value.weekdays,
+      weekday: form.value.weekdays[0],  // 編輯模式只支援單一 weekday
       start_date: form.value.start_date,
       end_date: form.value.end_date || null,
     }
@@ -329,15 +367,22 @@ const handleSubmit = async () => {
 
     console.log('提交排課規則資料:', JSON.stringify(data, null, 2))
 
-    const response = await api.post('/admin/rules', data)
+    if (showEditModal.value && props.editingRule) {
+      // 編輯模式
+      await api.put(`/admin/rules/${props.editingRule.id}`, data)
+      console.log('排課規則更新成功')
+      emit('updated')
+    } else {
+      // 新增模式
+      await api.post('/admin/rules', data)
+      console.log('排課規則建立成功:',)
+      emit('created')
+    }
 
-    console.log('排課規則建立成功:', response)
-
-    emit('created')
-    emit('close')
+    handleClose()
   } catch (error) {
-    console.error('Failed to create schedule rule:', error)
-    alert('新增失敗，請稍後再試')
+    console.error('Failed to save schedule rule:', error)
+    alert(showEditModal.value ? '更新失敗，請稍後再試' : '新增失敗，請稍後再試')
   } finally {
     loading.value = false
   }

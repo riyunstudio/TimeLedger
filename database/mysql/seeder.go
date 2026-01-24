@@ -105,6 +105,19 @@ func seedOneTeacher(db *DB) {
 
 	db.WDB.Create(&teacher)
 
+	// 建立中心會籍（將老師與中心關聯）
+	var center models.Center
+	db.WDB.Where("name = ?", "莫札特音樂教室").First(&center)
+
+	membership := models.CenterMembership{
+		CenterID:   center.ID,
+		TeacherID:  teacher.ID,
+		Status:     "ACTIVE",
+		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
+	}
+	db.WDB.Create(&membership)
+
 	skill := models.TeacherSkill{
 		TeacherID: teacher.ID,
 		Category:  "音樂",
