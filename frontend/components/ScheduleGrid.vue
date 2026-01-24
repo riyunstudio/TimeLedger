@@ -300,6 +300,29 @@
 </template>
 
 <script setup lang="ts">
+const emit = defineEmits<{
+  selectCell: { time: number, weekday: number }
+  'update:viewMode': [value: 'calendar' | 'teacher_matrix' | 'room_matrix']
+  'update:selectedResourceId': [value: number | null]
+}>()
+
+// Props
+const props = defineProps<{
+  viewMode: 'calendar' | 'teacher_matrix' | 'room_matrix'
+  selectedResourceId: number | null
+}>()
+
+// Computed with setter for v-model support
+const viewModeModel = computed({
+  get: () => props.viewMode,
+  set: (value) => emit('update:viewMode', value)
+})
+
+const selectedResourceIdModel = computed({
+  get: () => props.selectedResourceId,
+  set: (value) => emit('update:selectedResourceId', value)
+})
+
 // 使用共享的資源緩存
 const { resourceCache, fetchAllResources } = useResourceCache()
 
