@@ -40,23 +40,23 @@
           <!-- 資源類型切換 -->
           <div class="flex items-center gap-1 bg-slate-800/80 rounded-lg p-1">
             <button
-              @click="viewMode = 'all'"
+              @click="viewModeModel = 'all'"
               class="px-3 py-1.5 rounded-md text-sm font-medium transition-all"
-              :class="viewMode === 'all' ? 'bg-primary-500 text-white' : 'text-slate-400 hover:text-white'"
+              :class="viewModeModel === 'all' ? 'bg-primary-500 text-white' : 'text-slate-400 hover:text-white'"
             >
               全部
             </button>
             <button
-              @click="viewMode = 'teacher'"
+              @click="viewModeModel = 'teacher'"
               class="px-3 py-1.5 rounded-md text-sm font-medium transition-all"
-              :class="viewMode === 'teacher' ? 'bg-primary-500 text-white' : 'text-slate-400 hover:text-white'"
+              :class="viewModeModel === 'teacher' ? 'bg-primary-500 text-white' : 'text-slate-400 hover:text-white'"
             >
               老師
             </button>
             <button
-              @click="viewMode = 'room'"
+              @click="viewModeModel = 'room'"
               class="px-3 py-1.5 rounded-md text-sm font-medium transition-all"
-              :class="viewMode === 'room' ? 'bg-primary-500 text-white' : 'text-slate-400 hover:text-white'"
+              :class="viewModeModel === 'room' ? 'bg-primary-500 text-white' : 'text-slate-400 hover:text-white'"
             >
               教室
             </button>
@@ -64,11 +64,11 @@
 
           <!-- 資源選擇下拉 -->
           <select
-            v-if="viewMode !== 'all'"
-            v-model="selectedResourceId"
+            v-if="viewModeModel !== 'all'"
+            v-model="selectedResourceIdModel"
             class="px-3 py-1.5 rounded-lg text-sm bg-slate-800/80 border border-white/10 text-slate-300 focus:outline-none focus:border-primary-500"
           >
-            <option :value="null">選擇{{ viewMode === 'teacher' ? '老師' : '教室' }}...</option>
+            <option :value="null">選擇{{ viewModeModel === 'teacher' ? '老師' : '教室' }}...</option>
             <option v-for="resource in resourceList" :key="resource.id" :value="resource.id">
               {{ resource.name }}
             </option>
@@ -85,11 +85,11 @@
 
       <!-- 已選資源提示 -->
       <div
-        v-if="viewMode !== 'all' && selectedResourceName"
+        v-if="viewModeModel !== 'all' && selectedResourceName"
         class="mt-3 flex items-center gap-2 px-3 py-2 bg-primary-500/10 border border-primary-500/30 rounded-lg"
       >
         <span class="text-sm text-primary-400">
-          {{ viewMode === 'teacher' ? '老師' : '教室' }}：
+          {{ viewModeModel === 'teacher' ? '老師' : '教室' }}：
         </span>
         <span class="text-sm font-medium text-white">{{ selectedResourceName }}</span>
         <button
@@ -161,7 +161,7 @@
               <div class="text-slate-400 truncate">
                 {{ session.time_range }}
               </div>
-              <div v-if="viewMode === 'all'" class="text-slate-500 truncate">
+              <div v-if="viewModeModel === 'all'" class="text-slate-500 truncate">
                 {{ session.teacher_name }}
               </div>
 
@@ -282,15 +282,15 @@ const resourceList = computed(() => {
   return viewModeModel.value === 'teacher'
     ? Array.from(resourceCache.value.teachers.values())
     : viewModeModel.value === 'room'
-      ? Array.from(resourceCache.value.rooms.value())
+      ? Array.from(resourceCache.value.rooms.values())
       : []
 })
 
 const selectedResourceName = computed(() => {
-  if (props.viewMode === 'teacher') {
-    return resourceCache.value.teachers.get(props.selectedResourceId)?.name || ''
-  } else if (props.viewMode === 'room') {
-    return resourceCache.value.rooms.get(props.selectedResourceId)?.name || ''
+  if (viewModeModel.value === 'teacher') {
+    return resourceCache.value.teachers.get(selectedResourceIdModel.value)?.name || ''
+  } else if (viewModeModel.value === 'room') {
+    return resourceCache.value.rooms.get(selectedResourceIdModel.value)?.name || ''
   }
   return ''
 })
@@ -299,14 +299,14 @@ const filteredSessions = computed(() => {
   let result = sessions.value
 
   // 過濾
-  if (props.viewMode === 'teacher' && props.selectedResourceId) {
-    result = result.filter(session => session.teacher_id === props.selectedResourceId)
-  } else if (props.viewMode === 'room' && props.selectedResourceId) {
-    result = result.filter(session => session.room_id === props.selectedResourceId)
+  if (viewModeModel.value === 'teacher' && selectedResourceIdModel.value) {
+    result = result.filter(session => session.teacher_id === selectedResourceIdModel.value)
+  } else if (viewModeModel.value === 'room' && selectedResourceIdModel.value) {
+    result = result.filter(session => session.room_id === selectedResourceIdModel.value)
   }
 
   // 計算衝突位置（用於全部視圖）
-  if (props.viewMode === 'all') {
+  if (viewModeModel.value === 'all') {
     const sessionGroups: Record<string, any[]> = {}
     result.forEach(session => {
       const key = `${session.weekday}-${session.start_time}`
