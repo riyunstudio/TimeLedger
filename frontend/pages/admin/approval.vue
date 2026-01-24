@@ -44,16 +44,16 @@
       <!-- 視角篩選 -->
       <select
         v-model="viewModeFilter"
-        class="glass-btn px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap bg-transparent"
+        class="px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap bg-slate-800/80 border border-white/10 text-slate-300 focus:outline-none focus:border-primary-500"
       >
         <option value="">全部視角</option>
-        <optgroup label="老師">
-          <option v-for="teacher in teachers" :key="'t-' + teacher.id" :value="'teacher:' + teacher.id">
+        <optgroup label="老師" class="bg-slate-800">
+          <option v-for="teacher in teachers" :key="'t-' + teacher.id" :value="'teacher:' + teacher.id" class="bg-slate-800">
             {{ teacher.name }}
           </option>
         </optgroup>
-        <optgroup label="教室">
-          <option v-for="room in rooms" :key="'r-' + room.id" :value="'room:' + room.id">
+        <optgroup label="教室" class="bg-slate-800">
+          <option v-for="room in rooms" :key="'r-' + room.id" :value="'room:' + room.id" class="bg-slate-800">
             {{ room.name }}
           </option>
         </optgroup>
