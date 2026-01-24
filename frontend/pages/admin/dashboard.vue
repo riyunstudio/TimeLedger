@@ -18,7 +18,10 @@
 
     <!-- 矩陣視圖 -->
     <template v-else>
-      <ScheduleMatrixView class="flex-1 min-w-0" />
+      <ScheduleMatrixView
+        class="flex-1 min-w-0"
+        @switch-to-calendar="viewMode = 'calendar'"
+      />
       <ScheduleResourcePanel
         class="lg:w-80 shrink-0"
         :view-mode="resourcePanelViewMode"

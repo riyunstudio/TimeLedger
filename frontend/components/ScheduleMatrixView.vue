@@ -27,6 +27,14 @@
         </div>
 
         <div class="flex items-center gap-4">
+          <!-- 切換回週曆 -->
+          <button
+            @click="$emit('switchToCalendar')"
+            class="px-3 py-1.5 rounded-lg text-sm bg-slate-700/50 text-slate-300 hover:text-white hover:bg-slate-600 transition-colors"
+          >
+            返回週曆
+          </button>
+
           <!-- 資源類型切換 -->
           <div class="flex items-center gap-1 bg-slate-800/80 rounded-lg p-1">
             <button
@@ -164,6 +172,7 @@
 <script setup lang="ts">
 const emit = defineEmits<{
   selectCell: { resource: any, time: number, weekday: number }
+  switchToCalendar: []
 }>()
 
 const showCreateModal = ref(false)
