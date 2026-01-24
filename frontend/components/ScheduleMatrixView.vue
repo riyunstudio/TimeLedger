@@ -187,7 +187,10 @@ const weekDays = [
   { value: 7, name: '週日' },
 ]
 
-const schedules = ref<Record<string, any>>({})
+const schedules = ref<{ teachers: Record<string, any>, rooms: Record<string, any> }>({
+  teachers: {},
+  rooms: {}
+})
 const teachers = ref<any[]>([])
 const rooms = ref<any[]>([])
 
@@ -236,13 +239,14 @@ const fetchData = async () => {
     // 處理教室資料
     rooms.value = roomsRes.datas || []
 
-    // 將規則轉換為 schedule map
-    const scheduleMap: Record<string, any> = {}
+    // 將規則轉換為 schedule map（分別存儲老師和教室）
+    const teacherScheduleMap: Record<string, any> = {}
+    const roomScheduleMap: Record<string, any> = {}
     const rules = rulesRes.datas || []
     rules.forEach((rule: any) => {
       rule.weekdays?.forEach((day: number) => {
-        const key = `${rule.teacher_id || rule.room_id}-${rule.start_time.split(':')[0]}-${day}`
-        scheduleMap[key] = {
+        const time = rule.start_time.split(':')[0]
+        const scheduleData = {
           id: rule.id,
           offering_name: rule.offering?.name || '-',
           teacher_name: rule.teacher?.name || '-',
@@ -251,31 +255,50 @@ const fetchData = async () => {
           room_name: rule.room?.name || '-',
           ...rule,
         }
+
+        // 根據資源類型分別存儲
+        if (rule.teacher_id) {
+          const key = `${rule.teacher_id}-${time}-${day}`
+          teacherScheduleMap[key] = scheduleData
+        }
+        if (rule.room_id) {
+          const key = `${rule.room_id}-${time}-${day}`
+          roomScheduleMap[key] = scheduleData
+        }
       })
     })
-    schedules.value = scheduleMap
+
+    // 存儲為包含兩個視圖的對象
+    schedules.value = {
+      teachers: teacherScheduleMap,
+      rooms: roomScheduleMap
+    }
   } catch (error) {
     console.error('Failed to fetch data:', error)
   }
 }
 
 const getScheduleAt = (resourceId: number, time: number) => {
-  // 根據資源類型取得對應的排課
-  const targetId = resourceType.value === 'teacher'
-    ? { teacher_id: resourceId }
-    : { room_id: resourceId }
+  // 確保 schedules 結構存在
+  if (!schedules.value || !schedules.value.teachers || !schedules.value.rooms) {
+    return null
+  }
+
+  // 根據資源類型取得對應的排課 map
+  const scheduleMap = resourceType.value === 'teacher' ? schedules.value.teachers : schedules.value.rooms
 
   // 搜尋所有星期
   for (const day of weekDays) {
     const key = `${resourceId}-${time}-${day.value}`
-    if (schedules.value[key]) {
-      return schedules.value[key]
+    if (scheduleMap[key]) {
+      return scheduleMap[key]
     }
   }
   return null
 }
 
 const getCellClass = (resourceId: number, time: number): string => {
+  const scheduleMap = resourceType.value === 'teacher' ? schedules.value.teachers : schedules.value.rooms
   const key = `${resourceId}-${time}`
   const validation = validationResults.value[key]
 
@@ -298,12 +321,14 @@ const getScheduleCardClass = (schedule: any): string => {
 }
 
 const selectSchedule = (resource: any, time: number) => {
+  const scheduleMap = resourceType.value === 'teacher' ? schedules.value.teachers : schedules.value.rooms
+
   // 找到對應的星期
   for (const day of weekDays) {
     const key = `${resource.id}-${time}-${day.value}`
-    if (schedules.value[key]) {
+    if (scheduleMap[key]) {
       selectedCell.value = { resource, time, weekday: day.value }
-      selectedSchedule.value = schedules.value[key]
+      selectedSchedule.value = scheduleMap[key]
       emit('selectCell', { resource, time, weekday: day.value })
       return
     }
