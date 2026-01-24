@@ -229,9 +229,13 @@ const form = ref({
   end_date: '',
 })
 
-const offerings = ref<any[]>([])
-const teachers = ref<any[]>([])
-const rooms = ref<any[]>([])
+// 使用共享的資源緩存
+const { resourceCache, fetchAllResources } = useResourceCache()
+
+// 從共享緩存取得資料
+const offerings = computed(() => resourceCache.value.offerings)
+const teachers = computed(() => Array.from(resourceCache.value.teachers.values()))
+const rooms = computed(() => Array.from(resourceCache.value.rooms.values()))
 
 const { getCenterId } = useCenterId()
 
@@ -259,25 +263,10 @@ watch(() => form.value.offering_id, (newOfferingId) => {
 const fetchData = async () => {
   dataLoading.value = true
   error.value = null
+
   try {
-    const api = useApi()
-    const centerId = getCenterId()
-
-    console.log('開始載入資料，centerId:', centerId)
-
-    const [offeringsRes, roomsRes, teachersRes] = await Promise.all([
-      api.get<{ code: number; datas: any }>(`/admin/offerings`),
-      api.get<{ code: number; datas: any[] }>(`/admin/rooms`),
-      api.get<{ code: number; datas: any[] }>('/teachers')
-    ])
-
-    console.log('API 回應:', { offeringsRes, roomsRes, teachersRes })
-
-    // offerings API 返回的是 { offerings: [], pagination: {} }
-    offerings.value = (offeringsRes.datas?.offerings || [])
-    rooms.value = roomsRes.datas || []
-    teachers.value = teachersRes.datas || []
-
+    console.log('等待載入資源資料...')
+    await fetchAllResources()
     console.log('載入資料完成:', {
       offerings: offerings.value.length,
       rooms: rooms.value.length,

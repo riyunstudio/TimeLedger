@@ -300,40 +300,14 @@
 </template>
 
 <script setup lang="ts">
-const emit = defineEmits<{
-  selectCell: { time: number, weekday: number }
-  'update:viewMode': [value: 'calendar' | 'teacher_matrix' | 'room_matrix']
-  'update:selectedResourceId': [value: number | null]
-}>()
-
-// Props
-const props = defineProps<{
-  viewMode: 'calendar' | 'teacher_matrix' | 'room_matrix'
-  selectedResourceId: number | null
-}>()
-
-// Computed with setter for v-model support
-const viewModeModel = computed({
-  get: () => props.viewMode,
-  set: (value) => emit('update:viewMode', value)
-})
-
-const selectedResourceIdModel = computed({
-  get: () => props.selectedResourceId,
-  set: (value) => emit('update:selectedResourceId', value)
-})
+// 使用共享的資源緩存
+const { resourceCache, fetchAllResources } = useResourceCache()
 
 const showCreateModal = ref(false)
 const selectedCell = ref<{ time: number, day: number } | null>(null)
 const selectedSchedule = ref<any>(null)
 const dragTarget = ref<{ time: number, day: number } | null>(null)
 const validationResults = ref<Record<string, any>>({})
-
-// 資源快取（用於顯示選中的資源名稱）
-const resourceCache = ref<{ teachers: Map<number, any>, rooms: Map<number, any> }>({
-  teachers: new Map(),
-  rooms: new Map(),
-})
 
 // 資源列表（根據視角模式動態取得）
 const resourceList = computed(() => {
@@ -584,27 +558,8 @@ const handleRuleCreated = () => {
   fetchSchedules()
 }
 
-const fetchResourceCache = async () => {
-  try {
-    const api = useApi()
-    const [teachersRes, roomsRes] = await Promise.all([
-      api.get<{ code: number; datas: any[] }>('/teachers'),
-      api.get<{ code: number; datas: any[] }>(`/admin/rooms`)
-    ])
-
-    teachersRes.datas?.forEach((t: any) => {
-      resourceCache.value.teachers.set(t.id, t)
-    })
-    roomsRes.datas?.forEach((r: any) => {
-      resourceCache.value.rooms.set(r.id, r)
-    })
-  } catch (error) {
-    console.error('Failed to fetch resource cache:', error)
-  }
-}
-
 onMounted(() => {
   fetchSchedules()
-  fetchResourceCache()
+  fetchAllResources()
 })
 </script>
