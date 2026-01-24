@@ -30,27 +30,39 @@
           <!-- 視角切換器 -->
           <div class="flex items-center gap-1 bg-slate-800/80 rounded-lg p-1">
             <button
-              @click="clearViewMode"
+              @click="viewMode = 'calendar'"
               class="px-3 py-1.5 rounded-md text-sm font-medium transition-all"
-              :class="viewMode === 'all' ? 'bg-primary-500 text-white' : 'text-slate-400 hover:text-white'"
+              :class="viewMode === 'calendar' ? 'bg-primary-500 text-white' : 'text-slate-400 hover:text-white'"
             >
-              全部
+              週曆
             </button>
             <button
-              @click="viewMode = 'teacher'"
+              @click="viewMode = 'teacher_matrix'"
               class="px-3 py-1.5 rounded-md text-sm font-medium transition-all"
-              :class="viewMode === 'teacher' ? 'bg-primary-500 text-white' : 'text-slate-400 hover:text-white'"
+              :class="viewMode === 'teacher_matrix' ? 'bg-primary-500 text-white' : 'text-slate-400 hover:text-white'"
             >
-              老師
+              老師矩陣
             </button>
             <button
-              @click="viewMode = 'room'"
+              @click="viewMode = 'room_matrix'"
               class="px-3 py-1.5 rounded-md text-sm font-medium transition-all"
-              :class="viewMode === 'room' ? 'bg-primary-500 text-white' : 'text-slate-400 hover:text-white'"
+              :class="viewMode === 'room_matrix' ? 'bg-primary-500 text-white' : 'text-slate-400 hover:text-white'"
             >
-              教室
+              教室矩陣
             </button>
           </div>
+
+          <!-- 矩陣視角選擇器 -->
+          <select
+            v-if="viewMode !== 'calendar'"
+            v-model="selectedResourceId"
+            class="px-3 py-1.5 rounded-lg text-sm bg-slate-800/80 border border-white/10 text-slate-300 focus:outline-none focus:border-primary-500"
+          >
+            <option :value="null">選擇{{ viewMode === 'teacher_matrix' ? '老師' : '教室' }}...</option>
+            <option v-for="resource in resourceList" :key="resource.id" :value="resource.id">
+              {{ resource.name }}
+            </option>
+          </select>
 
           <button
             @click="showCreateModal = true"
@@ -63,11 +75,11 @@
 
       <!-- 選中資源提示 -->
       <div
-        v-if="viewMode !== 'all' && selectedResourceName"
+        v-if="viewMode !== 'calendar' && selectedResourceName"
         class="mt-3 flex items-center gap-2 px-3 py-2 bg-primary-500/10 border border-primary-500/30 rounded-lg"
       >
         <span class="text-sm text-primary-400">
-          {{ viewMode === 'teacher' ? '老師' : '教室' }}視角：
+          {{ viewMode === 'teacher_matrix' ? '老師' : '教室' }}矩陣：
         </span>
         <span class="text-sm font-medium text-white">{{ selectedResourceName }}</span>
         <button
@@ -120,15 +132,37 @@
           >
             <div
               v-if="getScheduleAt(time, day.value)"
-              class="rounded-lg p-1 text-xs cursor-pointer hover:opacity-80 transition-opacity"
+              class="rounded-lg p-1 text-xs cursor-pointer hover:opacity-80 transition-opacity group relative"
               :class="getScheduleCardClass(getScheduleAt(time, day.value))"
               @click="selectSchedule(time, day.value)"
             >
+              <!-- 簡短資訊 -->
               <div class="font-medium truncate">
                 {{ getScheduleAt(time, day.value)?.offering_name }}
               </div>
               <div class="text-slate-400 truncate">
                 {{ getScheduleAt(time, day.value)?.teacher_name }}
+              </div>
+
+              <!-- 懸停 Tooltip -->
+              <div class="absolute z-50 left-0 bottom-full mb-2 hidden group-hover:block w-64">
+                <div class="glass p-3 rounded-lg shadow-xl border border-white/10">
+                  <div class="font-medium text-white mb-2">{{ getScheduleAt(time, day.value)?.offering_name }}</div>
+                  <div class="space-y-1 text-xs">
+                    <div class="flex justify-between text-slate-400">
+                      <span>老師：</span>
+                      <span class="text-slate-200">{{ getScheduleAt(time, day.value)?.teacher_name }}</span>
+                    </div>
+                    <div class="flex justify-between text-slate-400">
+                      <span>教室：</span>
+                      <span class="text-slate-200">{{ getScheduleAt(time, day.value)?.room_name }}</span>
+                    </div>
+                    <div class="flex justify-between text-slate-400">
+                      <span>時間：</span>
+                      <span class="text-slate-200">{{ formatTime(time) }} - {{ formatTime(time + 1) }}</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -160,7 +194,7 @@ const emit = defineEmits<{
 
 // Props
 const props = defineProps<{
-  viewMode: 'all' | 'teacher' | 'room'
+  viewMode: 'calendar' | 'teacher_matrix' | 'room_matrix'
   selectedResourceId: number | null
 }>()
 
@@ -174,6 +208,16 @@ const validationResults = ref<Record<string, any>>({})
 const resourceCache = ref<{ teachers: Map<number, any>, rooms: Map<number, any> }>({
   teachers: new Map(),
   rooms: new Map(),
+})
+
+// 資源列表（根據視角模式動態取得）
+const resourceList = computed(() => {
+  if (props.viewMode === 'teacher_matrix') {
+    return Array.from(resourceCache.value.teachers.values())
+  } else if (props.viewMode === 'room_matrix') {
+    return Array.from(resourceCache.value.rooms.values())
+  }
+  return []
 })
 
 const getWeekStart = (date: Date): Date => {
@@ -212,16 +256,17 @@ const schedules = ref<Record<string, any>>({})
 const { getCenterId } = useCenterId()
 
 const selectedResourceName = computed(() => {
-  if (props.viewMode === 'teacher') {
+  if (props.viewMode === 'teacher_matrix') {
     return resourceCache.value.teachers.get(props.selectedResourceId)?.name || '未知老師'
-  } else if (props.viewMode === 'room') {
+  } else if (props.viewMode === 'room_matrix') {
     return resourceCache.value.rooms.get(props.selectedResourceId)?.name || '未知教室'
   }
   return ''
 })
 
 const clearViewMode = () => {
-  emit('selectResource', null)
+  emit('update:viewMode', 'calendar')
+  emit('update:selectedResourceId', null)
 }
 
 const fetchSchedules = async () => {
@@ -256,17 +301,19 @@ const fetchSchedules = async () => {
 
 // 根據視角模式過濾排課
 const filteredSchedules = computed(() => {
-  if (props.viewMode === 'all' || !props.selectedResourceId) {
+  // 週曆視圖顯示全部
+  if (props.viewMode === 'calendar' || !props.selectedResourceId) {
     return schedules.value
   }
 
+  // 矩陣視圖過濾特定資源
   const filtered: Record<string, any> = {}
   Object.entries(schedules.value).forEach(([key, schedule]) => {
-    if (props.viewMode === 'teacher') {
+    if (props.viewMode === 'teacher_matrix') {
       if (schedule.teacher_id === props.selectedResourceId) {
         filtered[key] = schedule
       }
-    } else if (props.viewMode === 'room') {
+    } else if (props.viewMode === 'room_matrix') {
       if (schedule.room_id === props.selectedResourceId) {
         filtered[key] = schedule
       }
@@ -313,7 +360,7 @@ const getScheduleCardClass = (schedule: any): string => {
 const selectSchedule = (time: number, weekday: number) => {
   selectedCell.value = { time, day: weekday }
   selectedSchedule.value = getScheduleAt(time, weekday)
-  emit('selectCell', { time, weekday: time })
+  emit('selectCell', { time, weekday: weekday })
 }
 
 const handleDragOver = (event: DragEvent) => {
