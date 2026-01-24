@@ -4,8 +4,10 @@
     <template v-if="viewMode === 'calendar'">
       <ScheduleGrid
         class="flex-1 min-w-0"
-        v-model:view-mode="viewMode"
-        v-model:selected-resource-id="selectedResourceId"
+        :view-mode="viewMode"
+        :selected-resource-id="selectedResourceId"
+        @update:view-mode="viewMode = $event"
+        @update:selected-resource-id="selectedResourceId = $event"
       />
       <ScheduleResourcePanel
         class="lg:w-80 shrink-0"

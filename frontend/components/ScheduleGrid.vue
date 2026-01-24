@@ -30,21 +30,21 @@
           <!-- 視角切換器 -->
           <div class="flex items-center gap-1 bg-slate-800/80 rounded-lg p-1">
             <button
-              @click="viewMode = 'calendar'"
+              @click="viewModeModel = 'calendar'"
               class="px-3 py-1.5 rounded-md text-sm font-medium transition-all"
               :class="viewMode === 'calendar' ? 'bg-primary-500 text-white' : 'text-slate-400 hover:text-white'"
             >
               週曆
             </button>
             <button
-              @click="viewMode = 'teacher_matrix'"
+              @click="viewModeModel = 'teacher_matrix'"
               class="px-3 py-1.5 rounded-md text-sm font-medium transition-all"
               :class="viewMode === 'teacher_matrix' ? 'bg-primary-500 text-white' : 'text-slate-400 hover:text-white'"
             >
               老師矩陣
             </button>
             <button
-              @click="viewMode = 'room_matrix'"
+              @click="viewModeModel = 'room_matrix'"
               class="px-3 py-1.5 rounded-md text-sm font-medium transition-all"
               :class="viewMode === 'room_matrix' ? 'bg-primary-500 text-white' : 'text-slate-400 hover:text-white'"
             >
@@ -55,7 +55,7 @@
           <!-- 矩陣視角選擇器 -->
           <select
             v-if="viewMode !== 'calendar'"
-            v-model="selectedResourceId"
+            v-model="selectedResourceIdModel"
             class="px-3 py-1.5 rounded-lg text-sm bg-slate-800/80 border border-white/10 text-slate-300 focus:outline-none focus:border-primary-500"
           >
             <option :value="null">選擇{{ viewMode === 'teacher_matrix' ? '老師' : '教室' }}...</option>
@@ -189,7 +189,8 @@
 <script setup lang="ts">
 const emit = defineEmits<{
   selectCell: { time: number, weekday: number }
-  selectResource: { type: 'teacher' | 'room', id: number } | null
+  'update:viewMode': [value: 'calendar' | 'teacher_matrix' | 'room_matrix']
+  'update:selectedResourceId': [value: number | null]
 }>()
 
 // Props
@@ -197,6 +198,17 @@ const props = defineProps<{
   viewMode: 'calendar' | 'teacher_matrix' | 'room_matrix'
   selectedResourceId: number | null
 }>()
+
+// Computed with setter for v-model support
+const viewModeModel = computed({
+  get: () => props.viewMode,
+  set: (value) => emit('update:viewMode', value)
+})
+
+const selectedResourceIdModel = computed({
+  get: () => props.selectedResourceId,
+  set: (value) => emit('update:selectedResourceId', value)
+})
 
 const showCreateModal = ref(false)
 const selectedCell = ref<{ time: number, day: number } | null>(null)
@@ -265,8 +277,8 @@ const selectedResourceName = computed(() => {
 })
 
 const clearViewMode = () => {
-  emit('update:viewMode', 'calendar')
-  emit('update:selectedResourceId', null)
+  viewModeModel.value = 'calendar'
+  selectedResourceIdModel.value = null
 }
 
 const fetchSchedules = async () => {
