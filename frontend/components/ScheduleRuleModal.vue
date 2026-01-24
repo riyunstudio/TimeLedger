@@ -1,5 +1,5 @@
 <template>
-  <div class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" @click.self="emit('close')">
+  <div class="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" @click.self="emit('close')">
     <div class="glass-card w-full max-w-lg sm:max-w-xl max-h-[90vh] overflow-y-auto animate-spring" @click.stop>
       <div class="flex items-center justify-between p-4 border-b border-white/10 sticky top-0 bg-slate-900/95 backdrop-blur-sm z-10">
         <h3 class="text-lg font-semibold text-slate-100">
@@ -37,7 +37,7 @@
       </div>
 
       <!-- 表單內容 -->
-      <div v-show="!dataLoading && !error" class="p-4 space-y-4">
+      <form v-show="!dataLoading && !error" @submit.prevent="handleSubmit" class="p-4 space-y-4">
         <!-- 空資料提示 -->
         <div v-if="offerings.length === 0 || rooms.length === 0 || teachers.length === 0" class="mb-4 p-4 rounded-lg bg-warning-500/10 border border-warning-500/30">
           <p class="text-warning-500 text-sm">
@@ -265,7 +265,7 @@
             {{ loading ? '儲存中...' : '新增' }}
           </button>
         </div>
-      </div>
+      </form>
     </div>
   </div>
 </template>
@@ -412,7 +412,11 @@ const handleSubmit = async () => {
       data.room_id = form.value.room_id
     }
 
-    await api.post(`/admin/centers/${centerId}/rules`, data)
+    console.log('提交排課規則資料:', JSON.stringify(data, null, 2))
+
+    const response = await api.post(`/admin/centers/${centerId}/rules`, data)
+
+    console.log('排課規則建立成功:', response)
 
     emit('created')
     emit('close')
