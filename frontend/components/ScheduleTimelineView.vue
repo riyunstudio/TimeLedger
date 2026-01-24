@@ -120,7 +120,7 @@
         </div>
 
         <!-- 時間軸 -->
-        <div class="relative">
+        <div class="relative" :style="{ height: `${timeSlots.length * 60}px` }">
           <!-- 時間標記 -->
           <div
             v-for="hour in timeSlots"
@@ -128,7 +128,7 @@
             class="grid absolute w-full"
             :style="{
               gridTemplateColumns: `60px repeat(7, 1fr)`,
-              top: `${(hour - 9) * 60}px`,
+              top: `${(hour - 6) * 60}px`,
               height: '60px'
             }"
           >
@@ -238,7 +238,7 @@ const showCreateModal = ref(false)
 const selectedSession = ref<any>(null)
 const { getCenterId } = useCenterId()
 
-const timeSlots = [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]
+const timeSlots = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
 
 const weekDays = [
   { value: 1, name: '週一' },
@@ -296,16 +296,47 @@ const selectedResourceName = computed(() => {
 })
 
 const filteredSessions = computed(() => {
-  return sessions.value.filter(session => {
-    if (props.viewMode === 'all') return true
-    if (props.viewMode === 'teacher') {
-      return props.selectedResourceId ? session.teacher_id === props.selectedResourceId : true
-    }
-    if (props.viewMode === 'room') {
-      return props.selectedResourceId ? session.room_id === props.selectedResourceId : true
-    }
-    return true
-  })
+  let result = sessions.value
+
+  // 過濾
+  if (props.viewMode === 'teacher' && props.selectedResourceId) {
+    result = result.filter(session => session.teacher_id === props.selectedResourceId)
+  } else if (props.viewMode === 'room' && props.selectedResourceId) {
+    result = result.filter(session => session.room_id === props.selectedResourceId)
+  }
+
+  // 計算衝突位置（用於全部視圖）
+  if (props.viewMode === 'all') {
+    const sessionGroups: Record<string, any[]> = {}
+    result.forEach(session => {
+      const key = `${session.weekday}-${session.start_time}`
+      if (!sessionGroups[key]) sessionGroups[key] = []
+      sessionGroups[key].push(session)
+    })
+
+    // 為每個衝突群組分配位置
+    Object.values(sessionGroups).forEach(group => {
+      if (group.length > 1) {
+        // 有衝突，分配水平位置
+        group.forEach((session, index) => {
+          session.conflictIndex = index
+          session.conflictCount = group.length
+        })
+      } else if (group.length === 1) {
+        // 單一課程，佔滿寬度
+        group[0].conflictIndex = 0
+        group[0].conflictCount = 1
+      }
+    })
+  } else {
+    // 非全部視圖，不需要衝突處理
+    result.forEach(session => {
+      session.conflictIndex = 0
+      session.conflictCount = 1
+    })
+  }
+
+  return result
 })
 
 const formatTime = (hour: number): string => {
@@ -324,18 +355,28 @@ const getSessionStyle = (session: any) => {
   const [startHour, startMin] = session.start_time.split(':').map(Number)
   const [endHour, endMin] = session.end_time.split(':').map(Number)
 
-  const startOffset = (startHour - 9) * 60 + startMin
+  // 從 6:00 開始計算偏移
+  const startOffset = (startHour - 6) * 60 + startMin
   const duration = (endHour - startHour) * 60 + (endMin - startMin)
 
   // 計算星期位置（0-6）
   const weekdayIndex = session.weekday - 1
 
-  // 每天寬度 = (100% - 60px) / 7
+  // 每天寬度
   const dayWidth = `(100% - 60px) / 7`
 
+  // 衝突處理：計算水平位置
+  const conflictWidth = session.conflictCount > 1
+    ? `calc((${dayWidth} - 8px) / ${session.conflictCount})`
+    : `calc(${dayWidth} - 8px)`
+
+  const conflictLeft = session.conflictCount > 1
+    ? `calc(60px + ${weekdayIndex} * ${dayWidth} + ${session.conflictIndex} * (${dayWidth} - 8px) / ${session.conflictCount} + 4px)`
+    : `calc(60px + ${weekdayIndex} * ${dayWidth} + 4px)`
+
   return {
-    left: `calc(60px + ${weekdayIndex} * ${dayWidth})`,
-    width: `calc(${dayWidth} - 8px)`,
+    left: conflictLeft,
+    width: conflictWidth,
     top: `${startOffset}px`,
     height: `${duration}px`,
     backgroundColor: getCourseColor(session.offering_name)
