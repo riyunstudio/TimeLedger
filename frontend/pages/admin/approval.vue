@@ -302,18 +302,42 @@ const formatDateTime = (dateStr: string): string => {
   return date.toLocaleString('zh-TW')
 }
 
-const handleApproved = () => {
-  const exception = exceptions.value.find(e => e.id === showReviewModal.value.id)
-  if (exception) {
-    exception.status = 'APPROVED'
+const handleApproved = async (_id: number, note: string) => {
+  try {
+    const api = useApi()
+    await api.post(`/admin/scheduling/exceptions/${_id}/review`, {
+      action: 'APPROVE',
+      reason: note,
+    })
+    // 更新本地狀態
+    const exception = exceptions.value.find(e => e.id === _id)
+    if (exception) {
+      exception.status = 'APPROVED'
+    }
+  } catch (error) {
+    console.error('Failed to approve exception:', error)
+    alert('核准失敗，請稍後再試')
+    return
   }
   showReviewModal.value = null
 }
 
-const handleRejected = () => {
-  const exception = exceptions.value.find(e => e.id === showReviewModal.value.id)
-  if (exception) {
-    exception.status = 'REJECTED'
+const handleRejected = async (_id: number, note: string) => {
+  try {
+    const api = useApi()
+    await api.post(`/admin/scheduling/exceptions/${_id}/review`, {
+      action: 'REJECT',
+      reason: note,
+    })
+    // 更新本地狀態
+    const exception = exceptions.value.find(e => e.id === _id)
+    if (exception) {
+      exception.status = 'REJECTED'
+    }
+  } catch (error) {
+    console.error('Failed to reject exception:', error)
+    alert('拒絕失敗，請稍後再試')
+    return
   }
   showReviewModal.value = null
 }
