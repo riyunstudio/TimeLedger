@@ -34,6 +34,19 @@
             <p v-else-if="form.center_id && displayScheduleRules.length === 0" class="text-xs text-slate-500 mt-1">該中心暫無您的課程</p>
           </div>
 
+          <!-- 選擇具體日期 -->
+          <div v-if="form.rule_id">
+            <label class="block text-sm font-medium text-slate-300 mb-1">調整日期</label>
+            <input
+              type="date"
+              v-model="form.original_date"
+              :min="today"
+              class="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:border-primary-500"
+              required
+            />
+            <p class="text-xs text-slate-500 mt-1">選擇要調整的具體日期</p>
+          </div>
+
           <div>
             <label class="block text-sm font-medium text-slate-300 mb-1">申請類型</label>
             <div class="flex gap-3">
@@ -120,6 +133,11 @@ const form = reactive({
   reason: props.exception?.reason || '',
 })
 
+// 今天日期（用於日期選擇的最小值）
+const today = computed(() => {
+  return new Date().toISOString().split('T')[0]
+})
+
 // 監聽中心選擇變化，載入該中心的課程
 watch(() => form.center_id, async (newCenterId) => {
   // 清空課程選擇
@@ -173,10 +191,15 @@ const formatDate = (dateStr: string) => {
 const handleSubmit = async () => {
   loading.value = true
   try {
+    // 確保日期格式正確 (ISO 8601)
+    const originalDate = form.original_date
+      ? new Date(form.original_date).toISOString()
+      : ''
+
     await teacherStore.createException({
       center_id: form.center_id,
       rule_id: form.rule_id,
-      original_date: form.original_date,
+      original_date: originalDate,
       type: form.type,
       new_start_at: form.new_start_at || undefined,
       new_end_at: form.new_end_at || undefined,
