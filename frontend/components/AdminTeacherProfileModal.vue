@@ -64,7 +64,6 @@
               class="px-3 py-1.5 rounded-full text-sm font-medium bg-primary-500/20 text-primary-500"
             >
               {{ skill.skill_name }}
-              <span class="text-xs opacity-70 ml-1">{{ getLevelText(skill.level) }}</span>
             </span>
           </div>
         </div>
@@ -119,14 +118,4 @@ const props = defineProps<{
 const emit = defineEmits<{
   close: []
 }>()
-
-const getLevelText = (level: string): string => {
-  switch (level) {
-    case 'Beginner': return '初級'
-    case 'Intermediate': return '中級'
-    case 'Advanced': return '高級'
-    case 'Expert': return '專家'
-    default: return level
-  }
-}
 </script>

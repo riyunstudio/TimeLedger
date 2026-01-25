@@ -37,16 +37,6 @@
           />
         </div>
 
-        <div>
-          <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">程度</label>
-          <select v-model="form.level" class="input-field text-sm sm:text-base">
-            <option value="Beginner">初級 (Beginner)</option>
-            <option value="Intermediate">中級 (Intermediate)</option>
-            <option value="Advanced">高級 (Advanced)</option>
-            <option value="Expert">專家 (Expert)</option>
-          </select>
-        </div>
-
         <div class="flex gap-3 pt-2">
           <button
             type="button"
@@ -81,7 +71,6 @@ const loading = ref(false)
 const form = ref({
   category: '' as 'MUSIC' | 'ART' | 'DANCE' | 'LANGUAGE' | 'SPORTS' | 'OTHER' | '',
   skill_name: '',
-  level: 'Intermediate' as 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert',
 })
 
 const handleSubmit = async () => {

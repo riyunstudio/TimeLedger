@@ -40,12 +40,6 @@
               <div class="flex items-center justify-between">
                 <div>
                   <h5 class="font-medium text-slate-100 text-sm sm:text-base">{{ skill.skill_name }}</h5>
-                  <span
-                    class="px-2 py-1 rounded-full text-xs font-medium mt-1 inline-block"
-                    :class="getLevelClass(skill.level)"
-                  >
-                    {{ getLevelText(skill.level) }}
-                  </span>
                 </div>
                 <button
                   @click="deleteSkill(skill.id)"
@@ -174,36 +168,6 @@ const deleteCertificate = async (id: number) => {
   } catch (error) {
     console.error('Failed to delete certificate:', error)
     await alertError('刪除失敗')
-  }
-}
-
-const getLevelClass = (level: string): string => {
-  switch (level) {
-    case 'Beginner':
-      return 'bg-slate-500/20 text-slate-400'
-    case 'Intermediate':
-      return 'bg-primary-500/20 text-primary-500'
-    case 'Advanced':
-      return 'bg-secondary-500/20 text-secondary-500'
-    case 'Expert':
-      return 'bg-warning-500/20 text-warning-500'
-    default:
-      return 'bg-slate-500/20 text-slate-400'
-  }
-}
-
-const getLevelText = (level: string): string => {
-  switch (level) {
-    case 'Beginner':
-      return '初級'
-    case 'Intermediate':
-      return '中級'
-    case 'Advanced':
-      return '高級'
-    case 'Expert':
-      return '專家'
-    default:
-      return level
   }
 }
 
