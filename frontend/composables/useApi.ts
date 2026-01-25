@@ -51,12 +51,25 @@ export const useApi = () => {
     }
   }
 
-  const get = async <T>(endpoint: string): Promise<T> => {
+  const get = async <T>(endpoint: string, params?: Record<string, any>): Promise<T> => {
+    let url = `${apiBase}${endpoint}`
+    if (params) {
+      const searchParams = new URLSearchParams()
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          searchParams.append(key, String(value))
+        }
+      })
+      const queryString = searchParams.toString()
+      if (queryString) {
+        url += `?${queryString}`
+      }
+    }
     const headers: Record<string, string> = {
       ...getAuthHeader(),
       'Content-Type': 'application/json',
     }
-    const response = await fetch(`${apiBase}${endpoint}`, { headers })
+    const response = await fetch(url, { headers })
     await checkResponse(response)
     return response.json()
   }

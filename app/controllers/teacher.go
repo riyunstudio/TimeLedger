@@ -167,6 +167,68 @@ func (ctl *TeacherController) SearchHashtags(ctx *gin.Context) {
 	})
 }
 
+// CreateHashtag 建立新標籤
+// @Summary 建立新標籤
+// @Tags Hashtag
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param request body CreateHashtagRequest true "標籤資訊"
+// @Success 200 {object} global.ApiResponse{data=models.Hashtag}
+// @Router /api/v1/hashtags [post]
+func (ctl *TeacherController) CreateHashtag(ctx *gin.Context) {
+	var req CreateHashtagRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Invalid request body",
+		})
+		return
+	}
+
+	// 確保標籤名稱以 # 開頭
+	name := req.Name
+	if !strings.HasPrefix(name, "#") {
+		name = "#" + name
+	}
+
+	// 檢查標籤是否已存在
+	hashtagRepo := repositories.NewHashtagRepository(ctl.app)
+	existing, err := hashtagRepo.GetByName(ctx, name)
+	if err == nil && existing != nil {
+		// 標籤已存在，直接返回
+		ctx.JSON(http.StatusOK, global.ApiResponse{
+			Code:    0,
+			Message: "Hashtag already exists",
+			Datas:   existing,
+		})
+		return
+	}
+
+	// 建立新標籤
+	hashtag := &models.Hashtag{
+		Name:       name,
+		UsageCount: 1,
+	}
+	if err := hashtagRepo.Create(ctx, hashtag); err != nil {
+		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
+			Code:    500,
+			Message: "Failed to create hashtag",
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, global.ApiResponse{
+		Code:    0,
+		Message: "Hashtag created",
+		Datas:   hashtag,
+	})
+}
+
+type CreateHashtagRequest struct {
+	Name string `json:"name" binding:"required"`
+}
+
 // UpdateProfile 更新老師個人資料
 // @Summary 更新老師個人資料
 // @Tags Teacher
@@ -926,6 +988,26 @@ func (ctl *TeacherController) CreateSkill(ctx *gin.Context) {
 		return
 	}
 
+	// 建立技能標籤關聯
+	if len(req.HashtagIDs) > 0 {
+		for _, hashtagID := range req.HashtagIDs {
+			skillHashtag := models.TeacherSkillHashtag{
+				TeacherSkillID: skill.ID,
+				HashtagID:      hashtagID,
+			}
+			if err := ctl.app.MySQL.WDB.WithContext(ctx).Create(&skillHashtag).Error; err != nil {
+				// 記錄錯誤但不影響主要流程
+				fmt.Printf("Failed to create skill hashtag: %v\n", err)
+			}
+		}
+	}
+
+	// 重新載入技能（含標籤）
+	skillHashtags := []models.TeacherSkillHashtag{}
+	ctl.app.MySQL.RDB.WithContext(ctx).
+		Where("teacher_skill_id = ?", skill.ID).
+		Find(&skillHashtags)
+
 	ctx.JSON(http.StatusOK, global.ApiResponse{
 		Code:    0,
 		Message: "Skill created",
@@ -1057,6 +1139,35 @@ func (ctl *TeacherController) UpdateSkill(ctx *gin.Context) {
 			Message: err.Error(),
 		})
 		return
+	}
+
+	// 更新技能標籤
+	if len(req.Hashtags) > 0 {
+		// 刪除現有標籤
+		ctl.app.MySQL.WDB.WithContext(ctx).Where("teacher_skill_id = ?", skill.ID).Delete(&models.TeacherSkillHashtag{})
+
+		hashtagRepo := repositories.NewHashtagRepository(ctl.app)
+		for _, tagName := range req.Hashtags {
+			// 確保 # 符號存在
+			if !strings.HasPrefix(tagName, "#") {
+				tagName = "#" + tagName
+			}
+
+			// 查找或創建標籤
+			hashtag, err := hashtagRepo.GetByName(ctx, tagName)
+			if err != nil {
+				hashtag = &models.Hashtag{Name: tagName, UsageCount: 1}
+				hashtagRepo.Create(ctx, hashtag)
+			} else {
+				hashtagRepo.IncrementUsage(ctx, tagName)
+			}
+
+			// 創建關聯
+			ctl.app.MySQL.WDB.WithContext(ctx).Create(&models.TeacherSkillHashtag{
+				TeacherSkillID: skill.ID,
+				HashtagID:      hashtag.ID,
+			})
+		}
 	}
 
 	ctx.JSON(http.StatusOK, global.ApiResponse{
@@ -1437,14 +1548,16 @@ func (ctl *TeacherController) DeletePersonalEvent(ctx *gin.Context) {
 }
 
 type CreateSkillRequest struct {
-	Category  string `json:"category" binding:"required"`
-	SkillName string `json:"skill_name" binding:"required"`
-	Level     string `json:"level"`
+	Category   string `json:"category" binding:"required"`
+	SkillName  string `json:"skill_name" binding:"required"`
+	Level      string `json:"level"`
+	HashtagIDs []uint `json:"hashtag_ids"`
 }
 
 type UpdateSkillRequest struct {
-	Category  string `json:"category" binding:"required"`
-	SkillName string `json:"skill_name" binding:"required"`
+	Category   string `json:"category" binding:"required"`
+	SkillName  string `json:"skill_name" binding:"required"`
+	Hashtags   []string `json:"hashtags"`
 }
 
 type CreateCertificateRequest struct {

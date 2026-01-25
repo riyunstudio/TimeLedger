@@ -244,10 +244,32 @@ const handleSubmit = async () => {
       })
       emit('updated')
     } else {
+      // 轉換標籤名稱為 hashtag_ids
+      const hashtagIds: number[] = []
+      for (const tagName of form.value.hashtags) {
+        // 搜尋現有標籤或創建新標籤
+        try {
+          const api = useApi()
+          const response = await api.get<{ code: number; datas: any[] }>('/hashtags/search', { q: tagName })
+          const existing = response.datas?.find((h: any) => h.name === tagName || h.name === '#' + tagName)
+          if (existing) {
+            hashtagIds.push(existing.id)
+          } else {
+            // 創建新標籤
+            const createResponse = await api.post<{ code: number; datas: any }>('/hashtags', { name: '#' + tagName })
+            if (createResponse.datas?.id) {
+              hashtagIds.push(createResponse.datas.id)
+            }
+          }
+        } catch (e) {
+          console.error('Failed to process hashtag:', tagName, e)
+        }
+      }
+
       await teacherStore.createSkill({
         category: form.value.category,
         skill_name: form.value.skill_name,
-        hashtag_ids: [],
+        hashtag_ids: hashtagIds,
       })
       emit('added')
     }
