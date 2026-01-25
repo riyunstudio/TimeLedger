@@ -2770,10 +2770,10 @@ func TestIntegration_TeacherSkillsCertificates(t *testing.T) {
 			"issued_at": now.Format(time.RFC3339),
 		}
 		body, _ := json.Marshal(reqBody)
-		c.Request = httptest.NewRequest("POST", "/api/v1/teacher/me/certificates/upload", bytes.NewBuffer(body))
+		c.Request = httptest.NewRequest("POST", "/api/v1/teacher/me/certificates", bytes.NewBuffer(body))
 		c.Request.Header.Set("Content-Type", "application/json")
 
-		teacherController.UploadCertificate(c)
+		teacherController.CreateCertificate(c)
 
 		if w.Code != http.StatusOK && w.Code != http.StatusBadRequest {
 			t.Fatalf("Expected status 200 or 400, got %d. Body: %s", w.Code, w.Body.String())
