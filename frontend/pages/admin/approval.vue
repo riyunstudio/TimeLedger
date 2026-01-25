@@ -194,9 +194,19 @@ const filteredExceptions = computed(() => {
     const [type, id] = viewModeFilter.value.split(':')
     const targetId = parseInt(id)
     if (type === 'teacher') {
-      result = result.filter(exc => exc.teacher_id === targetId || exc.new_teacher_id === targetId)
+      result = result.filter(exc => {
+        // 原本的老師 (Rule.Teacher.ID)
+        const originalTeacherId = exc.rule?.teacher?.id || exc.rule?.teacher_id
+        // 代課老師
+        const newTeacherId = exc.new_teacher_id
+        return originalTeacherId === targetId || newTeacherId === targetId
+      })
     } else if (type === 'room') {
-      result = result.filter(exc => exc.room_id === targetId)
+      result = result.filter(exc => {
+        // 教室 ID
+        const roomId = exc.rule?.room?.id || exc.rule?.room_id || exc.new_room_id
+        return roomId === targetId
+      })
     }
   }
 

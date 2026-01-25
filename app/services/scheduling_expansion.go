@@ -448,6 +448,9 @@ func (s *ScheduleExceptionServiceImpl) GetExceptionsByDateRange(ctx context.Cont
 func (s *ScheduleExceptionServiceImpl) GetPendingExceptions(ctx context.Context, centerID uint) ([]models.ScheduleException, error) {
 	var exceptions []models.ScheduleException
 	err := s.app.MySQL.RDB.WithContext(ctx).
+		Preload("Rule").
+		Preload("Rule.Teacher").
+		Preload("Rule.Room").
 		Where("center_id = ?", centerID).
 		Where("status = ?", "PENDING").
 		Order("created_at ASC").
