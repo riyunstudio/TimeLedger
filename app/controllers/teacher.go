@@ -992,6 +992,80 @@ func (ctl *TeacherController) DeleteSkill(ctx *gin.Context) {
 	})
 }
 
+// UpdateSkill 更新老師技能
+// @Summary 更新老師技能
+// @Tags Teacher
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path uint true "技能ID"
+// @Param request body UpdateSkillRequest true "技能資訊"
+// @Success 200 {object} global.ApiResponse{data=models.TeacherSkill}
+// @Router /api/v1/teacher/me/skills/{id} [put]
+func (ctl *TeacherController) UpdateSkill(ctx *gin.Context) {
+	teacherID := ctx.GetUint(global.UserIDKey)
+	if teacherID == 0 {
+		ctx.JSON(http.StatusUnauthorized, global.ApiResponse{
+			Code:    global.UNAUTHORIZED,
+			Message: "Teacher ID required",
+		})
+		return
+	}
+
+	var id uint
+	if _, err := fmt.Sscanf(ctx.Param("id"), "%d", &id); err != nil {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Invalid skill ID",
+		})
+		return
+	}
+
+	var req UpdateSkillRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Invalid request body: " + err.Error(),
+		})
+		return
+	}
+
+	skill, err := ctl.skillRepo.GetByID(ctx, id)
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, global.ApiResponse{
+			Code:    404,
+			Message: "Skill not found",
+		})
+		return
+	}
+
+	if skill.TeacherID != teacherID {
+		ctx.JSON(http.StatusForbidden, global.ApiResponse{
+			Code:    403,
+			Message: "Not authorized to update this skill",
+		})
+		return
+	}
+
+	skill.Category = req.Category
+	skill.SkillName = req.SkillName
+	skill.UpdatedAt = time.Now()
+
+	if err := ctl.skillRepo.Update(ctx, skill); err != nil {
+		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
+			Code:    500,
+			Message: err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, global.ApiResponse{
+		Code:    0,
+		Message: "Skill updated",
+		Datas:   skill,
+	})
+}
+
 // GetCertificates 取得老師證照列表
 // @Summary 取得老師證照列表
 // @Tags Teacher
@@ -1366,6 +1440,11 @@ type CreateSkillRequest struct {
 	Category  string `json:"category" binding:"required"`
 	SkillName string `json:"skill_name" binding:"required"`
 	Level     string `json:"level"`
+}
+
+type UpdateSkillRequest struct {
+	Category  string `json:"category" binding:"required"`
+	SkillName string `json:"skill_name" binding:"required"`
 }
 
 type CreateCertificateRequest struct {

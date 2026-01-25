@@ -58,6 +58,7 @@ func (s *Server) LoadRoutes() {
 		{http.MethodGet, "/api/v1/teacher/me/centers", s.action.teacher.GetCenters, []gin.HandlerFunc{authMiddleware.Authenticate()}},
 		{http.MethodGet, "/api/v1/teacher/me/skills", s.action.teacher.GetSkills, []gin.HandlerFunc{authMiddleware.Authenticate()}},
 		{http.MethodPost, "/api/v1/teacher/me/skills", s.action.teacher.CreateSkill, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+		{http.MethodPut, "/api/v1/teacher/me/skills/:id", s.action.teacher.UpdateSkill, []gin.HandlerFunc{authMiddleware.Authenticate()}},
 		{http.MethodDelete, "/api/v1/teacher/me/skills/:id", s.action.teacher.DeleteSkill, []gin.HandlerFunc{authMiddleware.Authenticate()}},
 		{http.MethodGet, "/api/v1/teacher/me/certificates", s.action.teacher.GetCertificates, []gin.HandlerFunc{authMiddleware.Authenticate()}},
 		{http.MethodPost, "/api/v1/teacher/me/certificates", s.action.teacher.CreateCertificate, []gin.HandlerFunc{authMiddleware.Authenticate()}},

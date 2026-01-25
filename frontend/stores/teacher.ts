@@ -325,10 +325,20 @@ export const useTeacherStore = defineStore('teacher', () => {
     }
   }
 
-  const createSkill = async (data: { category: string; skill_name: string; level: string; hashtag_ids?: number[] }) => {
+  const createSkill = async (data: { category: string; skill_name: string; hashtag_ids?: number[] }) => {
     const api = useApi()
     const response = await api.post<{ code: number; message: string; datas: TeacherSkill }>('/teacher/me/skills', data)
     skills.value.push(response.datas)
+    return response.datas
+  }
+
+  const updateSkill = async (skillId: number, data: { category: string; skill_name: string; hashtags?: string[] }) => {
+    const api = useApi()
+    const response = await api.put<{ code: number; message: string; datas: TeacherSkill }>(`/teacher/me/skills/${skillId}`, data)
+    const index = skills.value.findIndex(s => s.id === skillId)
+    if (index !== -1) {
+      skills.value[index] = response.datas
+    }
     return response.datas
   }
 
@@ -471,6 +481,7 @@ export const useTeacherStore = defineStore('teacher', () => {
     deletePersonalEvent,
     fetchSkills,
     createSkill,
+    updateSkill,
     deleteSkill,
     fetchCertificates,
     createCertificate,
