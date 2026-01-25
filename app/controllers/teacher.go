@@ -551,6 +551,79 @@ func (ctl *TeacherController) GetSchedule(ctx *gin.Context) {
 	})
 }
 
+// GetCenterScheduleRules 獲取老師在指定中心的排課規則
+// @Summary 獲取老師在指定中心的排課規則
+// @Tags Teacher
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param center_id path int true "中心 ID"
+// @Success 200 {object} global.ApiResponse{data=[]models.ScheduleRule}
+// @Router /api/v1/teacher/me/centers/{center_id}/schedule-rules [get]
+func (ctl *TeacherController) GetCenterScheduleRules(ctx *gin.Context) {
+	teacherID := ctx.GetUint(global.UserIDKey)
+	if teacherID == 0 {
+		ctx.JSON(http.StatusUnauthorized, global.ApiResponse{
+			Code:    global.UNAUTHORIZED,
+			Message: "Teacher ID required",
+		})
+		return
+	}
+
+	centerIDStr := ctx.Param("center_id")
+	if centerIDStr == "" {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Center ID is required",
+		})
+		return
+	}
+
+	// 解析 center_id
+	var centerID uint
+	if _, err := fmt.Sscanf(centerIDStr, "%d", &centerID); err != nil || centerID == 0 {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Invalid center ID",
+		})
+		return
+	}
+
+	// 驗證老師是否屬於該中心
+	membership, err := ctl.membershipRepo.GetActiveByTeacherAndCenter(ctx, teacherID, centerIDStr)
+	if err != nil || membership == nil {
+		ctx.JSON(http.StatusForbidden, global.ApiResponse{
+			Code:    global.FORBIDDEN,
+			Message: "You are not a member of this center",
+		})
+		return
+	}
+
+	// 獲取該中心的排課規則
+	rules, err := ctl.scheduleRuleRepo.ListByCenterID(ctx, centerID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
+			Code:    errInfos.SYSTEM_ERROR,
+			Message: "Failed to get schedule rules",
+		})
+		return
+	}
+
+	// 過濾出該老師的課程
+	var teacherRules []models.ScheduleRule
+	for _, rule := range rules {
+		if rule.TeacherID != nil && *rule.TeacherID == teacherID {
+			teacherRules = append(teacherRules, rule)
+		}
+	}
+
+	ctx.JSON(http.StatusOK, global.ApiResponse{
+		Code:    0,
+		Message: "Success",
+		Datas:   teacherRules,
+	})
+}
+
 // CreateException 老師提出停課/改期申請
 // @Summary 老師提出停課/改期申請
 // @Tags Teacher

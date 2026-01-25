@@ -100,7 +100,7 @@ const statusFilters = [
 const centers = computed(() => {
   return teacherStore.centers.map(m => ({
     center_id: m.center_id,
-    center_name: m.center?.name || '',
+    center_name: m.center_name || '',
   }))
 })
 
@@ -164,6 +164,9 @@ const handleRevoke = async (id: number) => {
 }
 
 onMounted(async () => {
-  await fetchExceptions()
+  await Promise.all([
+    teacherStore.fetchCenters(),
+    fetchExceptions(),
+  ])
 })
 </script>

@@ -24,12 +24,14 @@
 
           <div>
             <label class="block text-sm font-medium text-slate-300 mb-1">課程時段</label>
-            <select v-model="form.rule_id" class="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:border-primary-500" required>
+            <select v-model="form.rule_id" class="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:border-primary-500" required :disabled="loadingRules">
               <option value="">選擇課程時段</option>
-              <option v-for="rule in scheduleRules" :key="rule.id" :value="rule.id">
+              <option v-for="rule in displayScheduleRules" :key="rule.id" :value="rule.id">
                 {{ rule.title }} - {{ formatDate(rule.original_date) }} {{ rule.start_time }}-{{ rule.end_time }}
               </option>
             </select>
+            <p v-if="loadingRules" class="text-xs text-slate-500 mt-1">載入中...</p>
+            <p v-else-if="form.center_id && displayScheduleRules.length === 0" class="text-xs text-slate-500 mt-1">該中心暫無您的課程</p>
           </div>
 
           <div>
@@ -84,7 +86,7 @@ import type { ScheduleException } from '~/types'
 interface Props {
   exception?: ScheduleException
   centers: Array<{ center_id: number; center_name: string }>
-  scheduleRules: Array<{ id: number; title: string; original_date: string; start_time: string; end_time: string }>
+  scheduleRules?: Array<{ id: number; title: string; original_date: string; start_time: string; end_time: string }>
 }
 
 const props = defineProps<Props>()
@@ -92,6 +94,8 @@ const emit = defineEmits(['close', 'submit'])
 
 const teacherStore = useTeacherStore()
 const loading = ref(false)
+const localScheduleRules = ref<Array<{ id: number; title: string; original_date: string; start_time: string; end_time: string }>>([])
+const loadingRules = ref(false)
 
 const isEdit = computed(() => !!props.exception)
 
@@ -105,7 +109,50 @@ const form = reactive({
   reason: props.exception?.reason || '',
 })
 
+// 監聽中心選擇變化，載入該中心的課程
+watch(() => form.center_id, async (newCenterId) => {
+  // 清空課程選擇
+  form.rule_id = 0
+  form.original_date = ''
+  localScheduleRules.value = []
+
+  if (newCenterId && newCenterId > 0) {
+    await fetchScheduleRules(newCenterId)
+  }
+})
+
+// 如果有傳入 scheduleRules，使用傳入的；否則使用本地的
+const displayScheduleRules = computed(() => {
+  if (props.scheduleRules && props.scheduleRules.length > 0) {
+    return props.scheduleRules
+  }
+  return localScheduleRules.value
+})
+
+const fetchScheduleRules = async (centerId: number) => {
+  try {
+    loadingRules.value = true
+    const api = useApi()
+    const response = await api.get<{ code: number; datas: any[] }>(`/teacher/me/centers/${centerId}/schedule-rules`)
+    if (response.code === 0 && response.datas) {
+      // 轉換資料結構
+      localScheduleRules.value = response.datas.map((rule: any) => ({
+        id: rule.id,
+        title: rule.offering?.name || '課程',
+        original_date: rule.original_date,
+        start_time: rule.start_time,
+        end_time: rule.end_time,
+      }))
+    }
+  } catch (error) {
+    console.error('Failed to fetch schedule rules:', error)
+  } finally {
+    loadingRules.value = false
+  }
+}
+
 const formatDate = (dateStr: string) => {
+  if (!dateStr) return '-'
   const date = new Date(dateStr)
   return date.toLocaleDateString('zh-TW')
 }

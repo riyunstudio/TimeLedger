@@ -73,6 +73,7 @@ func (s *Server) LoadRoutes() {
 		{http.MethodPatch, "/api/v1/teacher/me/personal-events/:id", s.action.teacher.UpdatePersonalEvent, []gin.HandlerFunc{authMiddleware.Authenticate()}},
 		{http.MethodDelete, "/api/v1/teacher/me/personal-events/:id", s.action.teacher.DeletePersonalEvent, []gin.HandlerFunc{authMiddleware.Authenticate()}},
 		{http.MethodGet, "/api/v1/teacher/me/schedule", s.action.teacher.GetSchedule, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+		{http.MethodGet, "/api/v1/teacher/me/centers/:center_id/schedule-rules", s.action.teacher.GetCenterScheduleRules, []gin.HandlerFunc{authMiddleware.Authenticate()}},
 		{http.MethodGet, "/api/v1/teacher/sessions/note", s.action.teacher.GetSessionNote, []gin.HandlerFunc{authMiddleware.Authenticate()}},
 		{http.MethodPut, "/api/v1/teacher/sessions/note", s.action.teacher.UpsertSessionNote, []gin.HandlerFunc{authMiddleware.Authenticate()}},
 		{http.MethodGet, "/api/v1/teacher/exceptions", s.action.teacher.GetExceptions, []gin.HandlerFunc{authMiddleware.Authenticate()}},

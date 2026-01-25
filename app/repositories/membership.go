@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"fmt"
 	"timeLedger/app"
 	"timeLedger/app/models"
 )
@@ -28,6 +29,19 @@ func (rp *CenterMembershipRepository) GetByCenterAndTeacher(ctx context.Context,
 	var data models.CenterMembership
 	err := rp.app.MySQL.RDB.WithContext(ctx).Where("center_id = ? AND teacher_id = ?", centerID, teacherID).First(&data).Error
 	return data, err
+}
+
+func (rp *CenterMembershipRepository) GetActiveByTeacherAndCenter(ctx context.Context, teacherID uint, centerIDStr string) (*models.CenterMembership, error) {
+	var data models.CenterMembership
+	centerID := 0
+	if _, err := fmt.Sscanf(centerIDStr, "%d", &centerID); err != nil || centerID == 0 {
+		return nil, fmt.Errorf("invalid center_id")
+	}
+	err := rp.app.MySQL.RDB.WithContext(ctx).Where("center_id = ? AND teacher_id = ? AND status = ?", centerID, teacherID, "ACTIVE").First(&data).Error
+	if err != nil {
+		return nil, err
+	}
+	return &data, nil
 }
 
 func (rp *CenterMembershipRepository) ListByCenterID(ctx context.Context, centerID uint) ([]models.CenterMembership, error) {
