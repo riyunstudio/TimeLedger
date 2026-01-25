@@ -698,6 +698,7 @@ func (ctl *TeacherController) CreateException(ctx *gin.Context) {
 		req.NewStartAt,
 		req.NewEndAt,
 		req.NewTeacherID,
+		req.NewTeacherName,
 		req.Reason,
 	)
 	if err != nil {
@@ -827,7 +828,14 @@ func (ctl *TeacherController) GetExceptions(ctx *gin.Context) {
 		Where("center_memberships.status = ?", "ACTIVE")
 
 	if status := ctx.Query("status"); status != "" {
-		query = query.Where("schedule_exceptions.status = ?", status)
+		// 支援新旧两种状态值（向后兼容）
+		if status == "APPROVED" {
+			query = query.Where("schedule_exceptions.status IN ('APPROVED', 'APPROVE')")
+		} else if status == "REJECTED" {
+			query = query.Where("schedule_exceptions.status IN ('REJECTED', 'REJECT')")
+		} else {
+			query = query.Where("schedule_exceptions.status = ?", status)
+		}
 	}
 
 	query.Order("schedule_exceptions.created_at DESC").Find(&exceptions)
@@ -854,14 +862,15 @@ type TeacherScheduleItem struct {
 }
 
 type TeacherCreateExceptionRequest struct {
-	CenterID     uint       `json:"center_id" binding:"required"`
-	RuleID       uint       `json:"rule_id" binding:"required"`
-	OriginalDate time.Time  `json:"original_date" binding:"required"`
-	Type         string     `json:"type" binding:"required,oneof=CANCEL RESCHEDULE"`
-	NewStartAt   *time.Time `json:"new_start_at"`
-	NewEndAt     *time.Time `json:"new_end_at"`
-	NewTeacherID *uint      `json:"new_teacher_id"`
-	Reason       string     `json:"reason" binding:"required"`
+	CenterID       uint       `json:"center_id" binding:"required"`
+	RuleID         uint       `json:"rule_id" binding:"required"`
+	OriginalDate   time.Time  `json:"original_date" binding:"required"`
+	Type           string     `json:"type" binding:"required,oneof=CANCEL RESCHEDULE REPLACE_TEACHER"`
+	NewStartAt     *time.Time `json:"new_start_at"`
+	NewEndAt       *time.Time `json:"new_end_at"`
+	NewTeacherID   *uint      `json:"new_teacher_id"`
+	NewTeacherName string     `json:"new_teacher_name"`
+	Reason         string     `json:"reason" binding:"required"`
 }
 
 // GetSessionNote 取得課堂筆記
@@ -1691,16 +1700,8 @@ type UpdatePersonalEventRequest struct {
 	IsAllDay       *bool                  `json:"is_all_day"`
 	ColorHex       *string                `json:"color_hex"`
 	RecurrenceRule *models.RecurrenceRule `json:"recurrence_rule"`
-	UpdateMode     UpdateMode             `json:"update_mode" binding:"required,oneof=SINGLE FUTURE ALL"`
+	UpdateMode     string     `json:"update_mode" binding:"required,oneof=SINGLE FUTURE ALL"`
 }
-
-type UpdateMode string
-
-const (
-	UpdateModeSingle UpdateMode = "SINGLE"
-	UpdateModeFuture UpdateMode = "FUTURE"
-	UpdateModeAll    UpdateMode = "ALL"
-)
 
 type UpdatePersonalEventResponse struct {
 	UpdatedCount int64  `json:"updated_count"`
@@ -1811,7 +1812,7 @@ func (ctl *TeacherController) UpdatePersonalEvent(ctx *gin.Context) {
 	var updatedCount int64 = 1
 
 	switch req.UpdateMode {
-	case UpdateModeSingle:
+	case "SINGLE":
 		if req.Title != nil {
 			event.Title = *req.Title
 		}
@@ -1839,7 +1840,7 @@ func (ctl *TeacherController) UpdatePersonalEvent(ctx *gin.Context) {
 			return
 		}
 
-	case UpdateModeFuture:
+	case "FUTURE":
 		if event.RecurrenceRule.Type == "" {
 			ctx.JSON(http.StatusBadRequest, global.ApiResponse{
 				Code:    errInfos.PARAMS_VALIDATE_ERROR,
@@ -1864,7 +1865,7 @@ func (ctl *TeacherController) UpdatePersonalEvent(ctx *gin.Context) {
 			return
 		}
 
-	case UpdateModeAll:
+	case "ALL":
 		if event.RecurrenceRule.Type == "" {
 			ctx.JSON(http.StatusBadRequest, global.ApiResponse{
 				Code:    errInfos.PARAMS_VALIDATE_ERROR,
@@ -1942,6 +1943,113 @@ func (ctl *TeacherController) ListTeachers(ctx *gin.Context) {
 	teachers := make([]TeacherResponse, 0, len(teacherIDs))
 	for _, teacherID := range teacherIDs {
 		teacher, err := ctl.teacherRepository.GetByID(ctx, teacherID)
+		if err != nil {
+			continue
+		}
+
+		teachers = append(teachers, TeacherResponse{
+			ID:        teacher.ID,
+			Name:      teacher.Name,
+			Email:     teacher.Email,
+			City:      teacher.City,
+			District:  teacher.District,
+			Bio:       teacher.Bio,
+			CreatedAt: teacher.CreatedAt,
+		})
+	}
+
+	ctx.JSON(http.StatusOK, global.ApiResponse{
+		Code:    0,
+		Message: "Success",
+		Datas:   teachers,
+	})
+}
+
+// GetCenterTeachers 取得指定中心的老師列表（供老師申請代課時選擇）
+// @Summary 取得指定中心的老師列表
+// @Tags Teacher
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param center_id path int true "Center ID"
+// @Success 200 {object} global.ApiResponse{data=[]TeacherResponse}
+// @Router /api/v1/teacher/me/centers/{center_id}/teachers [get]
+func (ctl *TeacherController) GetCenterTeachers(ctx *gin.Context) {
+	// 從 URL 參數取得 center_id
+	centerIDStr := ctx.Param("center_id")
+	var centerID uint
+	if _, err := fmt.Sscanf(centerIDStr, "%d", &centerID); err != nil {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Invalid center ID",
+		})
+		return
+	}
+
+	// 驗證老師是否屬於該中心
+	teacherID := ctx.GetUint(global.UserIDKey)
+	if teacherID == 0 {
+		ctx.JSON(http.StatusUnauthorized, global.ApiResponse{
+			Code:    global.UNAUTHORIZED,
+			Message: "Teacher ID required",
+		})
+		return
+	}
+
+	// 檢查老師是否為該中心的會員
+	memberships, err := ctl.membershipRepo.GetActiveByTeacherID(ctx, teacherID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
+			Code:    500,
+			Message: "Failed to get memberships",
+		})
+		return
+	}
+
+	isMember := false
+	for _, m := range memberships {
+		if m.CenterID == centerID && (m.Status == "ACTIVE" || m.Status == "INVITED") {
+			isMember = true
+			break
+		}
+	}
+
+	if !isMember {
+		ctx.JSON(http.StatusForbidden, global.ApiResponse{
+			Code:    global.FORBIDDEN,
+			Message: "You are not a member of this center",
+		})
+		return
+	}
+
+	// 取得該中心的所有會員老師 ID（排除自己）
+	teacherIDs, err := ctl.membershipRepo.ListTeacherIDsByCenterID(ctx, centerID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
+			Code:    500,
+			Message: "Failed to get teacher IDs",
+		})
+		return
+	}
+
+	if len(teacherIDs) == 0 {
+		ctx.JSON(http.StatusOK, global.ApiResponse{
+			Code:    0,
+			Message: "Success",
+			Datas:   []TeacherResponse{},
+		})
+		return
+	}
+
+	// 取得老師詳細資料（排除自己）
+	teachers := make([]TeacherResponse, 0, len(teacherIDs))
+	for _, tID := range teacherIDs {
+		// 排除自己
+		if tID == teacherID {
+			continue
+		}
+
+		teacher, err := ctl.teacherRepository.GetByID(ctx, tID)
 		if err != nil {
 			continue
 		}

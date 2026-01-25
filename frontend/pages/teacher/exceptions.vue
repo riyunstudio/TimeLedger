@@ -113,17 +113,27 @@ const scheduleRules = ref<Array<{
 }>>([])
 
 const filteredExceptions = computed(() => {
-  if (!currentFilter.value) return teacherStore.exceptions
-  return teacherStore.exceptions.filter(e => e.status === currentFilter.value)
+  return teacherStore.exceptions
+})
+
+const fetchExceptions = async () => {
+  await teacherStore.fetchExceptions(currentFilter.value || undefined)
+}
+
+// 监听筛选器变化，重新获取数据
+watch(currentFilter, async () => {
+  await fetchExceptions()
 })
 
 const getStatusClass = (status: string) => {
-  switch (status) {
+  switch (status.toUpperCase()) {
     case 'PENDING':
       return 'bg-warning-500/20 text-warning-500'
     case 'APPROVED':
+    case 'APPROVE': // 向后兼容旧数据
       return 'bg-success-500/20 text-success-500'
     case 'REJECTED':
+    case 'REJECT': // 向后兼容旧数据
       return 'bg-critical-500/20 text-critical-500'
     case 'REVOKED':
       return 'bg-slate-500/20 text-slate-400'
@@ -133,12 +143,14 @@ const getStatusClass = (status: string) => {
 }
 
 const getStatusText = (status: string) => {
-  switch (status) {
+  switch (status.toUpperCase()) {
     case 'PENDING':
       return '待審核'
     case 'APPROVED':
+    case 'APPROVE': // 向后兼容旧数据
       return '已核准'
     case 'REJECTED':
+    case 'REJECT': // 向后兼容旧数据
       return '已拒絕'
     case 'REVOKED':
       return '已撤回'
@@ -151,10 +163,6 @@ const formatDateTime = (dateStr: string) => {
   if (!dateStr) return '-'
   const date = new Date(dateStr)
   return date.toLocaleString('zh-TW')
-}
-
-const fetchExceptions = async () => {
-  await teacherStore.fetchExceptions(currentFilter.value || undefined)
 }
 
 const handleRevoke = async (id: number) => {

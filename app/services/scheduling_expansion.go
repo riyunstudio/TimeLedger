@@ -267,7 +267,7 @@ func (s *ScheduleExceptionServiceImpl) CheckExceptionDeadline(ctx context.Contex
 	return true, "", nil
 }
 
-func (s *ScheduleExceptionServiceImpl) CreateException(ctx context.Context, centerID uint, teacherID uint, ruleID uint, originalDate time.Time, exceptionType string, newStartAt, newEndAt *time.Time, newTeacherID *uint, reason string) (models.ScheduleException, error) {
+func (s *ScheduleExceptionServiceImpl) CreateException(ctx context.Context, centerID uint, teacherID uint, ruleID uint, originalDate time.Time, exceptionType string, newStartAt, newEndAt *time.Time, newTeacherID *uint, newTeacherName string, reason string) (models.ScheduleException, error) {
 	allowed, reasonStr, err := s.CheckExceptionDeadline(ctx, centerID, ruleID, originalDate)
 	if err != nil {
 		return models.ScheduleException{}, err
@@ -286,6 +286,11 @@ func (s *ScheduleExceptionServiceImpl) CreateException(ctx context.Context, cent
 		NewEndAt:     newEndAt,
 		NewTeacherID: newTeacherID,
 		Reason:       reason,
+	}
+
+	// 如果有代課老師名字，添加到 Reason 中（因為資料庫沒有這個欄位）
+	if newTeacherName != "" {
+		exception.Reason = fmt.Sprintf("[代課老師：%s] %s", newTeacherName, reason)
 	}
 
 	createdException, err := s.exceptionRepo.Create(ctx, exception)
@@ -345,12 +350,21 @@ func (s *ScheduleExceptionServiceImpl) ReviewException(ctx context.Context, exce
 	}
 
 	oldStatus := exception.Status
-	exception.Status = action
+
+	// 映射前端發送的 action 值到正確的狀態值
+	status := action
+	if action == "APPROVE" || action == "APPROVED" {
+		status = "APPROVED"
+	} else if action == "REJECT" || action == "REJECTED" {
+		status = "REJECTED"
+	}
+
+	exception.Status = status
 	exception.ReviewedBy = &adminID
 	now := time.Now()
 	exception.ReviewedAt = &now
 
-	if action == "APPROVED" {
+	if status == "APPROVED" {
 		rule, err := s.ruleRepo.GetByID(ctx, exception.RuleID)
 		if err != nil {
 			return err

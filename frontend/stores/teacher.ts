@@ -131,10 +131,11 @@ export const useTeacherStore = defineStore('teacher', () => {
     center_id: number
     rule_id: number
     original_date: string
-    type: 'CANCEL' | 'RESCHEDULE'
+    type: 'CANCEL' | 'RESCHEDULE' | 'REPLACE_TEACHER'
     new_start_at?: string
     new_end_at?: string
     new_teacher_id?: number
+    new_teacher_name?: string
     reason: string
   }) => {
     const api = useApi()

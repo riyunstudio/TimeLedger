@@ -53,6 +53,12 @@
               </td>
               <td class="py-3 pr-4 text-right">
                 <button
+                  @click="editRule(rule)"
+                  class="text-primary-500 hover:text-primary-400 mr-3"
+                >
+                  編輯
+                </button>
+                <button
                   @click="deleteRule(rule.id)"
                   class="text-critical-500 hover:text-critical-400"
                 >
@@ -68,8 +74,17 @@
 
   <ScheduleRuleModal
     v-if="showModal"
-    @close="showModal = false"
-    @saved="fetchRules"
+    :editing-rule="editingRule"
+    @close="handleModalClose"
+    @submit="handleModalSubmit"
+  />
+
+  <UpdateModeModal
+    v-if="showUpdateModeModal"
+    :show="showUpdateModeModal"
+    :rule-date="editingRule ? new Date(editingRule.effective_range?.start_date).toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' }) : ''"
+    @close="showUpdateModeModal = false; showModal = true; pendingEditData = null"
+    @confirm="handleUpdateModeConfirm"
   />
 
   <NotificationDropdown
@@ -88,6 +103,9 @@
 const showModal = ref(false)
 const loading = ref(true)
 const rules = ref<any[]>([])
+const editingRule = ref<any | null>(null)
+const showUpdateModeModal = ref(false)
+const pendingEditData = ref<any>(null)
 const { getCenterId } = useCenterId()
 
 // Alert composable
@@ -116,6 +134,74 @@ const deleteRule = async (id: number) => {
   } catch (err) {
     console.error('Failed to delete rule:', err)
     await alertError('刪除失敗，請稍後再試')
+  }
+}
+
+const editRule = (rule: any) => {
+  editingRule.value = rule
+  showModal.value = true
+}
+
+const handleUpdateModeConfirm = async (updateMode: string) => {
+  if (!pendingEditData.value || !updateMode) return
+
+  try {
+    const api = useApi()
+    await api.put(`/admin/rules/${pendingEditData.value.id}`, {
+      ...pendingEditData.value.formData,
+      update_mode: updateMode,
+    })
+    await fetchRules()
+    showUpdateModeModal.value = false
+    pendingEditData.value = null
+    editingRule.value = null
+    showModal.value = false
+  } catch (err) {
+    console.error('Failed to update rule:', err)
+    await alertError('更新失敗，請稍後再試')
+  }
+}
+
+const handleModalClose = () => {
+  showModal.value = false
+  editingRule.value = null
+}
+
+const handleModalSubmit = (formData: any) => {
+  // 如果編輯模式下有修改日期相關內容，需要詢問更新模式
+  if (editingRule.value && formData.start_date) {
+    const originalStartDate = editingRule.value.effective_range?.start_date?.split('T')[0]
+    if (originalStartDate && originalStartDate !== formData.start_date) {
+      // 日期有變更，顯示更新模式選擇
+      const ruleDate = new Date(editingRule.value.effective_range?.start_date).toLocaleDateString('zh-TW', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      })
+      pendingEditData.value = {
+        id: editingRule.value.id,
+        formData: formData,
+      }
+      showModal.value = false
+      showUpdateModeModal.value = true
+      return
+    }
+  }
+
+  // 無需詢問更新模式，直接提交
+  submitDirectly(formData)
+}
+
+const submitDirectly = async (formData: any) => {
+  try {
+    const api = useApi()
+    await api.put(`/admin/rules/${editingRule.value.id}`, formData)
+    await fetchRules()
+    showModal.value = false
+    editingRule.value = null
+  } catch (err) {
+    console.error('Failed to update rule:', err)
+    await alertError('更新失敗，請稍後再試')
   }
 }
 

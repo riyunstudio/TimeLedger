@@ -146,11 +146,13 @@ export interface ScheduleException {
   rule_id: number
   teacher_id: number
   original_date: string
-  type: 'CANCEL' | 'RESCHEDULE'
+  type: 'CANCEL' | 'RESCHEDULE' | 'REPLACE_TEACHER'
   status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'REVOKED'
   new_start_at?: string
   new_end_at?: string
   new_teacher_id?: number
+  new_teacher_name?: string
+  new_room_id?: number
   reason: string
   created_at: string
   updated_at: string

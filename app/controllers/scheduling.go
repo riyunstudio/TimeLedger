@@ -52,14 +52,15 @@ type CheckBufferRequest struct {
 }
 
 type CreateExceptionRequest struct {
-	RuleID       uint       `json:"rule_id" binding:"required"`
-	OriginalDate time.Time  `json:"original_date" binding:"required"`
-	Type         string     `json:"type" binding:"required"`
-	NewStartAt   *time.Time `json:"new_start_at"`
-	NewEndAt     *time.Time `json:"new_end_at"`
-	NewTeacherID *uint      `json:"new_teacher_id"`
-	NewRoomID    *uint      `json:"new_room_id"`
-	Reason       string     `json:"reason" binding:"required"`
+	RuleID         uint       `json:"rule_id" binding:"required"`
+	OriginalDate   time.Time  `json:"original_date" binding:"required"`
+	Type           string     `json:"type" binding:"required"`
+	NewStartAt     *time.Time `json:"new_start_at"`
+	NewEndAt       *time.Time `json:"new_end_at"`
+	NewTeacherID   *uint      `json:"new_teacher_id"`
+	NewTeacherName string     `json:"new_teacher_name"`
+	NewRoomID      *uint      `json:"new_room_id"`
+	Reason         string     `json:"reason" binding:"required"`
 }
 
 type ReviewExceptionRequest struct {
@@ -350,7 +351,7 @@ func (ctl *SchedulingController) CreateException(ctx *gin.Context) {
 	}
 
 	adminID := ctx.GetUint(global.UserIDKey)
-	exception, err := ctl.exceptionService.CreateException(ctx, centerID, adminID, req.RuleID, req.OriginalDate, req.Type, req.NewStartAt, req.NewEndAt, req.NewTeacherID, req.Reason)
+	exception, err := ctl.exceptionService.CreateException(ctx, centerID, adminID, req.RuleID, req.OriginalDate, req.Type, req.NewStartAt, req.NewEndAt, req.NewTeacherID, req.NewTeacherName, req.Reason)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
 			Code:    500,
@@ -819,7 +820,15 @@ type UpdateRuleRequest struct {
 	Weekdays   []int   `json:"weekdays"`
 	StartDate  string  `json:"start_date"`
 	EndDate    *string `json:"end_date"`
+	// 更新模式：SINGLE - 只修改這一天，FUTURE - 修改這天及之後，ALL - 修改所有
+	UpdateMode string  `json:"update_mode"`
 }
+
+const (
+	UpdateModeSingle  = "SINGLE"
+	UpdateModeFuture  = "FUTURE"
+	UpdateModeAll     = "ALL"
+)
 
 func (ctl *SchedulingController) UpdateRule(ctx *gin.Context) {
 	centerID := ctx.GetUint(global.CenterIDKey)

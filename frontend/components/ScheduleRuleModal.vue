@@ -275,8 +275,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   close: []
-  created: []
-  updated: []
+  submit: [formData: any]
 }>()
 
 const loading = ref(false)
@@ -415,8 +414,6 @@ const handleSubmit = async () => {
   loading.value = true
 
   try {
-    const api = useApi()
-
     const data: any = {
       name: form.value.name,
       offering_id: parseInt(form.value.offering_id),
@@ -438,20 +435,20 @@ const handleSubmit = async () => {
       data.room_id = form.value.room_id
     }
 
-    if (showEditModal.value && props.editingRule) {
-      // 編輯模式
-      await api.put(`/admin/rules/${props.editingRule.id}`, data)
-      emit('updated')
+    if (showEditModal.value) {
+      // 編輯模式：發射表單資料給父元件處理
+      emit('submit', data)
     } else {
-      // 新增模式
+      // 新增模式：直接呼叫 API
+      const api = useApi()
       await api.post('/admin/rules', data)
-      emit('created')
+      handleClose()
+      // 通知父元件刷新列表
+      refreshParent()
     }
-
-    handleClose()
   } catch (error: any) {
     console.error('Failed to save schedule rule:', error)
-    
+
     // 處理衝突錯誤
     if (error.response?.data?.code === 40002 || error.response?.data?.code === 'OVERLAP' || error.response?.data?.code === 20002) {
       conflictError.value = error.response?.data?.message || '排課時間與現有規則衝突'
@@ -461,6 +458,17 @@ const handleSubmit = async () => {
     }
   } finally {
     loading.value = false
+  }
+}
+
+// 刷新父元件列表
+const refreshParent = async () => {
+  try {
+    const api = useApi()
+    // 觸發重新整理事件，這裡透過重新導向來刷新
+    await api.get('/admin/rules')
+  } catch (e) {
+    console.error('Failed to refresh:', e)
   }
 }
 

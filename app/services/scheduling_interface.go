@@ -60,8 +60,8 @@ type ScheduleExpansionService interface {
 
 type ScheduleExceptionService interface {
 	// CreateException 創建例外單
-	// 支援停課(CANCEL)、改期(RESCHEDULE)、新增(ADD)
-	CreateException(ctx context.Context, centerID uint, teacherID uint, ruleID uint, originalDate time.Time, exceptionType string, newStartAt, newEndAt *time.Time, newTeacherID *uint, reason string) (models.ScheduleException, error)
+	// 支援停課(CANCEL)、改期(RESCHEDULE)、代課(REPLACE_TEACHER)
+	CreateException(ctx context.Context, centerID uint, teacherID uint, ruleID uint, originalDate time.Time, exceptionType string, newStartAt, newEndAt *time.Time, newTeacherID *uint, newTeacherName string, reason string) (models.ScheduleException, error)
 
 	// CheckExceptionDeadline 檢查是否超過異動截止日
 	// 檢查規則的 lock_at 或中心的 exception_lead_days

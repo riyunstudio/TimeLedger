@@ -89,6 +89,8 @@ func (s *Server) LoadRoutes() {
 		{http.MethodDelete, "/api/v1/teachers/:id", s.action.teacher.DeleteTeacher, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireAdmin()}},
 		{http.MethodPost, "/api/v1/admin/centers/:id/invitations", s.action.teacher.InviteTeacher, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodGet, "/api/v1/admin/centers/:id/teachers", s.action.adminResource.GetTeachers, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		// Teacher - Get center teachers (for exception replacement)
+		{http.MethodGet, "/api/v1/teacher/me/centers/:center_id/teachers", s.action.teacher.GetCenterTeachers, []gin.HandlerFunc{authMiddleware.Authenticate()}},
 
 		// Admin - Offerings
 		{http.MethodGet, "/api/v1/admin/offerings", s.action.offering.GetOfferings, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},

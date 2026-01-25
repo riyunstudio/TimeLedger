@@ -186,7 +186,12 @@ const filteredExceptions = computed(() => {
 
   // 狀態過濾
   if (activeFilter.value !== 'all') {
-    result = result.filter(exc => exc.status === activeFilter.value.toUpperCase())
+    const filterStatus = activeFilter.value.toUpperCase()
+    const normalizedFilter = filterStatus.replace(/ED$/, '')
+    result = result.filter(exc => {
+      const normalizedStatus = exc.status.replace(/ED$/, '')
+      return normalizedStatus === normalizedFilter || exc.status === filterStatus
+    })
   }
 
   // 視角過濾
@@ -251,9 +256,13 @@ const getStatusClass = (status: string): string => {
     case 'PENDING':
       return 'bg-warning-500/20 text-warning-500'
     case 'APPROVED':
+    case 'APPROVE': // 向后兼容旧数据
       return 'bg-success-500/20 text-success-500'
     case 'REJECTED':
+    case 'REJECT': // 向后兼容旧数据
       return 'bg-critical-500/20 text-critical-500'
+    case 'REVOKED':
+      return 'bg-slate-500/20 text-slate-400'
     default:
       return 'bg-slate-500/20 text-slate-400'
   }
@@ -264,9 +273,13 @@ const getStatusText = (status: string): string => {
     case 'PENDING':
       return '待審核'
     case 'APPROVED':
+    case 'APPROVE': // 向后兼容旧数据
       return '已核准'
     case 'REJECTED':
+    case 'REJECT': // 向后兼容旧数据
       return '已拒絕'
+    case 'REVOKED':
+      return '已撤回'
     default:
       return status
   }
@@ -306,7 +319,7 @@ const handleApproved = async (_id: number, note: string) => {
   try {
     const api = useApi()
     await api.post(`/admin/scheduling/exceptions/${_id}/review`, {
-      action: 'APPROVE',
+      action: 'APPROVED',
       reason: note,
     })
     // 更新本地狀態
@@ -328,7 +341,7 @@ const handleRejected = async (_id: number, note: string) => {
   try {
     const api = useApi()
     await api.post(`/admin/scheduling/exceptions/${_id}/review`, {
-      action: 'REJECT',
+      action: 'REJECTED',
       reason: note,
     })
     // 更新本地狀態
