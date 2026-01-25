@@ -205,29 +205,53 @@
           :key="teacher.id"
           class="p-4 rounded-lg bg-white/5"
         >
-          <div class="flex items-center gap-3 mb-2">
-            <div class="w-8 h-8 rounded-full bg-gradient-to-br from-primary-500 to-secondary-500 flex items-center justify-center shrink-0">
-              <span class="text-white text-sm">{{ teacher.name?.charAt(0) || '?' }}</span>
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-primary-500 to-secondary-500 flex items-center justify-center shrink-0">
+              <span class="text-white text-sm font-medium">{{ teacher.name?.charAt(0) || '?' }}</span>
             </div>
             <div>
               <h4 class="text-white font-medium">{{ teacher.name }}</h4>
-              <p class="text-xs text-slate-400">{{ teacher.city }}</p>
+              <p class="text-xs text-slate-400 flex items-center gap-1">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                {{ teacher.city }}{{ teacher.district }}
+              </p>
             </div>
           </div>
-          <div v-if="teacher.skills?.length" class="flex flex-wrap gap-1 mt-2">
-            <span
-              v-for="skill in teacher.skills.slice(0, 3)"
-              :key="skill"
-              class="px-2 py-0.5 rounded-full text-xs bg-primary-500/20 text-primary-500"
-            >
-              {{ skill }}
-            </span>
+
+          <!-- 個人簡介 -->
+          <p v-if="teacher.bio" class="text-sm text-slate-400 mb-3 line-clamp-2">{{ teacher.bio }}</p>
+
+          <!-- 技能標籤 -->
+          <div v-if="teacher.skills?.length" class="mb-3">
+            <p class="text-xs text-slate-500 mb-2">專長技能</p>
+            <div class="flex flex-wrap gap-1">
+              <span
+                v-for="(skill, index) in teacher.skills.slice(0, 4)"
+                :key="index"
+                class="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs"
+                :class="getSkillCategoryStyle(skill.category)"
+              >
+                <span>{{ getSkillCategoryIcon(skill.category) }}</span>
+                <span>{{ skill.name }}</span>
+              </span>
+              <span
+                v-if="teacher.skills.length > 4"
+                class="px-2 py-1 rounded-md text-xs bg-slate-500/20 text-slate-400"
+              >
+                +{{ teacher.skills.length - 4 }}
+              </span>
+            </div>
           </div>
-          <div v-if="teacher.personal_hashtags?.length" class="flex flex-wrap gap-1 mt-2">
+
+          <!-- 個人品牌標籤 -->
+          <div v-if="teacher.personal_hashtags?.length" class="flex flex-wrap gap-1">
             <span
-              v-for="tag in teacher.personal_hashtags.slice(0, 5)"
-              :key="tag"
-              class="px-2 py-0.5 rounded-full text-xs bg-slate-500/30 text-slate-400"
+              v-for="(tag, index) in teacher.personal_hashtags.slice(0, 5)"
+              :key="index"
+              class="px-2 py-0.5 rounded-full text-xs bg-primary-500/20 text-primary-400"
             >
               {{ tag }}
             </span>
@@ -244,6 +268,8 @@
 </template>
 
 <script setup lang="ts">
+import { SKILL_CATEGORIES } from '~/types'
+
  definePageMeta({
    middleware: 'auth-admin',
    layout: 'admin',
@@ -271,6 +297,15 @@ const talentSearch = ref({
   skills: '',
   hashtags: ''
 })
+
+// 技能類別相關函數
+const getSkillCategoryIcon = (category: string): string => {
+  return SKILL_CATEGORIES[category as keyof typeof SKILL_CATEGORIES]?.icon || '✨'
+}
+
+const getSkillCategoryStyle = (category: string): string => {
+  return SKILL_CATEGORIES[category as keyof typeof SKILL_CATEGORIES]?.color || 'bg-slate-500/20 text-slate-400 border-slate-500/30'
+}
 
 const findMatches = async () => {
   if (!form.value.start_time || !form.value.end_time) {

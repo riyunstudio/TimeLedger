@@ -13,17 +13,34 @@ export const useApi = () => {
 
   const handleUnauthorized = () => {
     if (process.client) {
+      // 先保存當前用戶類型（因為馬上要清除）
+      const currentUserType = localStorage.getItem('current_user_type')
+      const wasTeacher = localStorage.getItem('teacher_token') || currentUserType === 'teacher'
+      const wasAdmin = localStorage.getItem('admin_token') || currentUserType === 'admin'
+
+      // 清除所有認證資料
       localStorage.removeItem('token')
       localStorage.removeItem('admin_token')
       localStorage.removeItem('teacher_token')
       localStorage.removeItem('current_user_type')
-      
+
       const currentPath = window.location.pathname
-      if (!currentPath.includes('/login')) {
-        router.push(`/admin/login?redirect=${encodeURIComponent(currentPath)}`)
+
+      // 根據之前的用戶類型決定轉向哪個登入頁
+      let redirectPath = '/'
+      if (wasTeacher && !currentPath.includes('/teacher/login')) {
+        redirectPath = `/teacher/login?redirect=${encodeURIComponent(currentPath)}`
+      } else if (wasAdmin && !currentPath.includes('/admin/login')) {
+        redirectPath = `/admin/login?redirect=${encodeURIComponent(currentPath)}`
+      } else if (!currentPath.includes('/login')) {
+        // 無法判斷用戶類型，轉到首頁
+        redirectPath = '/'
       } else {
-        router.push('/admin/login')
+        // 已經在登入頁，轉到首頁
+        redirectPath = '/'
       }
+
+      router.push(redirectPath)
     }
   }
 

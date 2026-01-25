@@ -23,6 +23,7 @@ type actions struct {
 	user              *controllers.UserController
 	auth              *controllers.AuthController
 	teacher           *controllers.TeacherController
+	geo               *controllers.GeoController
 	adminResource     *controllers.AdminResourceController
 	offering          *controllers.OfferingController
 	timetableTemplate *controllers.TimetableTemplateController
@@ -44,6 +45,9 @@ func (s *Server) LoadRoutes() {
 		{http.MethodPost, "/api/v1/auth/teacher/line/login", s.action.auth.TeacherLineLogin, []gin.HandlerFunc{}},
 		{http.MethodPost, "/api/v1/auth/refresh", s.action.auth.RefreshToken, []gin.HandlerFunc{}},
 		{http.MethodPost, "/api/v1/auth/logout", s.action.auth.Logout, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+
+		// Geo - Cities & Districts
+		{http.MethodGet, "/api/v1/geo/cities", s.action.geo.ListCities, []gin.HandlerFunc{authMiddleware.Authenticate()}},
 
 		// User
 		{http.MethodGet, "/api/v1/user", s.action.user.Get, []gin.HandlerFunc{authMiddleware.Authenticate()}},
@@ -224,6 +228,7 @@ func (s *Server) NewControllers() {
 	authService := services.NewAuthService(s.app)
 	s.action.auth = controllers.NewAuthController(s.app, authService)
 	s.action.teacher = controllers.NewTeacherController(s.app)
+	s.action.geo = controllers.NewGeoController(s.app)
 	s.action.adminResource = controllers.NewAdminResourceController(s.app)
 	s.action.offering = controllers.NewOfferingController(s.app)
 	s.action.timetableTemplate = controllers.NewTimetableTemplateController(s.app)

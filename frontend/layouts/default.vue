@@ -25,7 +25,7 @@
           active-class="text-primary-500"
         >
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 011-4 1 1 0V6M6 18L4 6l2 2m6 6v12a2 2 0 012 2-2 2 0 012 2l4 4m6 6v12a2 2 0 012 2 2 2 0012 2-4 4m6 6v12a2 2 0 012 2 2 2 0012 2-4 4m6 6v12a2 2 0 012 2 2 2 0012 2" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
           </svg>
           <span class="text-xs mt-1">個人</span>
         </NuxtLink>

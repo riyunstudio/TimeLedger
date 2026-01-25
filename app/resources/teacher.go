@@ -5,16 +5,16 @@ import (
 )
 
 type TeacherProfileResource struct {
-	ID                uint                 `json:"id,omitempty"`
-	LineUserID        string               `json:"line_user_id,omitempty"`
-	Name              string               `json:"name,omitempty"`
-	Email             string               `json:"email,omitempty"`
-	Bio               string               `json:"bio,omitempty"`
-	City              string               `json:"city,omitempty"`
-	District          string               `json:"district,omitempty"`
-	PublicContactInfo string               `json:"public_contact_info,omitempty"`
-	IsOpenToHiring    bool                 `json:"is_open_to_hiring,omitempty"`
-	PersonalHashtags  []PersonalHashtag    `json:"personal_hashtags,omitempty"`
+	ID                uint              `json:"id,omitempty"`
+	LineUserID        string            `json:"line_user_id,omitempty"`
+	Name              string            `json:"name,omitempty"`
+	Email             string            `json:"email,omitempty"`
+	Bio               string            `json:"bio,omitempty"`
+	City              string            `json:"city,omitempty"`
+	District          string            `json:"district,omitempty"`
+	PublicContactInfo string            `json:"public_contact_info,omitempty"`
+	IsOpenToHiring    bool              `json:"is_open_to_hiring,omitempty"`
+	PersonalHashtags  []PersonalHashtag `json:"personal_hashtags,omitempty"`
 }
 
 type TeacherPersonalHashtagResource struct {
@@ -49,4 +49,16 @@ type HashtagResource struct {
 	ID         uint   `json:"id,omitempty"`
 	Name       string `json:"name,omitempty"`
 	UsageCount int    `json:"usage_count,omitempty"`
+}
+
+type GeoCityResource struct {
+	ID        uint                  `json:"id,omitempty"`
+	Name      string                `json:"name,omitempty"`
+	Districts []GeoDistrictResource `json:"districts,omitempty"`
+}
+
+type GeoDistrictResource struct {
+	ID     uint   `json:"id,omitempty"`
+	CityID uint   `json:"city_id,omitempty"`
+	Name   string `json:"name,omitempty"`
 }

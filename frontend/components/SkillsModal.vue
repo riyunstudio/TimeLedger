@@ -57,10 +57,7 @@
                   <div>
                     <h5 class="font-medium text-slate-100 text-sm sm:text-base">{{ skill.skill_name }}</h5>
                     <p v-if="skill.hashtags && skill.hashtags.length > 0" class="text-xs text-slate-500 mt-1">
-                      {{ skill.hashtags.map((h: any) => {
-                        const name = h.hashtag?.name || h.name || ''
-                        return name.startsWith('#') ? name : '#' + name
-                      }).join(' ') }}
+                      {{ skill.hashtags.filter((t: any) => t && typeof t === 'string').map((t: string) => t.startsWith('#') ? t : '#' + t).join(' ') }}
                     </p>
                   </div>
                 </div>
@@ -240,7 +237,22 @@ const fetchData = async () => {
       api.get<{ code: number; datas: any[] }>('/teacher/me/skills'),
       api.get<{ code: number; datas: any[] }>('/teacher/me/certificates')
     ])
-    skills.value = skillsRes.datas || []
+    // 轉換技能資料，確保標籤是字串
+    skills.value = (skillsRes.datas || []).map((skill: any) => ({
+      ...skill,
+      hashtags: (skill.hashtags || []).map((h: any) => {
+        // 從各種可能的結構中提取標籤名稱
+        if (typeof h === 'string') return h
+        // 處理 { hashtag: { name: "xxx" } } 結構
+        if (h.hashtag && typeof h.hashtag === 'object') {
+          return h.hashtag.name || ''
+        }
+        // 處理 { name: "xxx" } 結構
+        if (h.name) return h.name
+        // 如果都沒有，回傳空字串
+        return ''
+      }).filter((t: string) => typeof t === 'string' && t.length > 0) // 只保留非空字串
+    }))
     certificates.value = certsRes.datas || []
   } catch (error) {
     console.error('Failed to fetch skills and certificates:', error)

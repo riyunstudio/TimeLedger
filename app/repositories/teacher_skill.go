@@ -17,7 +17,7 @@ func NewTeacherSkillRepository(app *app.App) *TeacherSkillRepository {
 
 func (r *TeacherSkillRepository) ListByTeacherID(ctx context.Context, teacherID uint) ([]models.TeacherSkill, error) {
 	var skills []models.TeacherSkill
-	err := r.app.MySQL.RDB.WithContext(ctx).Preload("Hashtags").Where("teacher_id = ?", teacherID).Find(&skills).Error
+	err := r.app.MySQL.RDB.WithContext(ctx).Preload("Hashtags.Hashtag").Where("teacher_id = ?", teacherID).Find(&skills).Error
 	return skills, err
 }
 
@@ -35,6 +35,6 @@ func (r *TeacherSkillRepository) Delete(ctx context.Context, id uint) error {
 
 func (r *TeacherSkillRepository) GetByID(ctx context.Context, id uint) (*models.TeacherSkill, error) {
 	var skill models.TeacherSkill
-	err := r.app.MySQL.RDB.WithContext(ctx).Preload("Hashtags").First(&skill, id).Error
+	err := r.app.MySQL.RDB.WithContext(ctx).Preload("Hashtags.Hashtag").First(&skill, id).Error
 	return &skill, err
 }

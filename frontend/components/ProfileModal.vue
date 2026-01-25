@@ -57,7 +57,7 @@
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">縣市</label>
-            <select v-model="form.city" class="input-field text-sm sm:text-base">
+            <select v-model="form.city" class="input-field text-sm sm:text-base" :disabled="loadingCities">
               <option value="">請選擇</option>
               <option v-for="city in cities" :key="city" :value="city">
                 {{ city }}
@@ -67,7 +67,7 @@
 
           <div>
             <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">區域</label>
-            <select v-model="form.district" class="input-field text-sm sm:text-base">
+            <select v-model="form.district" class="input-field text-sm sm:text-base" :disabled="loadingCities || !form.city">
               <option value="">請選擇</option>
               <option v-for="district in districts" :key="district" :value="district">
                 {{ district }}
@@ -219,6 +219,7 @@
 
 <script setup lang="ts">
 import { alertError } from '~/composables/useAlert'
+import { watch } from 'vue'
 
 const emit = defineEmits<{
   close: []
@@ -255,6 +256,21 @@ const parseContactInfo = (info: string | PublicContactInfo | undefined): PublicC
   }
 }
 
+// 輔助函數：提取標籤名稱（確保是字串）
+const extractTagName = (tag: any): string => {
+  if (!tag) return ''
+  if (typeof tag === 'string') return tag
+  if (typeof tag === 'object') {
+    // 處理 { hashtag: { name: "xxx" } } 結構
+    if (tag.hashtag && typeof tag.hashtag === 'object') {
+      return tag.hashtag.name || ''
+    }
+    // 處理 { name: "xxx" } 結構
+    if (tag.name) return tag.name
+  }
+  return ''
+}
+
 const form = ref({
   name: authStore.user?.name || '',
   email: authStore.user?.email || '',
@@ -262,8 +278,50 @@ const form = ref({
   city: authStore.user?.city || '',
   district: authStore.user?.district || '',
   public_contact_info: parseContactInfo(authStore.user?.public_contact_info),
-  personal_hashtags: (authStore.user as any)?.personal_hashtags?.map((h: any) => h.hashtag?.name || h.name || h) || [],
+  personal_hashtags: ((authStore.user as any)?.personal_hashtags || []).map((h: any) => extractTagName(h)).filter((t: string) => t),
 })
+
+// 城市區域資料（從 API 載入）
+interface GeoCity {
+  id: number
+  name: string
+  districts: GeoDistrict[]
+}
+
+interface GeoDistrict {
+  id: number
+  city_id: number
+  name: string
+}
+
+const citiesData = ref<GeoCity[]>([])
+const loadingCities = ref(false)
+
+const cities = computed(() => {
+  return citiesData.value.map(city => city.name)
+})
+
+const districts = computed(() => {
+  const selectedCity = citiesData.value.find(city => city.name === form.value.city)
+  return selectedCity?.districts.map(d => d.name) || []
+})
+
+const fetchCities = async () => {
+  try {
+    loadingCities.value = true
+    const api = useApi()
+    const response = await api.get<{ code: number; datas: GeoCity[] }>('/geo/cities')
+    if (response.code === 0 && response.datas) {
+      citiesData.value = response.datas
+    }
+  } catch (error) {
+    console.error('Failed to fetch cities:', error)
+    // 如果 API 失敗，使用備用資料
+    citiesData.value = []
+  } finally {
+    loadingCities.value = false
+  }
+}
 
 const isFormValid = computed(() => {
   return form.value.name.trim() !== '' &&
@@ -271,45 +329,10 @@ const isFormValid = computed(() => {
     form.value.personal_hashtags.length <= 5
 })
 
-const cities = [
-  '臺北市',
-  '新北市',
-  '桃園市',
-  '臺中市',
-  '臺南市',
-  '高雄市',
-  '基隆市',
-  '新竹市',
-  '新竹縣',
-  '苗栗縣',
-  '彰化縣',
-  '南投縣',
-  '雲林縣',
-  '嘉義市',
-  '嘉義縣',
-  '屏東縣',
-  '宜蘭縣',
-  '花蓮縣',
-  '臺東縣',
-  '澎湖縣',
-  '金門縣',
-  '連江縣',
-]
-
-const districts = [
-  '中正區',
-  '大同區',
-  '中山區',
-  '松山區',
-  '大安區',
-  '萬華區',
-  '文山區',
-  '南港區',
-  '內湖區',
-  '士林區',
-  '北投區',
-  '信義區',
-]
+// 監聽城市變化，清空區域選擇
+watch(() => form.value.city, () => {
+  form.value.district = ''
+})
 
 const addHashtag = () => {
   let tag = hashtagInput.value.trim()
@@ -422,4 +445,8 @@ const handleSubmit = async () => {
     loading.value = false
   }
 }
+
+onMounted(() => {
+  fetchCities()
+})
 </script>

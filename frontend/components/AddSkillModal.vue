@@ -148,10 +148,21 @@ const categories = Object.entries(SKILL_CATEGORIES).map(([value, data]) => ({
   ...data,
 }))
 
+// 輔助函數：提取標籤名稱（確保是字串）
+const extractTagName = (tag: any): string => {
+  if (!tag) return ''
+  if (typeof tag === 'string') return tag
+  if (typeof tag === 'object') {
+    if (tag.hashtag && typeof tag.hashtag === 'object' && tag.hashtag.name) return tag.hashtag.name
+    if (tag.name) return tag.name
+  }
+  return ''
+}
+
 const form = ref({
   category: props.skill?.category || '' as 'MUSIC' | 'ART' | 'DANCE' | 'LANGUAGE' | 'SPORTS' | 'OTHER' | '',
   skill_name: props.skill?.skill_name || '',
-  hashtags: props.skill?.hashtags?.map((h: any) => h.hashtag?.name || h.name || h).slice(0, 3) || [] as string[],
+  hashtags: (props.skill?.hashtags || []).map((h: any) => extractTagName(h)).filter(Boolean).slice(0, 3) as string[],
 })
 
 const isDuplicate = computed(() => {

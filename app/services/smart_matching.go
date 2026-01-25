@@ -367,7 +367,6 @@ func extractSkills(skills []models.TeacherSkill) []Skill {
 		result = append(result, Skill{
 			Category: skill.Category,
 			Name:     skill.SkillName,
-			Level:    skill.Level,
 			Hashtags: hashtags,
 		})
 	}
@@ -444,7 +443,6 @@ type TalentResult struct {
 type Skill struct {
 	Category string   `json:"category"`
 	Name     string   `json:"name"`
-	Level    string   `json:"level"`
 	Hashtags []string `json:"hashtags,omitempty"`
 }
 
