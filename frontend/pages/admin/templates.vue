@@ -387,7 +387,6 @@ const fetchOfferings = async () => {
   try {
     const api = useApi()
     const response = await api.get<any>('/admin/offerings')
-    console.log('Offerings API response:', response)
     
     // 處理不同格式的 API 回應
     if (response.datas?.offerings) {
@@ -399,8 +398,6 @@ const fetchOfferings = async () => {
     } else {
       offerings.value = []
     }
-    
-    console.log('Loaded offerings:', offerings.value)
   } catch (error) {
     console.error('Failed to fetch offerings:', error)
     offerings.value = []

@@ -165,7 +165,6 @@ const viewProfile = (teacher: any) => {
 }
 
 const sendMessage = (teacher: any) => {
-  console.log('Send message to:', teacher)
 }
 
 const removeTeacher = async (teacher: any) => {

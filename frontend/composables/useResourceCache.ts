@@ -34,8 +34,6 @@ export function useResourceCache() {
         const api = useApi()
         const centerId = getCenterId()
 
-        console.log('開始載入資源資料...')
-
         const [offeringsRes, teachersRes, roomsRes] = await Promise.all([
           api.get<{ code: number; datas: any }>(`/admin/offerings`),
           api.get<{ code: number; datas: any[] }>('/teachers'),
@@ -58,12 +56,6 @@ export function useResourceCache() {
         })
 
         resourceCache.value.loaded = true
-
-        console.log('資源資料載入完成:', {
-          offerings: resourceCache.value.offerings.length,
-          teachers: resourceCache.value.teachers.size,
-          rooms: resourceCache.value.rooms.size,
-        })
       } catch (error) {
         console.error('Failed to fetch resources:', error)
         resourceCache.value.loaded = false

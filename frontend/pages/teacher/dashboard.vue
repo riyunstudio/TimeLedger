@@ -442,8 +442,6 @@ const openItemDetail = (item: ScheduleItem) => {
     // 編輯個人行程
     editingEvent.value = item.data as any
     showPersonalEventModal.value = true
-  } else {
-    console.log('Open item detail:', item)
   }
 }
 

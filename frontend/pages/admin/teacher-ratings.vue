@@ -334,7 +334,6 @@ const fetchTeachers = async () => {
     const response = await api.get<{ code: number; datas: Teacher[] }>(
       '/teachers'
     )
-    console.log('Teachers API response:', response)
 
     teachers.value = response.datas || []
 

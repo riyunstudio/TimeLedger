@@ -529,7 +529,6 @@ const fetchSessions = async () => {
     })
 
     sessions.value = sessionList
-    console.log('Sessions loaded:', sessionList)
   } catch (error) {
     console.error('Failed to fetch sessions:', error)
     sessions.value = []
