@@ -314,6 +314,8 @@ const handleApproved = async (_id: number, note: string) => {
     if (exception) {
       exception.status = 'APPROVED'
     }
+    // 審核通過後，切換到「已核准」標籤
+    activeFilter.value = 'approved'
   } catch (error) {
     console.error('Failed to approve exception:', error)
     alert('核准失敗，請稍後再試')
@@ -334,6 +336,8 @@ const handleRejected = async (_id: number, note: string) => {
     if (exception) {
       exception.status = 'REJECTED'
     }
+    // 審核拒絕後，切換到「已拒絕」標籤
+    activeFilter.value = 'rejected'
   } catch (error) {
     console.error('Failed to reject exception:', error)
     alert('拒絕失敗，請稍後再試')
