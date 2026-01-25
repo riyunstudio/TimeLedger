@@ -36,7 +36,6 @@ interface AlertComposable {
 export const useAlert = () => {
   return inject<AlertComposable>('useAlert', {
     showAlert: async () => {
-      console.warn('[useAlert] Fallback showAlert called')
       const result = await (window as any).$confirm?.('提示')
       return result
     },
@@ -45,7 +44,6 @@ export const useAlert = () => {
     error: async () => false,
     success: async () => false,
     confirm: async (message: string) => {
-      console.warn('[useAlert] Fallback confirm called:', message)
       const result = await (window as any).$confirm?.(message)
       return result === true
     },

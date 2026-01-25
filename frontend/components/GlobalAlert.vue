@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { ref, provide, computed } from 'vue'
 
-console.log('[GlobalAlert] === SCRIPT START ===')
-
 type AlertType = 'info' | 'warning' | 'error' | 'success'
 
 interface AlertOptions {
@@ -41,7 +39,6 @@ const buttonColors: Record<AlertType, string> = {
 }
 
 const showAlert = (options: AlertOptions): Promise<boolean> => {
-  console.log('[GlobalAlert] showAlert called:', options.message)
   alertConfig.value = {
     title: options.title || defaultTitles[options.type || 'info'],
     message: options.message,
@@ -52,7 +49,6 @@ const showAlert = (options: AlertOptions): Promise<boolean> => {
     onCancel: options.onCancel,
   }
   visible.value = true
-  console.log('[GlobalAlert] visible set to true')
   
   return new Promise((resolve) => {
     alertResolve.value = resolve
@@ -75,7 +71,6 @@ const error = (message: string, title?: string) => showAlert({ message, title, t
 const success = (message: string, title?: string) => showAlert({ message, title, type: 'success' })
 
 const handleConfirm = () => {
-  console.log('[GlobalAlert] handleConfirm')
   alertConfig.value?.onConfirm?.()
   if (alertResolve.value) {
     alertResolve.value(true)
@@ -86,7 +81,6 @@ const handleConfirm = () => {
 }
 
 const handleCancel = () => {
-  console.log('[GlobalAlert] handleCancel')
   alertConfig.value?.onCancel?.()
   if (alertResolve.value) {
     alertResolve.value(false)
@@ -108,8 +102,6 @@ if (typeof window !== 'undefined') {
   ;(window as any).$error = error
   ;(window as any).$success = success
 }
-
-console.log('[GlobalAlert] === SCRIPT END ===')
 </script>
 
 <template>
