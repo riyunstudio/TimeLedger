@@ -23,8 +23,7 @@ type ScheduleException struct {
 	UpdatedAt    time.Time      `gorm:"type:datetime;not null" json:"updated_at"`
 
 	// 關聯
-	Rule  ScheduleRule `gorm:"foreignKey:RuleID" json:"rule,omitempty"`
-	Teacher Teacher    `gorm:"foreignKey:TeacherID;references:ID;AssociationForeignKey:Rule.TeacherID" json:"teacher,omitempty"`
+	Rule ScheduleRule `gorm:"foreignKey:RuleID" json:"rule,omitempty"`
 }
 
 func (ScheduleException) TableName() string {
