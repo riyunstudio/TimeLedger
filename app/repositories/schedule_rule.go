@@ -56,6 +56,7 @@ func (rp *ScheduleRuleRepository) ListByCenterID(ctx context.Context, centerID u
 func (rp *ScheduleRuleRepository) ListByTeacherID(ctx context.Context, teacherID uint, centerID uint) ([]models.ScheduleRule, error) {
 	var data []models.ScheduleRule
 	err := rp.app.MySQL.RDB.WithContext(ctx).
+		Preload("Offering").
 		Where("teacher_id = ? AND center_id = ?", teacherID, centerID).
 		Find(&data).Error
 	return data, err
@@ -181,4 +182,57 @@ func (rp *ScheduleRuleRepository) BulkCreate(ctx context.Context, data []models.
 	}
 	err := rp.app.MySQL.WDB.WithContext(ctx).Create(&data).Error
 	return data, err
+}
+
+// CheckPersonalEventConflict 檢查個人行程是否與老師的課程衝突
+// 用於在創建個人行程前檢查是否會與已排課程重疊
+func (rp *ScheduleRuleRepository) CheckPersonalEventConflict(ctx context.Context, teacherID uint, centerID uint, eventStartAt time.Time, eventEndAt time.Time) ([]models.ScheduleRule, error) {
+	var conflicts []models.ScheduleRule
+
+	// 取得該老師在該中心的課程規則
+	rules, err := rp.ListByTeacherID(ctx, teacherID, centerID)
+	if err != nil {
+		return nil, err
+	}
+
+	// 取得事件的星期幾（1-7，週一到週日）
+	eventWeekday := int(eventStartAt.Weekday())
+	if eventWeekday == 0 {
+		eventWeekday = 7 // 週日轉換為 7
+	}
+
+	// 將事件時間轉換為 HH:MM 格式
+	eventStartTime := eventStartAt.Format("15:04")
+	eventEndTime := eventEndAt.Format("15:04")
+
+	for _, rule := range rules {
+		// 只檢查同一天的規則
+		if rule.Weekday != eventWeekday {
+			continue
+		}
+
+		// 檢查時間是否重疊
+		if timesOverlap(rule.StartTime, rule.EndTime, eventStartTime, eventEndTime) {
+			conflicts = append(conflicts, rule)
+		}
+	}
+
+	return conflicts, nil
+}
+
+// CheckPersonalEventConflictAllCenters 檢查個人行程是否與老師所有中心的課程衝突
+func (rp *ScheduleRuleRepository) CheckPersonalEventConflictAllCenters(ctx context.Context, teacherID uint, centerIDs []uint, eventStartAt time.Time, eventEndAt time.Time) (map[uint][]models.ScheduleRule, error) {
+	allConflicts := make(map[uint][]models.ScheduleRule)
+
+	for _, centerID := range centerIDs {
+		conflicts, err := rp.CheckPersonalEventConflict(ctx, teacherID, centerID, eventStartAt, eventEndAt)
+		if err != nil {
+			return nil, err
+		}
+		if len(conflicts) > 0 {
+			allConflicts[centerID] = conflicts
+		}
+	}
+
+	return allConflicts, nil
 }

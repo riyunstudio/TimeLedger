@@ -219,9 +219,11 @@ const handleSubmit = async () => {
     await alertSuccess('儲存成功')
     emit('saved')
     emit('close')
-  } catch (err) {
+  } catch (err: any) {
     console.error('Failed to save personal event:', err)
-    await alertError('儲存失敗，請稍後再試')
+    // 顯示後端返回的錯誤訊息
+    const errorMessage = err.message || '儲存失敗，請稍後再試'
+    await alertError(errorMessage)
   } finally {
     loading.value = false
   }

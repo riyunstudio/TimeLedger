@@ -135,7 +135,8 @@ export interface ScheduleException {
 }
 
 export interface PersonalEvent {
-  id: number
+  id: number | string  // string when expanded from recurrence (format: "originalId_date")
+  originalId?: number  // Original ID for API calls
   teacher_id: number
   title: string
   start_at: string

@@ -119,8 +119,13 @@
                 @dragend="handleDragEnd"
                 @click="openItemDetail(item)"
               >
-                <div class="font-medium text-[clamp(10px,2vw,14px)] truncate text-white leading-tight">{{ item.title }}</div>
-                <div class="text-[9px] sm:text-[10px] text-slate-300 truncate">{{ item.start_time }}</div>
+                <div class="font-medium text-[clamp(10px,2vw,14px)] truncate text-white leading-tight">
+                  {{ item.title }}
+                </div>
+                <div class="text-[9px] sm:text-[10px] text-slate-300 truncate">
+                  {{ item.start_time }}
+                  <span v-if="item.center_name" class="text-primary-400 ml-1">@{{ item.center_name }}</span>
+                </div>
               </div>
 
               <div
@@ -350,7 +355,10 @@ const getScheduleItemsAt = (date: string, hour: number): ScheduleItem[] => {
   // Add personal events
   const personalEventsAtHour = teacherStore.personalEvents
     .filter(event => {
+      // Skip events with invalid dates
+      if (!event.start_at || !event.end_at) return false
       const eventDateObj = new Date(event.start_at)
+      if (isNaN(eventDateObj.getTime())) return false
       const eventDate = eventDateObj.toISOString().split('T')[0]
       if (eventDate !== date) return false
       const localStartHour = eventDateObj.getHours()

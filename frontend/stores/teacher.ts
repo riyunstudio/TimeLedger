@@ -224,6 +224,7 @@ export const useTeacherStore = defineStore('teacher', () => {
             expandedEvents.push({
               ...event,
               id: `${event.id}_${currentDate.toISOString().split('T')[0]}`,
+              originalId: event.id, // 保留原始 ID 用於 API 調用
               start_at: currentDate.toISOString(),
               end_at: instanceEnd.toISOString(),
             })
@@ -267,7 +268,11 @@ export const useTeacherStore = defineStore('teacher', () => {
     recurrence_rule?: RecurrenceRule
   }) => {
     const api = useApi()
-    const response = await api.post<{ code: number; message: string; datas: PersonalEvent }>('/teacher/me/personal-events', data)
+    const response = await api.post<{
+      code: number
+      message: string
+      datas: PersonalEvent
+    }>('/teacher/me/personal-events', data)
     const newEvent = response.datas
     // Ensure recurrence_rule is included if sent
     if (data.recurrence_rule && !newEvent.recurrence_rule) {
@@ -277,13 +282,17 @@ export const useTeacherStore = defineStore('teacher', () => {
     return newEvent
   }
 
-  const deletePersonalEvent = async (eventId: number) => {
+  const deletePersonalEvent = async (eventId: number | string) => {
     const api = useApi()
-    await api.delete(`/teacher/me/personal-events/${eventId}`)
+    // 使用 originalId 進行 API 調用
+    const originalId = typeof eventId === 'string' && eventId.includes('_')
+      ? parseInt(eventId.split('_')[0])
+      : eventId
+    await api.delete(`/teacher/me/personal-events/${originalId}`)
     personalEvents.value = personalEvents.value.filter(e => e.id !== eventId)
   }
 
-  const updatePersonalEvent = async (eventId: number, data: {
+  const updatePersonalEvent = async (eventId: number | string, data: {
     title: string
     start_at: string
     end_at: string
@@ -291,8 +300,12 @@ export const useTeacherStore = defineStore('teacher', () => {
     recurrence_rule?: RecurrenceRule
   }) => {
     const api = useApi()
+    // 使用 originalId 進行 API 調用
+    const originalId = typeof eventId === 'string' && eventId.includes('_')
+      ? parseInt(eventId.split('_')[0])
+      : eventId
     const updateData = { ...data, update_mode: 'SINGLE' }
-    const response = await api.put<{ code: number; message: string; datas: PersonalEvent }>(`/teacher/me/personal-events/${eventId}`, updateData)
+    const response = await api.patch<{ code: number; message: string; datas: PersonalEvent }>(`/teacher/me/personal-events/${originalId}`, updateData)
     const index = personalEvents.value.findIndex(e => e.id === eventId)
     if (index !== -1) {
       personalEvents.value[index] = response.datas

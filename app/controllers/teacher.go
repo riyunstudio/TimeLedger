@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 	"timeLedger/app"
 	"timeLedger/app/models"
@@ -22,6 +23,7 @@ type TeacherController struct {
 	app               *app.App
 	teacherRepository *repositories.TeacherRepository
 	membershipRepo    *repositories.CenterMembershipRepository
+	centerRepo        *repositories.CenterRepository
 	scheduleRuleRepo  *repositories.ScheduleRuleRepository
 	exceptionRepo     *repositories.ScheduleExceptionRepository
 	exceptionService  services.ScheduleExceptionService
@@ -39,6 +41,7 @@ func NewTeacherController(app *app.App) *TeacherController {
 		app:               app,
 		teacherRepository: repositories.NewTeacherRepository(app),
 		membershipRepo:    repositories.NewCenterMembershipRepository(app),
+		centerRepo:        repositories.NewCenterRepository(app),
 		scheduleRuleRepo:  repositories.NewScheduleRuleRepository(app),
 		exceptionRepo:     repositories.NewScheduleExceptionRepository(app),
 		exceptionService:  services.NewScheduleExceptionService(app),
@@ -315,7 +318,18 @@ func (ctl *TeacherController) GetSchedule(ctx *gin.Context) {
 	var schedule []TeacherScheduleItem
 
 	for _, m := range memberships {
+		// Get center name
+		center, _ := ctl.centerRepo.GetByID(ctx, m.CenterID)
+		centerName := center.Name
+
 		rules, _ := ctl.scheduleRuleRepo.ListByCenterID(ctx, m.CenterID)
+
+		// Create a map of rule ID to rule for quick lookup
+		ruleMap := make(map[uint]*models.ScheduleRule)
+		for i := range rules {
+			ruleMap[rules[i].ID] = &rules[i]
+		}
+
 		expanded := ctl.expansionService.ExpandRules(ctx, rules, fromDate, toDate, m.CenterID)
 
 		for _, item := range expanded {
@@ -332,17 +346,36 @@ func (ctl *TeacherController) GetSchedule(ctx *gin.Context) {
 			}
 
 			if status != "CANCELLED" {
+				// Get offering name from the rule
+				offeringName := ""
+				if rule, exists := ruleMap[item.RuleID]; exists && rule.OfferingID != 0 {
+					offeringName = rule.Offering.Name
+				}
+
+				// Create title: "課程名稱 @ 中心名稱"
+				title := offeringName
+				if centerName != "" {
+					if title != "" {
+						title = fmt.Sprintf("%s @ %s", offeringName, centerName)
+					} else {
+						title = centerName
+					}
+				}
+				if title == "" {
+					title = "課程"
+				}
+
 				schedule = append(schedule, TeacherScheduleItem{
 					ID:         fmt.Sprintf("center_%d_rule_%d_%s", m.CenterID, item.RuleID, item.Date.Format("20060102")),
 					Type:       "CENTER_SESSION",
-					Title:      "Center Session",
+					Title:      title,
 					Date:       item.Date.Format("2006-01-02"),
 					StartTime:  item.StartTime,
 					EndTime:    item.EndTime,
 					RoomID:     item.RoomID,
 					TeacherID:  item.TeacherID,
 					CenterID:   m.CenterID,
-					CenterName: "",
+					CenterName: centerName,
 					Status:     status,
 				})
 			}
@@ -1075,6 +1108,8 @@ func (ctl *TeacherController) GetPersonalEvents(ctx *gin.Context) {
 // @Security BearerAuth
 // @Param request body CreatePersonalEventRequest true "行程資訊"
 // @Success 200 {object} global.ApiResponse{data=models.PersonalEvent}
+// @Failure 400 {object} global.ApiResponse
+// @Failure 409 {object} global.ApiResponse
 // @Router /api/v1/teacher/me/personal-events [post]
 func (ctl *TeacherController) CreatePersonalEvent(ctx *gin.Context) {
 	teacherID := ctx.GetUint(global.UserIDKey)
@@ -1093,6 +1128,55 @@ func (ctl *TeacherController) CreatePersonalEvent(ctx *gin.Context) {
 			Message: "Invalid request body: " + err.Error(),
 		})
 		return
+	}
+
+	// 檢查個人行程是否與中心課程衝突
+	// 取得老師所屬的所有中心
+	fmt.Printf("[CreatePersonalEvent] Checking conflict for teacher_id=%d, start_at=%v, end_at=%v\n", teacherID, req.StartAt, req.EndAt)
+	memberships, err := ctl.membershipRepo.GetActiveByTeacherID(ctx, teacherID)
+	if err != nil {
+		fmt.Printf("[CreatePersonalEvent] GetActiveByTeacherID failed: %v\n", err)
+	}
+	fmt.Printf("[CreatePersonalEvent] memberships count: %d\n", len(memberships))
+	if len(memberships) == 0 {
+		fmt.Printf("[CreatePersonalEvent] No active memberships found for teacher_id: %d\n", teacherID)
+	} else {
+		var centerIDs []uint
+		for _, m := range memberships {
+			centerIDs = append(centerIDs, m.CenterID)
+		}
+		fmt.Printf("[CreatePersonalEvent] Found active memberships for teacher_id: %d, center_ids: %v\n", teacherID, centerIDs)
+
+		// 檢查每個中心的課程衝突
+		for _, centerID := range centerIDs {
+			conflicts, err := ctl.scheduleRuleRepo.CheckPersonalEventConflict(ctx, teacherID, centerID, req.StartAt, req.EndAt)
+			if err != nil {
+				fmt.Printf("[CreatePersonalEvent] CheckPersonalEventConflict failed for center_id %d: %v\n", centerID, err)
+				continue
+			}
+			fmt.Printf("[CreatePersonalEvent] Checking conflict: teacher_id=%d, center_id=%d, start_at=%v, end_at=%v, conflicts_count=%d\n",
+				teacherID, centerID, req.StartAt, req.EndAt, len(conflicts))
+
+			if len(conflicts) > 0 {
+				// 發現衝突，阻擋操作並返回錯誤
+				conflictMessages := []string{}
+				for _, rule := range conflicts {
+					conflictMessages = append(conflictMessages, fmt.Sprintf(
+						"您於 %s %s-%s 在中心 %d 有課程「%s」的安排，時間衝突",
+						req.StartAt.Format("2006-01-02"),
+						rule.StartTime,
+						rule.EndTime,
+						centerID,
+						rule.Offering.Name,
+					))
+				}
+				ctx.JSON(http.StatusConflict, global.ApiResponse{
+					Code:    409,
+					Message: "Personal event conflicts with existing schedule: " + strings.Join(conflictMessages, "; "),
+				})
+				return
+			}
+		}
 	}
 
 	event := models.PersonalEvent{
@@ -1281,6 +1365,59 @@ func (ctl *TeacherController) UpdatePersonalEvent(ctx *gin.Context) {
 			Message: "Invalid request body: " + err.Error(),
 		})
 		return
+	}
+
+	// 檢查個人行程是否與中心課程衝突（如果時間有變更）
+	if req.StartAt != nil && req.EndAt != nil {
+		fmt.Printf("[UpdatePersonalEvent] Checking conflict for teacher_id=%d, start_at=%v, end_at=%v\n", teacherID, *req.StartAt, *req.EndAt)
+		// 取得老師所屬的所有中心
+		memberships, err := ctl.membershipRepo.GetActiveByTeacherID(ctx, teacherID)
+		if err != nil {
+			fmt.Printf("[UpdatePersonalEvent] GetActiveByTeacherID failed: %v\n", err)
+		}
+		fmt.Printf("[UpdatePersonalEvent] memberships count: %d\n", len(memberships))
+		if len(memberships) == 0 {
+			fmt.Printf("[UpdatePersonalEvent] No active memberships found for teacher_id: %d\n", teacherID)
+		} else {
+			var centerIDs []uint
+			for _, m := range memberships {
+				centerIDs = append(centerIDs, m.CenterID)
+			}
+			fmt.Printf("[UpdatePersonalEvent] Found active memberships for teacher_id: %d, center_ids: %v\n", teacherID, centerIDs)
+
+			// 檢查每個中心的課程衝突
+			for _, centerID := range centerIDs {
+				conflicts, err := ctl.scheduleRuleRepo.CheckPersonalEventConflict(ctx, teacherID, centerID, *req.StartAt, *req.EndAt)
+				if err != nil {
+					fmt.Printf("[UpdatePersonalEvent] CheckPersonalEventConflict failed for center_id %d: %v\n", centerID, err)
+					continue
+				}
+				fmt.Printf("[UpdatePersonalEvent] Checking conflict: teacher_id=%d, center_id=%d, start_at=%v, end_at=%v, conflicts_count=%d\n",
+					teacherID, centerID, *req.StartAt, *req.EndAt, len(conflicts))
+
+				if len(conflicts) > 0 {
+					// 發現衝突，阻擋操作並返回錯誤
+					conflictMessages := []string{}
+					for _, rule := range conflicts {
+						conflictMessages = append(conflictMessages, fmt.Sprintf(
+							"您於 %s %s-%s 在中心 %d 有課程「%s」的安排，時間衝突",
+							req.StartAt.Format("2006-01-02"),
+							rule.StartTime,
+							rule.EndTime,
+							centerID,
+							rule.Offering.Name,
+						))
+					}
+					ctx.JSON(http.StatusConflict, global.ApiResponse{
+						Code:    409,
+						Message: "Personal event conflicts with existing schedule: " + strings.Join(conflictMessages, "; "),
+					})
+					return
+				}
+			}
+		}
+	} else {
+		fmt.Printf("[UpdatePersonalEvent] Skip conflict check: StartAt=%v, EndAt=%v\n", req.StartAt, req.EndAt)
 	}
 
 	now := time.Now()

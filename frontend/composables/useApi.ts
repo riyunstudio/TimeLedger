@@ -73,6 +73,20 @@ export const useApi = () => {
     return response.json()
   }
 
+  const patch = async <T>(endpoint: string, data: any): Promise<T> => {
+    const headers: Record<string, string> = {
+      ...getAuthHeader(),
+      'Content-Type': 'application/json',
+    }
+    const response = await fetch(`${apiBase}${endpoint}`, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify(data),
+    })
+    checkResponse(response)
+    return response.json()
+  }
+
   const del = async <T>(endpoint: string): Promise<T> => {
     const headers: Record<string, string> = {
       ...getAuthHeader(),
@@ -86,5 +100,5 @@ export const useApi = () => {
     return response.json()
   }
 
-  return { get, post, put, delete: del }
+  return { get, post, put, patch, delete: del }
 }
