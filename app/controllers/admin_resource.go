@@ -463,7 +463,7 @@ func (ctl *AdminResourceController) CreateCourse(ctx *gin.Context) {
 
 type CreateCourseRequest struct {
 	Name             string `json:"name" binding:"required"`
-	Duration         int    `json:"duration" binding:"required,min=15"`
+	Duration         int    `json:"duration" binding:"required"`
 	ColorHex         string `json:"color_hex" binding:"required"`
 	RoomBufferMin    int    `json:"room_buffer_min" binding:"gte=0"`
 	TeacherBufferMin int    `json:"teacher_buffer_min" binding:"gte=0"`
@@ -471,7 +471,7 @@ type CreateCourseRequest struct {
 
 type UpdateCourseRequest struct {
 	Name             string `json:"name" binding:"required"`
-	Duration         int    `json:"duration" binding:"required,min=15"`
+	Duration         int    `json:"duration" binding:"required"`
 	ColorHex         string `json:"color_hex" binding:"required"`
 	RoomBufferMin    int    `json:"room_buffer_min" binding:"gte=0"`
 	TeacherBufferMin int    `json:"teacher_buffer_min" binding:"gte=0"`
