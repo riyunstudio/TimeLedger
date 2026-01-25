@@ -11,17 +11,29 @@ export interface Teacher extends User {
   is_open_to_hiring: boolean
   city?: string
   district?: string
-  public_contact_info?: string
+  public_contact_info?: PublicContactInfo
   skills?: TeacherSkill[]
   certificates?: TeacherCertificate[]
-  personal_hashtags?: TeacherPersonalHashtag[]
+  personal_hashtags?: PersonalHashtag[]
+}
+
+export interface PublicContactInfo {
+  instagram?: string
+  youtube?: string
+  website?: string
+  other?: string
+}
+
+export interface PersonalHashtag {
+  id: number
+  hashtag_id: number
+  name: string
 }
 
 export interface TeacherSkill {
   id: number
   teacher_id: number
   skill_name: string
-  level: string
   hashtags?: TeacherSkillHashtag[]
 }
 

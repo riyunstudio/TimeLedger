@@ -1,0 +1,13 @@
+feat(teacher): enhance profile with professional links and personal hashtags
+
+- Remove skill level field (no longer required)
+- Fix SVG path error in default.vue layout
+- Remove definePageMeta from layout (compiler hint warning)
+- Add professional links UI (Instagram, YouTube, Website, Other)
+- Implement personal hashtags management with autocomplete search
+- Add hashtags search API endpoint (/api/v1/hashtags/search)
+- Update profile API to support hashtags CRUD
+- Add HashtagResource and PersonalHashtag types
+- Update type definitions for better type safety
+
+Ref: PDR-Chapter 13 Hashtag Management

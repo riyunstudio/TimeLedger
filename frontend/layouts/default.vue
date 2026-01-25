@@ -25,7 +25,7 @@
           active-class="text-primary-500"
         >
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 011-4 012 0V6M6 18L4 6l2 2m6 6v12a2 2 0 012 2-2 2 0 012 2l4 4m6 6v12a2 2 0 012 2 2 2 0012 2-4 4m6 6v12a2 2 0 012 2 2 2 0012 2-4 4m6 6v12a2 2 0 012 2 2 2 0012 2" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 011-4 1 1 0V6M6 18L4 6l2 2m6 6v12a2 2 0 012 2-2 2 0 012 2l4 4m6 6v12a2 2 0 012 2 2 2 0012 2-4 4m6 6v12a2 2 0 012 2 2 2 0012 2-4 4m6 6v12a2 2 0 012 2 2 2 0012 2" />
           </svg>
           <span class="text-xs mt-1">個人</span>
         </NuxtLink>
@@ -48,8 +48,4 @@
 const showHeader = ref(true)
 const showNav = ref(true)
 const notificationUI = useNotification()
-
-definePageMeta({
-  middleware: ['auth-teacher'],
-})
 </script>

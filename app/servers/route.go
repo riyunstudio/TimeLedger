@@ -53,6 +53,8 @@ func (s *Server) LoadRoutes() {
 		// Teacher - Profile
 		{http.MethodGet, "/api/v1/teacher/me/profile", s.action.teacher.GetProfile, []gin.HandlerFunc{authMiddleware.Authenticate()}},
 		{http.MethodPut, "/api/v1/teacher/me/profile", s.action.teacher.UpdateProfile, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+		// Hashtags
+		{http.MethodGet, "/api/v1/hashtags/search", s.action.teacher.SearchHashtags, []gin.HandlerFunc{authMiddleware.Authenticate()}},
 		{http.MethodGet, "/api/v1/teacher/me/centers", s.action.teacher.GetCenters, []gin.HandlerFunc{authMiddleware.Authenticate()}},
 		{http.MethodGet, "/api/v1/teacher/me/skills", s.action.teacher.GetSkills, []gin.HandlerFunc{authMiddleware.Authenticate()}},
 		{http.MethodPost, "/api/v1/teacher/me/skills", s.action.teacher.CreateSkill, []gin.HandlerFunc{authMiddleware.Authenticate()}},

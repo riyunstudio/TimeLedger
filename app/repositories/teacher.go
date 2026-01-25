@@ -4,6 +4,7 @@ import (
 	"context"
 	"timeLedger/app"
 	"timeLedger/app/models"
+	"timeLedger/app/resources"
 )
 
 type TeacherRepository struct {
@@ -82,14 +83,14 @@ func (rp *TeacherRepository) GetCenterID(ctx context.Context, teacherID uint) (u
 	return membership.CenterID, nil
 }
 
-func (rp *TeacherRepository) ListPersonalHashtags(ctx context.Context, teacherID uint) ([]models.Hashtag, error) {
-	var hashtags []models.Hashtag
+func (rp *TeacherRepository) ListPersonalHashtags(ctx context.Context, teacherID uint) ([]resources.PersonalHashtag, error) {
+	var hashtags []resources.PersonalHashtag
 	err := rp.app.MySQL.RDB.WithContext(ctx).
 		Table("teacher_personal_hashtags").
-		Select("hashtags.*").
+		Select("teacher_personal_hashtags.id, teacher_personal_hashtags.hashtag_id, hashtags.name").
 		Joins("INNER JOIN hashtags ON teacher_personal_hashtags.hashtag_id = hashtags.id").
 		Where("teacher_personal_hashtags.teacher_id = ?", teacherID).
-		Order("teacher_personal_hashtags.sort_order ASC").
+		Order("teacher_personal_hashtags.id ASC").
 		Find(&hashtags).Error
 	return hashtags, err
 }

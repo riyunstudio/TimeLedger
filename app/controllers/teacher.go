@@ -82,6 +82,17 @@ func (ctl *TeacherController) GetProfile(ctx *gin.Context) {
 		return
 	}
 
+	// 取得個人標籤
+	personalHashtags, _ := ctl.teacherRepository.ListPersonalHashtags(ctx, teacherID)
+	var hashtagResources []resources.PersonalHashtag
+	for _, h := range personalHashtags {
+		hashtagResources = append(hashtagResources, resources.PersonalHashtag{
+			ID:        h.ID,
+			HashtagID: h.HashtagID,
+			Name:      h.Name,
+		})
+	}
+
 	response := resources.TeacherProfileResource{
 		ID:                teacher.ID,
 		LineUserID:        teacher.LineUserID,
@@ -92,12 +103,67 @@ func (ctl *TeacherController) GetProfile(ctx *gin.Context) {
 		District:          teacher.District,
 		PublicContactInfo: teacher.PublicContactInfo,
 		IsOpenToHiring:    teacher.IsOpenToHiring,
+		PersonalHashtags:  hashtagResources,
 	}
 
 	ctx.JSON(http.StatusOK, global.ApiResponse{
 		Code:    0,
 		Message: "Success",
 		Datas:   response,
+	})
+}
+
+// SearchHashtags 搜尋標籤
+// @Summary 搜尋標籤
+// @Tags Hashtag
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param q query string true "搜尋關鍵字"
+// @Success 200 {object} global.ApiResponse{data=[]resources.HashtagResource}
+// @Router /api/v1/hashtags/search [get]
+func (ctl *TeacherController) SearchHashtags(ctx *gin.Context) {
+	query := ctx.Query("q")
+	if query == "" {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Query parameter 'q' is required",
+		})
+		return
+	}
+
+	// 移除 # 符號
+	query = strings.TrimPrefix(query, "#")
+
+	hashtagRepo := repositories.NewHashtagRepository(ctl.app)
+	hashtags, err := hashtagRepo.Search(ctx, query)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
+			Code:    500,
+			Message: "Failed to search hashtags",
+		})
+		return
+	}
+
+	// 如果沒有找到，返回空陣列而不是錯誤
+	if hashtags == nil {
+		hashtags = []models.Hashtag{}
+	}
+
+	// 轉換為 Resource
+	var hashtagResources []resources.HashtagResource
+	for _, h := range hashtags {
+		hashtagResources = append(hashtagResources, resources.HashtagResource{
+			ID:         h.ID,
+			Name:       h.Name,
+			UsageCount: h.UsageCount,
+		})
+	}
+
+	ctx.JSON(http.StatusOK, global.ApiResponse{
+		Code:    0,
+		Message: "Success",
+		Datas:   hashtagResources,
 	})
 }
 
@@ -153,6 +219,39 @@ func (ctl *TeacherController) UpdateProfile(ctx *gin.Context) {
 
 	teacher.IsOpenToHiring = req.IsOpenToHiring
 
+	// 更新個人標籤
+	if len(req.PersonalHashtags) > 0 {
+		// 刪除現有標籤
+		ctl.app.MySQL.WDB.WithContext(ctx).Where("teacher_id = ?", teacherID).Delete(&models.TeacherPersonalHashtag{})
+
+		// 新增新標籤
+		hashtagRepo := repositories.NewHashtagRepository(ctl.app)
+		for _, tagName := range req.PersonalHashtags {
+			// 確保 # 符號存在
+			if !strings.HasPrefix(tagName, "#") {
+				tagName = "#" + tagName
+			}
+
+			// 查找或創建標籤
+			hashtag, err := hashtagRepo.GetByName(ctx, tagName)
+			if err != nil {
+				// 創建新標籤
+				hashtag = &models.Hashtag{Name: tagName, UsageCount: 1}
+				hashtagRepo.Create(ctx, hashtag)
+			} else {
+				// 更新使用次數
+				hashtagRepo.IncrementUsage(ctx, tagName)
+			}
+
+			// 創建關聯
+			ctl.app.MySQL.WDB.WithContext(ctx).Create(&models.TeacherPersonalHashtag{
+				TeacherID:  teacherID,
+				HashtagID:  hashtag.ID,
+				SortOrder:  0,
+			})
+		}
+	}
+
 	if err := ctl.teacherRepository.Update(ctx, teacher); err != nil {
 		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
 			Code:    500,
@@ -204,11 +303,12 @@ func (ctl *TeacherController) UpdateProfile(ctx *gin.Context) {
 }
 
 type UpdateTeacherProfileRequest struct {
-	Bio               string `json:"bio"`
-	City              string `json:"city"`
-	District          string `json:"district"`
-	PublicContactInfo string `json:"public_contact_info"`
-	IsOpenToHiring    bool   `json:"is_open_to_hiring"`
+	Bio                 string `json:"bio"`
+	City                string `json:"city"`
+	District            string `json:"district"`
+	PublicContactInfo   string `json:"public_contact_info"`
+	IsOpenToHiring      bool   `json:"is_open_to_hiring"`
+	PersonalHashtags    []string `json:"personal_hashtags"`
 }
 
 // GetCenters 取得老師已加入的中心列表
@@ -1265,7 +1365,7 @@ func (ctl *TeacherController) DeletePersonalEvent(ctx *gin.Context) {
 type CreateSkillRequest struct {
 	Category  string `json:"category" binding:"required"`
 	SkillName string `json:"skill_name" binding:"required"`
-	Level     string `json:"level" binding:"required,oneof=Beginner Intermediate Advanced Expert"`
+	Level     string `json:"level"`
 }
 
 type CreateCertificateRequest struct {

@@ -33,7 +33,18 @@ func (r *HashtagRepository) Create(ctx context.Context, hashtag *models.Hashtag)
 
 func (r *HashtagRepository) List(ctx context.Context) ([]models.Hashtag, error) {
 	var hashtags []models.Hashtag
-	err := r.app.MySQL.RDB.WithContext(ctx).Find(&hashtags).Error
+	err := r.app.MySQL.RDB.WithContext(ctx).Order("usage_count DESC").Find(&hashtags).Error
+	return hashtags, err
+}
+
+func (r *HashtagRepository) Search(ctx context.Context, query string) ([]models.Hashtag, error) {
+	var hashtags []models.Hashtag
+	searchQuery := "%" + query + "%"
+	err := r.app.MySQL.RDB.WithContext(ctx).
+		Where("name LIKE ?", searchQuery).
+		Order("usage_count DESC").
+		Limit(10).
+		Find(&hashtags).Error
 	return hashtags, err
 }
 
