@@ -8,7 +8,7 @@ import (
 
 type TeacherCertificate struct {
 	ID         uint           `gorm:"primaryKey" json:"id"`
-	TeacherID  uint           `gorm:"type:bigint;not null;index" json:"teacher_id"`
+	TeacherID  uint           `gorm:"type:bigint unsigned;not null;index" json:"teacher_id"`
 	Name       string         `gorm:"type:varchar(255);not null" json:"name"`
 	FileURL    string         `gorm:"type:varchar(512);not null" json:"file_url"`
 	IssuedAt   time.Time      `gorm:"type:date;not null" json:"issued_at"`

@@ -1,0 +1,13 @@
+fix: 修正 MySQL 外鍵相容性問題並清理 mock 登入功能
+
+主要變更：
+- 修正所有 models 的 foreign key 欄位為 `bigint unsigned`，解決外鍵約束不相容問題
+- 移除首頁 mock 教師登入按鈕及相關程式碼
+- 更新 Dockerfile swag 版本為 v1.8.12 解決編譯錯誤
+- 簡化 docker-compose 配置，預設僅啟動 MySQL、Redis、phpMyAdmin
+- 修正 route.go 中重複的證照上傳路由
+- teacher store 移除 mock 模式
+- 新增教師登入頁 URL 參數支援預填登入資訊
+- database/conn.go 支援單資料庫模式
+
+Ref: PDR §30 開發鐵律

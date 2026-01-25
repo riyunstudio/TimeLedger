@@ -40,17 +40,24 @@ func Initialize(env *configs.Env) *DB {
 			env.AppDebug,
 		)
 
-		// 從DB
-		readDB = connectDB(
-			env.MysqlSlaveHost,
-			env.MysqlSlavePort,
-			env.MysqlSlaveUser,
-			env.MysqlSlavePass,
-			env.MysqlSlaveName,
-			env.AppDebug,
-		)
-
-		log.Println("MySQL Master/Slave connected")
+		// 從DB - 如果Slave設定與Master相同或為空，則使用同一個連線
+		slaveHost := env.MysqlSlaveHost
+		if slaveHost == "" || slaveHost == env.MysqlMasterHost {
+			// 單資料庫模式：從DB與主DB使用同一個連線
+			readDB = writeDB
+			log.Println("MySQL: Single database mode (WDB = RDB)")
+		} else {
+			// 主從模式：使用不同的從DB連線
+			readDB = connectDB(
+				env.MysqlSlaveHost,
+				env.MysqlSlavePort,
+				env.MysqlSlaveUser,
+				env.MysqlSlavePass,
+				env.MysqlSlaveName,
+				env.AppDebug,
+			)
+			log.Println("MySQL Master/Slave connected")
+		}
 	})
 
 	return &DB{

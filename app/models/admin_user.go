@@ -8,7 +8,7 @@ import (
 
 type AdminUser struct {
 	ID           uint           `gorm:"primaryKey" json:"id"`
-	CenterID     uint           `gorm:"type:bigint;not null;index" json:"center_id"`
+	CenterID     uint           `gorm:"type:bigint unsigned;not null;index" json:"center_id"`
 	Email        string         `gorm:"type:varchar(255);not null" json:"email"`
 	PasswordHash string         `gorm:"type:varchar(255);not null" json:"-"`
 	Name         string         `gorm:"type:varchar(255);not null" json:"name"`

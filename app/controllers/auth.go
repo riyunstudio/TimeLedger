@@ -69,10 +69,24 @@ type AdminLoginRequest struct {
 // @Router /api/v1/auth/teacher/line/login [post]
 func (ctl *AuthController) TeacherLineLogin(ctx *gin.Context) {
 	var req TeacherLineLoginRequest
+	println("[DEBUG] TeacherLineLogin called")
+	
 	if err := ctx.ShouldBindJSON(&req); err != nil {
+		println("[DEBUG] BindJSON error:", err.Error())
 		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
 			Code:    global.BAD_REQUEST,
-			Message: "Invalid request body",
+			Message: "Invalid request body: " + err.Error(),
+		})
+		return
+	}
+
+	println("[DEBUG] Parsed req.LineUserID:", req.LineUserID)
+	println("[DEBUG] Parsed req.AccessToken:", req.AccessToken)
+
+	if req.LineUserID == "" || req.AccessToken == "" {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Invalid request body: line_user_id or access_token is empty",
 		})
 		return
 	}
@@ -94,8 +108,8 @@ func (ctl *AuthController) TeacherLineLogin(ctx *gin.Context) {
 }
 
 type TeacherLineLoginRequest struct {
-	LineUserID  string `json:"line_user_id" binding:"required"`
-	AccessToken string `json:"access_token" binding:"required"`
+	LineUserID  string `json:"line_user_id"`
+	AccessToken string `json:"access_token"`
 }
 
 // RefreshToken 刷新 Token

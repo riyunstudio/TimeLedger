@@ -8,9 +8,9 @@ import (
 
 type Notification struct {
 	ID        uint           `gorm:"primaryKey" json:"id"`
-	UserID    uint           `gorm:"type:bigint;not null;index" json:"user_id"`
+	UserID    uint           `gorm:"type:bigint unsigned;not null;index" json:"user_id"`
 	UserType  string         `gorm:"type:varchar(20);not null" json:"user_type"`
-	CenterID  uint           `gorm:"type:bigint;index" json:"center_id"`
+	CenterID  uint           `gorm:"type:bigint unsigned;index" json:"center_id"`
 	Title     string         `gorm:"type:varchar(255);not null" json:"title"`
 	Message   string         `gorm:"type:text;not null" json:"message"`
 	Type      string         `gorm:"type:varchar(20);not null" json:"type"`

@@ -11,8 +11,8 @@ func (Hashtag) TableName() string {
 }
 
 type TeacherSkillHashtag struct {
-	TeacherSkillID uint    `gorm:"type:bigint;not null;index" json:"teacher_skill_id"`
-	HashtagID      uint    `gorm:"type:bigint;not null;index" json:"hashtag_id"`
+	TeacherSkillID uint    `gorm:"type:bigint unsigned;not null;index" json:"teacher_skill_id"`
+	HashtagID      uint    `gorm:"type:bigint unsigned;not null;index" json:"hashtag_id"`
 	Hashtag        Hashtag `gorm:"foreignKey:HashtagID" json:"hashtag,omitempty"`
 }
 

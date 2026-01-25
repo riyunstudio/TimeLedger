@@ -11,10 +11,10 @@ import (
 
 type ScheduleRule struct {
 	ID             uint           `gorm:"primaryKey" json:"id"`
-	CenterID       uint           `gorm:"not null;index:idx_center_weekday_time" json:"center_id"`
-	OfferingID     uint           `gorm:"not null;index" json:"offering_id"`
-	TeacherID      *uint          `gorm:"index:idx_teacher_time" json:"teacher_id"`
-	RoomID         uint           `gorm:"not null;index:idx_room_time" json:"room_id"`
+	CenterID       uint           `gorm:"type:bigint unsigned;not null;index:idx_center_weekday_time" json:"center_id"`
+	OfferingID     uint           `gorm:"type:bigint unsigned;not null;index" json:"offering_id"`
+	TeacherID      *uint          `gorm:"type:bigint unsigned;index:idx_teacher_time" json:"teacher_id"`
+	RoomID         uint           `gorm:"type:bigint unsigned;not null;index:idx_room_time" json:"room_id"`
 	Name           string         `gorm:"type:varchar(100)" json:"name"`
 	Weekday        int            `gorm:"type:tinyint;not null;index:idx_center_weekday_time" json:"weekday"`
 	StartTime      string         `gorm:"type:varchar(10);not null;index:idx_center_weekday_time" json:"start_time"`

@@ -25,28 +25,21 @@ services:
     networks:
       - timeledger-network
 
-  mysql-test:
-    image: mysql:8.0
-    container_name: timeledger-mysql-test
-    restart: unless-stopped
-    environment:
-      MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_DATABASE: timeledger_test
-      TZ: Asia/Taipei
-    ports:
-      - "3307:3306"
-    volumes:
-      - mysql_test_data:/var/lib/mysql
-    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpassword"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - timeledger-network
-    profiles:
-      - testing
+  # mysql-test:
+  #   image: mysql:8.0
+  #   container_name: timeledger-mysql-test
+  #   restart: unless-stopped
+  #   environment:
+  #     MYSQL_ROOT_PASSWORD: rootpassword
+  #     MYSQL_DATABASE: timeledger_test
+  #     TZ: Asia/Taipei
+  #   ports:
+  #     - "3307:3306"
+  #   volumes:
+  #     - mysql_test_data:/var/lib/mysql
+  #   command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+  #   networks:
+  #     - timeledger-network
 
   redis:
     image: redis:7-alpine
@@ -65,24 +58,17 @@ services:
     networks:
       - timeledger-network
 
-  redis-test:
-    image: redis:7-alpine
-    container_name: timeledger-redis-test
-    restart: unless-stopped
-    command: redis-server --appendonly yes --requirepass testredis123
-    ports:
-      - "6380:6379"
-    volumes:
-      - redis_test_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - timeledger-network
-    profiles:
-      - testing
+  # redis-test:
+  #   image: redis:7-alpine
+  #   container_name: timeledger-redis-test
+  #   restart: unless-stopped
+  #   command: redis-server --appendonly yes --requirepass testredis123
+  #   ports:
+  #     - "6380:6379"
+  #   volumes:
+  #     - redis_test_data:/data
+  #   networks:
+  #     - timeledger-network
 
   app:
     build:
@@ -133,6 +119,8 @@ services:
       retries: 3
     networks:
       - timeledger-network
+    profiles:
+      - backend
 
   app-local:
     image: golang:1.25-alpine
@@ -191,14 +179,12 @@ services:
     environment:
       PMA_HOST: mysql
       PMA_PORT: 3306
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-timeledger_root_2026}
+      MYSQL_ROOT_PASSWORD: timeledger_root_2026
       TZ: Asia/Taipei
     ports:
       - "8080:80"
     networks:
       - timeledger-network
-    profiles:
-      - local-dev
 
   rabbitmq:
     image: rabbitmq:3-management-alpine
@@ -219,6 +205,8 @@ services:
       retries: 5
     networks:
       - timeledger-network
+    profiles:
+      - backend
 
   nginx:
     image: nginx:alpine
@@ -236,6 +224,8 @@ services:
       - nginx_logs:/var/log/nginx
     networks:
       - timeledger-network
+    profiles:
+      - backend
 
 volumes:
   mysql_data:

@@ -70,20 +70,6 @@
             </NuxtLink>
           </div>
 
-          <!-- Mock Login Buttons -->
-          <div class="flex flex-col gap-3 justify-center items-center mt-4">
-            <button
-              @click="handleMockTeacherLogin"
-              :disabled="loading"
-              class="w-full sm:w-auto glass-btn flex items-center justify-center gap-2 px-6 py-2 text-sm hover:bg-white/10 transition-all"
-            >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-              </svg>
-              Mock 教師登入 (無需後端)
-            </button>
-          </div>
-
           <!-- Admin Entry Link -->
           <p class="mt-4">
             <NuxtLink to="/admin/login" class="text-sm text-slate-400 underline-offset-2 hover:text-primary-500 transition-colors">
@@ -499,40 +485,16 @@ const handleLineLogin = async () => {
   loading.value = true
 
   try {
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    router.push('/teacher/dashboard')
+    // 跳轉到教師登入頁面，帶上預設測試老師的 LINE User ID 和 Access Token
+    const demoLineUserId = 'U1234567890abcdef1234567890abcd'
+    const demoAccessToken = 'test_access_token_demo001'
+    router.push(`/teacher/login?line_user_id=${demoLineUserId}&access_token=${demoAccessToken}`)
   } catch (err) {
     console.error('Login failed:', err)
     error.value = '登入失敗，請稍後再試'
   } finally {
     loading.value = false
   }
-}
-
-const handleMockTeacherLogin = () => {
-  loading.value = true
-
-  setTimeout(() => {
-    authStore.login({
-      user: {
-        id: 1,
-        name: 'Mock Teacher',
-        email: 'teacher@example.com',
-        role: 'teacher',
-      },
-      token: 'mock-token-' + Date.now(),
-    })
-
-    const teacherStore = useTeacherStore()
-    teacherStore.loadMockCenters()
-    teacherStore.loadMockSchedule()
-
-    const notificationStore = useNotificationStore()
-    notificationStore.loadMockNotifications()
-
-    router.push('/teacher/dashboard')
-    loading.value = false
-  }, 500)
 }
 
 const schedules = ref<Record<string, any>>({

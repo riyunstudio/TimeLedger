@@ -11,12 +11,12 @@ import (
 
 type AuditLog struct {
 	ID         uint           `gorm:"primaryKey" json:"id"`
-	CenterID   uint           `gorm:"type:bigint;not null;index" json:"center_id"`
+	CenterID   uint           `gorm:"type:bigint unsigned;not null;index" json:"center_id"`
 	ActorType  string         `gorm:"type:varchar(20);not null" json:"actor_type"`
-	ActorID    uint           `gorm:"type:bigint;not null" json:"actor_id"`
+	ActorID    uint           `gorm:"type:bigint unsigned;not null" json:"actor_id"`
 	Action     string         `gorm:"type:varchar(255);not null" json:"action"`
 	TargetType string         `gorm:"type:varchar(255);not null" json:"target_type"`
-	TargetID   uint           `gorm:"type:bigint;not null" json:"target_id"`
+	TargetID   uint           `gorm:"type:bigint unsigned;not null" json:"target_id"`
 	Payload    AuditPayload   `gorm:"type:json" json:"payload"`
 	Timestamp  time.Time      `gorm:"type:datetime;not null" json:"timestamp"`
 	DeletedAt  gorm.DeletedAt `gorm:"index" json:"-"`

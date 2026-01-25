@@ -21,12 +21,6 @@ export const useTeacherStore = defineStore('teacher', () => {
   const currentCenter = ref<Center | null>(null)
   const schedule = ref<WeekSchedule | null>(null)
   const exceptions = ref<ScheduleException[]>([])
-  const isMock = ref(false)
-
-  const checkMockMode = () => {
-    if (typeof window === 'undefined') return false
-    return localStorage.getItem('timeledger_mock_mode') === 'true'
-  }
 
   const getWeekStart = (date: Date): Date => {
     const d = new Date(date)
@@ -51,102 +45,14 @@ export const useTeacherStore = defineStore('teacher', () => {
     return `${start} - ${end}`
   })
 
-  const loadMockCenters = () => {
-    centers.value = [
-      {
-        id: 1,
-        center_id: 1,
-        teacher_id: 1,
-        center: {
-          id: 1,
-          name: '音樂教室',
-          plan_level: 'PRO' as const,
-          settings: { allow_public_register: true, default_language: 'zh-TW' },
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
-        status: 'ACTIVE' as const,
-      },
-      {
-        id: 2,
-        center_id: 2,
-        teacher_id: 1,
-        center: {
-          id: 2,
-          name: '藝術中心',
-          plan_level: 'GROWTH' as const,
-          settings: { allow_public_register: true, default_language: 'zh-TW' },
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
-        status: 'INVITED' as const,
-      },
-    ]
-    currentCenter.value = centers.value[0].center || null
-    isMock.value = true
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('timeledger_mock_mode', 'true')
-    }
-  }
-
-  const loadMockSchedule = () => {
-    const today = new Date()
-    const weekStartDate = getWeekStart(today)
-    
-    const mockDays = [
-      {
-        date: getOffsetDate(weekStartDate, 0),
-        items: [
-          { id: 1, type: 'SCHEDULE_RULE' as const, title: '鋼琴基礎', start_time: '10:00', end_time: '11:00', status: 'APPROVED' as const, color: '#10B981', center_name: '音樂教室', data: { id: 1, center_id: 1, offering_id: 1, teacher_id: 1, room_id: 1, weekday: 1, start_time: '10:00', end_time: '11:00', effective_range: { start: '2026-01-01', end: '2026-12-31' }, created_at: '', updated_at: '' } },
-          { id: 2, type: 'SCHEDULE_RULE' as const, title: '鋼琴進階', start_time: '14:00', end_time: '15:00', status: 'APPROVED' as const, color: '#6366F1', center_name: '音樂教室', data: { id: 2, center_id: 1, offering_id: 2, teacher_id: 1, room_id: 1, weekday: 1, start_time: '14:00', end_time: '15:00', effective_range: { start: '2026-01-01', end: '2026-12-31' }, created_at: '', updated_at: '' } },
-        ],
-      },
-      {
-        date: getOffsetDate(weekStartDate, 1),
-        items: [
-          { id: 3, type: 'SCHEDULE_RULE' as const, title: '小提琴入門', start_time: '11:00', end_time: '12:00', status: 'APPROVED' as const, color: '#A855F7', center_name: '藝術中心', data: { id: 3, center_id: 2, offering_id: 3, teacher_id: 2, room_id: 2, weekday: 2, start_time: '11:00', end_time: '12:00', effective_range: { start: '2026-01-01', end: '2026-12-31' }, created_at: '', updated_at: '' } },
-        ],
-      },
-      {
-        date: getOffsetDate(weekStartDate, 2),
-        items: [],
-      },
-      {
-        date: getOffsetDate(weekStartDate, 3),
-        items: [
-          { id: 4, type: 'PERSONAL_EVENT' as const, title: '休息時間', start_time: '12:00', end_time: '13:00', status: 'APPROVED' as const, color: '#F59E0B', center_name: '', data: { id: 1, teacher_id: 1, title: '休息時間', start_at: '', end_at: '', created_at: '', updated_at: '' } },
-        ],
-      },
-      {
-        date: getOffsetDate(weekStartDate, 4),
-        items: [
-          { id: 5, type: 'SCHEDULE_RULE' as const, title: '樂理課程', start_time: '15:00', end_time: '16:00', status: 'PENDING' as const, color: '#EC4899', center_name: '音樂教室', data: { id: 5, center_id: 1, offering_id: 4, teacher_id: 1, room_id: 1, weekday: 5, start_time: '15:00', end_time: '16:00', effective_range: { start: '2026-01-01', end: '2026-12-31' }, created_at: '', updated_at: '' } },
-        ],
-      },
-      {
-        date: getOffsetDate(weekStartDate, 5),
-        items: [],
-      },
-      {
-        date: getOffsetDate(weekStartDate, 6),
-        items: [
-          { id: 6, type: 'SCHEDULE_RULE' as const, title: '鋼琴基礎', start_time: '09:00', end_time: '10:00', status: 'APPROVED' as const, color: '#10B981', center_name: '音樂教室', data: { id: 6, center_id: 1, offering_id: 1, teacher_id: 1, room_id: 1, weekday: 6, start_time: '09:00', end_time: '10:00', effective_range: { start: '2026-01-01', end: '2026-12-31' }, created_at: '', updated_at: '' } },
-        ],
-      },
-    ]
-    
-    schedule.value = { days: mockDays } as WeekSchedule
-  }
-
-  const getOffsetDate = (date: Date, offset: number): string => {
-    const d = new Date(date)
-    d.setDate(d.getDate() + offset)
-    return d.toISOString().split('T')[0]
+  const changeWeek = (delta: number) => {
+    if (!weekStart.value) return
+    const newStart = new Date(weekStart.value)
+    newStart.setDate(newStart.getDate() + (delta * 7))
+    weekStart.value = getWeekStart(newStart)
   }
 
   const fetchCenters = async () => {
-    if (isMock.value || checkMockMode()) return
-
     try {
       const api = useApi()
       const response = await api.get<{ code: number; message: string; datas: CenterMembership[] }>('/teacher/me/centers')
@@ -159,19 +65,7 @@ export const useTeacherStore = defineStore('teacher', () => {
     }
   }
 
-  const changeWeek = (delta: number) => {
-    if (!weekStart.value) return
-    const newStart = new Date(weekStart.value)
-    newStart.setDate(newStart.getDate() + (delta * 7))
-    weekStart.value = getWeekStart(newStart)
-  }
-
   const fetchSchedule = async () => {
-    if (isMock.value || checkMockMode()) {
-      loadMockSchedule()
-      return
-    }
-
     if (!weekStart.value || !weekEnd.value) return
 
     try {
@@ -187,7 +81,7 @@ export const useTeacherStore = defineStore('teacher', () => {
 
   const transformToWeekSchedule = (items: TeacherScheduleItem[]): WeekSchedule => {
     const daysMap = new Map<string, TeacherScheduleItem[]>()
-    
+
     items.forEach(item => {
       const date = item.date
       if (!daysMap.has(date)) {
@@ -200,7 +94,7 @@ export const useTeacherStore = defineStore('teacher', () => {
     const start = new Date(weekStart.value!)
     const end = new Date(start)
     end.setDate(end.getDate() + 6)
-    
+
     for (let i = 0; i < 7; i++) {
       const d = new Date(start)
       d.setDate(d.getDate() + i)
@@ -213,36 +107,18 @@ export const useTeacherStore = defineStore('teacher', () => {
       })
     }
 
-    return { 
+    return {
       week_start: start.toISOString().split('T')[0],
       week_end: end.toISOString().split('T')[0],
-      days 
+      days
     } as WeekSchedule
   }
 
   const fetchExceptions = async (status?: string) => {
-    if (isMock.value || checkMockMode()) {
-      exceptions.value = [
-        {
-          id: 1,
-          center_id: 1,
-          rule_id: 1,
-          teacher_id: 1,
-          original_date: '2026-01-25',
-          type: 'CANCEL',
-          status: 'PENDING',
-          reason: '身體不適',
-          created_at: '2026-01-20T10:00:00Z',
-          updated_at: '2026-01-20T10:00:00Z',
-        },
-      ]
-      return
-    }
-
     try {
       const api = useApi()
-      const endpoint = status 
-        ? `/teacher/exceptions?status=${status}` 
+      const endpoint = status
+        ? `/teacher/exceptions?status=${status}`
         : '/teacher/exceptions'
       const response = await api.get<{ code: number; message: string; datas: ScheduleException[] }>(endpoint)
       exceptions.value = response.datas || []
@@ -276,20 +152,6 @@ export const useTeacherStore = defineStore('teacher', () => {
   const sessionNote = ref<SessionNote | null>(null)
 
   const fetchSessionNote = async (ruleId: number, sessionDate: string) => {
-    if (isMock.value || checkMockMode()) {
-      sessionNote.value = {
-        id: 1,
-        center_id: 0,
-        rule_id: ruleId,
-        session_date: sessionDate,
-        content: '上次教到第3頁',
-        prep_note: '記得帶講義',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }
-      return sessionNote.value
-    }
-
     try {
       const api = useApi()
       const response = await api.get<{ code: number; message: string; datas: { note: SessionNote; is_new: boolean } }>(
@@ -327,22 +189,6 @@ export const useTeacherStore = defineStore('teacher', () => {
   const personalEvents = ref<PersonalEvent[]>([])
 
   const fetchPersonalEvents = async () => {
-    if (isMock.value || checkMockMode()) {
-      personalEvents.value = [
-        {
-          id: 1,
-          teacher_id: 1,
-          title: '休息時間',
-          start_at: '2026-01-23T12:00:00Z',
-          end_at: '2026-01-23T13:00:00Z',
-          color: '#F59E0B',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
-      ]
-      return
-    }
-
     if (!weekStart.value || !weekEnd.value) return
 
     try {
@@ -457,14 +303,6 @@ export const useTeacherStore = defineStore('teacher', () => {
   const skills = ref<TeacherSkill[]>([])
 
   const fetchSkills = async () => {
-    if (isMock.value || checkMockMode()) {
-      skills.value = [
-        { id: 1, teacher_id: 1, skill_name: '鋼琴', level: 'Advanced', hashtags: [] },
-        { id: 2, teacher_id: 1, skill_name: '小提琴', level: 'Intermediate', hashtags: [] },
-      ]
-      return
-    }
-
     try {
       const api = useApi()
       const response = await api.get<{ code: number; message: string; datas: TeacherSkill[] }>('/teacher/me/skills')
@@ -490,13 +328,6 @@ export const useTeacherStore = defineStore('teacher', () => {
   const certificates = ref<TeacherCertificate[]>([])
 
   const fetchCertificates = async () => {
-    if (isMock.value || checkMockMode()) {
-      certificates.value = [
-        { id: 1, teacher_id: 1, certificate_name: '鋼琴檢定證書', issued_by: '音樂協會', issued_date: '2023-06-15' },
-      ]
-      return
-    }
-
     try {
       const api = useApi()
       const response = await api.get<{ code: number; message: string; datas: TeacherCertificate[] }>('/teacher/me/certificates')
@@ -526,21 +357,6 @@ export const useTeacherStore = defineStore('teacher', () => {
   const profile = ref<Teacher | null>(null)
 
   const fetchProfile = async () => {
-    if (isMock.value || checkMockMode()) {
-      profile.value = {
-        id: 1,
-        name: '老師1',
-        email: 'teacher1@example.com',
-        line_user_id: 'LINE_USER_001',
-        is_open_to_hiring: true,
-        bio: '資深鋼琴教師',
-        skills: [],
-        certificates: [],
-        personal_hashtags: [],
-      }
-      return
-    }
-
     try {
       const api = useApi()
       const response = await api.get<{ code: number; message: string; datas: Teacher }>('/teacher/me/profile')
@@ -594,11 +410,6 @@ export const useTeacherStore = defineStore('teacher', () => {
     new_end_time: string
     update_mode?: 'SINGLE' | 'FUTURE' | 'ALL'
   }) => {
-    if (isMock.value || checkMockMode()) {
-      await fetchSchedule()
-      return
-    }
-
     const api = useApi()
 
     if (data.item_type === 'PERSONAL_EVENT') {
@@ -624,7 +435,6 @@ export const useTeacherStore = defineStore('teacher', () => {
     schedule,
     exceptions,
     sessionNote,
-    isMock,
     weekStart,
     weekEnd,
     weekLabel,
@@ -633,8 +443,6 @@ export const useTeacherStore = defineStore('teacher', () => {
     certificates,
     profile,
     notifications,
-    loadMockCenters,
-    loadMockSchedule,
     fetchCenters,
     changeWeek,
     fetchSchedule,

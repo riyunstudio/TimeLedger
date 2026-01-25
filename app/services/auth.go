@@ -70,9 +70,16 @@ func (s *authService) TeacherLineLogin(ctx context.Context, lineUserID, accessTo
 		return LoginResponse{}, errors.New("teacher not found")
 	}
 
+	// 取得老師所屬的中心 ID
+	centerID, err := s.teacherRepository.GetCenterID(ctx, teacher.ID)
+	if err != nil {
+		centerID = 0 // 如果沒有會籍，設為 0
+	}
+
 	claims := jwt.Claims{
 		UserType:   "TEACHER",
 		UserID:     teacher.ID,
+		CenterID:   centerID,
 		LineUserID: teacher.LineUserID,
 	}
 
@@ -89,6 +96,7 @@ func (s *authService) TeacherLineLogin(ctx context.Context, lineUserID, accessTo
 			Name:       teacher.Name,
 			Email:      teacher.Email,
 			LineUserID: teacher.LineUserID,
+			CenterID:   centerID,
 		},
 	}, nil
 }

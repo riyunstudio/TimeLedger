@@ -11,7 +11,7 @@ import (
 
 type PersonalEvent struct {
 	ID             uint           `gorm:"primaryKey" json:"id"`
-	TeacherID      uint           `gorm:"type:bigint;not null;index:idx_teacher_time" json:"teacher_id"`
+	TeacherID      uint           `gorm:"type:bigint unsigned;not null;index:idx_teacher_time" json:"teacher_id"`
 	Title          string         `gorm:"type:varchar(255);not null" json:"title"`
 	StartAt        time.Time      `gorm:"type:datetime;not null;index:idx_teacher_time" json:"start_at"`
 	EndAt          time.Time      `gorm:"type:datetime;not null" json:"end_at"`

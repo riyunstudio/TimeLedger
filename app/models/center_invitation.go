@@ -8,7 +8,7 @@ import (
 
 type CenterInvitation struct {
 	ID        uint           `gorm:"primaryKey" json:"id"`
-	CenterID  uint           `gorm:"type:bigint;not null;index" json:"center_id"`
+	CenterID  uint           `gorm:"type:bigint unsigned;not null;index" json:"center_id"`
 	Email     string         `gorm:"type:varchar(255)" json:"email"`
 	Token     string         `gorm:"type:varchar(255);uniqueIndex;not null" json:"token"`
 	Status    string         `gorm:"type:varchar(20);default:'PENDING';not null" json:"status"`

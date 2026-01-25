@@ -2,7 +2,13 @@
   <div class="min-h-screen bg-gray-900 flex items-center justify-center">
     <div class="bg-gray-800 p-8 rounded-lg shadow-lg w-full max-w-md border border-gray-700">
       <h1 class="text-2xl font-bold mb-6 text-center text-gray-100">老師登入</h1>
-      
+
+      <div class="mb-6 p-4 bg-blue-900/30 border border-blue-800 rounded-lg">
+        <p class="text-sm text-blue-300">
+          請使用 LINE 帳號登入。輸入您的 LINE User ID 和 Access Token。
+        </p>
+      </div>
+
       <form @submit.prevent="handleLogin">
         <div class="mb-4">
           <label class="block text-gray-300 mb-2">LINE User ID</label>
@@ -14,7 +20,7 @@
             required
           />
         </div>
-        
+
         <div class="mb-6">
           <label class="block text-gray-300 mb-2">Access Token</label>
           <input
@@ -25,7 +31,7 @@
             required
           />
         </div>
-        
+
         <button
           type="submit"
           :disabled="loading"
@@ -34,11 +40,11 @@
           {{ loading ? '登入中...' : '登入' }}
         </button>
       </form>
-      
+
       <div v-if="error" class="mt-4 p-3 bg-red-900/50 text-red-300 rounded-lg border border-red-800">
         {{ error }}
       </div>
-      
+
       <div v-if="success" class="mt-4 p-3 bg-green-900/50 text-green-300 rounded-lg border border-green-800">
         登入成功，正在跳轉...
       </div>
@@ -52,15 +58,16 @@
   </div>
 </template>
 
-<script setup>
- definePageMeta({
-   layout: false,
- })
+<script setup lang="ts">
+definePageMeta({
+  layout: false,
+})
 
- const router = useRouter()
+const router = useRouter()
+const route = useRoute()
 
-const lineUserId = ref('LINE_TEACHER_001')
-const accessToken = ref('mock_token')
+const lineUserId = ref(route.query.line_user_id as string || '')
+const accessToken = ref(route.query.access_token as string || '')
 const loading = ref(false)
 const error = ref('')
 const success = ref(false)
@@ -69,7 +76,7 @@ async function handleLogin() {
   loading.value = true
   error.value = ''
   success.value = false
-  
+
   try {
     const response = await $fetch('/api/v1/auth/teacher/line/login', {
       method: 'POST',
@@ -78,26 +85,23 @@ async function handleLogin() {
         access_token: accessToken.value
       }
     })
-    
-    console.log('Login response:', response)
-    
+
     if (response && response.code === 0 && response.datas) {
       const token = response.datas.token
       const user = response.datas.user
-      
+
       localStorage.setItem('teacher_token', token)
       localStorage.setItem('teacher_user', JSON.stringify(user))
-      localStorage.setItem('current_user_type', 'teacher')
-      
+
       success.value = true
-      
+
       setTimeout(() => {
         router.push('/teacher/dashboard')
       }, 1000)
     } else {
       error.value = response?.message || '登入失敗'
     }
-  } catch (err) {
+  } catch (err: any) {
     console.error('Login error:', err)
     error.value = err.data?.message || err.message || '登入失敗，請稍後再試'
   } finally {

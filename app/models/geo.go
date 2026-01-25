@@ -12,7 +12,7 @@ func (GeoCity) TableName() string {
 
 type GeoDistrict struct {
 	ID     uint   `gorm:"primaryKey" json:"id"`
-	CityID uint   `gorm:"type:bigint;not null;index" json:"city_id"`
+	CityID uint   `gorm:"type:bigint unsigned;not null;index" json:"city_id"`
 	Name   string `gorm:"type:varchar(100);not null" json:"name"`
 }
 

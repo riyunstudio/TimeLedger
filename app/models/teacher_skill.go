@@ -8,7 +8,7 @@ import (
 
 type TeacherSkill struct {
 	ID        uint           `gorm:"primaryKey" json:"id"`
-	TeacherID uint           `gorm:"type:bigint;not null;index" json:"teacher_id"`
+	TeacherID uint           `gorm:"type:bigint unsigned;not null;index" json:"teacher_id"`
 	Category  string         `gorm:"type:varchar(100);not null" json:"category"`
 	SkillName string         `gorm:"type:varchar(255);not null" json:"skill_name"`
 	Level     string         `gorm:"type:varchar(20);not null" json:"level"`

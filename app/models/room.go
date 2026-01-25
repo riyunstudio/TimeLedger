@@ -8,7 +8,7 @@ import (
 
 type Room struct {
 	ID        uint           `gorm:"primaryKey" json:"id"`
-	CenterID  uint           `gorm:"type:bigint;not null;index" json:"center_id"`
+	CenterID  uint           `gorm:"type:bigint unsigned;not null;index" json:"center_id"`
 	Name      string         `gorm:"type:varchar(255);not null" json:"name"`
 	Capacity  int            `gorm:"type:int;not null;default:1" json:"capacity"`
 	IsActive  bool           `gorm:"type:boolean;default:true;not null" json:"is_active"`

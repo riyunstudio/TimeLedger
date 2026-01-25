@@ -8,7 +8,7 @@ RUN apk add --no-cache git build-base
 COPY go.mod go.sum ./
 COPY vendor/ ./vendor/
 
-RUN go install github.com/swaggo/swag/cmd/swag@v1.16.4
+RUN go install github.com/swaggo/swag/cmd/swag@v1.8.12
 
 COPY . .
 
