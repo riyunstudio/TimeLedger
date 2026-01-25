@@ -1187,7 +1187,7 @@ func (ctl *TeacherController) DeletePersonalEvent(ctx *gin.Context) {
 type CreateSkillRequest struct {
 	Category  string `json:"category" binding:"required"`
 	SkillName string `json:"skill_name" binding:"required"`
-	Level     string `json:"level" binding:"required,oneof=BASIC INTERMEDIATE ADVANCED"`
+	Level     string `json:"level" binding:"required,oneof=Beginner Intermediate Advanced Expert"`
 }
 
 type CreateCertificateRequest struct {

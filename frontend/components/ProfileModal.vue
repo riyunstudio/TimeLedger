@@ -12,7 +12,7 @@
         </button>
       </div>
 
-      <div class="p-4 space-y-4">
+      <form @submit.prevent="handleSubmit" class="p-4 space-y-4">
         <div class="text-center pt-2">
           <div
             class="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gradient-to-br from-primary-500 to-secondary-500 flex items-center justify-center mx-auto mb-3"
@@ -92,7 +92,7 @@
             {{ loading ? '儲存中...' : '儲存' }}
           </button>
         </div>
-      </div>
+      </form>
     </div>
   </div>
 </template>
@@ -161,7 +161,7 @@ const handleSubmit = async () => {
     await api.put('/teacher/me/profile', form.value)
 
     authStore.user = { ...authStore.user, ...form.value } as any
-    localStorage.setItem('user', JSON.stringify(authStore.user))
+    localStorage.setItem('teacher_user', JSON.stringify(authStore.user))
 
     emit('close')
   } catch (error) {
