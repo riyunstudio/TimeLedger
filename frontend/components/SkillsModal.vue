@@ -57,7 +57,10 @@
                   <div>
                     <h5 class="font-medium text-slate-100 text-sm sm:text-base">{{ skill.skill_name }}</h5>
                     <p v-if="skill.hashtags && skill.hashtags.length > 0" class="text-xs text-slate-500 mt-1">
-                      {{ skill.hashtags.map((h: any) => '#' + (h.hashtag?.name || '')).join(' ') }}
+                      {{ skill.hashtags.map((h: any) => {
+                        const name = h.hashtag?.name || h.name || ''
+                        return name.startsWith('#') ? name : '#' + name
+                      }).join(' ') }}
                     </p>
                   </div>
                 </div>

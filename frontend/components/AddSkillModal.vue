@@ -57,7 +57,7 @@
               :key="index"
               class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-primary-500/20 text-primary-400"
             >
-              #{{ tag }}
+              {{ tag.startsWith('#') ? tag : '#' + tag }}
               <button
                 type="button"
                 @click="removeHashtag(index)"
@@ -92,7 +92,7 @@
                 @click="selectHashtagSuggestion(suggestion)"
                 class="w-full px-3 py-2 text-left text-sm text-slate-300 hover:bg-white/5 flex items-center justify-between"
               >
-                <span>#{{ suggestion.name }}</span>
+                <span>{{ suggestion.name.startsWith('#') ? suggestion.name : '#' + suggestion.name }}</span>
                 <span class="text-xs text-slate-500">{{ suggestion.usage_count }} 次使用</span>
               </button>
             </div>
