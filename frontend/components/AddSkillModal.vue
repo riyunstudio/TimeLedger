@@ -79,7 +79,7 @@
               type="text"
               placeholder="輸入標籤後按 Enter..."
               class="input-field text-sm sm:text-base w-full"
-              :disabled="form.hashtags.length >= 3"
+              :disabled="form.hashtags.length >= 5"
             />
             <div
               v-if="hashtagSuggestions.length > 0"
@@ -179,7 +179,7 @@ const addHashtag = () => {
     hashtagSuggestions.value = []
     return
   }
-  if (form.value.hashtags.length < 3) {
+  if (form.value.hashtags.length < 5) {
     form.value.hashtags.push(tag)
   }
 
@@ -221,7 +221,7 @@ const onHashtagInput = () => {
 
 const selectHashtagSuggestion = (suggestion: { id: number; name: string; usage_count: number }) => {
   const tag = suggestion.name
-  if (!form.value.hashtags.includes(tag) && form.value.hashtags.length < 3) {
+  if (!form.value.hashtags.includes(tag) && form.value.hashtags.length < 5) {
     form.value.hashtags.push(tag)
   }
   hashtagInput.value = ''

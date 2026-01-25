@@ -194,9 +194,6 @@
               </button>
             </div>
           </div>
-          <p v-if="form.personal_hashtags.length < 3" class="text-xs text-slate-500 mt-1">
-            還需要輸入 {{ 3 - form.personal_hashtags.length }} 個標籤
-          </p>
         </div>
 
         <div class="flex gap-3 pt-2">
@@ -271,7 +268,6 @@ const form = ref({
 const isFormValid = computed(() => {
   return form.value.name.trim() !== '' &&
     form.value.email.trim() !== '' &&
-    form.value.personal_hashtags.length >= 3 &&
     form.value.personal_hashtags.length <= 5
 })
 
