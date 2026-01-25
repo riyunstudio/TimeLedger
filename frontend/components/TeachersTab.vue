@@ -85,12 +85,14 @@
           >
             查看個人檔案
           </button>
+          <!-- 發送訊息功能暫時隱藏
           <button
             @click="sendMessage(teacher)"
             class="w-full glass-btn px-4 py-2 rounded-xl text-sm"
           >
             發送訊息
           </button>
+          -->
           <button
             @click="removeTeacher(teacher)"
             class="w-full glass-btn px-4 py-2 rounded-xl text-sm text-red-400 hover:bg-red-500/10"
@@ -106,6 +108,12 @@
       @close="showInviteModal = false"
       @invited="fetchTeachers"
     />
+
+    <AdminTeacherProfileModal
+      v-if="selectedTeacher"
+      :teacher="selectedTeacher"
+      @close="selectedTeacher = null"
+    />
   </div>
 </template>
 
@@ -119,6 +127,7 @@ const showInviteModal = ref(false)
 const searchQuery = ref('')
 const showMenu = ref<Record<number, boolean>>({})
 const loading = ref(false)
+const selectedTeacher = ref<any>(null)
 
 const teachers = ref<any[]>([])
 
@@ -151,7 +160,8 @@ onMounted(() => {
 })
 
 const viewProfile = (teacher: any) => {
-  console.log('View profile:', teacher)
+  selectedTeacher.value = teacher
+  showMenu.value[teacher.id] = false
 }
 
 const sendMessage = (teacher: any) => {

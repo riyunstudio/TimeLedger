@@ -464,10 +464,53 @@ TeacherBuffer = max(
 ├── frontend/               # Nuxt 3 前端應用 (User + Admin)
 │   ├── pages/
 │   ├── components/
+│   │   ├── AdminTeacherProfileModal.vue  # 管理員查看老師檔案 Modal
+│   │   ├── GlobalAlert.vue               # 全局 Alert 組件
+│   │   └── ...
 │   └── nuxt.config.ts
 ├── pdr/                    # 規劃文件 (Reference Only)
 ├── main.go                 # Backend Entry Point
 └── docker-compose.yml      # 本地開發環境
+```
+
+### AdminTeacherProfileModal 組件
+
+管理員查看老師個人檔案的彈窗組件。
+
+**功能特色：**
+- 顯示老師頭像、姓名、狀態
+- 聯繫資訊（Email、電話、縣市區域）
+- 技能標籤（包含程度）
+- 證照數量統計
+- 玻璃擬態 UI 設計
+
+**Props：**
+| 屬性 | 類型 | 說明 |
+|:---|:---|:---|
+| `teacher` | `TeacherProfile \| null` | 老師資料物件 |
+
+**使用方式：**
+```vue
+<AdminTeacherProfileModal
+  v-if="selectedTeacher"
+  :teacher="selectedTeacher"
+  @close="selectedTeacher = null"
+/>
+```
+
+**TeacherProfile 結構：**
+```typescript
+interface TeacherProfile {
+  id: number
+  name: string
+  email: string
+  phone?: string
+  city?: string
+  district?: string
+  is_active: boolean
+  skills?: TeacherSkill[]
+  certificates?: any[]
+}
 ```
 
 ---
