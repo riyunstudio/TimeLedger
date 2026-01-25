@@ -1,17 +1,37 @@
 <template>
   <div class="space-y-4">
+    <!-- 標題區域 -->
     <div class="flex items-center justify-between">
-      <h2 class="text-xl font-semibold text-slate-100">課程列表</h2>
-      <button
-        @click="showCreateModal = true"
-        class="btn-primary px-4 py-2 text-sm font-medium"
-      >
-        + 新增課程
-      </button>
+      <div class="flex items-center gap-3">
+        <h2 class="text-xl font-semibold text-slate-100">課程列表</h2>
+        <span class="text-sm text-slate-500">({{ courses.length }})</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <button
+          @click="fetchCourses"
+          class="p-2 rounded-lg hover:bg-white/10 transition-colors"
+          title="重新整理"
+        >
+          <svg class="w-5 h-5 text-slate-400" :class="{ 'animate-spin': loading }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+        </button>
+        <button
+          @click="showCreateModal = true"
+          class="btn-primary px-4 py-2 text-sm font-medium"
+        >
+          + 新增課程
+        </button>
+      </div>
     </div>
 
-    <div v-if="courses.length === 0" class="text-center py-12 text-slate-500 glass-card">
-      尚未添加課程
+    <!-- 空狀態 -->
+    <div v-else-if="courses.length === 0" class="text-center py-12 text-slate-500 glass-card">
+      <svg class="w-16 h-16 mx-auto text-slate-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+      </svg>
+      <p class="text-lg mb-2">尚未添加課程</p>
+      <p class="text-sm text-slate-500">點擊上方按鈕新增第一個課程</p>
     </div>
 
     <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -83,14 +103,13 @@
 </template>
 
 <script setup lang="ts">
+import { alertError, confirm: alertConfirm, success: alertSuccess } from '~/composables/useAlert'
+
 const showCreateModal = ref(false)
 const showEditModal = ref(false)
 const editingCourse = ref<any>(null)
 const loading = ref(false)
 const { getCenterId } = useCenterId()
-
-// Alert composable
-const { error: alertError, confirm: alertConfirm } = useAlert()
 
 const courses = ref<any[]>([])
 
@@ -98,12 +117,13 @@ const fetchCourses = async () => {
   loading.value = true
   try {
     const api = useApi()
-    const centerId = getCenterId()
     const response = await api.get<{ code: number; datas: any[] }>(`/admin/courses`)
     courses.value = response.datas || []
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to fetch courses:', error)
     courses.value = []
+    const errorMessage = error?.response?.data?.message || error?.message || '無法載入課程列表，請檢查網路連線'
+    await alertError(errorMessage)
   } finally {
     loading.value = false
   }

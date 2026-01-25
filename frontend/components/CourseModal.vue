@@ -122,7 +122,7 @@
 </template>
 
 <script setup lang="ts">
-import { alertError } from '~/composables/useAlert'
+import { alertError, success: alertSuccess } from '~/composables/useAlert'
 
 const props = defineProps<{
   course: any | null
@@ -168,7 +168,6 @@ const handleSubmit = async () => {
 
   try {
     const api = useApi()
-    const centerId = getCenterId()
     const courseData = {
       name: form.value.name,
       duration: form.value.duration,
@@ -179,8 +178,10 @@ const handleSubmit = async () => {
 
     if (props.course && props.course.id) {
       await api.put(`/admin/courses/${props.course.id}`, courseData)
+      await alertSuccess('課程更新成功')
     } else {
       await api.post(`/admin/courses`, courseData)
+      await alertSuccess('課程建立成功')
     }
 
     emit('saved')
