@@ -463,18 +463,18 @@ func (ctl *AdminResourceController) CreateCourse(ctx *gin.Context) {
 
 type CreateCourseRequest struct {
 	Name             string `json:"name" binding:"required"`
-	Duration         int    `json:"duration" binding:"required"`
+	Duration         int    `json:"duration" binding:"required,min=15"`
 	ColorHex         string `json:"color_hex" binding:"required"`
-	RoomBufferMin    int    `json:"room_buffer_min" binding:"required"`
-	TeacherBufferMin int    `json:"teacher_buffer_min" binding:"required"`
+	RoomBufferMin    int    `json:"room_buffer_min" binding:"gte=0"`
+	TeacherBufferMin int    `json:"teacher_buffer_min" binding:"gte=0"`
 }
 
 type UpdateCourseRequest struct {
 	Name             string `json:"name" binding:"required"`
-	Duration         int    `json:"duration" binding:"required"`
+	Duration         int    `json:"duration" binding:"required,min=15"`
 	ColorHex         string `json:"color_hex" binding:"required"`
-	RoomBufferMin    int    `json:"room_buffer_min" binding:"required"`
-	TeacherBufferMin int    `json:"teacher_buffer_min" binding:"required"`
+	RoomBufferMin    int    `json:"room_buffer_min" binding:"gte=0"`
+	TeacherBufferMin int    `json:"teacher_buffer_min" binding:"gte=0"`
 }
 
 // UpdateCourse 更新課程
