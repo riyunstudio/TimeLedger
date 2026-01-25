@@ -609,11 +609,47 @@ func (ctl *TeacherController) GetCenterScheduleRules(ctx *gin.Context) {
 		return
 	}
 
-	// 過濾出該老師的課程
-	var teacherRules []models.ScheduleRule
+	// 過濾出該老師的課程，並格式化輸出
+	type RuleResponse struct {
+		ID                  uint   `json:"id"`
+		Title               string `json:"title"`
+		Weekday             int    `json:"weekday"`
+		WeekdayText         string `json:"weekday_text"`
+		StartTime           string `json:"start_time"`
+		EndTime             string `json:"end_time"`
+		EffectiveStartDate  string `json:"effective_start_date"`
+		EffectiveEndDate    string `json:"effective_end_date"`
+	}
+
+	weekdayTexts := []string{"週日", "週一", "週二", "週三", "週四", "週五", "週六"}
+
+	var teacherRules []RuleResponse
 	for _, rule := range rules {
 		if rule.TeacherID != nil && *rule.TeacherID == teacherID {
-			teacherRules = append(teacherRules, rule)
+			title := rule.Offering.Name
+			if title == "" {
+				title = rule.Name
+			}
+
+			effectiveStartDate := ""
+			effectiveEndDate := ""
+			if !rule.EffectiveRange.StartDate.IsZero() {
+				effectiveStartDate = rule.EffectiveRange.StartDate.Format("2006-01-02")
+			}
+			if !rule.EffectiveRange.EndDate.IsZero() {
+				effectiveEndDate = rule.EffectiveRange.EndDate.Format("2006-01-02")
+			}
+
+			teacherRules = append(teacherRules, RuleResponse{
+				ID:                 rule.ID,
+				Title:              title,
+				Weekday:            rule.Weekday,
+				WeekdayText:        weekdayTexts[rule.Weekday],
+				StartTime:          rule.StartTime,
+				EndTime:            rule.EndTime,
+				EffectiveStartDate: effectiveStartDate,
+				EffectiveEndDate:   effectiveEndDate,
+			})
 		}
 	}
 

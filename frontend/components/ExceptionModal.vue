@@ -27,7 +27,7 @@
             <select v-model="form.rule_id" class="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:border-primary-500" required :disabled="loadingRules">
               <option value="">選擇課程時段</option>
               <option v-for="rule in displayScheduleRules" :key="rule.id" :value="rule.id">
-                {{ rule.title }} - {{ formatDate(rule.original_date) }} {{ rule.start_time }}-{{ rule.end_time }}
+                {{ formatRuleDisplay(rule) }}
               </option>
             </select>
             <p v-if="loadingRules" class="text-xs text-slate-500 mt-1">載入中...</p>
@@ -83,10 +83,21 @@
 <script setup lang="ts">
 import type { ScheduleException } from '~/types'
 
+interface ScheduleRuleData {
+  id: number
+  title: string
+  weekday: number
+  weekday_text: string
+  start_time: string
+  end_time: string
+  effective_start_date: string
+  effective_end_date: string
+}
+
 interface Props {
   exception?: ScheduleException
   centers: Array<{ center_id: number; center_name: string }>
-  scheduleRules?: Array<{ id: number; title: string; original_date: string; start_time: string; end_time: string }>
+  scheduleRules?: ScheduleRuleData[]
 }
 
 const props = defineProps<Props>()
@@ -94,7 +105,7 @@ const emit = defineEmits(['close', 'submit'])
 
 const teacherStore = useTeacherStore()
 const loading = ref(false)
-const localScheduleRules = ref<Array<{ id: number; title: string; original_date: string; start_time: string; end_time: string }>>([])
+const localScheduleRules = ref<ScheduleRuleData[]>([])
 const loadingRules = ref(false)
 
 const isEdit = computed(() => !!props.exception)
@@ -133,22 +144,24 @@ const fetchScheduleRules = async (centerId: number) => {
   try {
     loadingRules.value = true
     const api = useApi()
-    const response = await api.get<{ code: number; datas: any[] }>(`/teacher/me/centers/${centerId}/schedule-rules`)
+    const response = await api.get<{ code: number; datas: ScheduleRuleData[] }>(`/teacher/me/centers/${centerId}/schedule-rules`)
     if (response.code === 0 && response.datas) {
-      // 轉換資料結構
-      localScheduleRules.value = response.datas.map((rule: any) => ({
-        id: rule.id,
-        title: rule.offering?.name || '課程',
-        original_date: rule.original_date,
-        start_time: rule.start_time,
-        end_time: rule.end_time,
-      }))
+      localScheduleRules.value = response.datas
     }
   } catch (error) {
     console.error('Failed to fetch schedule rules:', error)
   } finally {
     loadingRules.value = false
   }
+}
+
+// 生成課程顯示文字
+const formatRuleDisplay = (rule: ScheduleRuleData): string => {
+  const dateRange = rule.effective_start_date || rule.effective_end_date
+    ? `${rule.effective_start_date || '-'} ~ ${rule.effective_end_date || '-'}`
+    : ''
+
+  return `${rule.title} (${rule.weekday_text} ${rule.start_time}-${rule.end_time})${dateRange ? ' ' + dateRange : ''}`
 }
 
 const formatDate = (dateStr: string) => {
