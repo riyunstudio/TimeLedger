@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"net/http"
+	"strings"
 	"time"
 	"timeLedger/app"
 	"timeLedger/app/models"
@@ -145,7 +146,18 @@ func (ctl *SmartMatchingController) SearchTalent(ctx *gin.Context) {
 
 	skills := []string{}
 	if uriReq.Skills != "" {
-		skills = []string{uriReq.Skills}
+		skills = strings.Split(uriReq.Skills, ",")
+		for i := range skills {
+			skills[i] = strings.TrimSpace(skills[i])
+		}
+	}
+
+	hashtags := []string{}
+	if uriReq.Hashtags != "" {
+		hashtags = strings.Split(uriReq.Hashtags, ",")
+		for i := range hashtags {
+			hashtags[i] = strings.TrimSpace(hashtags[i])
+		}
 	}
 
 	searchParams := services.TalentSearchParams{
@@ -154,7 +166,7 @@ func (ctl *SmartMatchingController) SearchTalent(ctx *gin.Context) {
 		District: uriReq.District,
 		Keyword:  uriReq.Keyword,
 		Skills:   skills,
-		Hashtags: []string{},
+		Hashtags: hashtags,
 	}
 
 	results, err := ctl.smartMatchingSvc.SearchTalent(ctx, searchParams)

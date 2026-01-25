@@ -199,6 +199,58 @@ func (s *SmartMatchingServiceImpl) SearchTalent(ctx context.Context, searchParam
 			}
 		}
 
+		// 標籤篩選
+		if len(searchParams.Hashtags) > 0 {
+			personalHashtags := s.extractPersonalHashtags(ctx, teacher.ID)
+			hasMatchingHashtag := false
+			
+			for _, requiredTag := range searchParams.Hashtags {
+				// 移除 # 符號進行比對
+				normalizedTag := strings.TrimPrefix(requiredTag, "#")
+				for _, personalTag := range personalHashtags {
+					personalTagNormalized := strings.TrimPrefix(personalTag, "#")
+					if strings.Contains(strings.ToLower(personalTagNormalized), strings.ToLower(normalizedTag)) ||
+					   strings.Contains(strings.ToLower(normalizedTag), strings.ToLower(personalTagNormalized)) {
+						hasMatchingHashtag = true
+						break
+					}
+				}
+				if hasMatchingHashtag {
+					break
+				}
+			}
+			
+			// 也檢查技能標籤
+			if !hasMatchingHashtag {
+				for _, skill := range skillsList {
+					for _, tag := range skill.Hashtags {
+						if tag.Hashtag.Name == "" {
+							continue
+						}
+						tagNormalized := strings.TrimPrefix(tag.Hashtag.Name, "#")
+						for _, reqTag := range searchParams.Hashtags {
+							normalizedReqTag := strings.TrimPrefix(reqTag, "#")
+							if strings.Contains(strings.ToLower(tagNormalized), strings.ToLower(normalizedReqTag)) ||
+							   strings.Contains(strings.ToLower(normalizedReqTag), strings.ToLower(tagNormalized)) {
+								hasMatchingHashtag = true
+								break
+							}
+						}
+						if hasMatchingHashtag {
+							break
+						}
+					}
+					if hasMatchingHashtag {
+						break
+					}
+				}
+			}
+			
+			if !hasMatchingHashtag {
+				continue
+			}
+		}
+
 		certificates, _ := s.teacherCertificateRepo.ListByTeacherID(ctx, teacher.ID)
 
 		certificatesList := make([]Certificate, 0, len(certificates))

@@ -160,7 +160,7 @@
 
     <div class="mt-6 glass-card p-4 md:p-6">
       <h2 class="text-lg font-semibold text-white mb-4">人才庫搜尋</h2>
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div>
           <label class="block text-slate-300 mb-2">城市</label>
           <input
@@ -176,6 +176,15 @@
             v-model="talentSearch.skills"
             type="text"
             placeholder="例如：鋼琴"
+            class="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white"
+          />
+        </div>
+        <div>
+          <label class="block text-slate-300 mb-2">標籤</label>
+          <input
+            v-model="talentSearch.hashtags"
+            type="text"
+            placeholder="例如：古典 兒童"
             class="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white"
           />
         </div>
@@ -214,6 +223,15 @@
               {{ skill }}
             </span>
           </div>
+          <div v-if="teacher.personal_hashtags?.length" class="flex flex-wrap gap-1 mt-2">
+            <span
+              v-for="tag in teacher.personal_hashtags.slice(0, 5)"
+              :key="tag"
+              class="px-2 py-0.5 rounded-full text-xs bg-slate-500/30 text-slate-400"
+            >
+              {{ tag }}
+            </span>
+          </div>
         </div>
       </div>
     </div>
@@ -250,7 +268,8 @@ const form = ref({
 
 const talentSearch = ref({
   city: '',
-  skills: ''
+  skills: '',
+  hashtags: ''
 })
 
 const findMatches = async () => {
@@ -284,8 +303,13 @@ const searchTalent = async () => {
 
   try {
     const api = useApi()
+    const params = new URLSearchParams()
+    if (talentSearch.value.city) params.append('city', talentSearch.value.city)
+    if (talentSearch.value.skills) params.append('skills', talentSearch.value.skills)
+    if (talentSearch.value.hashtags) params.append('hashtags', talentSearch.value.hashtags)
+    
     const response = await api.get<{ code: number; datas: any[] }>(
-      `/admin/smart-matching/talent/search?city=${talentSearch.value.city}&skills=${talentSearch.value.skills}`
+      `/admin/smart-matching/talent/search?${params.toString()}`
     )
     talentResults.value = response.datas || []
   } catch (error) {
