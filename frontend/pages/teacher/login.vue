@@ -65,6 +65,7 @@ definePageMeta({
 
 const router = useRouter()
 const route = useRoute()
+const authStore = useAuthStore()
 
 const lineUserId = ref(route.query.line_user_id as string || '')
 const accessToken = ref(route.query.access_token as string || '')
@@ -86,12 +87,20 @@ async function handleLogin() {
       }
     })
 
-    if (response && response.code === 0 && response.datas) {
-      const token = response.datas.token
-      const user = response.datas.user
+    // 檢查 response.data 或 response.datas
+    const responseData = (response as any).data || (response as any).datas
+    const responseCode = (response as any).code
 
-      localStorage.setItem('teacher_token', token)
-      localStorage.setItem('teacher_user', JSON.stringify(user))
+    if (responseCode === 0 && responseData) {
+      const token = responseData.token
+      const user = responseData.user
+
+      // 設置 authStore 和 localStorage
+      authStore.login({
+        token,
+        refresh_token: '',
+        teacher: user,
+      })
 
       success.value = true
 
@@ -99,7 +108,7 @@ async function handleLogin() {
         router.push('/teacher/dashboard')
       }, 1000)
     } else {
-      error.value = response?.message || '登入失敗'
+      error.value = (response as any)?.message || '登入失敗'
     }
   } catch (err: any) {
     console.error('Login error:', err)
