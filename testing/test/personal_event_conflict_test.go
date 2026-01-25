@@ -261,6 +261,70 @@ func TestScheduleRuleRepository_CheckPersonalEventConflict(t *testing.T) {
 
 		t.Logf("Found %d conflict(s) with contained time", len(conflicts))
 	})
+
+	// 測試案例 6: 事件日期在 effective_range 之外，不應該報衝突
+	t.Run("NoConflict_WhenEventDateOutsideEffectiveRange", func(t *testing.T) {
+		// 建立一個課程規則，有效範圍是過去一個月到未來一個月
+		// 然後嘗試在有效範圍之外（過去一年）的週一建立個人行程
+
+		// 建立一個新的課程規則，有效範圍是過去
+		pastCourse := models.Course{
+			Name:              "Past Yoga",
+			TeacherBufferMin:  15,
+			RoomBufferMin:     10,
+			CreatedAt:         now,
+		}
+		createdPastCourse, err := courseRepo.Create(ctx, pastCourse)
+		if err != nil {
+			t.Fatalf("Failed to create past course: %v", err)
+		}
+
+		pastOffering := models.Offering{
+			CenterID: createdCenter.ID,
+			CourseID: createdPastCourse.ID,
+			Name:     "Past Yoga Course",
+			CreatedAt: now,
+		}
+		createdPastOffering, err := offeringRepo.Create(ctx, pastOffering)
+		if err != nil {
+			t.Fatalf("Failed to create past offering: %v", err)
+		}
+
+		// 課程規則的有效範圍是過去一年
+		pastRule := models.ScheduleRule{
+			CenterID:       createdCenter.ID,
+			OfferingID:     createdPastOffering.ID,
+			TeacherID:      &createdTeacher.ID,
+			RoomID:         createdRoom.ID,
+			Name:           "Past Monday Yoga",
+			Weekday:        1, // Monday
+			StartTime:      "09:00",
+			EndTime:        "10:00",
+			Duration:       60,
+			EffectiveRange: models.DateRange{StartDate: now.AddDate(-1, 0, 0), EndDate: now.AddDate(0, -1, 0)}, // 過去一年到過去一個月
+			CreatedAt:      now,
+		}
+		_, err = scheduleRuleRepo.Create(ctx, pastRule)
+		if err != nil {
+			t.Fatalf("Failed to create past schedule rule: %v", err)
+		}
+
+		// 嘗試在下個週一建立個人行程（這應該不會衝突，因為課程已經過期）
+		eventTime := getNextWeekday(now, 1) // 下個週一（在未來）
+		eventStartAt := eventTime.Add(9*time.Hour + 30*time.Minute)
+		eventEndAt := eventTime.Add(10*time.Hour + 30*time.Minute)
+
+		conflicts, err := scheduleRuleRepo.CheckPersonalEventConflict(ctx, createdTeacher.ID, createdCenter.ID, eventStartAt, eventEndAt)
+		if err != nil {
+			t.Fatalf("CheckPersonalEventConflict failed: %v", err)
+		}
+
+		if len(conflicts) > 0 {
+			t.Errorf("Expected no conflict but got %d (event date is outside the course's effective range)", len(conflicts))
+		}
+
+		t.Log("No conflicts found as expected (event date outside effective range)")
+	})
 }
 
 func TestScheduleRuleRepository_CheckPersonalEventConflictAllCenters(t *testing.T) {

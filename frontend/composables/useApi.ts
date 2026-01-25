@@ -27,12 +27,28 @@ export const useApi = () => {
     }
   }
 
-  const checkResponse = (response: Response) => {
+  const checkResponse = async (response: Response) => {
     if (response.status === 401) {
       handleUnauthorized()
       throw new Error('Unauthorized')
     }
-    if (!response.ok) throw new Error(`HTTP ${response.status}`)
+    if (!response.ok) {
+      // 嘗試讀取後端返回的錯誤訊息
+      const errorText = await response.text()
+      let errorMessage = `HTTP ${response.status}`
+      try {
+        const errorData = JSON.parse(errorText)
+        if (errorData.message) {
+          errorMessage = errorData.message
+        }
+      } catch {
+        // 如果解析失敗，使用原始錯誤文字
+        if (errorText) {
+          errorMessage = errorText
+        }
+      }
+      throw new Error(errorMessage)
+    }
   }
 
   const get = async <T>(endpoint: string): Promise<T> => {
@@ -41,7 +57,7 @@ export const useApi = () => {
       'Content-Type': 'application/json',
     }
     const response = await fetch(`${apiBase}${endpoint}`, { headers })
-    checkResponse(response)
+    await checkResponse(response)
     return response.json()
   }
 
@@ -55,7 +71,7 @@ export const useApi = () => {
       headers,
       body: JSON.stringify(data),
     })
-    checkResponse(response)
+    await checkResponse(response)
     return response.json()
   }
 
@@ -69,7 +85,7 @@ export const useApi = () => {
       headers,
       body: JSON.stringify(data),
     })
-    checkResponse(response)
+    await checkResponse(response)
     return response.json()
   }
 
@@ -83,7 +99,7 @@ export const useApi = () => {
       headers,
       body: JSON.stringify(data),
     })
-    checkResponse(response)
+    await checkResponse(response)
     return response.json()
   }
 
@@ -96,7 +112,7 @@ export const useApi = () => {
       method: 'DELETE',
       headers,
     })
-    checkResponse(response)
+    await checkResponse(response)
     return response.json()
   }
 

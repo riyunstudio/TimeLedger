@@ -85,7 +85,7 @@ func (rp *ScheduleRuleRepository) CheckOverlap(ctx context.Context, centerID uin
 	if excludeRuleID != nil {
 		roomQuery = roomQuery.Where("id != ?", *excludeRuleID)
 	}
-	
+
 	var roomRules []models.ScheduleRule
 	if err := roomQuery.Find(&roomRules).Error; err != nil {
 		return nil, nil, err
@@ -201,9 +201,13 @@ func (rp *ScheduleRuleRepository) CheckPersonalEventConflict(ctx context.Context
 		eventWeekday = 7 // 週日轉換為 7
 	}
 
-	// 將事件時間轉換為 HH:MM 格式
-	eventStartTime := eventStartAt.Format("15:04")
-	eventEndTime := eventEndAt.Format("15:04")
+	// 將事件時間轉換為台北時區的 HH:MM 格式
+	// 課程規則的時間是台北時區，需要統一比較
+	loc, _ := time.LoadLocation("Asia/Taipei")
+	eventStartAtTaipei := eventStartAt.In(loc)
+	eventEndAtTaipei := eventEndAt.In(loc)
+	eventStartTime := eventStartAtTaipei.Format("15:04")
+	eventEndTime := eventEndAtTaipei.Format("15:04")
 
 	for _, rule := range rules {
 		// 只檢查同一天的規則
@@ -211,8 +215,19 @@ func (rp *ScheduleRuleRepository) CheckPersonalEventConflict(ctx context.Context
 			continue
 		}
 
+		// 檢查事件日期是否在課程規則的有效範圍內
+		eventDate := eventStartAtTaipei.Format("2006-01-02")
+		ruleStartDate := rule.EffectiveRange.StartDate.Format("2006-01-02")
+		ruleEndDate := rule.EffectiveRange.EndDate.Format("2006-01-02")
+
+		if eventDate < ruleStartDate || eventDate > ruleEndDate {
+			// 事件日期不在課程規則的有效範圍內，跳過
+			continue
+		}
+
 		// 檢查時間是否重疊
-		if timesOverlap(rule.StartTime, rule.EndTime, eventStartTime, eventEndTime) {
+		overlaps := timesOverlap(rule.StartTime, rule.EndTime, eventStartTime, eventEndTime)
+		if overlaps {
 			conflicts = append(conflicts, rule)
 		}
 	}

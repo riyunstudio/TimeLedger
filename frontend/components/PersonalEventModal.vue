@@ -116,6 +116,8 @@
 </template>
 
 <script setup lang="ts">
+import { alertError, alertSuccess } from '~/composables/useAlert'
+
 const props = defineProps<{
   editingEvent?: any
 }>()
@@ -127,9 +129,6 @@ const emit = defineEmits<{
 
 const teacherStore = useTeacherStore()
 const loading = ref(false)
-
-// Alert composable
-const { success: alertSuccess, error: alertError } = useAlert()
 
 const isEditing = computed(() => !!props.editingEvent)
 

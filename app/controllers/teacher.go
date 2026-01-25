@@ -1132,30 +1132,24 @@ func (ctl *TeacherController) CreatePersonalEvent(ctx *gin.Context) {
 
 	// 檢查個人行程是否與中心課程衝突
 	// 取得老師所屬的所有中心
-	fmt.Printf("[CreatePersonalEvent] Checking conflict for teacher_id=%d, start_at=%v, end_at=%v\n", teacherID, req.StartAt, req.EndAt)
 	memberships, err := ctl.membershipRepo.GetActiveByTeacherID(ctx, teacherID)
 	if err != nil {
-		fmt.Printf("[CreatePersonalEvent] GetActiveByTeacherID failed: %v\n", err)
+		// 靜默處理錯誤，繼續執行
 	}
-	fmt.Printf("[CreatePersonalEvent] memberships count: %d\n", len(memberships))
 	if len(memberships) == 0 {
-		fmt.Printf("[CreatePersonalEvent] No active memberships found for teacher_id: %d\n", teacherID)
+		// 老師沒有加入任何中心，創建個人行程
 	} else {
 		var centerIDs []uint
 		for _, m := range memberships {
 			centerIDs = append(centerIDs, m.CenterID)
 		}
-		fmt.Printf("[CreatePersonalEvent] Found active memberships for teacher_id: %d, center_ids: %v\n", teacherID, centerIDs)
 
 		// 檢查每個中心的課程衝突
 		for _, centerID := range centerIDs {
 			conflicts, err := ctl.scheduleRuleRepo.CheckPersonalEventConflict(ctx, teacherID, centerID, req.StartAt, req.EndAt)
 			if err != nil {
-				fmt.Printf("[CreatePersonalEvent] CheckPersonalEventConflict failed for center_id %d: %v\n", centerID, err)
 				continue
 			}
-			fmt.Printf("[CreatePersonalEvent] Checking conflict: teacher_id=%d, center_id=%d, start_at=%v, end_at=%v, conflicts_count=%d\n",
-				teacherID, centerID, req.StartAt, req.EndAt, len(conflicts))
 
 			if len(conflicts) > 0 {
 				// 發現衝突，阻擋操作並返回錯誤
@@ -1172,7 +1166,7 @@ func (ctl *TeacherController) CreatePersonalEvent(ctx *gin.Context) {
 				}
 				ctx.JSON(http.StatusConflict, global.ApiResponse{
 					Code:    409,
-					Message: "Personal event conflicts with existing schedule: " + strings.Join(conflictMessages, "; "),
+					Message: strings.Join(conflictMessages, "; "),
 				})
 				return
 			}
@@ -1369,31 +1363,25 @@ func (ctl *TeacherController) UpdatePersonalEvent(ctx *gin.Context) {
 
 	// 檢查個人行程是否與中心課程衝突（如果時間有變更）
 	if req.StartAt != nil && req.EndAt != nil {
-		fmt.Printf("[UpdatePersonalEvent] Checking conflict for teacher_id=%d, start_at=%v, end_at=%v\n", teacherID, *req.StartAt, *req.EndAt)
 		// 取得老師所屬的所有中心
 		memberships, err := ctl.membershipRepo.GetActiveByTeacherID(ctx, teacherID)
 		if err != nil {
-			fmt.Printf("[UpdatePersonalEvent] GetActiveByTeacherID failed: %v\n", err)
+			// 靜默處理錯誤，繼續執行
 		}
-		fmt.Printf("[UpdatePersonalEvent] memberships count: %d\n", len(memberships))
 		if len(memberships) == 0 {
-			fmt.Printf("[UpdatePersonalEvent] No active memberships found for teacher_id: %d\n", teacherID)
+			// 老師沒有加入任何中心
 		} else {
 			var centerIDs []uint
 			for _, m := range memberships {
 				centerIDs = append(centerIDs, m.CenterID)
 			}
-			fmt.Printf("[UpdatePersonalEvent] Found active memberships for teacher_id: %d, center_ids: %v\n", teacherID, centerIDs)
 
 			// 檢查每個中心的課程衝突
 			for _, centerID := range centerIDs {
 				conflicts, err := ctl.scheduleRuleRepo.CheckPersonalEventConflict(ctx, teacherID, centerID, *req.StartAt, *req.EndAt)
 				if err != nil {
-					fmt.Printf("[UpdatePersonalEvent] CheckPersonalEventConflict failed for center_id %d: %v\n", centerID, err)
 					continue
 				}
-				fmt.Printf("[UpdatePersonalEvent] Checking conflict: teacher_id=%d, center_id=%d, start_at=%v, end_at=%v, conflicts_count=%d\n",
-					teacherID, centerID, *req.StartAt, *req.EndAt, len(conflicts))
 
 				if len(conflicts) > 0 {
 					// 發現衝突，阻擋操作並返回錯誤
@@ -1410,14 +1398,12 @@ func (ctl *TeacherController) UpdatePersonalEvent(ctx *gin.Context) {
 					}
 					ctx.JSON(http.StatusConflict, global.ApiResponse{
 						Code:    409,
-						Message: "Personal event conflicts with existing schedule: " + strings.Join(conflictMessages, "; "),
+						Message: strings.Join(conflictMessages, "; "),
 					})
 					return
 				}
 			}
 		}
-	} else {
-		fmt.Printf("[UpdatePersonalEvent] Skip conflict check: StartAt=%v, EndAt=%v\n", req.StartAt, req.EndAt)
 	}
 
 	now := time.Now()
