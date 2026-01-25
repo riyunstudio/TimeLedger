@@ -103,11 +103,8 @@
         <div class="flex items-center justify-between">
           <div>
             <h3 class="font-medium text-slate-100">
-              {{ membership.center?.name }}
+              {{ membership.center_name || '未知中心' }}
             </h3>
-            <p class="text-sm text-slate-400">
-              方案: {{ membership.center?.plan_level }}
-            </p>
           </div>
           <span
             class="px-3 py-1 rounded-full text-sm font-medium"

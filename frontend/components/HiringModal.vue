@@ -84,12 +84,25 @@ const emit = defineEmits<{
 }>()
 
 const authStore = useAuthStore()
-
 const loading = ref(false)
 const form = ref({
-  is_open_to_hiring: authStore.user?.is_open_to_hiring || false,
-  public_contact_info: authStore.user?.public_contact_info || '',
+  is_open_to_hiring: false,
+  public_contact_info: '',
 })
+
+// 載入最新資料
+const loadData = async () => {
+  try {
+    const api = useApi()
+    const response = await api.get<{ code: number; datas: any }>('/teacher/me/profile')
+    if (response.datas) {
+      form.value.is_open_to_hiring = response.datas.is_open_to_hiring || false
+      form.value.public_contact_info = response.datas.public_contact_info || ''
+    }
+  } catch (error) {
+    console.error('Failed to load hiring settings:', error)
+  }
+}
 
 const handleSubmit = async () => {
   loading.value = true
@@ -99,7 +112,7 @@ const handleSubmit = async () => {
     await api.put('/teacher/me/profile', form.value)
 
     authStore.user = { ...authStore.user, ...form.value } as any
-    localStorage.setItem('user', JSON.stringify(authStore.user))
+    localStorage.setItem('teacher_user', JSON.stringify(authStore.user))
 
     emit('close')
   } catch (error) {
@@ -109,4 +122,8 @@ const handleSubmit = async () => {
     loading.value = false
   }
 }
+
+onMounted(() => {
+  loadData()
+})
 </script>

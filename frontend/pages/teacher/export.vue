@@ -791,7 +791,6 @@ const handleDownloadPDF = () => {
 }
 
 onMounted(() => {
-  teacherStore.loadMockCenters()
   teacherStore.fetchSchedule()
 })
 </script>

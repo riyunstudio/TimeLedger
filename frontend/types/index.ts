@@ -185,9 +185,9 @@ export interface Notification {
 export interface CenterMembership {
   id: number
   center_id: number
+  center_name?: string
   teacher_id: number
   status: 'ACTIVE' | 'INACTIVE' | 'INVITED'
-  center?: Center
 }
 
 export interface AuthResponse {

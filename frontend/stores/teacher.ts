@@ -57,8 +57,8 @@ export const useTeacherStore = defineStore('teacher', () => {
       const api = useApi()
       const response = await api.get<{ code: number; message: string; datas: CenterMembership[] }>('/teacher/me/centers')
       centers.value = response.datas || []
-      if (centers.value.length > 0 && !currentCenter.value) {
-        currentCenter.value = centers.value[0].center || null
+      if (centers.value.length > 0 && !currentCenter.value && centers.value[0].center_id) {
+        currentCenter.value = { id: centers.value[0].center_id, name: centers.value[0].center_name || '' } as any
       }
     } catch (error) {
       console.error('Failed to fetch centers:', error)
