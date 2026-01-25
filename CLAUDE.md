@@ -515,6 +515,73 @@ interface TeacherProfile {
 
 ---
 
+## 18.5 Alert/Confirm UI 規範
+
+### 禁止使用原生 alert/confirm
+
+**嚴格禁止**在前端程式碼中使用原生的 `alert()` 或 `confirm()`。必須使用自定義的美化彈窗組件。
+
+**錯誤做法：**
+```javascript
+alert('操作失敗')
+confirm('確定要刪除嗎？')
+```
+
+**正確做法：**
+```typescript
+import { alertError, alertConfirm, alertSuccess, alertWarning } from '~/composables/useAlert'
+
+// 錯誤提示
+await alertError('操作失敗，請稍後再試')
+
+// 確認對話框
+if (await alertConfirm('確定要刪除嗎？')) {
+  // 執行刪除
+}
+
+// 成功提示
+await alertSuccess('儲存成功')
+
+// 警告提示
+await alertWarning('請填寫完整資訊')
+```
+
+### GlobalAlert 組件
+
+`frontend/components/GlobalAlert.vue` 提供美化的 Alert/Confirm 彈窗功能：
+
+| 類型 | 用途 | 預設標題 |
+|:---|:---|:---|
+| `info` | 一般提示 | 提示 |
+| `warning` | 警告提醒 | 提醒 |
+| `error` | 錯誤訊息 | 操作失敗 |
+| `success` | 成功訊息 | 操作成功 |
+
+### useAlert Composable
+
+**Vue 元件內使用：**
+```typescript
+const { error: alertError, success: alertSuccess, confirm: alertConfirm } = useAlert()
+```
+
+**非 Vue 上下文使用：**
+```typescript
+import { alertError, alertSuccess } from '~/composables/useAlert'
+await alertError('錯誤訊息')
+await alertSuccess('成功訊息')
+```
+
+### useToast Composition
+
+用於簡短的即時提示（而非阻斷式彈窗）：
+```typescript
+const { success, error, warning, info } = useToast()
+success('操作成功')
+error('操作失敗')
+```
+
+---
+
 ## 19. 通用命令 (Common Commands)
 
 ```bash

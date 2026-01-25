@@ -79,6 +79,8 @@
 </template>
 
 <script setup lang="ts">
+import { alertError } from '~/composables/useAlert'
+
 const emit = defineEmits<{
   close: []
 }>()
@@ -117,7 +119,7 @@ const handleSubmit = async () => {
     emit('close')
   } catch (error) {
     console.error('Failed to update hiring settings:', error)
-    alert('儲存失敗，請稍後再試')
+    await alertError('儲存失敗，請稍後再試')
   } finally {
     loading.value = false
   }

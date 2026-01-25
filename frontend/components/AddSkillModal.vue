@@ -69,6 +69,8 @@
 </template>
 
 <script setup lang="ts">
+import { alertError } from '~/composables/useAlert'
+
 const emit = defineEmits<{
   close: []
   added: []
@@ -92,7 +94,7 @@ const handleSubmit = async () => {
     emit('close')
   } catch (error) {
     console.error('Failed to add skill:', error)
-    alert('新增失敗，請稍後再試')
+    await alertError('新增失敗，請稍後再試')
   } finally {
     loading.value = false
   }

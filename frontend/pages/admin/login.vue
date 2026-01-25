@@ -61,6 +61,8 @@
 </template>
 
 <script setup lang="ts">
+import { alertError } from '~/composables/useAlert'
+
 definePageMeta({
   layout: false,
 })
@@ -86,7 +88,7 @@ const handleLogin = async () => {
     router.push('/admin/dashboard')
   } catch (error) {
     console.error('Login failed:', error)
-    alert('登入失敗，請檢查 Email 和密碼')
+    await alertError('登入失敗，請檢查 Email 和密碼')
   } finally {
     loading.value = false
   }

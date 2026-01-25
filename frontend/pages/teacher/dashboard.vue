@@ -262,7 +262,8 @@
 
 <script setup lang="ts">
  import type { ScheduleItem, WeekSchedule } from '~/types'
- 
+ import { alertError } from '~/composables/useAlert'
+
  definePageMeta({
    middleware: 'auth-teacher',
    layout: 'default',
@@ -514,7 +515,7 @@ const handleDrop = async (hour: number, date: string) => {
           await teacherStore.fetchSchedule()
         } catch (error) {
           console.error('Failed to move schedule:', error)
-          alert('更新失敗，請稍後再試')
+          await alertError('更新失敗，請稍後再試')
         }
       }
     }

@@ -232,6 +232,7 @@
  })
 
  const notificationUI = useNotification()
+const { warning: alertWarning, success: alertSuccess } = useAlert()
 const searching = ref(false)
 const talentSearching = ref(false)
 const hasSearched = ref(false)
@@ -254,7 +255,7 @@ const talentSearch = ref({
 
 const findMatches = async () => {
   if (!form.value.start_time || !form.value.end_time) {
-    alert('請填寫開始時間和結束時間')
+    await alertWarning('請填寫開始時間和結束時間')
     return
   }
 
@@ -296,7 +297,7 @@ const searchTalent = async () => {
 }
 
 const selectTeacher = (match: any) => {
-  alert(`已選擇 ${match.teacher_name}`)
+  alertSuccess(`已選擇 ${match.teacher_name}`)
 }
 
 const clearForm = () => {

@@ -5,8 +5,12 @@ export function useToast() {
     if (toastComponent.value) {
       toastComponent.value[type](message, title)
     } else {
-      // Fallback to native alert if toast component not available
-      alert(message)
+      // Fallback to custom alert if toast component not available
+      const alertFn = (window as any).$alert
+      if (alertFn) {
+        alertFn({ message, title, type })
+      }
+      // No native alert fallback - just silently ignore
     }
   }
 

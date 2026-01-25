@@ -72,6 +72,8 @@
 </template>
 
 <script setup lang="ts">
+import { alertSuccess, alertError } from '~/composables/useAlert'
+
 const emit = defineEmits<{
   close: []
   invited: []
@@ -103,11 +105,11 @@ const handleSubmit = async () => {
     } else {
       emit('invited')
       emit('close')
-      alert('邀請已發送！')
+      await alertSuccess('邀請已發送！')
     }
   } catch (error) {
     console.error('Failed to send invitation:', error)
-    alert('發送失敗，請稍後再試')
+    await alertError('發送失敗，請稍後再試')
   } finally {
     loading.value = false
   }

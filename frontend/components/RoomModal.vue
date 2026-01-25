@@ -57,6 +57,8 @@
 </template>
 
 <script setup lang="ts">
+import { alertError } from '~/composables/useAlert'
+
 const props = defineProps<{
   room: any | null
 }>()
@@ -109,7 +111,7 @@ const handleSubmit = async () => {
     emit('close')
   } catch (error) {
     console.error('Failed to save room:', error)
-    alert('儲存失敗，請稍後再試')
+    await alertError('儲存失敗，請稍後再試')
   } finally {
     loading.value = false
   }

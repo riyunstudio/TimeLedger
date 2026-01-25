@@ -286,7 +286,7 @@ const offerings = ref<any[]>([])
 const creating = ref(false)
 const applying = ref(false)
 const { getCenterId } = useCenterId()
-const { confirm: alertConfirm, error: alertError } = useAlert()
+const { confirm: alertConfirm, error: alertError, warning: alertWarning } = useAlert()
 
 const applyForm = ref({
   templateId: 0,
@@ -423,7 +423,7 @@ const openApplyModal = (template: any) => {
 
 const applyTemplate = async () => {
   if (!applyForm.value.offeringId || applyForm.value.weekdays.length === 0) {
-    alert('請填寫完整資訊')
+    await alertWarning('請填寫完整資訊')
     return
   }
 
@@ -442,7 +442,7 @@ const applyTemplate = async () => {
     notificationUI.showSuccess('模板套用成功')
   } catch (error) {
     console.error('Failed to apply template:', error)
-    alert('套用失敗：' + (error as any).message)
+    await alertError('套用失敗，請稍後再試')
   } finally {
     applying.value = false
   }
