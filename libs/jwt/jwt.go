@@ -12,7 +12,7 @@ import (
 type Claims struct {
 	UserType   string `json:"user_type"`
 	UserID     uint   `json:"user_id"`
-	CenterID   uint   `json:"center_id,omitempty"`
+	CenterID   uint   `json:"center_id"`
 	LineUserID string `json:"line_user_id,omitempty"`
 	Exp        int64  `json:"exp"`
 }

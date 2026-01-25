@@ -12,52 +12,52 @@
     <div class="mb-6 flex flex-col sm:flex-row gap-3 overflow-x-auto pb-2">
       <button
         @click="activeTab = 'rooms'"
-        class="glass-btn px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap"
-        :class="activeTab === 'rooms' ? 'bg-primary-500/30 border-primary-500' : ''"
+        class="px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-colors"
+        :class="activeTab === 'rooms' ? 'bg-primary-500/30 border border-primary-500 text-primary-400' : 'bg-white/5 text-slate-300 hover:bg-white/10'"
       >
         教室
       </button>
       <button
         @click="activeTab = 'courses'"
-        class="glass-btn px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap"
-        :class="activeTab === 'courses' ? 'bg-primary-500/30 border-primary-500' : ''"
+        class="px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-colors"
+        :class="activeTab === 'courses' ? 'bg-primary-500/30 border border-primary-500 text-primary-400' : 'bg-white/5 text-slate-300 hover:bg-white/10'"
       >
         課程
       </button>
       <button
         @click="activeTab = 'offerings'"
-        class="glass-btn px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap"
-        :class="activeTab === 'offerings' ? 'bg-primary-500/30 border-primary-500' : ''"
+        class="px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-colors"
+        :class="activeTab === 'offerings' ? 'bg-primary-500/30 border border-primary-500 text-primary-400' : 'bg-white/5 text-slate-300 hover:bg-white/10'"
       >
         待排課程
       </button>
       <button
         @click="activeTab = 'teachers'"
-        class="glass-btn px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap"
-        :class="activeTab === 'teachers' ? 'bg-primary-500/30 border-primary-500' : ''"
+        class="px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-colors"
+        :class="activeTab === 'teachers' ? 'bg-primary-500/30 border border-primary-500 text-primary-400' : 'bg-white/5 text-slate-300 hover:bg-white/10'"
       >
         老師
       </button>
     </div>
 
+    <!-- Tab Content -->
     <RoomsTab v-if="activeTab === 'rooms'" />
-    <CoursesTab v-if="activeTab === 'courses'" />
-    <OfferingsTab v-if="activeTab === 'offerings'" />
-    <TeachersTab v-if="activeTab === 'teachers'" />
+    <CoursesTab v-else-if="activeTab === 'courses'" />
+    <OfferingsTab v-else-if="activeTab === 'offerings'" />
+    <TeachersTab v-else-if="activeTab === 'teachers'" />
   </div>
-
-  <NotificationDropdown
-    v-if="notificationUI.show.value"
-    @close="notificationUI.close()"
-  />
 </template>
 
 <script setup lang="ts">
- definePageMeta({
-   middleware: 'auth-admin',
-   layout: 'admin',
- })
+import RoomsTab from '~/components/RoomsTab.vue'
+import CoursesTab from '~/components/CoursesTab.vue'
+import OfferingsTab from '~/components/OfferingsTab.vue'
+import TeachersTab from '~/components/TeachersTab.vue'
 
- const activeTab = ref('rooms')
-const notificationUI = useNotification()
+definePageMeta({
+  middleware: 'auth-admin',
+  layout: 'admin',
+})
+
+const activeTab = ref('rooms')
 </script>

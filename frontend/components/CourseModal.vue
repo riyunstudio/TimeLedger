@@ -122,7 +122,7 @@
 </template>
 
 <script setup lang="ts">
-import { alertError, success: alertSuccess } from '~/composables/useAlert'
+import { alertError, alertSuccess } from '~/composables/useAlert'
 
 const props = defineProps<{
   course: any | null

@@ -540,3 +540,102 @@
 | 刪除行數 | -71 行 |
 
 **Commit**：`1301bd4 feat(backend): implement data isolation with JWT-based center_id`
+
+## 14. 個人行程衝突檢查與 UI 修復 (Personal Event Conflict & UI Fixes) - 2026/01/25
+
+### 14.1 老師個人行程衝突檢查功能 ✅
+|**新增功能**：老師創建或更新個人行程時，系統會自動檢查是否與已排課程衝突。
+
+|**更新 `app/repositories/schedule_rule.go`**：
+- 新增 `CheckPersonalEventConflict()` 方法 - 檢查個人行程是否與老師在指定中心的課程衝突
+- 新增 `CheckPersonalEventConflictAllCenters()` 方法 - 檢查老師所有中心的課程衝突
+- 使用 `timesOverlap()` 函數進行時間重疊檢測
+
+|**更新 `app/controllers/teacher.go`**：
+- `CreatePersonalEvent()` - 創建個人行程前執行衝突檢查，若衝突返回 HTTP 409
+- `UpdatePersonalEvent()` - 更新個人行程時若時間變更則重新執行衝突檢查
+- 衝突時返回詳細錯誤訊息，包含衝突的課程名稱、時間、中心資訊
+
+|**衝突檢測邏輯**：
+- 檢查個人行程的星期幾與課程規則的 `weekday` 是否匹配
+- 檢查時間範圍是否重疊：`start1 < end2 && end1 > start2`
+- 支援跨多中心的課程衝突檢測
+
+### 14.2 API 修正 ✅
+|**前端 API 封裝更新 `frontend/composables/useApi.ts`**：
+- 新增 `patch()` 方法 - 支援 PATCH HTTP 請求用於部分更新資源
+
+|**前端 Store 修正 `frontend/stores/teacher.ts`**：
+- 修正循環事件 ID 處理機制，新增 `originalId` 屬性用於追蹤原始事件 ID
+- 確保循環事件的更新模式（SINGLE/FUTURE/ALL）正確傳遞到後端
+
+|**前端類型定義更新 `frontend/types/index.ts`**：
+- 更新 `PersonalEvent` 介面，新增 `originalId` 可選屬性
+
+### 14.3 中心課程顯示修正 ✅
+|**後端課表顯示修正 `app/controllers/teacher.go`**：
+- `GetSchedule()` 方法正確返回課程名稱和中心名稱
+- 標題格式：「課程名稱 @ 中心名稱」（如「瑜伽基礎 @ 台北館」）
+- 若無課程名稱則僅顯示中心名稱
+
+|**前端課表顯示更新 `frontend/pages/teacher/dashboard.vue`**：
+- 網格視圖（Grid View）正確顯示中心和課程資訊
+- 標題使用格式：「課程名稱 @ 中心名稱」
+
+### 14.4 老師技能移除程度顯示 ✅
+|**前端技能相關組件更新**：
+- `frontend/components/SkillsModal.vue` - 移除技能程度標籤顯示
+- `frontend/components/AdminTeacherProfileModal.vue` - 移除管理員查看老師檔案時的程度顯示
+- `frontend/components/AddSkillModal.vue` - 移除程度選擇器
+
+|**設計變更**：
+- 技能不再顯示程度等級（Beginner/Intermediate/Advanced/Expert）
+- 簡化技能顯示，提升使用者體驗
+
+### 14.5 前端錯誤修復 ✅
+|**CoursesTab.vue 修復**：
+- 修復 ES2015 import 語法錯誤
+- 修復 `v-else-if` 指令使用問題
+
+|**CourseModal.vue 修復**：
+- 修復 ES2015 import 語法錯誤
+
+|**resources.vue 修復**：
+- 新增缺少的組件引入（`RoomsTab`, `CoursesTab`, `OfferingsTab`, `TeachersTab`）
+- 確保所有 Tab 組件正確載入
+
+### 14.6 測試覆蓋 ✅
+|**後端測試 `testing/test/personal_event_conflict_test.go`**：
+- `TestScheduleRuleRepository_CheckPersonalEventConflict` - 單一中心衝突檢測
+  - 重疊時間衝突測試
+  - 非重疊時間測試
+  - 不同星期測試
+  - 完全包含時間測試
+  - 完全被包含時間測試
+- `TestScheduleRuleRepository_CheckPersonalEventConflictAllCenters` - 多中心衝突檢測
+  - 單一中心衝突測試
+  - 所有中心無衝突測試
+- 測試結果：**全部通過 (7/7 passed)**
+
+|**前端測試 `frontend/tests/resources-page-test.spec.ts`**：
+- `Resources Page Tab Switching` - Tab 切換邏輯測試
+- `Resources Page Component Rendering` - 組件渲染測試
+- `Resources Page Tab Transition` - Tab 轉場測試
+
+### 14.7 變更統計
+|| 類型 | 數量 |
+||:---|:---:|
+|| 修改檔案 | 15 個 |
+|| 新增行數 | +280 行 |
+|| 刪除行數 | -95 行 |
+
+|**Commit 記錄**：
+- `e57fa49 refactor(ui): remove skill level display from teacher profile`
+- `bbceeb3 feat(teacher): add personal event conflict check and fix schedule display`
+
+### 14.8 待處理事項
+|| 項目 | 狀態 | 備註 |
+||:---|:---:|:---|
+|| 測試個人行程衝突檢查功能 | ✅ 完成 | 已有完整單元測試 |
+|| 測試資源管理頁面切換功能 | ✅ 完成 | 新增前端測試 |
+|| 更新 pdr/progress_tracker.md | ✅ 完成 | 本章節 |
