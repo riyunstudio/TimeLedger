@@ -476,6 +476,40 @@ func (ctl *SchedulingController) GetExceptionsByDateRange(ctx *gin.Context) {
 	})
 }
 
+// GetPendingExceptions 獲取中心所有待審核的例外申請
+// @Summary 獲取中心所有待審核的例外申請
+// @Tags Admin - Scheduling
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} global.ApiResponse{data=[]models.ScheduleException}
+// @Router /api/v1/admin/exceptions/pending [get]
+func (ctl *SchedulingController) GetPendingExceptions(ctx *gin.Context) {
+	centerID := ctx.GetUint(global.CenterIDKey)
+	if centerID == 0 {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Center ID required",
+		})
+		return
+	}
+
+	exceptions, err := ctl.exceptionService.GetPendingExceptions(ctx, centerID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
+			Code:    500,
+			Message: err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, global.ApiResponse{
+		Code:    0,
+		Message: "OK",
+		Datas:   exceptions,
+	})
+}
+
 func (ctl *SchedulingController) ExpandRules(ctx *gin.Context) {
 	centerID := ctx.GetUint(global.CenterIDKey)
 	if centerID == 0 {

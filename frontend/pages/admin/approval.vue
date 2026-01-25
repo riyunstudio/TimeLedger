@@ -211,13 +211,8 @@ const fetchExceptions = async () => {
   loading.value = true
   try {
     const api = useApi()
-    const centerId = getCenterId()
-    const today = new Date()
-    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
-    const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0)
-    const startDate = firstDayOfMonth.toISOString().split('T')[0]
-    const endDate = lastDayOfMonth.toISOString().split('T')[0]
-    const response = await api.get<{ code: number; datas: any[] }>(`/admin/exceptions?start_date=${startDate}&end_date=${endDate}`)
+    // 查詢所有待審核的例外申請（不受日期限制）
+    const response = await api.get<{ code: number; datas: any[] }>('/admin/exceptions/pending')
     exceptions.value = response.datas || []
   } catch (error) {
     console.error('Failed to fetch exceptions:', error)
