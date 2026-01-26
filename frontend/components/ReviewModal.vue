@@ -37,7 +37,7 @@
           <div v-if="props.exception?.type === 'RESCHEDULE'" class="space-y-2">
             <div class="flex items-center gap-2">
               <span class="text-slate-400 text-sm">原時間：</span>
-              <span class="text-critical-500 text-sm line-through">{{ props.exception?.original_time }}</span>
+              <span class="text-critical-500 text-sm line-through">{{ getOriginalTimeText(props.exception) }}</span>
             </div>
             <div class="flex items-center gap-2">
               <span class="text-slate-400 text-sm">新時間：</span>
@@ -119,6 +119,20 @@ const getTypeText = (type: string): string => {
     default:
       return type
   }
+}
+
+const getOriginalTimeText = (exception: any): string => {
+  if (exception.original_time) {
+    return exception.original_time
+  }
+  if (exception.rule) {
+    const startTime = exception.rule.start_time || ''
+    const endTime = exception.rule.end_time || ''
+    if (startTime && endTime) {
+      return `${startTime} - ${endTime}`
+    }
+  }
+  return '-'
 }
 
 const handleApprove = () => {

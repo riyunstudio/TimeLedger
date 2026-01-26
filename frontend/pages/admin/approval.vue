@@ -163,7 +163,7 @@
         <div v-if="exception.type === 'RESCHEDULE'" class="space-y-2">
           <div class="flex flex-col sm:flex-row sm:items-center gap-2">
             <span class="text-slate-400 text-sm">原時間：</span>
-            <span class="text-critical-500 text-sm line-through">{{ exception.original_time || exception.start_time + ' - ' + exception.end_time }}</span>
+            <span class="text-critical-500 text-sm line-through">{{ getOriginalTimeText(exception) }}</span>
           </div>
           <div v-if="exception.new_start_at" class="flex flex-col sm:flex-row sm:items-center gap-2">
             <span class="text-slate-400 text-sm">新時間：</span>
@@ -390,6 +390,20 @@ const formatDateTime = (dateStr: string): string => {
   if (!dateStr) return '-'
   const date = new Date(dateStr)
   return date.toLocaleString('zh-TW')
+}
+
+const getOriginalTimeText = (exception: any): string => {
+  if (exception.original_time) {
+    return exception.original_time
+  }
+  if (exception.rule) {
+    const startTime = exception.rule.start_time || ''
+    const endTime = exception.rule.end_time || ''
+    if (startTime && endTime) {
+      return `${startTime} - ${endTime}`
+    }
+  }
+  return '-'
 }
 
 const handleApproved = async (_id: number, note: string) => {

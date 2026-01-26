@@ -37,7 +37,7 @@
           <div class="grid grid-cols-2 gap-4">
             <div>
               <h4 class="text-sm font-medium text-slate-300 mb-1">原時間</h4>
-              <p class="text-slate-100">{{ props.exception?.original_time }}</p>
+              <p class="text-slate-100">{{ getOriginalTimeText(props.exception) }}</p>
             </div>
             <div>
               <h4 class="text-sm font-medium text-slate-300 mb-1">原日期</h4>
@@ -166,5 +166,19 @@ const formatDate = (dateStr: string): string => {
     hour: '2-digit',
     minute: '2-digit',
   })
+}
+
+const getOriginalTimeText = (exception: any): string => {
+  if (exception.original_time) {
+    return exception.original_time
+  }
+  if (exception.rule) {
+    const startTime = exception.rule.start_time || ''
+    const endTime = exception.rule.end_time || ''
+    if (startTime && endTime) {
+      return `${startTime} - ${endTime}`
+    }
+  }
+  return '-'
 }
 </script>
