@@ -48,9 +48,28 @@
          </button>
        </form>
 
+      <!-- 快速登入測試區域 -->
+      <div class="mt-8 p-4 bg-slate-800/50 rounded-lg border border-slate-700">
+        <p class="text-sm text-slate-400 mb-3 text-center">🧪 測試快速登入</p>
+        <div class="grid grid-cols-2 gap-2">
+          <button
+            @click="quickLogin('admin@timeledger.com', 'admin123')"
+            class="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded transition-colors"
+          >
+            超級管理員
+          </button>
+          <button
+            @click="quickLogin('staff@timeledger.com', 'admin123')"
+            class="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded transition-colors"
+          >
+            工作人員
+          </button>
+        </div>
+      </div>
+
       <div class="mt-6 text-center">
         <NuxtLink
-          to="/"
+          to="/teacher/login"
           class="text-slate-400 hover:text-primary-500 transition-colors duration-300"
         >
           老師登入請點此
@@ -73,6 +92,12 @@ const router = useRouter()
 const email = ref('admin@timeledger.com')
 const password = ref('admin123')
 const loading = ref(false)
+
+const quickLogin = (testEmail: string, testPassword: string) => {
+  email.value = testEmail
+  password.value = testPassword
+  handleLogin()
+}
 
 const handleLogin = async () => {
   loading.value = true
