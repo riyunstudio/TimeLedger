@@ -522,6 +522,13 @@ func (s *ScheduleExceptionServiceImpl) ReviewException(ctx context.Context, exce
 		return err
 	}
 
+	// 發送通知給老師
+	approved := status == "APPROVED"
+	if err := s.notificationSvc.SendReviewNotification(ctx, exceptionID, approved); err != nil {
+		// 記錄錯誤但不影響主要流程
+		fmt.Printf("[WARN] failed to send review notification to teacher: %v\n", err)
+	}
+
 	s.auditLogRepo.Create(ctx, models.AuditLog{
 		CenterID:   exception.CenterID,
 		ActorType:  "ADMIN",
