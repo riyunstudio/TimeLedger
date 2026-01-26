@@ -80,35 +80,31 @@
           </div>
 
           <!-- 代課老師選擇 -->
-          <div v-if="form.type === 'REPLACE_TEACHER'" class="space-y-3">
+          <div v-if="form.type === 'REPLACE_TEACHER'" class="space-y-4">
             <div>
-              <label class="block text-sm font-medium text-slate-300 mb-1">從中心老師中選擇</label>
-              <select v-model="form.new_teacher_id" class="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:border-primary-500">
-                <option value="0">選擇代課老師（選填）</option>
-                <option v-for="teacher in availableTeachers" :key="teacher.id" :value="teacher.id">
-                  {{ teacher.name }}
-                </option>
-              </select>
-            </div>
-
-            <div class="relative">
-              <div class="absolute inset-0 flex items-center">
-                <div class="w-full border-t border-white/10"></div>
-              </div>
-              <div class="relative flex justify-center text-sm">
-                <span class="px-2 bg-slate-900 text-slate-500">或</span>
+              <label class="block text-sm font-medium text-slate-300 mb-2">代課方式</label>
+              <div class="space-y-2">
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" v-model="replaceTeacherMode" value="center" class="accent-primary-500" />
+                  <span class="text-white">由中心幫我找代課老師</span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" v-model="replaceTeacherMode" value="manual" class="accent-primary-500" />
+                  <span class="text-white">我已找到代課老師</span>
+                </label>
               </div>
             </div>
 
-            <div>
-              <label class="block text-sm font-medium text-slate-300 mb-1">輸入代課老師姓名</label>
+            <!-- 手動輸入代課老師姓名 -->
+            <div v-if="replaceTeacherMode === 'manual'">
+              <label class="block text-sm font-medium text-slate-300 mb-1">代課老師姓名</label>
               <input
                 v-model="form.new_teacher_name"
                 type="text"
                 placeholder="請輸入代課老師姓名"
                 class="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-primary-500"
               />
-              <p class="text-xs text-slate-500 mt-1">如果代課老師不在列表中，請直接輸入姓名</p>
+              <p class="text-xs text-slate-500 mt-1">請輸入您已聯繫好的代課老師姓名</p>
             </div>
           </div>
 
@@ -168,32 +164,28 @@ const form = reactive({
   type: props.exception?.type || 'CANCEL' as 'CANCEL' | 'RESCHEDULE' | 'REPLACE_TEACHER',
   new_start_at: props.exception?.new_start_at || '',
   new_end_at: props.exception?.new_end_at || '',
-  new_teacher_id: props.exception?.new_teacher_id || 0,
+  new_teacher_id: 0, // 不再使用
   new_teacher_name: props.exception?.new_teacher_name || '',
   reason: props.exception?.reason || '',
 })
 
-const availableTeachers = ref<Array<{ id: number; name: string }>>([])
-const loadingTeachers = ref(false)
+// 代課模式：'center' = 由中心找, 'manual' = 手動輸入
+const replaceTeacherMode = ref<'center' | 'manual'>('center')
 
 // 今天日期（用於日期選擇的最小值）
 const today = computed(() => {
   return new Date().toISOString().split('T')[0]
 })
 
-// 監聽中心選擇變化，載入該中心的課程和老師
+// 監聽中心選擇變化，載入該中心的課程
 watch(() => form.center_id, async (newCenterId) => {
   // 清空課程選擇
   form.rule_id = 0
   form.original_date = ''
   localScheduleRules.value = []
-  availableTeachers.value = []
 
   if (newCenterId && newCenterId > 0) {
-    await Promise.all([
-      fetchScheduleRules(newCenterId),
-      fetchTeachers(newCenterId),
-    ])
+    await fetchScheduleRules(newCenterId)
   }
 })
 
@@ -202,11 +194,11 @@ watch(() => form.type, (newType) => {
   if (newType === 'CANCEL') {
     form.new_start_at = ''
     form.new_end_at = ''
-    form.new_teacher_id = 0
     form.new_teacher_name = ''
+    replaceTeacherMode.value = 'center'
   } else if (newType === 'RESCHEDULE') {
-    form.new_teacher_id = 0
     form.new_teacher_name = ''
+    replaceTeacherMode.value = 'center'
   } else if (newType === 'REPLACE_TEACHER') {
     form.new_start_at = ''
     form.new_end_at = ''
@@ -233,24 +225,6 @@ const fetchScheduleRules = async (centerId: number) => {
     console.error('Failed to fetch schedule rules:', error)
   } finally {
     loadingRules.value = false
-  }
-}
-
-const fetchTeachers = async (centerId: number) => {
-  try {
-    loadingTeachers.value = true
-    const api = useApi()
-    const response = await api.get<{ code: number; datas: Array<{ id: number; name: string }> }>(`/teacher/me/centers/${centerId}/teachers`)
-    if (response.code === 0 && response.datas) {
-      // 過濾掉自己（不能自己代自己的課）
-      const teacherStore = useTeacherStore()
-      const myId = teacherStore.profile?.id
-      availableTeachers.value = response.datas.filter(t => t.id !== myId)
-    }
-  } catch (error) {
-    console.error('Failed to fetch teachers:', error)
-  } finally {
-    loadingTeachers.value = false
   }
 }
 
@@ -294,14 +268,11 @@ const handleSubmit = async () => {
         submitData.new_end_at = new Date(form.new_end_at).toISOString()
       }
     } else if (form.type === 'REPLACE_TEACHER') {
-      // 從列表選擇的老師
-      if (form.new_teacher_id) {
-        submitData.new_teacher_id = form.new_teacher_id
-      }
-      // 手動輸入的老師名字
-      if (form.new_teacher_name && form.new_teacher_name.trim()) {
+      // 如果選擇手動輸入代課老師，才傳送名字
+      if (replaceTeacherMode.value === 'manual' && form.new_teacher_name && form.new_teacher_name.trim()) {
         submitData.new_teacher_name = form.new_teacher_name.trim()
       }
+      // 如果選擇由中心找，不傳送 new_teacher_name
     }
 
     await teacherStore.createException(submitData)
