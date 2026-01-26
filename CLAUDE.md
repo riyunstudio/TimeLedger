@@ -368,8 +368,9 @@ TeacherBuffer = max(
 
 ### 15.2 TDD 強制執行
 - 每個 Service 或 Logic 模組 **必須先寫測試**
-- 測試使用 SQLite Mock DB + MinRedis
-- 後端功能未通過單元測試視為 **未完成**
+- **開發階段**：使用現有開發資料庫（MySQL port 3306）進行測試，建立測試資料後驗證功能
+- **測試資料**：建立測試資料 → 執行測試 → 驗證結果 → 清理測試資料（或標記便於識別）
+- 後端功能未通過測試視為 **未完成**
 
 ### 15.3 原子化開發（Vertical Slices）
 - 一次僅開發一個獨立子功能
@@ -702,18 +703,57 @@ func Validate[T any](ctx *gin.Context) (*T, *errInfos.Res, error) {
 
 ## 27. 測試規範 (Testing)
 
-Tests use SQLite mock DB + MinRedis：
-```go
-sqliteDB, _ := sqlite.Initialize()
-rdb, mr, _ := mockRedis.Initialize()
-defer mr.Close()
+### 開發階段測試策略
+開發期間使用實際開發資料庫進行測試，簡化測試環境維護：
 
-app.Mysql = &mysql.DB{WDB: sqliteDB, RDB: sqliteDB}
-app.Redis = &redis.Redis{DB0: rdb}
+```go
+// 使用實際開發資料庫 (port 3306)
+dsn := "root:timeledger_root_2026@tcp(127.0.0.1:3306)/timeledger?charset=utf8mb4&parseTime=True&loc=Local"
+mysqlDB, _ := gorm.Open(gormMysql.Open(dsn), &gorm.Config{})
+
+rdb, mr, _ := mockRedis.Initialize()
+
+appInstance := &app.App{
+    MySQL: &mysql.DB{WDB: mysqlDB, RDB: mysqlDB},
+    Redis: &redis.Redis{DB0: rdb},
+}
 ```
+
+### 測試資料策略
+
+**Mock JWT Token 驗證**
+- 後端支援 `mock-` 前綴的 JWT token 進行測試
+- 格式：`Authorization: Bearer mock-teacher-token` 或 `mock-admin-token`
+- 使用 mock token 時會跳過 JWT 簽名驗證，自動設定：
+  - `user_id`: 1
+  - `user_type`: ADMIN 或 TEACHER
+  - `center_id`: 1
+- 適用場景：API 端點測試、功能驗證
+
+**使用現有資料庫資料**
+- 開發階段測試直接連接 MySQL port 3306（開發資料庫）
+- **無需建立測試資料**：可直接查詢現有資料進行測試
+- 若資料不足，使用 `t.Skip()` 跳過測試而非建立新資料
+- 查詢現有資料範例：
+  ```go
+  var center models.Center
+  if err := appInstance.MySQL.RDB.WithContext(ctx).Order("id DESC").First(&center).Error; err != nil {
+      t.Skipf("No center data available, skipping test: %v", err)
+      return
+  }
+  ```
+
+### 測試檔案位置
+- `testing/test/`
+
+### 測試撰寫規範
 - Use table-driven tests with subtests
-- Test naming：`Test<Feature>_<Action>` (e.g., `TestUserService_CreateAndGet`)
+- Test naming：`Test<Feature>_<Action>` (e.g., `TestScheduleRuleUpdateMode_Single`)
 - Verify both success and error cases
+- 使用現有資料驗證功能，不強求資料完整性
+
+### CI/CD 測試資料庫
+未來建立正式 CI/CD 時，可再配置獨立的測試資料庫（port 3307）。
 
 ---
 

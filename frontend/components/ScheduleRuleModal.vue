@@ -271,11 +271,12 @@
 // Props for create mode
 const props = defineProps<{
   editingRule?: any | null
+  updateMode?: string
 }>()
 
 const emit = defineEmits<{
   close: []
-  submit: [formData: any]
+  submit: [formData: any, updateMode: string]
 }>()
 
 const loading = ref(false)
@@ -287,7 +288,7 @@ const showAlert = ref(false)
 const alertTitle = ref('')
 const alertMessage = ref('')
 const alertType = ref<'info' | 'warning' | 'error'>('info')
-const showCreateModal = ref(true)
+const showCreateModal = computed(() => !props.editingRule)
 const showEditModal = computed(() => !!props.editingRule)
 
 const weekDays = [
@@ -388,7 +389,6 @@ const toggleDay = (day: number) => {
 }
 
 const handleClose = () => {
-  showCreateModal.value = false
   emit('close')
 }
 
@@ -437,7 +437,8 @@ const handleSubmit = async () => {
 
     if (showEditModal.value) {
       // 編輯模式：發射表單資料給父元件處理
-      emit('submit', data)
+      emit('submit', data, props.updateMode || 'ALL')
+      handleClose()
     } else {
       // 新增模式：直接呼叫 API
       const api = useApi()

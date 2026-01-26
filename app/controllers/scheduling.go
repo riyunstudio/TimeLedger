@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"time"
@@ -920,6 +921,93 @@ func (ctl *SchedulingController) UpdateRule(ctx *gin.Context) {
 		}
 	}
 
+	// 根據 update_mode 處理不同的更新策略
+	var resultRules []models.ScheduleRule
+
+	switch req.UpdateMode {
+	case UpdateModeFuture:
+		// FUTURE: 截斷現有規則，創建新規則段
+		resultRules, err = handleFutureUpdate(ctx, scheduleRuleRepo, centerID, existingRule, relatedRules, req, startDate, endDate)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
+				Code:    500,
+				Message: "Failed to update rule (FUTURE): " + err.Error(),
+			})
+			return
+		}
+	case UpdateModeSingle:
+		// SINGLE: 只更新這個規則（不改變 weekday 結構）
+		resultRules, err = handleSingleUpdate(ctx, scheduleRuleRepo, centerID, existingRule, req, startDate, endDate)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
+				Code:    500,
+				Message: "Failed to update rule (SINGLE): " + err.Error(),
+			})
+			return
+		}
+	default:
+		// ALL 或空：更新所有相關規則
+		resultRules, err = handleAllUpdate(ctx, scheduleRuleRepo, centerID, existingRule, relatedRules, req, startDate, endDate)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
+				Code:    500,
+				Message: "Failed to update rule (ALL): " + err.Error(),
+			})
+			return
+		}
+	}
+
+	ctx.JSON(http.StatusOK, global.ApiResponse{
+		Code:    0,
+		Message: "Schedule rules updated successfully",
+		Datas:   resultRules,
+	})
+}
+
+// handleFutureUpdate 處理 FUTURE 模式：截斷現有規則，創建新規則段
+func handleFutureUpdate(ctx context.Context, ruleRepo *repositories.ScheduleRuleRepository, centerID uint, existingRule models.ScheduleRule, relatedRules []models.ScheduleRule, req UpdateRuleRequest, startDate, endDate time.Time) ([]models.ScheduleRule, error) {
+	var result []models.ScheduleRule
+	cutoffDate := startDate.AddDate(0, 0, -1) // 前一天
+
+	// 1. 更新現有規則的 end_date 到 cutoffDate
+	for _, rule := range append(relatedRules, existingRule) {
+		rule.EffectiveRange.EndDate = cutoffDate
+		if err := ruleRepo.Update(ctx, rule); err != nil {
+			return nil, err
+		}
+		result = append(result, rule)
+	}
+
+	// 2. 創建新的規則段
+	newRules := createNewRuleSegment(centerID, existingRule, relatedRules, req, startDate, endDate)
+	for _, newRule := range newRules {
+		created, err := ruleRepo.Create(ctx, newRule)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, created)
+	}
+
+	return result, nil
+}
+
+// handleSingleUpdate 處理 SINGLE 模式：只更新這個規則的日期範圍
+func handleSingleUpdate(ctx context.Context, ruleRepo *repositories.ScheduleRuleRepository, centerID uint, existingRule models.ScheduleRule, req UpdateRuleRequest, startDate, endDate time.Time) ([]models.ScheduleRule, error) {
+	// SINGLE 模式：只更新這個規則的 effective_range，不影響其他 weekday 規則
+	existingRule.EffectiveRange.StartDate = startDate
+	if req.EndDate != nil && *req.EndDate != "" {
+		existingRule.EffectiveRange.EndDate = *(&endDate)
+	}
+
+	if err := ruleRepo.Update(ctx, existingRule); err != nil {
+		return nil, err
+	}
+
+	return []models.ScheduleRule{existingRule}, nil
+}
+
+// handleAllUpdate 處理 ALL 模式：更新所有相關規則
+func handleAllUpdate(ctx context.Context, ruleRepo *repositories.ScheduleRuleRepository, centerID uint, existingRule models.ScheduleRule, relatedRules []models.ScheduleRule, req UpdateRuleRequest, startDate, endDate time.Time) ([]models.ScheduleRule, error) {
 	// 收集所有相關的 weekday
 	existingWeekdays := []int{existingRule.Weekday}
 	for _, rule := range relatedRules {
@@ -976,109 +1064,93 @@ func (ctl *SchedulingController) UpdateRule(ctx *gin.Context) {
 
 	// 2. 創建新的規則
 	for weekday := range newWeekdayMap {
-		newRule := models.ScheduleRule{
-			CenterID:   centerID,
-			OfferingID: existingRule.OfferingID,
-			TeacherID:  existingRule.TeacherID,
-			RoomID:     existingRule.RoomID,
-			Name:       existingRule.Name,
-			Weekday:    weekday,
-			StartTime:  existingRule.StartTime,
-			EndTime:    existingRule.EndTime,
-			Duration:   existingRule.Duration,
-			EffectiveRange: models.DateRange{
-				StartDate: startDate,
-				EndDate:   endDate,
-			},
-		}
-		if req.Name != "" {
-			newRule.Name = req.Name
-		}
-		if req.OfferingID != 0 {
-			newRule.OfferingID = req.OfferingID
-		}
-		if req.TeacherID != nil {
-			newRule.TeacherID = req.TeacherID
-		}
-		if req.RoomID != 0 {
-			newRule.RoomID = req.RoomID
-		}
-		if req.StartTime != "" {
-			newRule.StartTime = req.StartTime
-		}
-		if req.EndTime != "" {
-			newRule.EndTime = req.EndTime
-		}
-		if req.Duration != 0 {
-			newRule.Duration = req.Duration
-		}
-		createdRules = append(createdRules, newRule)
+		newRule := createSingleRule(centerID, existingRule, req, weekday, startDate, endDate)
+		createdRules = append(createdRules, *newRule)
 	}
 
 	// 3. 執行資料庫操作
 	// 先刪除
 	for _, id := range deletedRuleIDs {
-		if err := scheduleRuleRepo.Delete(ctx, id); err != nil {
-			ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-				Code:    500,
-				Message: "Failed to delete rule: " + err.Error(),
-			})
-			return
+		if err := ruleRepo.Delete(ctx, id); err != nil {
+			return nil, err
 		}
 	}
 
 	// 更新
 	for _, rule := range updatedRules {
-		if err := scheduleRuleRepo.Update(ctx, rule); err != nil {
-			ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-				Code:    500,
-				Message: "Failed to update rule: " + err.Error(),
-			})
-			return
+		if err := ruleRepo.Update(ctx, rule); err != nil {
+			return nil, err
 		}
 	}
 
 	// 創建
 	for _, rule := range createdRules {
-		if _, err := scheduleRuleRepo.Create(ctx, rule); err != nil {
-			ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-				Code:    500,
-				Message: "Failed to create rule: " + err.Error(),
-			})
-			return
+		created, err := ruleRepo.Create(ctx, rule)
+		if err != nil {
+			return nil, err
 		}
+		updatedRules = append(updatedRules, created)
 	}
 
-	actorID := ctx.GetUint(global.UserIDKey)
-	ctl.auditLogRepo.Create(ctx, models.AuditLog{
+	return updatedRules, nil
+}
+
+// createNewRuleSegment 為 FUTURE 模式創建新的規則段
+func createNewRuleSegment(centerID uint, existingRule models.ScheduleRule, relatedRules []models.ScheduleRule, req UpdateRuleRequest, startDate, endDate time.Time) []models.ScheduleRule {
+	// 收集所有需要創建的 weekday
+	weekdaysToCreate := []int{existingRule.Weekday}
+	for _, rule := range relatedRules {
+		weekdaysToCreate = append(weekdaysToCreate, rule.Weekday)
+	}
+
+	var newRules []models.ScheduleRule
+	for _, weekday := range weekdaysToCreate {
+		newRule := createSingleRule(centerID, existingRule, req, weekday, startDate, endDate)
+		newRules = append(newRules, *newRule)
+	}
+
+	return newRules
+}
+
+// createSingleRule 創建單個規則
+func createSingleRule(centerID uint, existingRule models.ScheduleRule, req UpdateRuleRequest, weekday int, startDate, endDate time.Time) *models.ScheduleRule {
+	newRule := &models.ScheduleRule{
 		CenterID:   centerID,
-		ActorType:  "ADMIN",
-		ActorID:    actorID,
-		Action:     "UPDATE_SCHEDULE_RULE",
-		TargetType: "ScheduleRule",
-		TargetID:   ruleID,
-		Payload: models.AuditPayload{
-			After: map[string]interface{}{
-				"weekdays":       req.Weekdays,
-				"updated_count":  len(updatedRules),
-				"created_count":  len(createdRules),
-				"deleted_count":  len(deletedRuleIDs),
-			},
+		OfferingID: existingRule.OfferingID,
+		TeacherID:  existingRule.TeacherID,
+		RoomID:     existingRule.RoomID,
+		Name:       existingRule.Name,
+		Weekday:    weekday,
+		StartTime:  existingRule.StartTime,
+		EndTime:    existingRule.EndTime,
+		Duration:   existingRule.Duration,
+		EffectiveRange: models.DateRange{
+			StartDate: startDate,
+			EndDate:   endDate,
 		},
-	})
-
-	// 返回所有更新後的規則
-	var allResultRules []models.ScheduleRule
-	allResultRules = append(allResultRules, updatedRules...)
-	for _, rule := range createdRules {
-		allResultRules = append(allResultRules, rule)
 	}
-
-	ctx.JSON(http.StatusOK, global.ApiResponse{
-		Code:    0,
-		Message: "Schedule rules updated successfully",
-		Datas:   allResultRules,
-	})
+	if req.Name != "" {
+		newRule.Name = req.Name
+	}
+	if req.OfferingID != 0 {
+		newRule.OfferingID = req.OfferingID
+	}
+	if req.TeacherID != nil {
+		newRule.TeacherID = req.TeacherID
+	}
+	if req.RoomID != 0 {
+		newRule.RoomID = req.RoomID
+	}
+	if req.StartTime != "" {
+		newRule.StartTime = req.StartTime
+	}
+	if req.EndTime != "" {
+		newRule.EndTime = req.EndTime
+	}
+	if req.Duration != 0 {
+		newRule.Duration = req.Duration
+	}
+	return newRule
 }
 
 type DetectPhaseTransitionsRequest struct {

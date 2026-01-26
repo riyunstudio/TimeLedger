@@ -85,14 +85,24 @@ type ScheduleExceptionService interface {
 }
 
 type ExpandedSchedule struct {
-	RuleID       uint      `json:"rule_id"`
-	Date         time.Time `json:"date"`
-	StartTime    string    `json:"start_time"`
-	EndTime      string    `json:"end_time"`
-	RoomID       uint      `json:"room_id"`
-	TeacherID    *uint     `json:"teacher_id"`
-	IsHoliday    bool      `json:"is_holiday"`
-	HasException bool      `json:"has_exception"`
+	RuleID        uint               `json:"rule_id"`
+	Date          time.Time          `json:"date"`
+	StartTime     string             `json:"start_time"`
+	EndTime       string             `json:"end_time"`
+	RoomID        uint               `json:"room_id"`
+	TeacherID     *uint              `json:"teacher_id"`
+	IsHoliday     bool               `json:"is_holiday"`
+	HasException  bool               `json:"has_exception"`
+	ExceptionInfo *ExpandedException `json:"exception_info,omitempty"`
+}
+
+type ExpandedException struct {
+	ID           uint      `json:"id"`
+	Type         string    `json:"type"`          // CANCEL, RESCHEDULE, REPLACE_TEACHER
+	Status       string    `json:"status"`        // PENDING, APPROVED, REJECTED, REVOKED
+	NewTeacherID *uint     `json:"new_teacher_id,omitempty"`
+	NewStartAt   *time.Time `json:"new_start_at,omitempty"`
+	NewEndAt     *time.Time `json:"new_end_at,omitempty"`
 }
 
 type PhaseTransition struct {

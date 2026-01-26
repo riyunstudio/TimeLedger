@@ -33,7 +33,15 @@ func (rp *ScheduleExceptionRepository) GetByIDAndCenterID(ctx context.Context, i
 
 func (rp *ScheduleExceptionRepository) GetByRuleAndDate(ctx context.Context, ruleID uint, date time.Time) ([]models.ScheduleException, error) {
 	var data []models.ScheduleException
-	err := rp.app.MySQL.RDB.WithContext(ctx).Where("rule_id = ? AND original_date = ?", ruleID, date).Find(&data).Error
+	// 將 date 轉換為日期字串進行比較
+	dateStr := date.Format("2006-01-02")
+	err := rp.app.MySQL.RDB.WithContext(ctx).Where("rule_id = ? AND DATE(original_date) = ?", ruleID, dateStr).Find(&data).Error
+	return data, err
+}
+
+func (rp *ScheduleExceptionRepository) GetByRuleIDAndDateStr(ctx context.Context, ruleID uint, dateStr string) ([]models.ScheduleException, error) {
+	var data []models.ScheduleException
+	err := rp.app.MySQL.RDB.WithContext(ctx).Where("rule_id = ? AND DATE(original_date) = ?", ruleID, dateStr).Find(&data).Error
 	return data, err
 }
 

@@ -257,6 +257,17 @@
     </Teleport>
 
     <Teleport to="body">
+      <UpdateModeModal
+        v-if="showUpdateModeModal"
+        :show="showUpdateModeModal"
+        :rule-name="editingRule?.offering_name"
+        :rule-date="editingRule?.date ? new Date(editingRule.date).toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' }) : ''"
+        @close="handleUpdateModeClose"
+        @confirm="handleUpdateModeConfirm"
+      />
+    </Teleport>
+
+    <Teleport to="body">
       <ScheduleRuleModal
         v-if="showCreateModal"
         @close="showCreateModal = false"
@@ -265,8 +276,9 @@
       <ScheduleRuleModal
         v-if="showEditModal"
         :editing-rule="editingRule"
-        @close="showEditModal = false; editingRule = null"
-        @updated="handleRuleUpdated"
+        :update-mode="pendingUpdateMode"
+        @close="handleEditModalClose"
+        @submit="handleRuleUpdated"
       />
     </Teleport>
   </div>
@@ -304,7 +316,9 @@ const { resourceCache, fetchAllResources } = useResourceCache()
 
 const showCreateModal = ref(false)
 const showEditModal = ref(false)
+const showUpdateModeModal = ref(false)
 const editingRule = ref<any>(null)
+const pendingUpdateMode = ref<string>('')
 const selectedCell = ref<{ time: number, day: number } | null>(null)
 const selectedSchedule = ref<any>(null)
 const dragTarget = ref<{ time: number, day: number } | null>(null)
@@ -313,8 +327,26 @@ const validationResults = ref<Record<string, any>>({})
 const handleEdit = () => {
   if (selectedSchedule.value) {
     editingRule.value = selectedSchedule.value
-    showEditModal.value = true
+    // 先顯示更新模式選擇
+    showUpdateModeModal.value = true
   }
+}
+
+const handleUpdateModeClose = () => {
+  showUpdateModeModal.value = false
+  editingRule.value = null
+}
+
+const handleUpdateModeConfirm = (mode: string) => {
+  pendingUpdateMode.value = mode
+  showUpdateModeModal.value = false
+  showEditModal.value = true
+}
+
+const handleEditModalClose = () => {
+  showEditModal.value = false
+  editingRule.value = null
+  pendingUpdateMode.value = ''
 }
 
 const handleDelete = async () => {
@@ -333,10 +365,22 @@ const handleDelete = async () => {
   }
 }
 
-const handleRuleUpdated = async () => {
-  await fetchSchedules()
-  selectedCell.value = null
-  selectedSchedule.value = null
+const handleRuleUpdated = async (formData: any, updateMode: string) => {
+  try {
+    const api = useApi()
+    await api.put(`/admin/rules/${editingRule.value.id}`, {
+      ...formData,
+      update_mode: updateMode,
+    })
+    await fetchSchedules()
+    selectedCell.value = null
+    selectedSchedule.value = null
+    editingRule.value = null
+    pendingUpdateMode.value = ''
+  } catch (err) {
+    console.error('Failed to update rule:', err)
+    await alertError('更新失敗，請稍後再試')
+  }
 }
 
 // 資源列表（根據視角模式動態取得）
