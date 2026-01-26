@@ -616,12 +616,7 @@ onMounted(() => {
   checkMobile()
   window.addEventListener('resize', checkMobile)
 
-  // Check if we need to load mock data (if in mock mode but store wasn't initialized)
   const teacherStore = useTeacherStore()
-  if (typeof window !== 'undefined' && localStorage.getItem('timeledger_mock_mode') === 'true') {
-    teacherStore.loadMockCenters()
-    teacherStore.loadMockSchedule()
-  }
 
   teacherStore.fetchCenters()
   teacherStore.fetchSchedule()
