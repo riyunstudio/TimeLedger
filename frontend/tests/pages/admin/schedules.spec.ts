@@ -79,7 +79,8 @@ class SchedulePageLogic {
   // 方法
   getWeekdayText(weekday: number): string {
     const days = ['日', '一', '二', '三', '四', '五', '六']
-    return days[weekday] || '-'
+    const dayIndex = weekday === 7 ? 0 : weekday
+    return days[dayIndex] || '-'
   }
 
   getStatusClass(rule: any): string {
