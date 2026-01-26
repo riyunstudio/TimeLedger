@@ -11,7 +11,7 @@ type NotificationService interface {
 	SendTeacherNotification(ctx context.Context, teacherID uint, title, message string) error
 
 	// SendAdminNotification 發送通知給管理員
-	SendAdminNotification(ctx context.Context, centerID uint, title, message string) error
+	SendAdminNotification(ctx context.Context, centerID uint, title, message string, notificationType string) error
 
 	// SendScheduleReminder 發送排課提醒
 	SendScheduleReminder(ctx context.Context, ruleID uint, date time.Time) error

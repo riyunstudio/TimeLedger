@@ -129,6 +129,7 @@
 
 <script setup lang="ts">
 import type { ScheduleException } from '~/types'
+import { alertError } from '~/composables/useAlert'
 
 interface ScheduleRuleData {
   id: number
@@ -278,8 +279,11 @@ const handleSubmit = async () => {
     await teacherStore.createException(submitData)
     emit('submit')
     emit('close')
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to create exception:', error)
+    // 顯示錯誤彈窗，從錯誤響應中提取訊息
+    const errorMessage = error?.response?._data?.message || error?.message || '操作失敗，請稍後再試'
+    await alertError(errorMessage)
   } finally {
     loading.value = false
   }

@@ -136,6 +136,22 @@
       </div>
 
       <div class="flex items-center gap-2">
+        <!-- Notification bell -->
+        <button
+          @click="notificationUI.open()"
+          class="relative p-2 rounded-lg hover:bg-white/10 transition-colors"
+        >
+          <svg class="w-5 h-5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2 2 0 0118 22v-4.317l-1.405 1.405A2 2 0 0115 17h5l-1.405-1.405A2 2 0 0118 12v6a2 2 0 01-2 2h-2m-6 3h2m8 0h2M3 8h18M3 8v10a2 2 0 002 2h14a2 2 0 002-2V8z" />
+          </svg>
+          <span
+            v-if="notificationStore.unreadCount > 0"
+            class="absolute -top-1 -right-1 w-5 h-5 bg-critical-500 text-white text-xs rounded-full flex items-center justify-center"
+          >
+            {{ notificationStore.unreadCount > 9 ? '9+' : notificationStore.unreadCount }}
+          </span>
+        </button>
+
         <!-- Mobile menu button -->
         <button
           @click="mobileMenuOpen = !mobileMenuOpen"
@@ -159,6 +175,12 @@
       </div>
     </div>
   </header>
+
+  <!-- Notification dropdown -->
+  <NotificationDropdown
+    v-if="notificationUI.show.value"
+    @close="notificationUI.close()"
+  />
 </template>
 
 <script setup lang="ts">
@@ -166,6 +188,8 @@ import { alertConfirm } from '~/composables/useAlert'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const notificationUI = useNotification()
+const notificationStore = useNotificationStore()
 
 const mobileMenuOpen = ref(false)
 
@@ -175,4 +199,9 @@ const handleLogout = async () => {
     router.push('/admin/login')
   }
 }
+
+// Fetch notifications on mount
+onMounted(() => {
+  notificationStore.fetchNotifications()
+})
 </script>

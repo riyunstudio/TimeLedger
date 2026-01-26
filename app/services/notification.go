@@ -56,14 +56,14 @@ func (s *NotificationServiceImpl) SendTeacherNotification(ctx context.Context, t
 	return nil
 }
 
-func (s *NotificationServiceImpl) SendAdminNotification(ctx context.Context, centerID uint, title, message string) error {
+func (s *NotificationServiceImpl) SendAdminNotification(ctx context.Context, centerID uint, title, message string, notificationType string) error {
 	notification := &models.Notification{
 		UserID:    0,
 		UserType:  "ADMIN",
 		CenterID:  centerID,
 		Title:     title,
 		Message:   message,
-		Type:      "SYSTEM",
+		Type:      notificationType,
 		IsRead:    false,
 		CreatedAt: time.Now(),
 	}

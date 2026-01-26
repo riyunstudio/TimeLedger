@@ -377,12 +377,26 @@ TeacherBuffer = max(
 - **嚴禁** 同時改動多個不相關模組
 - 開發順序：`Migration → Unit Test → Backend Service → API → Frontend UI → Integration Test`
 
-### 15.4 提交規範
+### 15.4 提交規範 (Commit Standards)
 - 後端完成且測試通過 → **Commit**
 - 前端完成 → **再次 Commit**
 - **每次修改（包含小修正）都必須立即 commit**，避免累積大量未提交的變更
 - 每次 Commit 前必須更新 `pdr/progress_tracker.md`
-- Commit Message 格式：`feat(scope): 描述 (Ref: PDR章節)`
+- **Commit Message 必須使用英文**，避免中文編碼問題
+- Commit Message 格式：`feat(scope): description (Ref: PDR章節)`
+
+**正確的 Commit Message 範例：**
+```
+feat(auth): add quick login buttons for admin and teacher pages
+fix(frontend): remove undefined mock function calls
+docs: update progress tracker with test coverage results
+```
+
+**錯誤的 Commit Message 範例（禁止使用）：**
+```
+新增快速登入功能  <-- 使用中文
+修正登入問題      <-- 使用中文
+```
 
 ### 15.5 文件回饋循環（Gap Handling）
 發現 API、欄位或邏輯缺失於 PDR 文件時：

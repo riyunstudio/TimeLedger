@@ -340,7 +340,7 @@ func seedOneTeacher(db *DB) {
 func seedOneAdminUser(db *DB) {
 	admin := models.AdminUser{
 		Email:        "admin@timeledger.com",
-		PasswordHash: "$2a$10$wDC8I8iP0LJgkXoUEcxA0uy6S4O/KfDzExabt7YxpD6jtWMHzfyse",
+		PasswordHash: "$2a$10$nZsYJrENRJoW1yLxuZPu0.H4L533HjUMU26pr1LiM0/4VppE02BpC",
 		Name:         "系統管理員",
 		CenterID:     1,
 		Role:         "OWNER",

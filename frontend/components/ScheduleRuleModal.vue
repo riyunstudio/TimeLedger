@@ -445,7 +445,7 @@ const handleSubmit = async () => {
       await api.post('/admin/rules', data)
       handleClose()
       // 通知父元件刷新列表
-      refreshParent()
+      emit('created')
     }
   } catch (error: any) {
     console.error('Failed to save schedule rule:', error)
@@ -459,17 +459,6 @@ const handleSubmit = async () => {
     }
   } finally {
     loading.value = false
-  }
-}
-
-// 刷新父元件列表
-const refreshParent = async () => {
-  try {
-    const api = useApi()
-    // 觸發重新整理事件，這裡透過重新導向來刷新
-    await api.get('/admin/rules')
-  } catch (e) {
-    console.error('Failed to refresh:', e)
   }
 }
 

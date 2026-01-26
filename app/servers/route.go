@@ -126,6 +126,7 @@ func (s *Server) LoadRoutes() {
 		{http.MethodGet, "/api/v1/admin/rules/:ruleId/exceptions", s.action.scheduling.GetExceptionsByRule, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodGet, "/api/v1/admin/exceptions", s.action.scheduling.GetExceptionsByDateRange, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodGet, "/api/v1/admin/exceptions/pending", s.action.scheduling.GetPendingExceptions, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodGet, "/api/v1/admin/exceptions/all", s.action.scheduling.GetAllExceptions, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodPost, "/api/v1/admin/expand-rules", s.action.scheduling.ExpandRules, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodPost, "/api/v1/admin/detect-phase-transitions", s.action.scheduling.DetectPhaseTransitions, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodPost, "/api/v1/admin/scheduling/check-rule-lock", s.action.scheduling.CheckRuleLockStatus, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},

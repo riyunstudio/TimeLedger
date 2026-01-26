@@ -61,11 +61,22 @@
 <script setup lang="ts">
 const notificationDataStore = useNotificationStore()
 const notificationUI = useNotification()
+const router = useRouter()
 
 const handleNotificationClick = async (notification: any) => {
   if (!notification.is_read) {
     await notificationDataStore.markAsRead(notification.id)
   }
+
+  // 根據通知類型跳轉到相應頁面
+  if (notification.title === '新例外申請通知' || notification.type === 'EXCEPTION') {
+    // 跳轉到審核頁面
+    router.push('/admin/approval')
+  } else if (notification.type === 'APPROVAL') {
+    // 跳轉到審核頁面查看結果
+    router.push('/admin/approval')
+  }
+
   notificationUI.close()
 }
 

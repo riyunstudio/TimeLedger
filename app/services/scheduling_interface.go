@@ -82,18 +82,28 @@ type ScheduleExceptionService interface {
 
 	// GetPendingExceptions 取得待審核的例外單
 	GetPendingExceptions(ctx context.Context, centerID uint) ([]models.ScheduleException, error)
+
+	// GetAllExceptions 取得所有例外單（可依狀態篩選）
+	// status 為空時返回所有狀態的例外
+	GetAllExceptions(ctx context.Context, centerID uint, status string) ([]models.ScheduleException, error)
 }
 
 type ExpandedSchedule struct {
-	RuleID        uint               `json:"rule_id"`
-	Date          time.Time          `json:"date"`
-	StartTime     string             `json:"start_time"`
-	EndTime       string             `json:"end_time"`
-	RoomID        uint               `json:"room_id"`
-	TeacherID     *uint              `json:"teacher_id"`
-	IsHoliday     bool               `json:"is_holiday"`
-	HasException  bool               `json:"has_exception"`
-	ExceptionInfo *ExpandedException `json:"exception_info,omitempty"`
+	RuleID         uint               `json:"rule_id"`
+	Date           time.Time          `json:"date"`
+	StartTime      string             `json:"start_time"`
+	EndTime        string             `json:"end_time"`
+	RoomID         uint               `json:"room_id"`
+	TeacherID      *uint              `json:"teacher_id"`
+	IsHoliday      bool               `json:"is_holiday"`
+	HasException   bool               `json:"has_exception"`
+	ExceptionInfo  *ExpandedException `json:"exception_info,omitempty"`
+	// 關聯資料
+	OfferingName   string             `json:"offering_name,omitempty"`
+	TeacherName    string             `json:"teacher_name,omitempty"`
+	RoomName       string             `json:"room_name,omitempty"`
+	OfferingID     uint               `json:"offering_id,omitempty"`
+	EffectiveRange *models.DateRange   `json:"effective_range,omitempty"`
 }
 
 type ExpandedException struct {

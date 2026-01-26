@@ -9,6 +9,10 @@
     </main>
 
     <ToastNotification ref="toastRef" />
+    <NotificationDropdown
+      v-if="notificationUI.show.value"
+      @close="notificationUI.close()"
+    />
   </div>
 </template>
 
@@ -16,6 +20,7 @@
 import { registerToast } from '~/composables/useToast'
 
 const toastRef = ref<any>(null)
+const notificationUI = useNotification()
 
 onMounted(() => {
   if (toastRef.value) {

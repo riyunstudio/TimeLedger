@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 	"timeLedger/app"
 	"timeLedger/app/models"
@@ -71,7 +73,7 @@ type ReviewExceptionRequest struct {
 }
 
 type ExpandRulesRequest struct {
-	RuleIDs   []uint    `json:"rule_ids" binding:"required"`
+	RuleIDs   []uint    `json:"rule_ids"` // 可為空，空陣列表示展開所有規則
 	StartDate time.Time `json:"start_date" binding:"required"`
 	EndDate   time.Time `json:"end_date" binding:"required"`
 }
@@ -512,6 +514,43 @@ func (ctl *SchedulingController) GetPendingExceptions(ctx *gin.Context) {
 	})
 }
 
+// GetAllExceptions 取得所有例外申請（可依狀態篩選）
+// @Summary 取得所有例外申請
+// @Tags Admin - Scheduling
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param status query string false "狀態篩選：PENDING, APPROVED, REJECTED, REVOKED"
+// @Success 200 {object} global.ApiResponse{data=[]models.ScheduleException}
+// @Router /api/v1/admin/exceptions/all [get]
+func (ctl *SchedulingController) GetAllExceptions(ctx *gin.Context) {
+	centerID := ctx.GetUint(global.CenterIDKey)
+	if centerID == 0 {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Center ID required",
+		})
+		return
+	}
+
+	status := ctx.Query("status")
+
+	exceptions, err := ctl.exceptionService.GetAllExceptions(ctx, centerID, status)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
+			Code:    500,
+			Message: err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, global.ApiResponse{
+		Code:    0,
+		Message: "OK",
+		Datas:   exceptions,
+	})
+}
+
 func (ctl *SchedulingController) ExpandRules(ctx *gin.Context) {
 	centerID := ctx.GetUint(global.CenterIDKey)
 	if centerID == 0 {
@@ -522,11 +561,35 @@ func (ctl *SchedulingController) ExpandRules(ctx *gin.Context) {
 		return
 	}
 
-	var req ExpandRulesRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
+	// 手動解析請求參數，支援 YYYY-MM-DD 格式
+	var reqBody struct {
+		RuleIDs   []uint  `json:"rule_ids"`
+		StartDate string  `json:"start_date"`
+		EndDate   string  `json:"end_date"`
+	}
+	if err := ctx.ShouldBindJSON(&reqBody); err != nil {
 		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
 			Code:    global.BAD_REQUEST,
 			Message: "Invalid request parameters",
+		})
+		return
+	}
+
+	// 解析日期（支援 YYYY-MM-DD 格式）
+	startDate, err := time.Parse("2006-01-02", reqBody.StartDate)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Invalid start_date format, expected YYYY-MM-DD",
+		})
+		return
+	}
+
+	endDate, err := time.Parse("2006-01-02", reqBody.EndDate)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Invalid end_date format, expected YYYY-MM-DD",
 		})
 		return
 	}
@@ -542,9 +605,9 @@ func (ctl *SchedulingController) ExpandRules(ctx *gin.Context) {
 	}
 
 	var filteredRules []models.ScheduleRule
-	if len(req.RuleIDs) > 0 {
+	if len(reqBody.RuleIDs) > 0 {
 		for _, rule := range rules {
-			for _, ruleID := range req.RuleIDs {
+			for _, ruleID := range reqBody.RuleIDs {
 				if rule.ID == ruleID {
 					filteredRules = append(filteredRules, rule)
 					break
@@ -555,7 +618,7 @@ func (ctl *SchedulingController) ExpandRules(ctx *gin.Context) {
 		filteredRules = rules
 	}
 
-	expandedSchedules := ctl.expansionService.ExpandRules(ctx, filteredRules, req.StartDate, req.EndDate, centerID)
+	expandedSchedules := ctl.expansionService.ExpandRules(ctx, filteredRules, startDate, endDate, centerID)
 
 	ctx.JSON(http.StatusOK, global.ApiResponse{
 		Code:    0,
@@ -937,7 +1000,8 @@ func (ctl *SchedulingController) UpdateRule(ctx *gin.Context) {
 		}
 	case UpdateModeSingle:
 		// SINGLE: 只更新這個規則（不改變 weekday 結構）
-		resultRules, err = handleSingleUpdate(ctx, scheduleRuleRepo, centerID, existingRule, req, startDate, endDate)
+		exceptionRepo := repositories.NewScheduleExceptionRepository(ctl.app)
+		resultRules, err = handleSingleUpdate(ctx, scheduleRuleRepo, exceptionRepo, centerID, existingRule, req, startDate)
 		if err != nil {
 			ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
 				Code:    500,
@@ -991,19 +1055,91 @@ func handleFutureUpdate(ctx context.Context, ruleRepo *repositories.ScheduleRule
 	return result, nil
 }
 
-// handleSingleUpdate 處理 SINGLE 模式：只更新這個規則的日期範圍
-func handleSingleUpdate(ctx context.Context, ruleRepo *repositories.ScheduleRuleRepository, centerID uint, existingRule models.ScheduleRule, req UpdateRuleRequest, startDate, endDate time.Time) ([]models.ScheduleRule, error) {
-	// SINGLE 模式：只更新這個規則的 effective_range，不影響其他 weekday 規則
-	existingRule.EffectiveRange.StartDate = startDate
-	if req.EndDate != nil && *req.EndDate != "" {
-		existingRule.EffectiveRange.EndDate = *(&endDate)
+// handleSingleUpdate 處理 SINGLE 模式：針對單一日期建立例外單
+func handleSingleUpdate(ctx context.Context, ruleRepo *repositories.ScheduleRuleRepository, exceptionRepo *repositories.ScheduleExceptionRepository, centerID uint, existingRule models.ScheduleRule, req UpdateRuleRequest, targetDate time.Time) ([]models.ScheduleRule, error) {
+	// SINGLE 模式：針對 targetDate 這一天進行變更
+	// 1. 建立 CANCEL 例外單（取消這一天的原場次）
+
+	now := time.Now()
+	cancelException := models.ScheduleException{
+		CenterID:     centerID,
+		RuleID:       existingRule.ID,
+		OriginalDate: targetDate,
+		Type:         "CANCEL",
+		Status:       "APPROVED", // SINGLE 模式直接核准
+		Reason:       req.Name,   // 使用更新原因作為取消原因
+		ReviewedAt:   &now,
 	}
 
-	if err := ruleRepo.Update(ctx, existingRule); err != nil {
-		return nil, err
+	if _, err := exceptionRepo.Create(ctx, cancelException); err != nil {
+		return nil, fmt.Errorf("failed to create cancel exception: %w", err)
 	}
 
-	return []models.ScheduleRule{existingRule}, nil
+	// 2. 建立新時間的規則（視為新規則，只針對這一天）
+	weekday := int(targetDate.Weekday())
+	if weekday == 0 {
+		weekday = 7 // 週日轉換為 7
+	}
+
+	newRule := models.ScheduleRule{
+		CenterID:       centerID,
+		OfferingID:     req.OfferingID,
+		TeacherID:      req.TeacherID,
+		RoomID:         req.RoomID,
+		Name:           req.Name,
+		Weekday:        weekday,
+		StartTime:      req.StartTime,
+		EndTime:        req.EndTime,
+		Duration:       req.Duration,
+		EffectiveRange: models.DateRange{
+			StartDate: targetDate,
+			EndDate:   targetDate, // 只有這一天
+		},
+	}
+
+	created, err := ruleRepo.Create(ctx, newRule)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create new rule for reschedule: %w", err)
+	}
+
+	// 3. 建立 RESCHEDULE 例外單關聯新舊規則（如果新時間與原時間不同）
+	startHour := parseHour(req.StartTime)
+	endHour := parseHour(req.EndTime)
+
+	newStartAt := time.Date(targetDate.Year(), targetDate.Month(), targetDate.Day(), startHour, 0, 0, 0, time.UTC)
+	newEndAt := time.Date(targetDate.Year(), targetDate.Month(), targetDate.Day(), endHour, 0, 0, 0, time.UTC)
+
+	rescheduleException := models.ScheduleException{
+		CenterID:     centerID,
+		RuleID:       existingRule.ID, // 關聯原規則
+		OriginalDate: targetDate,
+		Type:         "RESCHEDULE",
+		Status:       "APPROVED",
+		Reason:       req.Name,
+		NewStartAt:   &newStartAt,
+		NewEndAt:     &newEndAt,
+		ReviewedAt:   &now,
+	}
+
+	if _, err := exceptionRepo.Create(ctx, rescheduleException); err != nil {
+		// 例外單建立失敗不影響主要流程，記錄錯誤但繼續
+		fmt.Printf("Warning: failed to create reschedule exception: %v\n", err)
+	}
+
+	return []models.ScheduleRule{existingRule, created}, nil
+}
+
+// parseHour 從時間字串（如 "14:00"）解析小時
+func parseHour(timeStr string) int {
+	if timeStr == "" {
+		return 0
+	}
+	parts := strings.Split(timeStr, ":")
+	if len(parts) < 1 {
+		return 0
+	}
+	hour, _ := strconv.Atoi(parts[0])
+	return hour
 }
 
 // handleAllUpdate 處理 ALL 模式：更新所有相關規則

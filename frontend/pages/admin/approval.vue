@@ -9,63 +9,105 @@
       </p>
     </div>
 
-    <div class="mb-6 flex flex-col sm:flex-row gap-3 overflow-x-auto pb-2">
-      <button
-        @click="activeFilter = 'all'"
-        class="glass-btn px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap"
-        :class="activeFilter === 'all' ? 'bg-primary-500/30 border-primary-500' : ''"
-      >
-        全部
-      </button>
-      <button
-        @click="activeFilter = 'pending'"
-        class="glass-btn px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap"
-        :class="activeFilter === 'pending' ? 'bg-warning-500/30 border-warning-500' : ''"
-      >
-        待審核 ({{ pendingCount }})
-      </button>
-      <button
-        @click="activeFilter = 'approved'"
-        class="glass-btn px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap"
-        :class="activeFilter === 'approved' ? 'bg-success-500/30 border-success-500' : ''"
-      >
-        已核准
-      </button>
-      <button
-        @click="activeFilter = 'rejected'"
-        class="glass-btn px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap"
-        :class="activeFilter === 'rejected' ? 'bg-critical-500/30 border-critical-500' : ''"
-      >
-        已拒絕
-      </button>
+    <!-- 篩選器區域 -->
+    <div class="mb-6 flex flex-col gap-4">
+      <!-- 第一行：狀態篩選 -->
+      <div class="flex flex-wrap gap-2 overflow-x-auto pb-2">
+        <button
+          @click="activeFilter = 'all'"
+          class="glass-btn px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap"
+          :class="activeFilter === 'all' ? 'bg-primary-500/30 border-primary-500' : ''"
+        >
+          全部
+        </button>
+        <button
+          @click="activeFilter = 'pending'"
+          class="glass-btn px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap"
+          :class="activeFilter === 'pending' ? 'bg-warning-500/30 border-warning-500' : ''"
+        >
+          待審核 ({{ pendingCount }})
+        </button>
+        <button
+          @click="activeFilter = 'approved'"
+          class="glass-btn px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap"
+          :class="activeFilter === 'approved' ? 'bg-success-500/30 border-success-500' : ''"
+        >
+          已核准
+        </button>
+        <button
+          @click="activeFilter = 'rejected'"
+          class="glass-btn px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap"
+          :class="activeFilter === 'rejected' ? 'bg-critical-500/30 border-critical-500' : ''"
+        >
+          已拒絕
+        </button>
+        <button
+          @click="activeFilter = 'revoked'"
+          class="glass-btn px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap"
+          :class="activeFilter === 'revoked' ? 'bg-slate-500/30 border-slate-500' : ''"
+        >
+          已撤回
+        </button>
 
-      <div class="w-px bg-white/10 mx-2"></div>
+        <div class="w-px bg-white/10 mx-2"></div>
 
-      <!-- 視角篩選 -->
-      <select
-        v-model="viewModeFilter"
-        class="px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap bg-slate-800/80 border border-white/10 text-slate-300 focus:outline-none focus:border-primary-500"
-      >
-        <option value="">全部視角</option>
-        <optgroup label="老師" class="bg-slate-800">
-          <option v-for="teacher in teachers" :key="'t-' + teacher.id" :value="'teacher:' + teacher.id" class="bg-slate-800">
-            {{ teacher.name }}
-          </option>
-        </optgroup>
-        <optgroup label="教室" class="bg-slate-800">
-          <option v-for="room in rooms" :key="'r-' + room.id" :value="'room:' + room.id" class="bg-slate-800">
-            {{ room.name }}
-          </option>
-        </optgroup>
-      </select>
+        <!-- 視角篩選 -->
+        <select
+          v-model="viewModeFilter"
+          class="px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap bg-slate-800/80 border border-white/10 text-slate-300 focus:outline-none focus:border-primary-500"
+        >
+          <option value="">全部視角</option>
+          <optgroup label="老師" class="bg-slate-800">
+            <option v-for="teacher in teachers" :key="'t-' + teacher.id" :value="'teacher:' + teacher.id" class="bg-slate-800">
+              {{ teacher.name }}
+            </option>
+          </optgroup>
+          <optgroup label="教室" class="bg-slate-800">
+            <option v-for="room in rooms" :key="'r-' + room.id" :value="'room:' + room.id" class="bg-slate-800">
+              {{ room.name }}
+            </option>
+          </optgroup>
+        </select>
 
-      <button
-        v-if="viewModeFilter"
-        @click="viewModeFilter = ''"
-        class="glass-btn px-3 py-2 rounded-xl text-sm font-medium whitespace-nowrap text-slate-400 hover:text-white"
-      >
-        清除篩選
-      </button>
+        <button
+          v-if="viewModeFilter"
+          @click="viewModeFilter = ''"
+          class="glass-btn px-3 py-2 rounded-xl text-sm font-medium whitespace-nowrap text-slate-400 hover:text-white"
+        >
+          清除篩選
+        </button>
+      </div>
+
+      <!-- 第二行：日期範圍篩選 -->
+      <div class="flex flex-wrap items-center gap-3">
+        <div class="flex items-center gap-2">
+          <label class="text-sm text-slate-400">日期範圍：</label>
+          <input
+            type="date"
+            v-model="dateFrom"
+            class="px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-primary-500"
+          />
+          <span class="text-slate-500">至</span>
+          <input
+            type="date"
+            v-model="dateTo"
+            class="px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-primary-500"
+          />
+        </div>
+        <button
+          @click="applyDateFilter"
+          class="px-4 py-2 rounded-lg bg-primary-500 text-white text-sm font-medium hover:bg-primary-600 transition-colors"
+        >
+          套用
+        </button>
+        <button
+          v-if="dateFrom || dateTo"
+          @click="clearDateFilter"
+          class="px-3 py-2 rounded-lg bg-white/5 text-slate-400 text-sm hover:bg-white/10 transition-colors"
+        >
+          清除
+        </button>
+      </div>
     </div>
 
     <div
@@ -178,6 +220,10 @@ const loading = ref(false)
 const { getCenterId } = useCenterId()
 const toast = useToast()
 
+// 日期範圍篩選
+const dateFrom = ref('')
+const dateTo = ref('')
+
 const exceptions = ref<any[]>([])
 const teachers = ref<any[]>([])
 const rooms = ref<any[]>([])
@@ -216,6 +262,17 @@ const filteredExceptions = computed(() => {
     }
   }
 
+  // 日期範圍過濾
+  if (dateFrom.value) {
+    const fromDate = new Date(dateFrom.value)
+    result = result.filter(exc => new Date(exc.original_date) >= fromDate)
+  }
+  if (dateTo.value) {
+    const toDate = new Date(dateTo.value)
+    toDate.setHours(23, 59, 59, 999) // 設置為當天最後一刻
+    result = result.filter(exc => new Date(exc.original_date) <= toDate)
+  }
+
   return result
 })
 
@@ -227,8 +284,8 @@ const fetchExceptions = async () => {
   loading.value = true
   try {
     const api = useApi()
-    // 查詢所有待審核的例外申請（不受日期限制）
-    const response = await api.get<{ code: number; datas: any[] }>('/admin/exceptions/pending')
+    // 查詢所有例外申請（不再只查待審核）
+    const response = await api.get<{ code: number; datas: any[] }>('/admin/exceptions/all')
     exceptions.value = response.datas || []
   } catch (error) {
     console.error('Failed to fetch exceptions:', error)
@@ -237,6 +294,23 @@ const fetchExceptions = async () => {
     loading.value = false
   }
 }
+
+// 套用日期篩選
+const applyDateFilter = () => {
+  // 日期已經綁定到 dateFrom 和 dateTo，computed 會自動過濾
+}
+
+// 清除日期篩選
+const clearDateFilter = () => {
+  dateFrom.value = ''
+  dateTo.value = ''
+}
+
+// 監聽篩選條件變化，重新獲取數據
+watch([activeFilter], () => {
+  // 狀態改變時需要重新獲取數據
+  fetchExceptions()
+})
 
 const fetchFilters = async () => {
   try {
@@ -294,6 +368,8 @@ const getEmptyMessage = (): string => {
       return '目前沒有已核准的申請'
     case 'rejected':
       return '目前沒有被拒絕的申請'
+    case 'revoked':
+      return '目前沒有已撤回的申請'
     default:
       return '目前沒有任何申請'
   }

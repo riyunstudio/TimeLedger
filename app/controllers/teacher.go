@@ -640,11 +640,22 @@ func (ctl *TeacherController) GetCenterScheduleRules(ctx *gin.Context) {
 				effectiveEndDate = rule.EffectiveRange.EndDate.Format("2006-01-02")
 			}
 
+			// 確保 weekday 在有效範圍內 (0-6)
+			// 有些系統用 7 表示週日，需要額外處理
+			weekdayText := ""
+			weekday := rule.Weekday
+			if weekday == 7 {
+				weekday = 0 // 將 7 視為週日
+			}
+			if weekday >= 0 && weekday < len(weekdayTexts) {
+				weekdayText = weekdayTexts[weekday]
+			}
+
 			teacherRules = append(teacherRules, RuleResponse{
 				ID:                 rule.ID,
 				Title:              title,
 				Weekday:            rule.Weekday,
-				WeekdayText:        weekdayTexts[rule.Weekday],
+				WeekdayText:        weekdayText,
 				StartTime:          rule.StartTime,
 				EndTime:            rule.EndTime,
 				EffectiveStartDate: effectiveStartDate,

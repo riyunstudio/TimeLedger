@@ -118,14 +118,20 @@ func (s *ScheduleExpansionServiceImpl) ExpandRules(ctx context.Context, rules []
 					}
 
 					schedule := ExpandedSchedule{
-						RuleID:       rule.ID,
-						Date:         date,
-						StartTime:    rule.StartTime,
-						EndTime:      rule.EndTime,
-						RoomID:       rule.RoomID,
-						TeacherID:    rule.TeacherID,
-						IsHoliday:    isHoliday,
-						HasException: pendingException != nil || approvedException != nil,
+						RuleID:         rule.ID,
+						Date:           date,
+						StartTime:      rule.StartTime,
+						EndTime:        rule.EndTime,
+						RoomID:         rule.RoomID,
+						TeacherID:      rule.TeacherID,
+						IsHoliday:      isHoliday,
+						HasException:   pendingException != nil || approvedException != nil,
+						// 關聯資料
+						OfferingName:   rule.Offering.Name,
+						TeacherName:    rule.Teacher.Name,
+						RoomName:       rule.Room.Name,
+						OfferingID:     rule.OfferingID,
+						EffectiveRange: &rule.EffectiveRange,
 					}
 
 					// 添加例外資訊供前端顯示
@@ -281,6 +287,7 @@ type ScheduleExceptionServiceImpl struct {
 	auditLogRepo      *repositories.AuditLogRepository
 	centerRepo        *repositories.CenterRepository
 	validationService ScheduleValidationService
+	notificationSvc   NotificationService
 }
 
 func NewScheduleExceptionService(app *app.App) ScheduleExceptionService {
@@ -291,6 +298,7 @@ func NewScheduleExceptionService(app *app.App) ScheduleExceptionService {
 		auditLogRepo:      repositories.NewAuditLogRepository(app),
 		centerRepo:        repositories.NewCenterRepository(app),
 		validationService: NewScheduleValidationService(app),
+		notificationSvc:   NewNotificationService(app),
 	}
 	return svc
 }
@@ -365,6 +373,36 @@ func (s *ScheduleExceptionServiceImpl) CreateException(ctx context.Context, cent
 		TargetID:   createdException.ID,
 		Payload:    models.AuditPayload{After: exception},
 	})
+
+	// 發送通知給管理員
+	typeText := map[string]string{
+		"CANCEL":           "停課",
+		"RESCHEDULE":       "改期",
+		"REPLACE_TEACHER":  "代課",
+	}
+	typeLabel := typeText[exceptionType]
+	if typeLabel == "" {
+		typeLabel = exceptionType
+	}
+
+	// 獲取老師姓名
+	teacher, _ := repositories.NewTeacherRepository(s.app).GetByID(ctx, teacherID)
+	teacherName := ""
+	if teacher.Name != "" {
+		teacherName = teacher.Name
+	}
+
+	// 格式化日期
+	dateStr := originalDate.Format("2006-01-02")
+
+	title := "新例外申請通知"
+	message := fmt.Sprintf("老師「%s」提交了例外申請\n\n類型：%s\n日期：%s\n原因：%s\n\n請前往審核中心處理。", teacherName, typeLabel, dateStr, reason)
+
+	// 發送通知（异步，不影響主要流程）
+	go func() {
+		notifyCtx := context.Background()
+		_ = s.notificationSvc.SendAdminNotification(notifyCtx, centerID, title, message, "EXCEPTION")
+	}()
 
 	return createdException, nil
 }
@@ -594,6 +632,31 @@ func (s *ScheduleExceptionServiceImpl) GetPendingExceptions(ctx context.Context,
 		Order("created_at ASC").
 		Find(&exceptions).Error
 
+	return exceptions, err
+}
+
+// GetAllExceptions 取得所有例外單，可依狀態篩選
+func (s *ScheduleExceptionServiceImpl) GetAllExceptions(ctx context.Context, centerID uint, status string) ([]models.ScheduleException, error) {
+	var exceptions []models.ScheduleException
+	query := s.app.MySQL.RDB.WithContext(ctx).
+		Preload("Rule").
+		Preload("Rule.Teacher").
+		Preload("Rule.Room").
+		Where("center_id = ?", centerID)
+
+	// 如果有指定狀態，則過濾
+	if status != "" {
+		// 支援舊資料的 APPROVE/REJECT 狀態
+		if status == "APPROVED" || status == "APPROVE" {
+			query = query.Where("status IN (?, ?)", "APPROVED", "APPROVE")
+		} else if status == "REJECTED" || status == "REJECT" {
+			query = query.Where("status IN (?, ?)", "REJECTED", "REJECT")
+		} else {
+			query = query.Where("status = ?", status)
+		}
+	}
+
+	err := query.Order("created_at DESC").Find(&exceptions).Error
 	return exceptions, err
 }
 

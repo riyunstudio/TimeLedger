@@ -157,17 +157,18 @@
             @dragover.prevent
           >
             <div
-              v-if="getScheduleAt(time, day.value)"
-              class="rounded-lg p-1 text-xs cursor-pointer hover:opacity-80 transition-opacity group relative"
-              :class="getScheduleCardClass(getScheduleAt(time, day.value))"
-              @click="selectSchedule(time, day.value)"
+              v-for="schedule in getScheduleAt(time, day.value)"
+              :key="schedule.key"
+              class="rounded-lg p-1 text-xs cursor-pointer hover:opacity-80 transition-opacity group relative mb-1"
+              :class="getScheduleCardClass(schedule)"
+              @click="selectSchedule(time, day.value, schedule)"
             >
               <!-- 簡短資訊 -->
               <div class="font-medium truncate">
-                {{ getScheduleAt(time, day.value)?.offering_name }}
+                {{ schedule.offering_name }}
               </div>
               <div class="text-slate-400 truncate">
-                {{ getScheduleAt(time, day.value)?.teacher_name }}
+                {{ schedule.teacher_name }}
               </div>
             </div>
           </div>
@@ -405,13 +406,17 @@ const matrixResources = computed(() => {
 
 // 矩陣視圖：取得特定資源在特定時段的排課
 const getMatrixSchedule = (resourceId: number, day: number, time: number) => {
-  const schedule = filteredSchedules.value[`${time}-${day}`]
-  if (!schedule) return null
+  const schedules = filteredSchedules.value.filter(s =>
+    parseInt(s.start_time.split(':')[0]) === time &&
+    s.weekday === day
+  )
+
+  if (schedules.length === 0) return null
 
   if (props.viewMode === 'teacher_matrix') {
-    return schedule.teacher_id === resourceId ? schedule : null
+    return schedules.find(s => s.teacher_id === resourceId) || null
   } else if (props.viewMode === 'room_matrix') {
-    return schedule.room_id === resourceId ? schedule : null
+    return schedules.find(s => s.room_id === resourceId) || null
   }
   return null
 }
@@ -448,7 +453,7 @@ const weekDays = [
   { value: 7, name: '週日' },
 ]
 
-const schedules = ref<Record<string, any>>({})
+const schedules = ref<any[]>([])
 const { getCenterId } = useCenterId()
 
 const selectedResourceName = computed(() => {
@@ -468,36 +473,54 @@ const clearViewMode = () => {
 const fetchSchedules = async () => {
   try {
     const api = useApi()
-    const response = await api.get<{ code: number; datas: any[] }>('/admin/rules')
-    const rules = response.datas || []
-
-    // 將規則轉換為 schedule map
-    const scheduleMap: Record<string, any> = {}
-    rules.forEach((rule: any) => {
-      const day = rule.weekday
-      if (day) {
-        const hour = rule.start_time ? parseInt(rule.start_time.split(':')[0]) : null
-        if (hour !== null) {
-          const key = `${hour}-${day}`
-          scheduleMap[key] = {
-            id: rule.id,
-            offering_name: rule.offering?.name || '-',
-            teacher_name: rule.teacher?.name || '-',
-            teacher_id: rule.teacher_id,
-            room_id: rule.room_id,
-            room_name: rule.room?.name || '-',
-            weekday: day,
-            start_time: rule.start_time,
-            end_time: rule.end_time,
-            ...rule,
-          }
-        }
+    
+    // 取得當前週的日期範圍
+    const startDate = weekStart.value.toISOString().split('T')[0]
+    const endDate = weekEnd.value.toISOString().split('T')[0]
+    
+    // 使用 ExpandRules API，取得已展開並處理例外的排課
+    const response = await api.post<{ code: number; datas: any[] }>('/admin/expand-rules', {
+      rule_ids: [], // 空陣列表示展開所有規則
+      start_date: startDate,
+      end_date: endDate,
+    })
+    
+    const expandedSchedules = response.datas || []
+    
+    // 將展開後的排課轉換為前端格式
+    const scheduleList = expandedSchedules.map((schedule: any) => {
+      const date = new Date(schedule.date)
+      const weekday = date.getDay() === 0 ? 7 : date.getDay()
+      const startTime = schedule.start_time || '09:00'
+      const endTime = schedule.end_time || '10:00'
+      const hour = parseInt(startTime.split(':')[0])
+      
+      return {
+        id: schedule.rule_id,
+        key: `${schedule.rule_id}-${hour}-${weekday}-${schedule.date}`,
+        offering_name: schedule.offering_name || '-',
+        teacher_name: schedule.teacher_name || '-',
+        teacher_id: schedule.teacher_id,
+        room_id: schedule.room_id,
+        room_name: schedule.room_name || '-',
+        weekday: weekday,
+        start_time: startTime,
+        end_time: endTime,
+        date: schedule.date,
+        has_exception: schedule.has_exception || false,
+        exception_type: schedule.exception_type || null,
+        exception_info: schedule.exception_info || null,
+        // 保留原始規則資訊供編輯使用
+        rule: schedule.rule || null,
+        offering_id: schedule.offering_id,
+        effective_range: schedule.effective_range || null,
       }
     })
-    schedules.value = scheduleMap
+    
+    schedules.value = scheduleList
   } catch (error) {
     console.error('Failed to fetch schedules:', error)
-    schedules.value = {}
+    schedules.value = []
   }
 }
 
@@ -509,36 +532,40 @@ const filteredSchedules = computed(() => {
   }
 
   // 矩陣視圖過濾特定資源
-  const filtered: Record<string, any> = {}
-  Object.entries(schedules.value).forEach(([key, schedule]) => {
+  return schedules.value.filter(schedule => {
     if (props.viewMode === 'teacher_matrix') {
-      if (schedule.teacher_id === props.selectedResourceId) {
-        filtered[key] = schedule
-      }
+      return schedule.teacher_id === props.selectedResourceId
     } else if (props.viewMode === 'room_matrix') {
-      if (schedule.room_id === props.selectedResourceId) {
-        filtered[key] = schedule
-      }
+      return schedule.room_id === props.selectedResourceId
     }
+    return false
   })
-  return filtered
 })
 
 const changeWeek = (delta: number) => {
   weekStart.value = getWeekStart(new Date(weekStart.value.getTime() + delta * 7 * 24 * 60 * 60 * 1000))
 }
 
+// 監聽週變化，自動重新抓取資料
+watch(weekStart, async () => {
+  await fetchSchedules()
+})
+
 const formatTime = (hour: number): string => {
   return `${hour}:00`
 }
 
 const getScheduleAt = (time: number, weekday: number) => {
-  return filteredSchedules.value[`${time}-${weekday}`]
+  return filteredSchedules.value.filter(s =>
+    parseInt(s.start_time.split(':')[0]) === time &&
+    s.weekday === weekday
+  )
 }
 
 const getCellClass = (time: number, weekday: number): string => {
   const key = `${time}-${weekday}`
   const validation = validationResults.value[key]
+  const schedulesAtCell = getScheduleAt(time, weekday)
 
   if (validation?.valid === false) {
     return 'bg-critical-500/10 border-critical-500/50'
@@ -546,7 +573,7 @@ const getCellClass = (time: number, weekday: number): string => {
     return 'bg-warning-500/10 border-warning-500/50'
   } else if (validation?.valid === true) {
     return 'bg-success-500/10 border-success-500/50'
-  } else if (getScheduleAt(time, weekday)) {
+  } else if (schedulesAtCell.length > 0) {
     return 'bg-primary-500/10'
   }
 
@@ -559,9 +586,15 @@ const getScheduleCardClass = (schedule: any): string => {
   return 'bg-slate-700/80 border border-white/10'
 }
 
-const selectSchedule = (time: number, weekday: number) => {
+const selectSchedule = (time: number, weekday: number, schedule?: any) => {
   selectedCell.value = { time, day: weekday }
-  selectedSchedule.value = getScheduleAt(time, weekday)
+  if (schedule) {
+    selectedSchedule.value = schedule
+  } else {
+    // 如果沒有傳入 schedule，嘗試從現有資料取得第一個
+    const schedules = getScheduleAt(time, weekday)
+    selectedSchedule.value = schedules.length > 0 ? schedules[0] : null
+  }
   emit('selectCell', { time, weekday: weekday })
 }
 

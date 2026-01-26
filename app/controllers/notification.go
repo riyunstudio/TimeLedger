@@ -63,12 +63,20 @@ func (ctl *NotificationController) ListNotifications(ctx *gin.Context) {
 		return
 	}
 
+	// 計算未讀通知數量
+	unreadCount := 0
+	for _, n := range notifications {
+		if !n.IsRead {
+			unreadCount++
+		}
+	}
+
 	ctx.JSON(http.StatusOK, global.ApiResponse{
 		Code:    0,
 		Message: "OK",
 		Datas: gin.H{
 			"notifications": notifications,
-			"unread_count":  len(notifications),
+			"unread_count":  unreadCount,
 		},
 	})
 }
