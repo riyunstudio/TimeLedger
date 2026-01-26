@@ -484,7 +484,7 @@ func (ctl *TeacherController) GetSchedule(ctx *gin.Context) {
 		center, _ := ctl.centerRepo.GetByID(ctx, m.CenterID)
 		centerName := center.Name
 
-		rules, _ := ctl.scheduleRuleRepo.ListByCenterID(ctx, m.CenterID)
+		rules, _ := ctl.scheduleRuleRepo.ListByTeacherID(ctx, teacherID, m.CenterID)
 
 		// Create a map of rule ID to rule for quick lookup
 		ruleMap := make(map[uint]*models.ScheduleRule)

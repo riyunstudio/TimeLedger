@@ -57,7 +57,10 @@ func (rp *ScheduleRuleRepository) ListByTeacherID(ctx context.Context, teacherID
 	var data []models.ScheduleRule
 	err := rp.app.MySQL.RDB.WithContext(ctx).
 		Preload("Offering").
+		Preload("Room").
+		Preload("Teacher").
 		Where("teacher_id = ? AND center_id = ?", teacherID, centerID).
+		Order("weekday ASC, start_time ASC").
 		Find(&data).Error
 	return data, err
 }
