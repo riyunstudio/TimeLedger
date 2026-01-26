@@ -176,6 +176,7 @@ const showDetailModal = ref<any>(null)
 const notificationUI = useNotification()
 const loading = ref(false)
 const { getCenterId } = useCenterId()
+const toast = useToast()
 
 const exceptions = ref<any[]>([])
 const teachers = ref<any[]>([])
@@ -322,16 +323,14 @@ const handleApproved = async (_id: number, note: string) => {
       action: 'APPROVED',
       reason: note,
     })
-    // 更新本地狀態
-    const exception = exceptions.value.find(e => e.id === _id)
-    if (exception) {
-      exception.status = 'APPROVED'
-    }
+    // 重新取得例外列表以確保資料同步（後端可能已修改規則）
+    await fetchExceptions()
     // 審核通過後，切換到「已核准」標籤
     activeFilter.value = 'approved'
+    toast.success('已成功核准該申請', '核准成功')
   } catch (error) {
     console.error('Failed to approve exception:', error)
-    alert('核准失敗，請稍後再試')
+    toast.error('核准失敗，請稍後再試', '操作失敗')
     return
   }
   showReviewModal.value = null
@@ -344,16 +343,14 @@ const handleRejected = async (_id: number, note: string) => {
       action: 'REJECTED',
       reason: note,
     })
-    // 更新本地狀態
-    const exception = exceptions.value.find(e => e.id === _id)
-    if (exception) {
-      exception.status = 'REJECTED'
-    }
+    // 重新取得例外列表以確保資料同步
+    await fetchExceptions()
     // 審核拒絕後，切換到「已拒絕」標籤
     activeFilter.value = 'rejected'
+    toast.success('已成功拒絕該申請', '拒絕成功')
   } catch (error) {
     console.error('Failed to reject exception:', error)
-    alert('拒絕失敗，請稍後再試')
+    toast.error('拒絕失敗，請稍後再試', '操作失敗')
     return
   }
   showReviewModal.value = null

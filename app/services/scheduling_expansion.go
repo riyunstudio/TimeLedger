@@ -68,8 +68,54 @@ func (s *ScheduleExpansionServiceImpl) ExpandRules(ctx context.Context, rules []
 					dateStr := date.Format("2006-01-02")
 					isHoliday := holidaySet[dateStr]
 
-					exceptions, _ := s.exceptionRepo.GetByRuleAndDate(ctx, rule.ID, date)
-					hasException := len(exceptions) > 0
+					// 使用日期字串進行比較，避免 time.Time 與 date 類型的不一致問題
+					exceptions, _ := s.exceptionRepo.GetByRuleIDAndDateStr(ctx, rule.ID, dateStr)
+
+					// 過濾並處理例外狀態
+					skipSession := false
+					var pendingException *models.ScheduleException
+					var approvedException *models.ScheduleException
+
+					for i := range exceptions {
+						exc := &exceptions[i]
+						// 跳過已取消的例外
+						if exc.Status == "CANCELLED" {
+							continue
+						}
+
+						// 記錄待處理的例外（用於顯示）
+						if exc.Status == "PENDING" {
+							if pendingException == nil {
+								pendingException = exc
+							}
+						}
+
+						// 處理已核准的例外
+						if exc.Status == "APPROVED" {
+							// 如果是停課例外，跳過此 sessions
+							if exc.Type == "CANCEL" {
+								skipSession = true
+								approvedException = exc
+								break
+							}
+							// 代課例外：更新老師
+							if exc.Type == "REPLACE_TEACHER" && exc.NewTeacherID != nil {
+								rule.TeacherID = exc.NewTeacherID
+							}
+							// 調課例外：由新規則處理（不會在這裡產生 sessions）
+							if exc.Type == "RESCHEDULE" {
+								// RESCHEDULE 由新規則處理，這裡標記但繼續產生原時段（用於顯示）
+								if approvedException == nil {
+									approvedException = exc
+								}
+							}
+						}
+					}
+
+					if skipSession {
+						date = date.AddDate(0, 0, 1)
+						continue
+					}
 
 					schedule := ExpandedSchedule{
 						RuleID:       rule.ID,
@@ -79,7 +125,19 @@ func (s *ScheduleExpansionServiceImpl) ExpandRules(ctx context.Context, rules []
 						RoomID:       rule.RoomID,
 						TeacherID:    rule.TeacherID,
 						IsHoliday:    isHoliday,
-						HasException: hasException,
+						HasException: pendingException != nil || approvedException != nil,
+					}
+
+					// 添加例外資訊供前端顯示
+					if pendingException != nil {
+						schedule.ExceptionInfo = &ExpandedException{
+							ID:           pendingException.ID,
+							Type:         pendingException.Type,
+							Status:       pendingException.Status,
+							NewTeacherID: pendingException.NewTeacherID,
+							NewStartAt:   pendingException.NewStartAt,
+							NewEndAt:     pendingException.NewEndAt,
+						}
 					}
 
 					schedules = append(schedules, schedule)
@@ -363,6 +421,7 @@ func (s *ScheduleExceptionServiceImpl) ReviewException(ctx context.Context, exce
 	exception.ReviewedBy = &adminID
 	now := time.Now()
 	exception.ReviewedAt = &now
+	exception.ReviewNote = reason
 
 	if status == "APPROVED" {
 		rule, err := s.ruleRepo.GetByID(ctx, exception.RuleID)
@@ -414,6 +473,11 @@ func (s *ScheduleExceptionServiceImpl) ReviewException(ctx context.Context, exce
 				return errors.New("approval rejected: new time slot has buffer conflict and override is not allowed")
 			}
 		}
+
+		// 審核通過，同步執行課程變更
+		if err := s.applyExceptionChanges(ctx, &exception, &rule); err != nil {
+			return fmt.Errorf("failed to apply exception changes: %w", err)
+		}
 	}
 
 	if err := s.exceptionRepo.Update(ctx, exception); err != nil {
@@ -429,6 +493,66 @@ func (s *ScheduleExceptionServiceImpl) ReviewException(ctx context.Context, exce
 		TargetID:   exceptionID,
 		Payload:    models.AuditPayload{Before: oldStatus, After: action},
 	})
+
+	return nil
+}
+
+// applyExceptionChanges 審核通過時同步執行課程變更
+func (s *ScheduleExceptionServiceImpl) applyExceptionChanges(ctx context.Context, exception *models.ScheduleException, rule *models.ScheduleRule) error {
+	switch exception.Type {
+	case "CANCEL":
+		// 停課：不修改規則本身，由 ExpandRules 根據已核准的例外狀態跳過該日期
+		// 這樣只會影響特定的停課日期，不會影響未來的課程
+		// 規則保持不變，ExpandRules 會在處理時檢查例外狀態
+
+	case "RESCHEDULE":
+		// 調課：分兩步驟
+		// 1. 截斷原規則到前一天（確保原日期不再產生 sessions）
+		// 2. 創建新規則段，從新日期開始
+		cutoffDate := exception.OriginalDate.AddDate(0, 0, -1)
+		rule.EffectiveRange.EndDate = cutoffDate
+		if err := s.ruleRepo.Update(ctx, *rule); err != nil {
+			return fmt.Errorf("failed to truncate original rule: %w", err)
+		}
+
+		// 轉換 weekday：Go 的 Weekday() 返回週日=0，但系統使用週日=7
+		newWeekday := int(exception.NewStartAt.Weekday())
+		if newWeekday == 0 {
+			newWeekday = 7
+		}
+
+		// 創建新規則段
+		newRule := models.ScheduleRule{
+			CenterID:   rule.CenterID,
+			OfferingID: rule.OfferingID,
+			TeacherID:  rule.TeacherID,
+			RoomID:     rule.RoomID,
+			Name:       rule.Name,
+			Weekday:    newWeekday,
+			StartTime:  exception.NewStartAt.Format("15:04"),
+			EndTime:    exception.NewEndAt.Format("15:04"),
+			Duration:   int(exception.NewEndAt.Sub(*exception.NewStartAt).Minutes()),
+			EffectiveRange: models.DateRange{
+				StartDate: *exception.NewStartAt,
+				EndDate:   rule.EffectiveRange.EndDate,
+			},
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+		}
+		if _, err := s.ruleRepo.Create(ctx, newRule); err != nil {
+			return fmt.Errorf("failed to create reschedule rule: %w", err)
+		}
+
+	case "REPLACE_TEACHER":
+		// 代課：更新原規則的老師為代課老師
+		if exception.NewTeacherID != nil {
+			rule.TeacherID = exception.NewTeacherID
+			rule.UpdatedAt = time.Now()
+			if err := s.ruleRepo.Update(ctx, *rule); err != nil {
+				return fmt.Errorf("failed to update teacher for substitution: %w", err)
+			}
+		}
+	}
 
 	return nil
 }
