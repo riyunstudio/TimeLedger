@@ -13,6 +13,7 @@ import (
 	"timeLedger/app/models"
 	"timeLedger/app/repositories"
 	"timeLedger/app/services"
+	"timeLedger/configs"
 	dbmysql "timeLedger/database/mysql"
 )
 
@@ -91,7 +92,16 @@ func TestAuthController_AdminLogin_Success(t *testing.T) {
 	center := createTestCenter(t, db)
 	admin := createTestAdminUser(t, db, center.ID, "password123")
 
+	// 初始化測試用的 Env 配置
+	env := &configs.Env{
+		JWTSecret:      "test-jwt-secret-key-for-testing-only",
+		AppEnv:         "test",
+		AppDebug:       true,
+		AppTimezone:    "Asia/Taipei",
+	}
+
 	testApp := &app.App{
+		Env:   env,
 		MySQL: &dbmysql.DB{WDB: db, RDB: db},
 	}
 
@@ -126,6 +136,7 @@ func TestAuthController_AdminLogin_InvalidPassword(t *testing.T) {
 	admin := createTestAdminUser(t, db, center.ID, "password123")
 
 	testApp := &app.App{
+		Env:   &configs.Env{JWTSecret: "test-jwt-secret-key-for-testing-only"},
 		MySQL: &dbmysql.DB{WDB: db, RDB: db},
 	}
 
@@ -144,6 +155,7 @@ func TestAuthController_AdminLogin_AdminNotFound(t *testing.T) {
 	_ = createTestCenter(t, db)
 
 	testApp := &app.App{
+		Env:   &configs.Env{JWTSecret: "test-jwt-secret-key-for-testing-only"},
 		MySQL: &dbmysql.DB{WDB: db, RDB: db},
 	}
 
@@ -165,6 +177,7 @@ func TestAuthController_TeacherLineLogin_Success(t *testing.T) {
 	_ = teacher.ID
 
 	testApp := &app.App{
+		Env:   &configs.Env{JWTSecret: "test-jwt-secret-key-for-testing-only"},
 		MySQL: &dbmysql.DB{WDB: db, RDB: db},
 	}
 
@@ -189,6 +202,7 @@ func TestAuthController_TeacherLineLogin_TeacherNotFound(t *testing.T) {
 	defer CloseDB(db)
 
 	testApp := &app.App{
+		Env:   &configs.Env{JWTSecret: "test-jwt-secret-key-for-testing-only"},
 		MySQL: &dbmysql.DB{WDB: db, RDB: db},
 	}
 
@@ -210,6 +224,7 @@ func TestAuthController_RefreshToken_Success(t *testing.T) {
 	_ = teacher.ID
 
 	testApp := &app.App{
+		Env:   &configs.Env{JWTSecret: "test-jwt-secret-key-for-testing-only"},
 		MySQL: &dbmysql.DB{WDB: db, RDB: db},
 	}
 
@@ -235,6 +250,7 @@ func TestAuthController_RefreshToken_InvalidToken(t *testing.T) {
 	defer CloseDB(db)
 
 	testApp := &app.App{
+		Env:   &configs.Env{JWTSecret: "test-jwt-secret-key-for-testing-only"},
 		MySQL: &dbmysql.DB{WDB: db, RDB: db},
 	}
 
@@ -251,6 +267,7 @@ func TestAuthController_Logout_Success(t *testing.T) {
 	defer CloseDB(db)
 
 	testApp := &app.App{
+		Env:   &configs.Env{JWTSecret: "test-jwt-secret-key-for-testing-only"},
 		MySQL: &dbmysql.DB{WDB: db, RDB: db},
 	}
 
@@ -271,6 +288,7 @@ func TestAuthController_TokenValidation(t *testing.T) {
 	teacher := createTestTeacher(t, db, lineUserID)
 
 	testApp := &app.App{
+		Env:   &configs.Env{JWTSecret: "test-jwt-secret-key-for-testing-only"},
 		MySQL: &dbmysql.DB{WDB: db, RDB: db},
 	}
 
@@ -303,6 +321,7 @@ func TestAuthController_AdminTokenValidation(t *testing.T) {
 	admin := createTestAdminUser(t, db, center.ID, "password123")
 
 	testApp := &app.App{
+		Env:   &configs.Env{JWTSecret: "test-jwt-secret-key-for-testing-only"},
 		MySQL: &dbmysql.DB{WDB: db, RDB: db},
 	}
 

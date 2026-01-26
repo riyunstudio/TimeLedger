@@ -14,6 +14,7 @@ import (
 	"timeLedger/app/models"
 	"timeLedger/app/repositories"
 	"timeLedger/app/services"
+	"timeLedger/configs"
 	"timeLedger/database/mysql"
 	"timeLedger/database/redis"
 	"timeLedger/global"
@@ -31,7 +32,7 @@ import (
 func setupIntegrationTestApp() (*app.App, *gorm.DB, func()) {
 	gin.SetMode(gin.TestMode)
 
-	dsn := "root:rootpassword@tcp(127.0.0.1:3307)/timeledger_test?charset=utf8mb4&parseTime=True&loc=Local"
+	dsn := "root:timeledger_root_2026@tcp(127.0.0.1:3306)/timeledger?charset=utf8mb4&parseTime=True&loc=Local"
 	mysqlDB, err := gorm.Open(gormMysql.Open(dsn), &gorm.Config{})
 	if err != nil {
 		panic(fmt.Sprintf("MySQL init error: %s", err.Error()))
@@ -58,8 +59,16 @@ func setupIntegrationTestApp() (*app.App, *gorm.DB, func()) {
 	e := errInfos.Initialize(1)
 	tool := tools.Initialize("Asia/Taipei")
 
+	// 初始化測試用的 Env 配置
+	env := &configs.Env{
+		JWTSecret:      "test-jwt-secret-key-for-testing-only",
+		AppEnv:         "test",
+		AppDebug:       true,
+		AppTimezone:    "Asia/Taipei",
+	}
+
 	appInstance := &app.App{
-		Env:   nil,
+		Env:   env,
 		Err:   e,
 		Tools: tool,
 		MySQL: &mysql.DB{WDB: mysqlDB, RDB: mysqlDB},

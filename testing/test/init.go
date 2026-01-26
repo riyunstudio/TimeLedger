@@ -12,8 +12,10 @@ import (
 
 // InitializeTestDB initializes a test database connection.
 // It uses MySQL from .env configuration.
+// 開發階段使用現有的開發資料庫（端口 3306）
 func InitializeTestDB() (*gorm.DB, error) {
-	dsn := "root:rootpassword@tcp(127.0.0.1:3307)/timeledger_test?charset=utf8mb4&parseTime=True&loc=Local"
+	// 使用開發資料庫配置（端口 3306）
+	dsn := "root:timeledger_root_2026@tcp(127.0.0.1:3306)/timeledger?charset=utf8mb4&parseTime=True&loc=Local"
 	
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Silent),
@@ -46,8 +48,10 @@ func CloseDB(db *gorm.DB) {
 }
 
 // SetupTestDB creates the test database and tables if they don't exist.
+// 開發階段直接使用現有的開發資料庫
 func SetupTestDB() (*gorm.DB, error) {
-	dsn := "root:rootpassword@tcp(127.0.0.1:3307)/timeledger_test?charset=utf8mb4&parseTime=True&loc=Local"
+	// 使用開發資料庫配置（端口 3306）
+	dsn := "root:timeledger_root_2026@tcp(127.0.0.1:3306)/timeledger?charset=utf8mb4&parseTime=True&loc=Local"
 	
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Silent),
