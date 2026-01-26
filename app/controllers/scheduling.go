@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -927,6 +928,7 @@ func (ctl *SchedulingController) UpdateRule(ctx *gin.Context) {
 	var startDate, endDate time.Time
 	var err error
 
+	// 如果提供了 start_date，則解析；否則保持為零值（表示不更新）
 	if req.StartDate != "" {
 		startDate, err = time.Parse("2006-01-02", req.StartDate)
 		if err != nil {
@@ -938,6 +940,7 @@ func (ctl *SchedulingController) UpdateRule(ctx *gin.Context) {
 		}
 	}
 
+	// 如果提供了 end_date，則解析；否則保持為零值（表示不更新）
 	if req.EndDate != nil && *req.EndDate != "" {
 		endDate, err = time.Parse("2006-01-02", *req.EndDate)
 		if err != nil {
@@ -947,8 +950,6 @@ func (ctl *SchedulingController) UpdateRule(ctx *gin.Context) {
 			})
 			return
 		}
-	} else {
-		endDate = time.Date(2099, 12, 31, 0, 0, 0, 0, time.UTC)
 	}
 
 	scheduleRuleRepo := repositories.NewScheduleRuleRepository(ctl.app)
@@ -1031,6 +1032,12 @@ func (ctl *SchedulingController) UpdateRule(ctx *gin.Context) {
 // handleFutureUpdate 處理 FUTURE 模式：截斷現有規則，創建新規則段
 func handleFutureUpdate(ctx context.Context, ruleRepo *repositories.ScheduleRuleRepository, centerID uint, existingRule models.ScheduleRule, relatedRules []models.ScheduleRule, req UpdateRuleRequest, startDate, endDate time.Time) ([]models.ScheduleRule, error) {
 	var result []models.ScheduleRule
+
+	// 如果沒有提供 startDate，無法執行 FUTURE 模式
+	if startDate.IsZero() {
+		return nil, errors.New("start_date is required for FUTURE update mode")
+	}
+
 	cutoffDate := startDate.AddDate(0, 0, -1) // 前一天
 
 	// 1. 更新現有規則的 end_date 到 cutoffDate
@@ -1187,8 +1194,14 @@ func handleAllUpdate(ctx context.Context, ruleRepo *repositories.ScheduleRuleRep
 			if req.Duration != 0 {
 				updatedRule.Duration = req.Duration
 			}
-			updatedRule.EffectiveRange.StartDate = startDate
-			updatedRule.EffectiveRange.EndDate = endDate
+			// 只有當新日期與現有日期不同時才更新（避免不必要的更新）
+			if !startDate.IsZero() && startDate != rule.EffectiveRange.StartDate {
+				updatedRule.EffectiveRange.StartDate = startDate
+			}
+			// endDate 為零值時保持現有值
+			if !endDate.IsZero() {
+				updatedRule.EffectiveRange.EndDate = endDate
+			}
 
 			updatedRules = append(updatedRules, updatedRule)
 			delete(newWeekdayMap, rule.Weekday)
@@ -1250,6 +1263,16 @@ func createNewRuleSegment(centerID uint, existingRule models.ScheduleRule, relat
 
 // createSingleRule 創建單個規則
 func createSingleRule(centerID uint, existingRule models.ScheduleRule, req UpdateRuleRequest, weekday int, startDate, endDate time.Time) *models.ScheduleRule {
+	// 如果日期為零值，使用現有規則的日期
+	effectiveStartDate := startDate
+	if startDate.IsZero() {
+		effectiveStartDate = existingRule.EffectiveRange.StartDate
+	}
+	effectiveEndDate := endDate
+	if endDate.IsZero() {
+		effectiveEndDate = existingRule.EffectiveRange.EndDate
+	}
+
 	newRule := &models.ScheduleRule{
 		CenterID:   centerID,
 		OfferingID: existingRule.OfferingID,
@@ -1261,8 +1284,8 @@ func createSingleRule(centerID uint, existingRule models.ScheduleRule, req Updat
 		EndTime:    existingRule.EndTime,
 		Duration:   existingRule.Duration,
 		EffectiveRange: models.DateRange{
-			StartDate: startDate,
-			EndDate:   endDate,
+			StartDate: effectiveStartDate,
+			EndDate:   effectiveEndDate,
 		},
 	}
 	if req.Name != "" {

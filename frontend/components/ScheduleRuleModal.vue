@@ -224,7 +224,33 @@
         </div>
 
         <!-- 開始和結束日期 -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div v-if="showEditModal" class="mb-4 p-3 rounded-lg bg-slate-800/50 border border-slate-700/50">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">開始日期</label>
+              <input
+                v-model="form.start_date"
+                type="date"
+                class="input-field text-sm sm:text-base"
+              />
+            </div>
+
+            <div>
+              <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">結束日期</label>
+              <input
+                v-model="form.end_date"
+                type="date"
+                class="input-field text-sm sm:text-base"
+              />
+            </div>
+          </div>
+          <p class="text-xs text-slate-400 mt-2">
+            <span class="text-warning-500">💡 提示：</span>如只修改課程內容（老師、教室、時間），日期可留空以保留現有日期範圍。
+          </p>
+        </div>
+
+        <!-- 新增模式才顯示必填的日期欄位 -->
+        <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">開始日期</label>
             <input
@@ -435,8 +461,16 @@ const handleSubmit = async () => {
       data.room_id = form.value.room_id
     }
 
+    // 編輯模式：處理日期欄位
     if (showEditModal.value) {
-      // 編輯模式：發射表單資料給父元件處理
+      // 如果日期為空，從 data 中移除，讓後端保留現有值
+      if (!data.start_date) {
+        delete data.start_date
+      }
+      if (!data.end_date) {
+        delete data.end_date
+      }
+      // 發射表單資料給父元件處理
       emit('submit', data, props.updateMode || 'ALL')
       handleClose()
     } else {
