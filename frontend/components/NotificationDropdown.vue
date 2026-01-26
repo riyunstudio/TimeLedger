@@ -69,12 +69,23 @@ const handleNotificationClick = async (notification: any) => {
   }
 
   // 根據通知類型跳轉到相應頁面
+  const userType = notification.user_type || notificationUI.getUserType?.() || 'TEACHER'
+  
   if (notification.title === '新例外申請通知' || notification.type === 'EXCEPTION') {
-    // 跳轉到審核頁面
-    router.push('/admin/approval')
+    // 管理員跳轉到審核頁面
+    if (userType === 'ADMIN') {
+      router.push('/admin/approval')
+    }
+  } else if (notification.type === 'REVIEW_RESULT' || notification.title === '例外單審核結果') {
+    // 老師跳轉到自己的例外申請頁面
+    if (userType === 'TEACHER') {
+      router.push('/teacher/exceptions')
+    }
   } else if (notification.type === 'APPROVAL') {
-    // 跳轉到審核頁面查看結果
-    router.push('/admin/approval')
+    // 管理員跳轉到審核頁面查看結果
+    if (userType === 'ADMIN') {
+      router.push('/admin/approval')
+    }
   }
 
   notificationUI.close()

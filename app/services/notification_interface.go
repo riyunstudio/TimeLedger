@@ -10,6 +10,9 @@ type NotificationService interface {
 	// SendTeacherNotification 發送通知給老師
 	SendTeacherNotification(ctx context.Context, teacherID uint, title, message string) error
 
+	// SendTeacherNotificationWithType 發送通知給老師（帶類型）
+	SendTeacherNotificationWithType(ctx context.Context, teacherID uint, title, message string, notificationType string) error
+
 	// SendAdminNotification 發送通知給管理員
 	SendAdminNotification(ctx context.Context, centerID uint, title, message string, notificationType string) error
 

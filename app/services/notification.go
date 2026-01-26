@@ -30,12 +30,16 @@ func NewNotificationService(app *app.App) NotificationService {
 }
 
 func (s *NotificationServiceImpl) SendTeacherNotification(ctx context.Context, teacherID uint, title, message string) error {
+	return s.SendTeacherNotificationWithType(ctx, teacherID, title, message, "SYSTEM")
+}
+
+func (s *NotificationServiceImpl) SendTeacherNotificationWithType(ctx context.Context, teacherID uint, title, message string, notificationType string) error {
 	notification := &models.Notification{
 		UserID:    teacherID,
 		UserType:  "TEACHER",
 		Title:     title,
 		Message:   message,
-		Type:      "SYSTEM",
+		Type:      notificationType,
 		IsRead:    false,
 		CreatedAt: time.Now(),
 	}
@@ -130,7 +134,7 @@ func (s *NotificationServiceImpl) SendReviewNotification(ctx context.Context, ex
 	}
 	message := "您的例外單" + status + "\n日期: " + exception.OriginalDate.Format("2006-01-02")
 
-	return s.SendTeacherNotification(ctx, *rule.TeacherID, title, message)
+	return s.SendTeacherNotificationWithType(ctx, *rule.TeacherID, title, message, "REVIEW_RESULT")
 }
 
 func (s *NotificationServiceImpl) CreateNotificationRecord(ctx context.Context, notification *models.Notification) error {
