@@ -26,6 +26,7 @@ type SchedulingController struct {
 	exceptionService  services.ScheduleExceptionService
 	auditLogRepo      *repositories.AuditLogRepository
 	centerRepo        *repositories.CenterRepository
+	courseRepo        *repositories.CourseRepository
 }
 
 func NewSchedulingController(app *app.App) *SchedulingController {
@@ -36,6 +37,7 @@ func NewSchedulingController(app *app.App) *SchedulingController {
 		exceptionService:  services.NewScheduleExceptionService(app),
 		auditLogRepo:      repositories.NewAuditLogRepository(app),
 		centerRepo:        repositories.NewCenterRepository(app),
+		courseRepo:        repositories.NewCourseRepository(app),
 	}
 }
 
@@ -629,16 +631,17 @@ func (ctl *SchedulingController) ExpandRules(ctx *gin.Context) {
 }
 
 type CreateRuleRequest struct {
-	Name       string  `json:"name" binding:"required"`
-	OfferingID uint    `json:"offering_id" binding:"required"`
-	TeacherID  uint    `json:"teacher_id"`
-	RoomID     uint    `json:"room_id" binding:"required"`
-	StartTime  string  `json:"start_time" binding:"required"`
-	EndTime    string  `json:"end_time" binding:"required"`
-	Duration   int     `json:"duration" binding:"required"`
-	Weekdays   []int   `json:"weekdays" binding:"required,min=1"`
-	StartDate  string  `json:"start_date" binding:"required"`
-	EndDate    *string `json:"end_date"`
+	Name              string  `json:"name" binding:"required"`
+	OfferingID        uint    `json:"offering_id" binding:"required"`
+	TeacherID         uint    `json:"teacher_id"`
+	RoomID            uint    `json:"room_id" binding:"required"`
+	StartTime         string  `json:"start_time" binding:"required"`
+	EndTime           string  `json:"end_time" binding:"required"`
+	Duration          int     `json:"duration" binding:"required"`
+	Weekdays          []int   `json:"weekdays" binding:"required,min=1"`
+	StartDate         string  `json:"start_date" binding:"required"`
+	EndDate           *string `json:"end_date"`
+	OverrideBuffer    bool    `json:"override_buffer"` // 允許覆蓋 Buffer 衝突
 }
 
 func (ctl *SchedulingController) CreateRule(ctx *gin.Context) {
@@ -762,6 +765,124 @@ func (ctl *SchedulingController) CreateRule(ctx *gin.Context) {
 		return
 	}
 
+	// 【新增】Buffer 檢查
+	var bufferConflicts []map[string]interface{}
+	
+	// 取得課程設定（包含緩衝時間）- 驗證課程存在
+	_, err = ctl.courseRepo.GetByID(ctl.makeCtx(ctx), req.OfferingID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
+			Code:    500,
+			Message: "Failed to get course for buffer check: " + err.Error(),
+		})
+		return
+	}
+
+	for _, weekday := range req.Weekdays {
+		// 找到該 weekday 的日期
+		current := checkDate
+		weekdayDiff := weekday - int(current.Weekday())
+		if weekdayDiff <= 0 {
+			weekdayDiff += 7
+		}
+		targetDate := current.AddDate(0, 0, weekdayDiff)
+
+		// 產生新課程的時間
+		newStartTime, _ := time.Parse("2006-01-02 15:04", targetDate.Format("2006-01-02")+" "+req.StartTime)
+
+		// 檢查 Teacher Buffer
+		if req.TeacherID > 0 {
+			prevEndTime, _ := ctl.getTeacherPreviousSessionEndTime(ctx, centerID, req.TeacherID, weekday, req.StartTime)
+			if !prevEndTime.IsZero() {
+				teacherBufferResult, err := ctl.validationService.CheckTeacherBuffer(ctx, centerID, req.TeacherID, prevEndTime, newStartTime, req.OfferingID)
+				if err != nil {
+					ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
+						Code:    500,
+						Message: "Failed to check teacher buffer: " + err.Error(),
+					})
+					return
+				}
+
+				if !teacherBufferResult.Valid {
+					dayNames := []string{"", "週一", "週二", "週三", "週四", "週五", "週六", "週日"}
+					for _, conflict := range teacherBufferResult.Conflicts {
+						bufferConflicts = append(bufferConflicts, map[string]interface{}{
+							"weekday":        weekday,
+							"day_name":       dayNames[weekday],
+							"start_time":     req.StartTime,
+							"end_time":       req.EndTime,
+							"conflict_type":  conflict.Type,
+							"message":        conflict.Message,
+							"can_override":   conflict.CanOverride,
+							"required_minutes": conflict.RequiredMinutes,
+							"diff_minutes":  conflict.DiffMinutes,
+						})
+					}
+				}
+			}
+		}
+
+		// 檢查 Room Buffer
+		if req.RoomID > 0 {
+			prevRoomEndTime, _ := ctl.getRoomPreviousSessionEndTime(ctx, centerID, req.RoomID, weekday, req.StartTime)
+			if !prevRoomEndTime.IsZero() {
+				roomBufferResult, err := ctl.validationService.CheckRoomBuffer(ctx, centerID, req.RoomID, prevRoomEndTime, newStartTime, req.OfferingID)
+				if err != nil {
+					ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
+						Code:    500,
+						Message: "Failed to check room buffer: " + err.Error(),
+					})
+					return
+				}
+
+				if !roomBufferResult.Valid {
+					dayNames := []string{"", "週一", "週二", "週三", "週四", "週五", "週六", "週日"}
+					for _, conflict := range roomBufferResult.Conflicts {
+						bufferConflicts = append(bufferConflicts, map[string]interface{}{
+							"weekday":        weekday,
+							"day_name":       dayNames[weekday],
+							"start_time":     req.StartTime,
+							"end_time":       req.EndTime,
+							"conflict_type":  conflict.Type,
+							"message":        conflict.Message,
+							"can_override":   conflict.CanOverride,
+							"required_minutes": conflict.RequiredMinutes,
+							"diff_minutes":  conflict.DiffMinutes,
+						})
+					}
+				}
+			}
+		}
+	}
+
+	// 如果有 Buffer 衝突，回傳衝突資訊
+	if len(bufferConflicts) > 0 {
+		// 檢查是否所有衝突都可覆蓋，且管理員選擇覆蓋
+		allOverridable := true
+		for _, conflict := range bufferConflicts {
+			canOverride, ok := conflict["can_override"].(bool)
+			if !ok || !canOverride {
+				allOverridable = false
+				break
+			}
+		}
+
+		if req.OverrideBuffer && allOverridable {
+			// 允許覆蓋，繼續執行
+		} else {
+			ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+				Code:    40003, // BUFFER_CONFLICT error code
+				Message: "排課時間違反緩衝時間規定",
+				Datas: map[string]interface{}{
+					"buffer_conflicts": bufferConflicts,
+					"conflict_count":   len(bufferConflicts),
+					"can_override":     allOverridable,
+				},
+			})
+			return
+		}
+	}
+
 	var createdRules []models.ScheduleRule
 
 	for _, weekday := range req.Weekdays {
@@ -822,6 +943,54 @@ func (ctl *SchedulingController) GetRules(ctx *gin.Context) {
 		Message: "OK",
 		Datas:   rules,
 	})
+}
+
+// getTeacherPreviousSessionEndTime 取得老師在指定 weekday 之前的最後一筆課程結束時間
+func (ctl *SchedulingController) getTeacherPreviousSessionEndTime(ctx context.Context, centerID, teacherID uint, weekday int, beforeTimeStr string) (time.Time, error) {
+	weekdayVal := weekday
+	if weekdayVal == 0 {
+		weekdayVal = 7
+	}
+
+	var rule models.ScheduleRule
+	err := ctl.app.MySQL.RDB.WithContext(ctx).
+		Where("center_id = ?", centerID).
+		Where("teacher_id = ?", teacherID).
+		Where("weekday = ?", weekdayVal).
+		Where("end_time <= ?", beforeTimeStr).
+		Order("end_time DESC").
+		First(&rule).Error
+
+	if err != nil {
+		return time.Time{}, nil
+	}
+
+	endTime, _ := time.Parse("2006-01-02 15:04:05", "2000-01-01"+" "+rule.EndTime)
+	return endTime, nil
+}
+
+// getRoomPreviousSessionEndTime 取得教室在指定 weekday 之前的最後一筆課程結束時間
+func (ctl *SchedulingController) getRoomPreviousSessionEndTime(ctx context.Context, centerID, roomID uint, weekday int, beforeTimeStr string) (time.Time, error) {
+	weekdayVal := weekday
+	if weekdayVal == 0 {
+		weekdayVal = 7
+	}
+
+	var rule models.ScheduleRule
+	err := ctl.app.MySQL.RDB.WithContext(ctx).
+		Where("center_id = ?", centerID).
+		Where("room_id = ?", roomID).
+		Where("weekday = ?", weekdayVal).
+		Where("end_time <= ?", beforeTimeStr).
+		Order("end_time DESC").
+		First(&rule).Error
+
+	if err != nil {
+		return time.Time{}, nil
+	}
+
+	endTime, _ := time.Parse("2006-01-02 15:04:05", "2000-01-01"+" "+rule.EndTime)
+	return endTime, nil
 }
 
 func (ctl *SchedulingController) DeleteRule(ctx *gin.Context) {
@@ -1435,4 +1604,211 @@ func (ctl *SchedulingController) CheckRuleLockStatus(ctx *gin.Context) {
 		Message: "OK",
 		Datas:   response,
 	})
+}
+
+// GetTodaySummary 獲取管理員後台首頁的今日課表摘要
+// @Summary 獲取今日課表摘要統計
+// @Tags Admin - Scheduling
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} global.ApiResponse{data=TodaySummaryResponse}
+// @Router /api/v1/admin/dashboard/today-summary [get]
+func (ctl *SchedulingController) GetTodaySummary(ctx *gin.Context) {
+	centerID := ctx.GetUint(global.CenterIDKey)
+	if centerID == 0 {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Center ID required",
+		})
+		return
+	}
+
+	// 取得今日日期
+	today := time.Now()
+	todayStr := today.Format("2006-01-02")
+	startOfDay := time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, today.Location())
+	endOfDay := time.Date(today.Year(), today.Month(), today.Day(), 23, 59, 59, 999999999, today.Location())
+
+	// 展開今日的排課規則
+	scheduleRuleRepo := repositories.NewScheduleRuleRepository(ctl.app)
+	rules, err := scheduleRuleRepo.ListByCenterID(ctx, centerID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
+			Code:    500,
+			Message: "Failed to fetch schedule rules: " + err.Error(),
+		})
+		return
+	}
+
+	// 展開規則取得今日的 sessions
+	allSessions := ctl.expansionService.ExpandRules(ctx, rules, startOfDay, endOfDay, centerID)
+
+	// 過濾出今天的 sessions
+	var todaySessions []services.ExpandedSchedule
+	for _, session := range allSessions {
+		if session.Date.Format("2006-01-02") == todayStr {
+			todaySessions = append(todaySessions, session)
+		}
+	}
+
+	// 取得待審核例外申請數量
+	pendingExceptions, err := ctl.exceptionService.GetPendingExceptions(ctx, centerID)
+	if err != nil {
+		pendingExceptions = []models.ScheduleException{}
+	}
+
+	// 計算課表異動數量（檢查今天是否有例外申請）
+	todayExceptions, err := ctl.exceptionService.GetExceptionsByDateRange(ctx, centerID, startOfDay, endOfDay)
+	if err != nil {
+		todayExceptions = []models.ScheduleException{}
+	}
+	changesCount := len(todayExceptions)
+	hasScheduleChanges := changesCount > 0
+
+	// 建構 response
+	response := TodaySummaryResponse{
+		Sessions:            []TodaySession{},
+		PendingExceptions:   len(pendingExceptions),
+		ChangesCount:        changesCount,
+		HasScheduleChanges:  hasScheduleChanges,
+	}
+
+	now := today
+
+	for _, session := range todaySessions {
+		// 使用 ExpandedSchedule 已經預先填入的名稱
+		teacherName := session.TeacherName
+		if teacherName == "" {
+			teacherName = "未安排老師"
+		}
+
+		roomName := session.RoomName
+		if roomName == "" {
+			roomName = "未安排教室"
+		}
+
+		offeringName := session.OfferingName
+		if offeringName == "" {
+			offeringName = "未知課程"
+		}
+
+		// 建構完整的時間
+		startDateTime := time.Date(
+			session.Date.Year(), session.Date.Month(), session.Date.Day(),
+			0, 0, 0, 0, session.Date.Location(),
+		)
+		startParts := strings.Split(session.StartTime, ":")
+		if len(startParts) >= 2 {
+			startHour, _ := strconv.Atoi(startParts[0])
+			startMin, _ := strconv.Atoi(startParts[1])
+			startDateTime = startDateTime.Add(time.Duration(startHour)*time.Hour + time.Duration(startMin)*time.Minute)
+		}
+
+		endDateTime := time.Date(
+			session.Date.Year(), session.Date.Month(), session.Date.Day(),
+			0, 0, 0, 0, session.Date.Location(),
+		)
+		endParts := strings.Split(session.EndTime, ":")
+		if len(endParts) >= 2 {
+			endHour, _ := strconv.Atoi(endParts[0])
+			endMin, _ := strconv.Atoi(endParts[1])
+			endDateTime = endDateTime.Add(time.Duration(endHour)*time.Hour + time.Duration(endMin)*time.Minute)
+		}
+
+		// 判斷課程狀態
+		var status string
+		if now.After(endDateTime) {
+			status = "completed"
+		} else if now.After(startDateTime) && now.Before(endDateTime) {
+			status = "in_progress"
+		} else {
+			status = "upcoming"
+		}
+
+		response.Sessions = append(response.Sessions, TodaySession{
+			ID:         session.RuleID,
+			StartTime:  startDateTime,
+			EndTime:    endDateTime,
+			Offering:   TodayOffering{Name: offeringName},
+			Teacher:    TodayTeacher{Name: teacherName},
+			Room:       TodayRoom{Name: roomName},
+			Status:     status,
+		})
+	}
+
+	// 計算統計數據
+	var completed int
+	var inProgress int
+	var upcoming int
+	var inProgressTeachers []string
+
+	for _, session := range response.Sessions {
+		switch session.Status {
+		case "completed":
+			completed++
+		case "in_progress":
+			inProgress++
+			if session.Teacher.Name != "" && session.Teacher.Name != "未安排老師" {
+				found := false
+				for _, name := range inProgressTeachers {
+					if name == session.Teacher.Name {
+						found = true
+						break
+					}
+				}
+				if !found {
+					inProgressTeachers = append(inProgressTeachers, session.Teacher.Name)
+				}
+			}
+		case "upcoming":
+			upcoming++
+		}
+	}
+
+	response.TotalSessions = len(response.Sessions)
+	response.CompletedSessions = completed
+	response.InProgressSessions = inProgress
+	response.UpcomingSessions = upcoming
+	response.InProgressTeacherNames = inProgressTeachers
+
+	ctx.JSON(http.StatusOK, global.ApiResponse{
+		Code:    0,
+		Message: "OK",
+		Datas:   response,
+	})
+}
+
+type TodaySummaryResponse struct {
+	Sessions           []TodaySession `json:"sessions"`
+	TotalSessions      int            `json:"totalSessions"`
+	CompletedSessions  int            `json:"completedSessions"`
+	UpcomingSessions   int            `json:"upcomingSessions"`
+	InProgressSessions int            `json:"inProgressSessions"`
+	InProgressTeacherNames []string   `json:"inProgressTeacherNames,omitempty"`
+	PendingExceptions  int            `json:"pendingExceptions"`
+	ChangesCount       int            `json:"changesCount"`
+	HasScheduleChanges bool           `json:"hasScheduleChanges"`
+}
+
+type TodaySession struct {
+	ID         uint           `json:"id"`
+	StartTime  time.Time      `json:"start_time"`
+	EndTime    time.Time      `json:"end_time"`
+	Offering   TodayOffering  `json:"offering"`
+	Teacher    TodayTeacher   `json:"teacher"`
+	Room       TodayRoom      `json:"room"`
+	Status     string         `json:"status"`
+}
+
+type TodayOffering struct {
+	Name string `json:"name"`
+}
+
+type TodayTeacher struct {
+	Name string `json:"name"`
+}
+
+type TodayRoom struct {
+	Name string `json:"name"`
 }

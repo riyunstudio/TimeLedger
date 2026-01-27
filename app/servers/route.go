@@ -88,7 +88,8 @@ func (s *Server) LoadRoutes() {
 		{http.MethodGet, "/api/v1/teachers", s.action.teacher.ListTeachers, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireAdmin()}},
 		{http.MethodDelete, "/api/v1/teachers/:id", s.action.teacher.DeleteTeacher, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireAdmin()}},
 		{http.MethodPost, "/api/v1/admin/centers/:id/invitations", s.action.teacher.InviteTeacher, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
-		{http.MethodGet, "/api/v1/admin/centers/:id/teachers", s.action.adminResource.GetTeachers, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		// Admin - Teacher Resources
+		{http.MethodGet, "/api/v1/admin/teachers", s.action.adminResource.GetTeachers, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 
 		// Admin - Offerings
 		{http.MethodGet, "/api/v1/admin/offerings", s.action.offering.GetOfferings, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
@@ -98,13 +99,14 @@ func (s *Server) LoadRoutes() {
 		{http.MethodPost, "/api/v1/admin/centers/:id/offerings/:offering_id/copy", s.action.offering.CopyOffering, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 
 		// Admin - Timetable Template
-		{http.MethodGet, "/api/v1/admin/centers/:id/templates", s.action.timetableTemplate.GetTemplates, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
-		{http.MethodPost, "/api/v1/admin/centers/:id/templates", s.action.timetableTemplate.CreateTemplate, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
-		{http.MethodPut, "/api/v1/admin/centers/:id/templates/:templateId", s.action.timetableTemplate.UpdateTemplate, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
-		{http.MethodDelete, "/api/v1/admin/centers/:id/templates/:templateId", s.action.timetableTemplate.DeleteTemplate, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
-		{http.MethodGet, "/api/v1/admin/centers/:id/templates/:templateId/cells", s.action.timetableTemplate.GetCells, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
-		{http.MethodPost, "/api/v1/admin/centers/:id/templates/:templateId/cells", s.action.timetableTemplate.CreateCells, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
-		{http.MethodPost, "/api/v1/admin/centers/:id/templates/:templateId/apply", s.action.timetableTemplate.ApplyTemplate, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodGet, "/api/v1/admin/templates", s.action.timetableTemplate.GetTemplates, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodPost, "/api/v1/admin/templates", s.action.timetableTemplate.CreateTemplate, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodPut, "/api/v1/admin/templates/:templateId", s.action.timetableTemplate.UpdateTemplate, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodDelete, "/api/v1/admin/templates/:templateId", s.action.timetableTemplate.DeleteTemplate, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodGet, "/api/v1/admin/templates/:templateId/cells", s.action.timetableTemplate.GetCells, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodPost, "/api/v1/admin/templates/:templateId/cells", s.action.timetableTemplate.CreateCells, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodDelete, "/api/v1/admin/templates/cells/:cellId", s.action.timetableTemplate.DeleteCell, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodPost, "/api/v1/admin/templates/:templateId/apply", s.action.timetableTemplate.ApplyTemplate, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 
 		// Admin - Users
 		{http.MethodGet, "/api/v1/admin/centers/:id/users", s.action.adminUser.GetAdminUsers, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
@@ -117,6 +119,8 @@ func (s *Server) LoadRoutes() {
 		{http.MethodPost, "/api/v1/admin/scheduling/check-teacher-buffer", s.action.scheduling.CheckTeacherBuffer, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodPost, "/api/v1/admin/scheduling/check-room-buffer", s.action.scheduling.CheckRoomBuffer, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodPost, "/api/v1/admin/scheduling/validate", s.action.scheduling.ValidateFull, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		// Dashboard
+		{http.MethodGet, "/api/v1/admin/dashboard/today-summary", s.action.scheduling.GetTodaySummary, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodGet, "/api/v1/admin/rules", s.action.scheduling.GetRules, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodPost, "/api/v1/admin/rules", s.action.scheduling.CreateRule, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodPut, "/api/v1/admin/rules/:ruleId", s.action.scheduling.UpdateRule, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
