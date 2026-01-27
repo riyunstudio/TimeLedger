@@ -804,6 +804,160 @@ Apply a template to generate schedule rules.
 
 ---
 
+## Admin Exception Endpoints
+
+### Get All Exceptions
+
+Get all exception requests with filtering support.
+
+|**Endpoint:** `GET /admin/exceptions/all`
+|**Headers:** `Authorization: Bearer <token>`
+
+|**Query Parameters:**
+| Parameter | Type | Required | Default | Description |
+|:---|:---|:---:|:---:|:---|
+| `status` | string | No | - | Filter by status (PENDING, APPROVED, REJECTED, REVOKED) |
+| `date_from` | string | No | - | Start date (ISO 8601) |
+| `date_to` | string | No | - | End date (ISO 8601) |
+| `teacher_id` | int | No | - | Filter by teacher |
+| `room_id` | int | No | - | Filter by room |
+
+|**Response:**
+```json
+{
+  "code": 200,
+  "datas": [
+    {
+      "id": 1,
+      "type": "CANCEL",
+      "status": "PENDING",
+      "reason": "身體不適需要休息",
+      "original_date": "2026-01-20",
+      "offering_name": "瑜伽基礎",
+      "rule": {
+        "id": 10,
+        "start_time": "09:00",
+        "end_time": "10:00",
+        "teacher": { "id": 1, "name": "張老師" },
+        "room": { "id": 1, "name": "A教室" }
+      }
+    }
+  ]
+}
+```
+
+---
+
+### Review Exception
+
+Approve or reject an exception request.
+
+|**Endpoint:** `POST /admin/scheduling/exceptions/:id/review`
+|**Headers:** `Authorization: Bearer <token>`
+
+|**Request:**
+```json
+{
+  "action": "APPROVED",
+  "reason": "已確認代課老師"
+}
+```
+
+| Action Value | Description |
+|:---|:---|
+| `APPROVED` | Approve the exception request |
+| `REJECTED` | Reject the exception request |
+
+|**Response (Success):**
+```json
+{
+  "code": 200,
+  "message": "Exception reviewed successfully"
+}
+```
+
+|**Response (Conflict Error):**
+```json
+{
+  "code": 409,
+  "message": "Cannot approve: schedule conflict detected",
+  "datas": {
+    "conflicts": [...]
+  }
+}
+```
+
+---
+
+## Teacher Schedule Endpoints
+
+### Get My Schedule
+
+Get the teacher's schedule.
+
+|**Endpoint:** `GET /teacher/me/schedule`
+|**Headers:** `Authorization: Bearer <token>`
+
+|**Query Parameters:**
+| Parameter | Type | Required | Default | Description |
+|:---|:---|:---:|:---:|:---|
+| `start_date` | string | No | Today | Start date (YYYY-MM-DD) |
+| `end_date` | string | No | +7 days | End date (YYYY-MM-DD) |
+| `view` | string | No | week | View mode (day, week, month) |
+
+|**Response:**
+```json
+{
+  "code": 200,
+  "datas": [
+    {
+      "id": 1,
+      "date": "2026-01-20",
+      "start_time": "09:00",
+      "end_time": "10:00",
+      "offering_name": "瑜伽基礎",
+      "center_name": "台北館",
+      "room_name": "A教室",
+      "is_holiday": false
+    }
+  ]
+}
+```
+
+---
+
+### Get My Personal Events
+
+Get the teacher's personal events.
+
+|**Endpoint:** `GET /teacher/me/personal-events`
+|**Headers:** `Authorization: Bearer <token>`
+
+|**Query Parameters:**
+| Parameter | Type | Required | Default | Description |
+|:---|:---|:---:|:---:|:---|
+| `start_date` | string | No | Today | Start date (YYYY-MM-DD) |
+| `end_date` | string | No | +30 days | End date (YYYY-MM-DD) |
+
+|**Response:**
+```json
+{
+  "code": 200,
+  "datas": [
+    {
+      "id": 1,
+      "title": "醫院回診",
+      "date": "2026-01-25",
+      "start_time": "14:00",
+      "end_time": "16:00",
+      "is_recurring": false
+    }
+  ]
+}
+```
+
+---
+
 ## Error Codes
 
 | Code | Description |

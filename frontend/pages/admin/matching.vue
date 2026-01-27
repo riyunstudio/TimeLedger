@@ -1,35 +1,39 @@
 <template>
-  <div class="p-4 md:p-6">
+  <div class="p-4 md:p-6" role="main" aria-label="智慧媒合系統">
     <h1 class="text-2xl font-bold text-white mb-6">智慧媒合</h1>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <div class="glass-card p-4 md:p-6">
+      <div class="glass-card p-4 md:p-6" role="region" aria-label="搜尋條件">
         <h2 class="text-lg font-semibold text-white mb-4">搜尋條件</h2>
-        
+
         <!-- 近期搜尋快速載入 -->
         <AdminRecentSearches
           ref="recentSearchesRef"
           @load-search="onLoadRecentSearch"
           @clear-all="onClearRecentSearches"
         />
-        
-        <form @submit.prevent="findMatches" class="space-y-4">
+
+        <form @submit.prevent="findMatches" class="space-y-4" aria-label="媒合搜尋表單">
           <div>
-            <label class="block text-slate-300 mb-2">課程時段</label>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <label id="datetime-range-label" class="block text-slate-300 mb-2">課程時段</label>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4" role="group" aria-labelledby="datetime-range-label">
               <div>
-                <label class="block text-slate-400 text-sm mb-1">開始時間</label>
+                <label for="start-time" class="block text-slate-400 text-sm mb-1">開始時間</label>
                 <input
+                  id="start-time"
                   v-model="form.start_time"
                   type="datetime-local"
+                  aria-label="搜尋開始時間"
                   class="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white"
                 />
               </div>
               <div>
-                <label class="block text-slate-400 text-sm mb-1">結束時間</label>
+                <label for="end-time" class="block text-slate-400 text-sm mb-1">結束時間</label>
                 <input
+                  id="end-time"
                   v-model="form.end_time"
                   type="datetime-local"
+                  aria-label="搜尋結束時間"
                   class="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white"
                 />
               </div>
@@ -40,15 +44,18 @@
           <AdminRoomCardSelect
             :rooms="rooms"
             v-model="form.room_ids"
+            role="group"
+            aria-label="選擇教室"
           />
 
           <!-- 技能 autocomplete 選擇器 -->
-          <AdminSkillSelector v-model="selectedSkills" />
+          <AdminSkillSelector v-model="selectedSkills" aria-label="選擇技能" />
 
           <div class="flex flex-col sm:flex-row gap-3 pt-4">
             <button
               type="button"
               @click="clearForm"
+              aria-label="清除搜尋條件"
               class="flex-1 px-4 py-2 rounded-lg bg-white/5 text-white hover:bg-white/10 transition-colors"
             >
               清除
@@ -56,22 +63,27 @@
             <button
               type="submit"
               :disabled="searching"
+              aria-label="開始媒合搜尋"
+              :aria-busy="searching"
               class="flex-1 px-4 py-2 rounded-lg bg-primary-500 text-white hover:bg-primary-600 transition-colors disabled:opacity-50"
             >
-              {{ searching ? '搜尋中...' : '開始媒合' }}
+              <span v-if="searching" role="status">
+                <span class="animate-pulse">搜尋中...</span>
+              </span>
+              <span v-else>開始媒合</span>
             </button>
           </div>
         </form>
       </div>
 
-      <div class="glass-card p-4 md:p-6">
+      <div class="glass-card p-4 md:p-6" role="region" aria-label="媒合結果">
         <h2 class="text-lg font-semibold text-white mb-4">媒合結果</h2>
 
-        <div v-if="!hasSearched" class="text-center py-12 text-slate-500">
+        <div v-if="!hasSearched" class="text-center py-12 text-slate-500" role="status">
           請設定搜尋條件並點擊「開始媒合」
         </div>
 
-        <div v-else-if="matches.length === 0" class="text-center py-12 text-slate-500">
+        <div v-else-if="matches.length === 0" class="text-center py-12 text-slate-500" role="status">
           沒有找到符合條件的老師
         </div>
 
