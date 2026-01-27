@@ -93,17 +93,17 @@ func (s *ScheduleExpansionServiceImpl) ExpandRules(ctx context.Context, rules []
 						// 處理已核准的例外
 						if exc.Status == "APPROVED" {
 							// 如果是停課例外，跳過此 sessions
-							if exc.Type == "CANCEL" {
+							if exc.ExceptionType == "CANCEL" {
 								skipSession = true
 								approvedException = exc
 								break
 							}
 							// 代課例外：更新老師
-							if exc.Type == "REPLACE_TEACHER" && exc.NewTeacherID != nil {
+							if exc.ExceptionType == "REPLACE_TEACHER" && exc.NewTeacherID != nil {
 								rule.TeacherID = exc.NewTeacherID
 							}
 							// 調課例外：由新規則處理（不會在這裡產生 sessions）
-							if exc.Type == "RESCHEDULE" {
+							if exc.ExceptionType == "RESCHEDULE" {
 								// RESCHEDULE 由新規則處理，這裡標記但繼續產生原時段（用於顯示）
 								if approvedException == nil {
 									approvedException = exc
@@ -138,7 +138,7 @@ func (s *ScheduleExpansionServiceImpl) ExpandRules(ctx context.Context, rules []
 					if pendingException != nil {
 						schedule.ExceptionInfo = &ExpandedException{
 							ID:           pendingException.ID,
-							Type:         pendingException.Type,
+							Type:         pendingException.ExceptionType,
 							Status:       pendingException.Status,
 							NewTeacherID: pendingException.NewTeacherID,
 							NewStartAt:   pendingException.NewStartAt,
@@ -281,13 +281,15 @@ func ptrEqual(a, b *uint) bool {
 
 type ScheduleExceptionServiceImpl struct {
 	BaseService
-	app               *app.App
-	exceptionRepo     *repositories.ScheduleExceptionRepository
-	ruleRepo          *repositories.ScheduleRuleRepository
-	auditLogRepo      *repositories.AuditLogRepository
-	centerRepo        *repositories.CenterRepository
-	validationService ScheduleValidationService
-	notificationSvc   NotificationService
+	app                *app.App
+	exceptionRepo      *repositories.ScheduleExceptionRepository
+	ruleRepo           *repositories.ScheduleRuleRepository
+	auditLogRepo       *repositories.AuditLogRepository
+	centerRepo         *repositories.CenterRepository
+	teacherRepo        *repositories.TeacherRepository
+	validationService  ScheduleValidationService
+	notificationSvc    NotificationService
+	notificationQueue  NotificationQueueService
 }
 
 func NewScheduleExceptionService(app *app.App) ScheduleExceptionService {
@@ -297,8 +299,10 @@ func NewScheduleExceptionService(app *app.App) ScheduleExceptionService {
 		ruleRepo:          repositories.NewScheduleRuleRepository(app),
 		auditLogRepo:      repositories.NewAuditLogRepository(app),
 		centerRepo:        repositories.NewCenterRepository(app),
+		teacherRepo:       repositories.NewTeacherRepository(app),
 		validationService: NewScheduleValidationService(app),
 		notificationSvc:   NewNotificationService(app),
+		notificationQueue: NewNotificationQueueService(app),
 	}
 	return svc
 }
@@ -343,15 +347,15 @@ func (s *ScheduleExceptionServiceImpl) CreateException(ctx context.Context, cent
 	}
 
 	exception := models.ScheduleException{
-		CenterID:     centerID,
-		RuleID:       ruleID,
-		OriginalDate: originalDate,
-		Type:         exceptionType,
-		Status:       "PENDING",
-		NewStartAt:   newStartAt,
-		NewEndAt:     newEndAt,
-		NewTeacherID: newTeacherID,
-		Reason:       reason,
+		CenterID:       centerID,
+		RuleID:         ruleID,
+		OriginalDate:   originalDate,
+		ExceptionType:  exceptionType,
+		Status:         "PENDING",
+		NewStartAt:     newStartAt,
+		NewEndAt:       newEndAt,
+		NewTeacherID:   newTeacherID,
+		Reason:         reason,
 	}
 
 	// 如果有代課老師名字，添加到 Reason 中（因為資料庫沒有這個欄位）
@@ -374,35 +378,22 @@ func (s *ScheduleExceptionServiceImpl) CreateException(ctx context.Context, cent
 		Payload:    models.AuditPayload{After: exception},
 	})
 
-	// 發送通知給管理員
-	typeText := map[string]string{
-		"CANCEL":           "停課",
-		"RESCHEDULE":       "改期",
-		"REPLACE_TEACHER":  "代課",
-	}
-	typeLabel := typeText[exceptionType]
-	if typeLabel == "" {
-		typeLabel = exceptionType
+	// 發送 LINE 通知給所有管理員（同步發送）
+	teacher, _ := s.teacherRepo.GetByID(ctx, teacherID)
+	teacherName := teacher.Name
+	if teacherName == "" {
+		teacherName = "老師"
 	}
 
-	// 獲取老師姓名
-	teacher, _ := repositories.NewTeacherRepository(s.app).GetByID(ctx, teacherID)
-	teacherName := ""
-	if teacher.Name != "" {
-		teacherName = teacher.Name
-	}
+	// 取得中心名稱
+	center, _ := s.centerRepo.GetByID(ctx, centerID)
+	centerName := center.Name
 
-	// 格式化日期
-	dateStr := originalDate.Format("2006-01-02")
+	// 更新 exception 的 ExceptionType 欄位（用於 LINE 通知）
+	createdException.ExceptionType = exceptionType
 
-	title := "新例外申請通知"
-	message := fmt.Sprintf("老師「%s」提交了例外申請\n\n類型：%s\n日期：%s\n原因：%s\n\n請前往審核中心處理。", teacherName, typeLabel, dateStr, reason)
-
-	// 發送通知（异步，不影響主要流程）
-	go func() {
-		notifyCtx := context.Background()
-		_ = s.notificationSvc.SendAdminNotification(notifyCtx, centerID, title, message, "EXCEPTION")
-	}()
+	// 同步發送通知（直接發送，不經佇列）
+	_ = s.notificationQueue.NotifyExceptionSubmittedSync(ctx, &createdException, teacherName, centerName)
 
 	return createdException, nil
 }
@@ -468,7 +459,7 @@ func (s *ScheduleExceptionServiceImpl) ReviewException(ctx context.Context, exce
 		}
 
 		var startAt, endAt time.Time
-		if exception.Type == "RESCHEDULE" && exception.NewStartAt != nil {
+		if exception.ExceptionType == "RESCHEDULE" && exception.NewStartAt != nil {
 			startAt = *exception.NewStartAt
 			endAt = *exception.NewEndAt
 		} else {
@@ -522,11 +513,14 @@ func (s *ScheduleExceptionServiceImpl) ReviewException(ctx context.Context, exce
 		return err
 	}
 
-	// 發送通知給老師
-	approved := status == "APPROVED"
-	if err := s.notificationSvc.SendReviewNotification(ctx, exceptionID, approved); err != nil {
-		// 記錄錯誤但不影響主要流程
-		fmt.Printf("[WARN] failed to send review notification to teacher: %v\n", err)
+	// 發送 LINE 通知給老師（同步發送）
+	// 取得老師資料
+	rule, _ := s.ruleRepo.GetByID(ctx, exception.RuleID)
+	if rule.TeacherID != nil {
+		teacher, _ := s.teacherRepo.GetByID(ctx, *rule.TeacherID)
+
+		approved := status == "APPROVED"
+		_ = s.notificationQueue.NotifyExceptionResultSync(ctx, &exception, &teacher, approved, reason)
 	}
 
 	s.auditLogRepo.Create(ctx, models.AuditLog{
@@ -544,7 +538,7 @@ func (s *ScheduleExceptionServiceImpl) ReviewException(ctx context.Context, exce
 
 // applyExceptionChanges 審核通過時同步執行課程變更
 func (s *ScheduleExceptionServiceImpl) applyExceptionChanges(ctx context.Context, exception *models.ScheduleException, rule *models.ScheduleRule) error {
-	switch exception.Type {
+	switch exception.ExceptionType {
 	case "CANCEL":
 		// 停課：不修改規則本身，由 ExpandRules 根據已核准的例外狀態跳過該日期
 		// 這樣只會影響特定的停課日期，不會影響未來的課程
@@ -818,12 +812,12 @@ func (s *ScheduleRecurrenceServiceImpl) EditRecurringSchedule(ctx context.Contex
 
 func (s *ScheduleRecurrenceServiceImpl) editSingle(ctx context.Context, centerID uint, teacherID uint, rule models.ScheduleRule, req RecurrenceEditRequest) (models.ScheduleException, models.ScheduleException, error) {
 	cancelExc := models.ScheduleException{
-		CenterID:     centerID,
-		RuleID:       req.RuleID,
-		OriginalDate: req.EditDate,
-		Type:         "CANCEL",
-		Status:       "PENDING",
-		Reason:       req.Reason,
+		CenterID:       centerID,
+		RuleID:         req.RuleID,
+		OriginalDate:   req.EditDate,
+		ExceptionType:  "CANCEL",
+		Status:         "PENDING",
+		Reason:         req.Reason,
 	}
 	createdCancel, err := s.exceptionRepo.Create(ctx, cancelExc)
 	if err != nil {
@@ -845,16 +839,16 @@ func (s *ScheduleRecurrenceServiceImpl) editSingle(ctx context.Context, centerID
 	}
 
 	addExc := models.ScheduleException{
-		CenterID:     centerID,
-		RuleID:       req.RuleID,
-		OriginalDate: req.EditDate,
-		Type:         "ADD",
-		Status:       "PENDING",
-		NewStartAt:   &newStartAt,
-		NewEndAt:     &newEndAt,
-		NewTeacherID: req.NewTeacherID,
-		NewRoomID:    req.NewRoomID,
-		Reason:       req.Reason,
+		CenterID:       centerID,
+		RuleID:         req.RuleID,
+		OriginalDate:   req.EditDate,
+		ExceptionType:  "ADD",
+		Status:         "PENDING",
+		NewStartAt:     &newStartAt,
+		NewEndAt:       &newEndAt,
+		NewTeacherID:   req.NewTeacherID,
+		NewRoomID:      req.NewRoomID,
+		Reason:         req.Reason,
 	}
 	createdAdd, err := s.exceptionRepo.Create(ctx, addExc)
 	if err != nil {
@@ -885,12 +879,12 @@ func (s *ScheduleRecurrenceServiceImpl) editFuture(ctx context.Context, centerID
 
 	for _, date := range preview.AffectedDates {
 		cancelExc := models.ScheduleException{
-			CenterID:     centerID,
-			RuleID:       req.RuleID,
-			OriginalDate: date,
-			Type:         "CANCEL",
-			Status:       "PENDING",
-			Reason:       req.Reason,
+			CenterID:       centerID,
+			RuleID:         req.RuleID,
+			OriginalDate:   date,
+			ExceptionType:  "CANCEL",
+			Status:         "PENDING",
+			Reason:         req.Reason,
 		}
 		createdCancel, err := s.exceptionRepo.Create(ctx, cancelExc)
 		if err != nil {
@@ -928,16 +922,16 @@ func (s *ScheduleRecurrenceServiceImpl) editFuture(ctx context.Context, centerID
 		}
 
 		addExc := models.ScheduleException{
-			CenterID:     centerID,
-			RuleID:       req.RuleID,
-			OriginalDate: date,
-			Type:         "ADD",
-			Status:       "PENDING",
-			NewStartAt:   &newStartAt,
-			NewEndAt:     &newEndAt,
-			NewTeacherID: newTeacherID,
-			NewRoomID:    newRoomID,
-			Reason:       req.Reason,
+			CenterID:       centerID,
+			RuleID:         req.RuleID,
+			OriginalDate:   date,
+			ExceptionType:  "ADD",
+			Status:         "PENDING",
+			NewStartAt:     &newStartAt,
+			NewEndAt:       &newEndAt,
+			NewTeacherID:   newTeacherID,
+			NewRoomID:      newRoomID,
+			Reason:         req.Reason,
 		}
 		createdAdd, err := s.exceptionRepo.Create(ctx, addExc)
 		if err != nil {
@@ -1030,12 +1024,12 @@ func (s *ScheduleRecurrenceServiceImpl) DeleteRecurringSchedule(ctx context.Cont
 	switch mode {
 	case RecurrenceEditSingle:
 		cancelExc := models.ScheduleException{
-			CenterID:     centerID,
-			RuleID:       ruleID,
-			OriginalDate: editDate,
-			Type:         "CANCEL",
-			Status:       "PENDING",
-			Reason:       reason,
+			CenterID:       centerID,
+			RuleID:         ruleID,
+			OriginalDate:   editDate,
+			ExceptionType:  "CANCEL",
+			Status:         "PENDING",
+			Reason:         reason,
 		}
 		created, err := s.exceptionRepo.Create(ctx, cancelExc)
 		if err != nil {
@@ -1048,12 +1042,12 @@ func (s *ScheduleRecurrenceServiceImpl) DeleteRecurringSchedule(ctx context.Cont
 		preview, _ := s.PreviewAffectedSessions(ctx, ruleID, editDate, RecurrenceEditFuture)
 		for _, date := range preview.AffectedDates {
 			cancelExc := models.ScheduleException{
-				CenterID:     centerID,
-				RuleID:       ruleID,
-				OriginalDate: date,
-				Type:         "CANCEL",
-				Status:       "PENDING",
-				Reason:       reason,
+				CenterID:       centerID,
+				RuleID:         ruleID,
+				OriginalDate:   date,
+				ExceptionType:  "CANCEL",
+				Status:         "PENDING",
+				Reason:         reason,
 			}
 			created, err := s.exceptionRepo.Create(ctx, cancelExc)
 			if err != nil {

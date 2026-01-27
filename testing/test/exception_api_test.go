@@ -163,7 +163,7 @@ func TestReviewException_Approve(t *testing.T) {
 		CenterID:     center.ID,
 		RuleID:       rule.ID,
 		OriginalDate: today,
-		Type:         "CANCEL",
+		ExceptionType:         "CANCEL",
 		Status:       "PENDING",
 		Reason:       "測試請假",
 	}
@@ -270,7 +270,7 @@ func TestReviewException_Reject(t *testing.T) {
 		CenterID:     center.ID,
 		RuleID:       rule.ID,
 		OriginalDate: today,
-		Type:         "CANCEL",
+		ExceptionType:         "CANCEL",
 		Status:       "PENDING",
 		Reason:       "測試請假",
 	}

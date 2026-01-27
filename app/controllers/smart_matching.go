@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -81,6 +82,7 @@ func (ctl *SmartMatchingController) FindMatches(ctx *gin.Context) {
 		return
 	}
 
+	// 直接同步處理（Go 處理速度很快，不需要 WebSocket）
 	matches, err := ctl.smartMatchingSvc.FindMatches(ctx, centerID, req.TeacherID, req.RoomID, req.StartTime, req.EndTime, req.RequiredSkills, req.ExcludeTeacherIDs)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
@@ -202,5 +204,312 @@ func (ctl *SmartMatchingController) SearchTalent(ctx *gin.Context) {
 		Code:    0,
 		Message: "OK",
 		Datas:   results,
+	})
+}
+
+// TalentStatsRequest - 人才庫統計請求
+type TalentStatsRequest struct {
+	City     string `form:"city"`
+	District string `form:"district"`
+}
+
+// TalentStatsResponse - 人才庫統計回應
+type TalentStatsResponse struct {
+	TotalCount       int                      `json:"total_count"`
+	OpenHiringCount  int                      `json:"open_hiring_count"`
+	MemberCount      int                      `json:"member_count"`
+	AverageRating    float64                  `json:"average_rating"`
+	MonthlyChange    int                      `json:"monthly_change"`
+	MonthlyTrend     []int                    `json:"monthly趋势"`
+	PendingInvites   int                      `json:"pending_invites"`
+	AcceptedInvites  int                      `json:"accepted_invites"`
+	DeclinedInvites  int                      `json:"declined_invites"`
+	CityDistribution []CityDistributionItem   `json:"city_distribution"`
+	TopSkills        []SkillCountItem         `json:"top_skills"`
+}
+
+type CityDistributionItem struct {
+	Name  string `json:"name"`
+	Count int    `json:"count"`
+}
+
+type SkillCountItem struct {
+	Name  string `json:"name"`
+	Count int    `json:"count"`
+}
+
+// GetTalentStats - 取得人才庫統計資料
+func (ctl *SmartMatchingController) GetTalentStats(ctx *gin.Context) {
+	centerIDVal, exists := ctx.Get(global.CenterIDKey)
+	if !exists {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Center ID required",
+		})
+		return
+	}
+
+	centerID, ok := centerIDVal.(uint)
+	if !ok {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Invalid center ID format",
+		})
+		return
+	}
+
+	stats, err := ctl.smartMatchingSvc.GetTalentStats(ctx, centerID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
+			Code:    500,
+			Message: err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, global.ApiResponse{
+		Code:    0,
+		Message: "OK",
+		Datas:   stats,
+	})
+}
+
+// InviteTalentRequest - 邀請人才請求
+type InviteTalentRequest struct {
+	TeacherIDs []uint `json:"teacher_ids" binding:"required,min=1,max=20"`
+	Message    string `json:"message"`
+}
+
+// InviteTalentResponse - 邀請人才回應
+type InviteTalentResponse struct {
+	InvitedCount  int      `json:"invited_count"`
+	FailedCount   int      `json:"failed_count"`
+	FailedIDs     []uint   `json:"failed_ids,omitempty"`
+	InvitationIDs []uint   `json:"invitation_ids,omitempty"`
+}
+
+// InviteTalent - 邀請人才合作
+func (ctl *SmartMatchingController) InviteTalent(ctx *gin.Context) {
+	var req InviteTalentRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Invalid request: " + err.Error(),
+		})
+		return
+	}
+
+	centerIDVal, exists := ctx.Get(global.CenterIDKey)
+	if !exists {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Center ID required",
+		})
+		return
+	}
+
+	centerID, ok := centerIDVal.(uint)
+	if !ok {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Invalid center ID format",
+		})
+		return
+	}
+
+	actorID := ctx.GetUint(global.UserIDKey)
+
+	result, err := ctl.smartMatchingSvc.InviteTalent(ctx, centerID, actorID, req.TeacherIDs, req.Message)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
+			Code:    500,
+			Message: err.Error(),
+		})
+		return
+	}
+
+	// 記錄審核日誌
+	ctl.auditLogRepo.Create(ctx, models.AuditLog{
+		CenterID:   centerID,
+		ActorType:  "ADMIN",
+		ActorID:    actorID,
+		Action:     "TALENT_INVITE",
+		TargetType: "Teacher",
+		TargetID:   0,
+		Payload: models.AuditPayload{
+			After: map[string]interface{}{
+				"teacher_ids":    req.TeacherIDs,
+				"invited_count":  result.InvitedCount,
+				"failed_count":   result.FailedCount,
+				"invitation_ids": result.InvitationIDs,
+			},
+		},
+	})
+
+	ctx.JSON(http.StatusOK, global.ApiResponse{
+		Code:    0,
+		Message: "OK",
+		Datas:   result,
+	})
+}
+
+// GetSearchSuggestions - 取得搜尋建議
+func (ctl *SmartMatchingController) GetSearchSuggestions(ctx *gin.Context) {
+	query := ctx.Query("q")
+	if query == "" {
+		query = ctx.Query("keyword")
+	}
+
+	suggestions, err := ctl.smartMatchingSvc.GetSearchSuggestions(ctx, query)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
+			Code:    500,
+			Message: err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, global.ApiResponse{
+		Code:    0,
+		Message: "OK",
+		Datas:   suggestions,
+	})
+}
+
+// GetAlternativeSlotsRequest - 替代時段請求
+type GetAlternativeSlotsRequest struct {
+	TeacherID  uint   `json:"teacher_id" binding:"required"`
+	OriginalStart time.Time `json:"original_start" binding:"required"`
+	OriginalEnd   time.Time `json:"original_end" binding:"required"`
+	Duration     int    `json:"duration"`
+}
+
+// GetAlternativeSlots - 取得替代時段建議
+func (ctl *SmartMatchingController) GetAlternativeSlots(ctx *gin.Context) {
+	var req GetAlternativeSlotsRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Invalid request: " + err.Error(),
+		})
+		return
+	}
+
+	centerIDVal, exists := ctx.Get(global.CenterIDKey)
+	if !exists {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Center ID required",
+		})
+		return
+	}
+
+	centerID, ok := centerIDVal.(uint)
+	if !ok {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Invalid center ID format",
+		})
+		return
+	}
+
+	alternatives, err := ctl.smartMatchingSvc.GetAlternativeSlots(ctx, centerID, req.TeacherID, req.OriginalStart, req.OriginalEnd, req.Duration)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
+			Code:    500,
+			Message: err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, global.ApiResponse{
+		Code:    0,
+		Message: "OK",
+		Datas:   alternatives,
+	})
+}
+
+// GetTeacherSessionsRequest - 教師課表請求
+type GetTeacherSessionsRequest struct {
+	StartDate string `form:"start_date" binding:"required"`
+	EndDate   string `form:"end_date" binding:"required"`
+}
+
+// TeacherSessionResponse - 教師課表回應
+type TeacherSessionResponse struct {
+	TeacherID uint              `json:"teacher_id"`
+	TeacherName string          `json:"teacher_name"`
+	Sessions   []SessionItem    `json:"sessions"`
+}
+
+type SessionItem struct {
+	ID          uint   `json:"id"`
+	CourseName  string `json:"course_name"`
+	StartTime   string `json:"start_time"`
+	EndTime     string `json:"end_time"`
+	RoomName    string `json:"room_name,omitempty"`
+	Status      string `json:"status"`
+}
+
+// GetTeacherSessions - 取得教師課表
+func (ctl *SmartMatchingController) GetTeacherSessions(ctx *gin.Context) {
+	teacherID := ctx.Param("teacher_id")
+	if teacherID == "" {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Teacher ID is required",
+		})
+		return
+	}
+
+	var req GetTeacherSessionsRequest
+	if err := ctx.ShouldBindQuery(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Invalid request: " + err.Error(),
+		})
+		return
+	}
+
+	centerIDVal, exists := ctx.Get(global.CenterIDKey)
+	if !exists {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Center ID required",
+		})
+		return
+	}
+
+	centerID, ok := centerIDVal.(uint)
+	if !ok {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Invalid center ID format",
+		})
+		return
+	}
+
+	var tID uint
+	if _, err := fmt.Sscanf(teacherID, "%d", &tID); err != nil {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Invalid teacher ID format",
+		})
+		return
+	}
+
+	sessions, err := ctl.smartMatchingSvc.GetTeacherSessions(ctx, centerID, tID, req.StartDate, req.EndDate)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
+			Code:    500,
+			Message: err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, global.ApiResponse{
+		Code:    0,
+		Message: "OK",
+		Datas:   sessions,
 	})
 }

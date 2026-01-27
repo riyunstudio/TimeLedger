@@ -25,6 +25,9 @@ type NotificationService interface {
 	// SendReviewNotification 發送審核通知
 	SendReviewNotification(ctx context.Context, exceptionID uint, approved bool) error
 
+	// SendTalentInvitationNotification 發送人才庫邀請通知
+	SendTalentInvitationNotification(ctx context.Context, teacherID uint, centerName string, inviteToken string) error
+
 	// CreateNotificationRecord 創建通知記錄
 	CreateNotificationRecord(ctx context.Context, notification *models.Notification) error
 

@@ -201,12 +201,12 @@ func TestGetTodaySummary_Service(t *testing.T) {
 
 	// Create a pending exception
 	exception := &models.ScheduleException{
-		CenterID:     center.ID,
-		RuleID:       rule.ID,
-		OriginalDate: today,
-		Type:         "CANCEL",
-		Status:       "PENDING",
-		Reason:       "測試請假",
+		CenterID:       center.ID,
+		RuleID:         rule.ID,
+		OriginalDate:   today,
+		ExceptionType:  "CANCEL",
+		Status:         "PENDING",
+		Reason:         "測試請假",
 	}
 	if err := db.Create(exception).Error; err != nil {
 		t.Logf("Warning: Failed to create test exception: %v", err)

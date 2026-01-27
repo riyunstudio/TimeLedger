@@ -6,8 +6,11 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
+
 	"timeLedger/app"
 	"timeLedger/app/console"
+	"timeLedger/app/services"
 	"timeLedger/app/servers"
 	_ "timeLedger/docs"
 
@@ -29,37 +32,22 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	// 初始化 App
-	app := app.Initialize()
+	appInstance := app.Initialize()
 
-	// 排程
-	scheduler := console.Initialize(app)
+	// 排程（輕量級，佔用極少資源）
+	scheduler := console.Initialize(appInstance)
 	scheduler.Start()
 
-	// MQ
-	// rabbitMQ := mq.Initialize(app)
+	// 通知佇列 Worker（按環境變量開關，預設關閉以節省資源）
+	if os.Getenv("NOTIFICATION_WORKER_ENABLED") == "true" {
+		go startNotificationWorker(appInstance, ctx)
+	} else {
+		fmt.Println("[INFO] Notification worker disabled (set NOTIFICATION_WORKER_ENABLED=true to enable)")
+	}
 
-	// Websocket server (optional)
-	// wsEnabled := os.Getenv("WS_ENABLED")
-	// if wsEnabled != "false" {
-	// 	wsServer := ws.InitializeServer(app)
-	// 	wsServer.Start()
-
-	// 	wsClient := ws.InitializeClient(fmt.Sprintf("ws://%s:%s/ws?uuid=%s", app.Env.ServerHost, app.Env.WsServerPort, app.Env.ServerName))
-	// 	if err := wsClient.Start(); err != nil {
-	// 		fmt.Println(err)
-	// 	}
-	// }
-
-	// 啟動 API server
-	gin := servers.Initialize(app)
+	// 啟動 API server（主要服務）
+	gin := servers.Initialize(appInstance)
 	gin.Start()
-
-	// gRPC server (optional)
-	// grpcEnabled := os.Getenv("GRPC_ENABLED")
-	// if grpcEnabled != "false" {
-	// 	grpcSrv := grpc.Initialize(app)
-	// 	grpcSrv.Start()
-	// }
 
 	// 優雅退出
 	signals := make(chan os.Signal, 1)
@@ -71,11 +59,57 @@ func main() {
 		<-signals
 		cancel()
 		scheduler.Stop()
-		// rabbitMQ.Stop()
 		gin.Stop()
 		fmt.Println("Exit.")
 		exit <- struct{}{}
 	}()
 	<-ctx.Done()
 	<-exit
+}
+
+// startNotificationWorker 啟動通知佇列背景 worker
+func startNotificationWorker(appInstance *app.App, ctx context.Context) {
+	fmt.Println("[INFO] Starting notification queue worker...")
+	
+	queueService := services.NewNotificationQueueService(appInstance)
+	
+	// 檢查 Redis 連線
+	redisQueue := services.NewRedisQueueService(appInstance)
+	if !redisQueue.IsHealthy(context.Background()) {
+		fmt.Println("[WARN] Redis not connected, notification queue worker will not start")
+		return
+	}
+	
+	fmt.Println("[INFO] Notification queue worker started, listening on Redis queue...")
+
+	// 定時打印統計
+	go func() {
+		ticker := time.NewTicker(60 * time.Second) // 每分鐘打印一次
+		defer ticker.Stop()
+		
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				stats := queueService.GetQueueStats(context.Background())
+				fmt.Printf("[STATS] Notification Queue: pending=%s, retry=%s, total=%s, retried=%s, failed=%s\n",
+					stats["pending"], stats["retry"], stats["total"], stats["retried"], stats["failed"])
+			}
+		}
+	}()
+	
+	// 持續處理佇列
+	for {
+		select {
+		case <-ctx.Done():
+			fmt.Println("[INFO] Notification worker stopped")
+			return
+		default:
+			if err := queueService.ProcessQueue(ctx); err != nil {
+				fmt.Printf("[ERROR] Queue processing error: %v\n", err)
+				time.Sleep(1 * time.Second) // 避免 busy loop
+			}
+		}
+	}
 }

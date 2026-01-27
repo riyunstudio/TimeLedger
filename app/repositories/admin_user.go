@@ -36,6 +36,22 @@ func (rp *AdminUserRepository) ListByCenterID(ctx context.Context, centerID uint
 	return data, err
 }
 
+// GetByCenterID 依中心 ID 取得所有管理員（返回指標）
+func (rp *AdminUserRepository) GetByCenterID(ctx context.Context, centerID uint) ([]*models.AdminUser, error) {
+	var data []*models.AdminUser
+	err := rp.app.MySQL.RDB.WithContext(ctx).
+		Where("center_id = ? AND status = ?", centerID, "ACTIVE").
+		Find(&data).Error
+	return data, err
+}
+
+// GetByIDPtr 依 ID 取得管理員（返回指標）
+func (rp *AdminUserRepository) GetByIDPtr(ctx context.Context, id uint) (*models.AdminUser, error) {
+	var data models.AdminUser
+	err := rp.app.MySQL.RDB.WithContext(ctx).Where("id = ?", id).First(&data).Error
+	return &data, err
+}
+
 func (rp *AdminUserRepository) Create(ctx context.Context, data models.AdminUser) (models.AdminUser, error) {
 	err := rp.app.MySQL.WDB.WithContext(ctx).Create(&data).Error
 	return data, err
@@ -43,6 +59,14 @@ func (rp *AdminUserRepository) Create(ctx context.Context, data models.AdminUser
 
 func (rp *AdminUserRepository) Update(ctx context.Context, data models.AdminUser) error {
 	return rp.app.MySQL.WDB.WithContext(ctx).Save(&data).Error
+}
+
+// UpdateFields 更新特定欄位
+func (rp *AdminUserRepository) UpdateFields(ctx context.Context, id uint, fields map[string]interface{}) error {
+	return rp.app.MySQL.WDB.WithContext(ctx).
+		Model(&models.AdminUser{}).
+		Where("id = ?", id).
+		Updates(fields).Error
 }
 
 func (rp *AdminUserRepository) Delete(ctx context.Context, id uint) error {

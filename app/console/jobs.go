@@ -65,7 +65,7 @@ func (j *ScheduleReminderJob) Handle(cronExpr string) error {
 
 		hasCancellation := false
 		for _, exc := range rule.Exceptions {
-			if exc.Type == "CANCEL" && exc.Status == "APPROVED" {
+			if exc.ExceptionType == "CANCEL" && exc.Status == "APPROVED" {
 				if exc.OriginalDate.Format("2006-01-02") == tomorrow.Format("2006-01-02") {
 					hasCancellation = true
 					break

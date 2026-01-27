@@ -1,96 +1,177 @@
 package controllers
 
 import (
-	"fmt"
 	"net/http"
 	"time"
 	"timeLedger/app"
-	"timeLedger/app/models"
-	"timeLedger/app/repositories"
+	"timeLedger/app/services"
 	"timeLedger/global"
 
 	"github.com/gin-gonic/gin"
-	"golang.org/x/crypto/bcrypt"
 )
 
+// AdminUserController 管理員 Controller
 type AdminUserController struct {
 	BaseController
-	adminRepository *repositories.AdminUserRepository
-	auditLogRepo    *repositories.AuditLogRepository
+	app          *app.App
+	adminService *services.AdminUserService
 }
 
+// NewAdminUserController 建立 AdminUserController
 func NewAdminUserController(app *app.App) *AdminUserController {
 	return &AdminUserController{
-		adminRepository: repositories.NewAdminUserRepository(app),
-		auditLogRepo:    repositories.NewAuditLogRepository(app),
+		BaseController: *NewBaseController(app),
+		app:            app,
+		adminService:   services.NewAdminUserService(app),
 	}
 }
 
-// GetAdminUsers 取得管理員列表
-// @Summary 取得管理員列表
-// @Tags Admin
+// LINEBindingResponse LINE 綁定回應
+type LINEBindingResponse struct {
+	IsBound       bool       `json:"is_bound"`
+	LineUserID    string     `json:"line_user_id,omitempty"`
+	BoundAt       *time.Time `json:"bound_at,omitempty"`
+	NotifyEnabled bool       `json:"notify_enabled"`
+	WelcomeSent   bool       `json:"welcome_sent"`
+}
+
+// UpdateNotifySettingsRequest 更新通知設定請求
+type UpdateNotifySettingsRequest struct {
+	Enabled bool `json:"enabled" binding:"required"`
+}
+
+// GetLINEBindingStatus 取得 LINE 綁定狀態
+// @Summary 取得 LINE 綁定狀態
+// @Description 取得目前管理員的 LINE 綁定狀態
+// @Tags Admin - LINE
 // @Accept json
 // @Produce json
-// @Security BearerAuth
-// @Param id path int true "Center ID"
-// @Success 200 {object} global.ApiResponse{data=[]models.AdminUser}
-// @Router /api/v1/admin/centers/{id}/users [get]
-func (ctl *AdminUserController) GetAdminUsers(ctx *gin.Context) {
-	centerID := ctx.Param("id")
-	if centerID == "" {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Center ID required",
+// @Success 200 {object} LINEBindingResponse
+// @Router /admin/me/line-binding [get]
+func (c *AdminUserController) GetLINEBindingStatus(ctx *gin.Context) {
+	// 從 gin context 取得 admin ID
+	adminIDVal, exists := ctx.Get(string(global.UserIDKey))
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, global.ApiResponse{
+			Code:    global.UNAUTHORIZED,
+			Message: "Unauthorized",
 		})
 		return
 	}
+	adminID := adminIDVal.(uint)
 
-	admins, err := ctl.adminRepository.ListByCenterID(ctl.makeCtx(ctx), 0)
+	status, eInfo, err := c.adminService.GetLINEBindingStatus(ctx.Request.Context(), adminID)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-			Code:    500,
-			Message: "Failed to get admin users",
+			Code:    eInfo.Code,
+			Message: eInfo.Msg,
 		})
 		return
 	}
 
 	ctx.JSON(http.StatusOK, global.ApiResponse{
 		Code:    0,
-		Message: "Success",
-		Datas:   admins,
+		Message: "OK",
+		Datas:   status,
 	})
 }
 
-// CreateAdminUser 新增管理員
-// @Summary 新增管理員
-// @Tags Admin
+// InitLINEBinding 初始化 LINE 綁定
+// @Summary 初始化 LINE 綁定
+// @Description 產生綁定驗證碼，開始 LINE 綁定流程
+// @Tags Admin - LINE
 // @Accept json
 // @Produce json
-// @Security BearerAuth
-// @Param id path int true "Center ID"
-// @Param request body CreateAdminUserRequest true "管理員資訊"
-// @Success 200 {object} global.ApiResponse{data=models.AdminUser}
-// @Router /api/v1/admin/centers/{id}/users [post]
-func (ctl *AdminUserController) CreateAdminUser(ctx *gin.Context) {
-	centerIDStr := ctx.Param("id")
-	if centerIDStr == "" {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Center ID required",
+// @Success 200 {object} map[string]interface{} "code, expires_at"
+// @Router /admin/me/line/bind [post]
+func (c *AdminUserController) InitLINEBinding(ctx *gin.Context) {
+	adminIDVal, exists := ctx.Get(string(global.UserIDKey))
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, global.ApiResponse{
+			Code:    global.UNAUTHORIZED,
+			Message: "Unauthorized",
+		})
+		return
+	}
+	adminID := adminIDVal.(uint)
+
+	code, expiresAt, eInfo, err := c.adminService.InitLINEBinding(ctx.Request.Context(), adminID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
+			Code:    eInfo.Code,
+			Message: eInfo.Msg,
 		})
 		return
 	}
 
-	var centerID uint
-	if _, err := fmt.Sscanf(centerIDStr, "%d", &centerID); err != nil {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid center ID",
+	ctx.JSON(http.StatusOK, global.ApiResponse{
+		Code:    0,
+		Message: "OK",
+		Datas: gin.H{
+			"code":       code,
+			"expires_at": expiresAt,
+		},
+	})
+}
+
+// UnbindLINE 解除 LINE 綁定
+// @Summary 解除 LINE 綁定
+// @Description 解除管理員的 LINE 綁定
+// @Tags Admin - LINE
+// @Accept json
+// @Produce json
+// @Success 200 {object} map[string]string
+// @Router /admin/me/line/unbind [delete]
+func (c *AdminUserController) UnbindLINE(ctx *gin.Context) {
+	adminIDVal, exists := ctx.Get(string(global.UserIDKey))
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, global.ApiResponse{
+			Code:    global.UNAUTHORIZED,
+			Message: "Unauthorized",
+		})
+		return
+	}
+	adminID := adminIDVal.(uint)
+
+	eInfo, err := c.adminService.UnbindLINE(ctx.Request.Context(), adminID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
+			Code:    eInfo.Code,
+			Message: eInfo.Msg,
 		})
 		return
 	}
 
-	var req CreateAdminUserRequest
+	ctx.JSON(http.StatusOK, global.ApiResponse{
+		Code:    0,
+		Message: "OK",
+		Datas: gin.H{
+			"message": "LINE 帳號已解除綁定",
+		},
+	})
+}
+
+// UpdateLINENotifySettings 更新 LINE 通知設定
+// @Summary 更新 LINE 通知設定
+// @Description 更新管理員的 LINE 通知開關
+// @Tags Admin - LINE
+// @Accept json
+// @Produce json
+// @Param request body UpdateNotifySettingsRequest true "通知設定"
+// @Success 200 {object} map[string]string
+// @Router /admin/me/line/notify-settings [patch]
+func (c *AdminUserController) UpdateLINENotifySettings(ctx *gin.Context) {
+	adminIDVal, exists := ctx.Get(string(global.UserIDKey))
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, global.ApiResponse{
+			Code:    global.UNAUTHORIZED,
+			Message: "Unauthorized",
+		})
+		return
+	}
+	adminID := adminIDVal.(uint)
+
+	var req UpdateNotifySettingsRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
 			Code:    global.BAD_REQUEST,
@@ -99,218 +180,21 @@ func (ctl *AdminUserController) CreateAdminUser(ctx *gin.Context) {
 		return
 	}
 
-	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
-
-	admin := models.AdminUser{
-		Email:        req.Email,
-		PasswordHash: string(hashedPassword),
-		Name:         req.Name,
-		Role:         req.Role,
-		Status:       "ACTIVE",
-		CreatedAt:    time.Now(),
-		UpdatedAt:    time.Now(),
-	}
-
-	createdAdmin, err := ctl.adminRepository.Create(ctl.makeCtx(ctx), admin)
+	eInfo, err := c.adminService.UpdateLINENotifySettings(ctx.Request.Context(), adminID, req.Enabled)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-			Code:    500,
-			Message: "Failed to create admin user",
+			Code:    eInfo.Code,
+			Message: eInfo.Msg,
 		})
 		return
 	}
-
-	actorID := ctx.GetUint(global.UserIDKey)
-	ctl.auditLogRepo.Create(ctx, models.AuditLog{
-		CenterID:   centerID,
-		ActorType:  "ADMIN",
-		ActorID:    actorID,
-		Action:     "ADMIN_USER_CREATE",
-		TargetType: "AdminUser",
-		TargetID:   createdAdmin.ID,
-		Payload: models.AuditPayload{
-			After: map[string]interface{}{
-				"email": req.Email,
-				"name":  req.Name,
-				"role":  req.Role,
-			},
-		},
-	})
 
 	ctx.JSON(http.StatusOK, global.ApiResponse{
 		Code:    0,
-		Message: "Admin user created",
-		Datas:   createdAdmin,
-	})
-}
-
-type CreateAdminUserRequest struct {
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required,min=6"`
-	Name     string `json:"name" binding:"required"`
-	Role     string `json:"role" binding:"required,oneof=OWNER ADMIN STAFF"`
-}
-
-// UpdateAdminUser 更新管理員
-// @Summary 更新管理員
-// @Tags Admin
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Param id path int true "Center ID"
-// @Param admin_id path int true "Admin ID"
-// @Param request body UpdateAdminUserRequest true "管理員資訊"
-// @Success 200 {object} global.ApiResponse{data=models.AdminUser}
-// @Router /api/v1/admin/centers/{id}/users/{admin_id} [put]
-func (ctl *AdminUserController) UpdateAdminUser(ctx *gin.Context) {
-	centerIDStr := ctx.Param("id")
-	adminIDStr := ctx.Param("admin_id")
-	if adminIDStr == "" {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Admin ID required",
-		})
-		return
-	}
-
-	var centerID, adminID uint
-	if _, err := fmt.Sscanf(centerIDStr, "%d", &centerID); err != nil {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid center ID",
-		})
-		return
-	}
-	if _, err := fmt.Sscanf(adminIDStr, "%d", &adminID); err != nil {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid admin ID",
-		})
-		return
-	}
-
-	var req UpdateAdminUserRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid request body",
-		})
-		return
-	}
-
-	admin := models.AdminUser{
-		Name:      req.Name,
-		Role:      req.Role,
-		Status:    req.Status,
-		UpdatedAt: time.Now(),
-	}
-
-	if req.Password != "" {
-		hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
-		admin.PasswordHash = string(hashedPassword)
-	}
-
-	if err := ctl.adminRepository.Update(ctl.makeCtx(ctx), admin); err != nil {
-		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-			Code:    500,
-			Message: "Failed to update admin user",
-		})
-		return
-	}
-
-	actorID := ctx.GetUint(global.UserIDKey)
-	ctl.auditLogRepo.Create(ctx, models.AuditLog{
-		CenterID:   centerID,
-		ActorType:  "ADMIN",
-		ActorID:    actorID,
-		Action:     "ADMIN_USER_UPDATE",
-		TargetType: "AdminUser",
-		TargetID:   adminID,
-		Payload: models.AuditPayload{
-			After: map[string]interface{}{
-				"name":   req.Name,
-				"role":   req.Role,
-				"status": req.Status,
-			},
+		Message: "OK",
+		Datas: gin.H{
+			"message":         "通知設定已更新",
+			"notify_enabled": req.Enabled,
 		},
-	})
-
-	ctx.JSON(http.StatusOK, global.ApiResponse{
-		Code:    0,
-		Message: "Admin user updated",
-		Datas:   admin,
-	})
-}
-
-type UpdateAdminUserRequest struct {
-	Name     string `json:"name"`
-	Password string `json:"password"`
-	Role     string `json:"role" binding:"omitempty,oneof=OWNER ADMIN STAFF"`
-	Status   string `json:"status" binding:"omitempty,oneof=ACTIVE INACTIVE"`
-}
-
-// DeleteAdminUser 刪除管理員
-// @Summary 刪除管理員
-// @Tags Admin
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Param id path int true "Center ID"
-// @Param admin_id path int true "Admin ID"
-// @Success 200 {object} global.ApiResponse
-// @Router /api/v1/admin/centers/{id}/users/{admin_id} [delete]
-func (ctl *AdminUserController) DeleteAdminUser(ctx *gin.Context) {
-	centerIDStr := ctx.Param("id")
-	adminIDStr := ctx.Param("admin_id")
-	if adminIDStr == "" {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Admin ID required",
-		})
-		return
-	}
-
-	var centerID, adminID uint
-	if _, err := fmt.Sscanf(centerIDStr, "%d", &centerID); err != nil {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid center ID",
-		})
-		return
-	}
-	if _, err := fmt.Sscanf(adminIDStr, "%d", &adminID); err != nil {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid admin ID",
-		})
-		return
-	}
-
-	if err := ctl.adminRepository.Delete(ctl.makeCtx(ctx), adminID); err != nil {
-		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-			Code:    500,
-			Message: "Failed to delete admin user",
-		})
-		return
-	}
-
-	actorID := ctx.GetUint(global.UserIDKey)
-	ctl.auditLogRepo.Create(ctx, models.AuditLog{
-		CenterID:   centerID,
-		ActorType:  "ADMIN",
-		ActorID:    actorID,
-		Action:     "ADMIN_USER_DELETE",
-		TargetType: "AdminUser",
-		TargetID:   adminID,
-		Payload: models.AuditPayload{
-			After: map[string]interface{}{
-				"status": "DELETED",
-			},
-		},
-	})
-
-	ctx.JSON(http.StatusOK, global.ApiResponse{
-		Code:    0,
-		Message: "Admin user deleted",
 	})
 }

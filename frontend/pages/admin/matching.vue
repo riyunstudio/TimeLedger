@@ -680,47 +680,104 @@ const activeSkillFilters = ref<string[]>([])
 const activeTagFilters = ref<string[]>([])
 const activeRatingFilter = ref(0)
 
-// 統計資料
+// 統計資料 - 從 API 載入
 const talentStats = ref({
-  totalCount: 156,
-  openHiringCount: 89,
-  memberCount: 45,
-  averageRating: 4.2,
-  monthlyChange: 12,
-  monthlyTrend: [65, 72, 78, 85, 92, 88, 95],
-  pendingInvites: 23,
-  acceptedInvites: 45,
-  declinedInvites: 8
+  totalCount: 0,
+  openHiringCount: 0,
+  memberCount: 0,
+  averageRating: 0,
+  monthlyChange: 0,
+  monthlyTrend: [],
+  pendingInvites: 0,
+  acceptedInvites: 0,
+  declinedInvites: 0
 })
 
-const cityDistribution = ref([
-  { name: '台北市', count: 52 },
-  { name: '新北市', count: 38 },
-  { name: '桃園市', count: 24 },
-  { name: '台中市', count: 22 },
-  { name: '高雄市', count: 20 }
-])
+const cityDistribution = ref<Array<{ name: string; count: number }>>([])
+const topSkills = ref<Array<{ name: string; count: number }>>([])
+const skillDistribution = ref<Array<{ name: string; count: number }>>([])
+const popularSearchSkills = ref<string[]>([])
 
-const topSkills = ref([
-  { name: '瑜珈', count: 45 },
-  { name: '鋼琴', count: 38 },
-  { name: '舞蹈', count: 32 },
-  { name: '美術', count: 28 },
-  { name: '英語', count: 25 }
-])
+// 取得人才庫統計
+const fetchTalentStats = async () => {
+  try {
+    const api = useApi()
+    const response = await api.get<{ code: number; datas: any }>(
+      '/admin/smart-matching/talent/stats'
+    )
 
-const skillDistribution = ref([
-  { name: '瑜珈', count: 45 },
-  { name: '鋼琴', count: 38 },
-  { name: '舞蹈', count: 32 },
-  { name: '美術', count: 28 },
-  { name: '英語', count: 25 },
-  { name: '書法', count: 18 },
-  { name: '烹飪', count: 15 },
-  { name: '程式', count: 12 }
-])
+    if (response.code === 0 && response.datas) {
+      const stats = response.datas
+      talentStats.value = {
+        totalCount: stats.total_count || 0,
+        openHiringCount: stats.open_hiring_count || 0,
+        memberCount: stats.member_count || 0,
+        averageRating: stats.average_rating || 0,
+        monthlyChange: stats.monthly_change || 0,
+        monthlyTrend: stats.monthly_trend || [],
+        pendingInvites: stats.pending_invites || 0,
+        acceptedInvites: stats.accepted_invites || 0,
+        declinedInvites: stats.declined_invites || 0
+      }
 
-const popularSearchSkills = ref(['瑜珈', '鋼琴', '舞蹈', '美術', '英語', '書法'])
+      // 更新城市分布
+      if (stats.city_distribution) {
+        cityDistribution.value = stats.city_distribution
+      }
+
+      // 更新熱門技能
+      if (stats.top_skills) {
+        topSkills.value = stats.top_skills
+        skillDistribution.value = stats.top_skills.slice(0, 8)
+        popularSearchSkills.value = stats.top_skills.slice(0, 6).map((s: any) => s.name)
+      }
+    }
+  } catch (error) {
+    console.error('Failed to fetch talent stats:', error)
+    // 使用預設假資料
+    useDefaultStats()
+  }
+}
+
+// 使用預設統計資料
+const useDefaultStats = () => {
+  talentStats.value = {
+    totalCount: 156,
+    openHiringCount: 89,
+    memberCount: 45,
+    averageRating: 4.2,
+    monthlyChange: 12,
+    monthlyTrend: [65, 72, 78, 85, 92, 88, 95],
+    pendingInvites: 23,
+    acceptedInvites: 45,
+    declinedInvites: 8
+  }
+  cityDistribution.value = [
+    { name: '台北市', count: 52 },
+    { name: '新北市', count: 38 },
+    { name: '桃園市', count: 24 },
+    { name: '台中市', count: 22 },
+    { name: '高雄市', count: 20 }
+  ]
+  topSkills.value = [
+    { name: '瑜珈', count: 45 },
+    { name: '鋼琴', count: 38 },
+    { name: '舞蹈', count: 32 },
+    { name: '美術', count: 28 },
+    { name: '英語', count: 25 }
+  ]
+  skillDistribution.value = [
+    { name: '瑜珈', count: 45 },
+    { name: '鋼琴', count: 38 },
+    { name: '舞蹈', count: 32 },
+    { name: '美術', count: 28 },
+    { name: '英語', count: 25 },
+    { name: '書法', count: 18 },
+    { name: '烹飪', count: 15 },
+    { name: '程式', count: 12 }
+  ]
+  popularSearchSkills.value = ['瑜珈', '鋼琴', '舞蹈', '美術', '英語', '書法']
+}
 
 // 篩選後的結果
 const filteredResults = computed(() => {
@@ -865,19 +922,29 @@ const clearTalentSelection = () => {
 // 邀請合作
 const inviteTalent = async (teacher: TalentResult) => {
   inviteLoadingIds.value.add(teacher.id)
-  
+
   try {
-    // 模擬 API 呼叫（實際應該呼叫後端邀請 API）
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    // 更新邀請狀態
-    invitationStatuses.value.set(teacher.id, {
-      sent: true,
-      variant: 'success',
-      text: '已邀請'
-    })
-    
-    alertSuccess(`已向 ${teacher.name} 發送合作邀請`)
+    const api = useApi()
+    const response = await api.post<{ code: number; datas: any }>(
+      '/admin/smart-matching/talent/invite',
+      {
+        teacher_ids: [teacher.id],
+        message: ''
+      }
+    )
+
+    if (response.code === 0) {
+      // 更新邀請狀態
+      invitationStatuses.value.set(teacher.id, {
+        sent: true,
+        variant: 'success',
+        text: '已邀請'
+      })
+
+      alertSuccess(`已向 ${teacher.name} 發送合作邀請`)
+    } else {
+      throw new Error(response.message || '邀請失敗')
+    }
   } catch (error) {
     console.error('Failed to send invitation:', error)
     invitationStatuses.value.set(teacher.id, {
@@ -885,6 +952,7 @@ const inviteTalent = async (teacher: TalentResult) => {
       variant: 'error',
       text: '邀請失敗'
     })
+    alertWarning('邀請失敗，請稍後再試')
   } finally {
     inviteLoadingIds.value.delete(teacher.id)
   }
@@ -903,45 +971,61 @@ const bulkInviteTalents = async () => {
 
   bulkLoading.value = true
   bulkProgress.value = 0
-  
+
   const selectedIds = Array.from(selectedTalents.value)
-  const total = selectedIds.length
-  
-  for (let i = 0; i < selectedIds.length; i++) {
-    const teacherId = selectedIds[i]
-    const teacher = talentResults.value.find(t => t.id === teacherId)
-    
-    if (teacher) {
-      inviteLoadingIds.value.add(teacherId)
-      
-      try {
-        // 模擬 API 呼叫
-        await new Promise(resolve => setTimeout(resolve, 500))
-        
-        invitationStatuses.value.set(teacherId, {
-          sent: true,
-          variant: 'success',
-          text: '已邀請'
-        })
-      } catch (error) {
-        invitationStatuses.value.set(teacherId, {
-          sent: false,
-          variant: 'error',
-          text: '邀請失敗'
-        })
-      } finally {
-        inviteLoadingIds.value.delete(teacherId)
+
+  try {
+    const api = useApi()
+    const response = await api.post<{ code: number; datas: any }>(
+      '/admin/smart-matching/talent/invite',
+      {
+        teacher_ids: selectedIds,
+        message: ''
       }
+    )
+
+    if (response.code === 0) {
+      const result = response.datas
+
+      // 更新邀請狀態
+      selectedIds.forEach(teacherId => {
+        if (result.failed_ids && result.failed_ids.includes(teacherId)) {
+          invitationStatuses.value.set(teacherId, {
+            sent: false,
+            variant: 'error',
+            text: '邀請失敗'
+          })
+        } else {
+          invitationStatuses.value.set(teacherId, {
+            sent: true,
+            variant: 'success',
+            text: '已邀請'
+          })
+        }
+      })
+
+      bulkProgress.value = 100
+      alertSuccess(`已成功邀請 ${result.invited_count} 位人才，失敗 ${result.failed_count} 位`)
+    } else {
+      throw new Error(response.message || '邀請失敗')
     }
-    
-    bulkProgress.value = Math.round(((i + 1) / total) * 100)
+  } catch (error) {
+    console.error('Failed to bulk invite:', error)
+    alertWarning('批量邀請失敗，請稍後再試')
+
+    // 標記所有選中為失敗
+    selectedIds.forEach(teacherId => {
+      invitationStatuses.value.set(teacherId, {
+        sent: false,
+        variant: 'error',
+        text: '邀請失敗'
+      })
+    })
+  } finally {
+    bulkLoading.value = false
+    bulkProgress.value = 0
+    selectedTalents.value.clear()
   }
-  
-  bulkLoading.value = false
-  bulkProgress.value = 0
-  
-  alertSuccess(`已成功邀請 ${selectedIds.length} 位人才`)
-  selectedTalents.value.clear()
 }
 
 // 匯出聯絡資訊
@@ -1146,15 +1230,77 @@ const addTalentToCompare = (teacher: TalentResult) => {
 // 查看教師課表時間軸
 const viewTeacherTimeline = async (teacher: MatchResult) => {
   selectedTeacher.value = teacher
-  
-  // 模擬載入教師課表（實際應該呼叫 API）
-  // 這裡產生假資料用於展示
-  teacherSessions.value = generateMockSessions(teacher.teacher_id)
-  
-  // 生成替代時段建議
-  alternativeSlots.value = generateAlternativeSlots()
-  
+
+  try {
+    const api = useApi()
+    const startDate = form.value.start_time ? new Date(form.value.start_time).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
+    const endDate = form.value.end_time ? new Date(form.value.end_time).toISOString().split('T')[0] : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+
+    const response = await api.get<{ code: number; datas: any }>(
+      `/admin/teachers/${teacher.teacher_id}/sessions?start_date=${startDate}&end_date=${endDate}`
+    )
+
+    if (response.code === 0 && response.datas) {
+      const data = response.datas
+      teacherSessions.value = data.sessions.map((s: any) => ({
+        id: s.id,
+        course_name: s.course_name,
+        start_time: s.start_time,
+        end_time: s.end_time,
+        room_name: s.room_name || '未指定教室'
+      }))
+    } else {
+      // 使用假資料
+      teacherSessions.value = generateMockSessions(teacher.teacher_id)
+    }
+  } catch (error) {
+    console.error('Failed to fetch teacher sessions:', error)
+    // 使用假資料
+    teacherSessions.value = generateMockSessions(teacher.teacher_id)
+  }
+
+  // 取得替代時段建議
+  await fetchAlternativeSlots(teacher)
+
   alertSuccess(`正在查看 ${teacher.teacher_name} 的課表`)
+}
+
+// 取得替代時段建議
+const fetchAlternativeSlots = async (teacher: MatchResult) => {
+  if (!form.value.start_time || !form.value.end_time) {
+    alternativeSlots.value = generateAlternativeSlots()
+    return
+  }
+
+  try {
+    const api = useApi()
+    const response = await api.post<{ code: number; datas: any[] }>(
+      '/admin/smart-matching/alternatives',
+      {
+        teacher_id: teacher.teacher_id,
+        original_start: new Date(form.value.start_time).toISOString(),
+        original_end: new Date(form.value.end_time).toISOString(),
+        duration: 90
+      }
+    )
+
+    if (response.code === 0 && response.datas) {
+      alternativeSlots.value = response.datas.map((slot: any) => ({
+        date: slot.date,
+        dateLabel: slot.date_label,
+        start: slot.start,
+        end: slot.end,
+        available: slot.available,
+        availableRooms: slot.available_rooms || [],
+        conflictReason: slot.conflict_reason
+      }))
+    } else {
+      alternativeSlots.value = generateAlternativeSlots()
+    }
+  } catch (error) {
+    console.error('Failed to fetch alternative slots:', error)
+    alternativeSlots.value = generateAlternativeSlots()
+  }
 }
 
 // 產生模擬課表資料
@@ -1258,55 +1404,49 @@ const findMatches = async () => {
   // 初始化搜尋進度
   resetSearchProgress()
 
+  // 模擬進度（Go 處理很快，這只是 UI 效果）
+  const simulateProgress = async () => {
+    // 步驟 1: 取得老師清單
+    await delay(200)
+    completeSearchStep(0)
+
+    // 步驟 2: 分析可用時間
+    await delay(150)
+    completeSearchStep(1)
+
+    // 步驟 3: 計算技能匹配度
+    await delay(150)
+    completeSearchStep(2)
+
+    // 步驟 4: 評估緩衝時間
+    await delay(100)
+    completeSearchStep(3)
+
+    // 步驟 5: 產生媒合結果
+    await delay(100)
+    completeSearchStep(4)
+  }
+
   try {
-    // 模擬搜尋進度（因為後端 API 是同步的）
-    // 實際應該由後端回傳進度或使用 WebSocket
-    const simulateProgress = async () => {
-      // 步驟 1: 取得老師清單
-      await delay(300)
-      completeSearchStep(0)
+    const api = useApi()
 
-      // 步驟 2: 分析可用時間
-      await delay(400)
-      completeSearchStep(1)
+    // 並行執行：API 呼叫 + 進度模擬
+    const [response] = await Promise.all([
+      api.post<{ code: number; datas: MatchResult[] }>(
+        `/admin/smart-matching/matches`,
+        {
+          room_ids: form.value.room_ids.length > 0 ? form.value.room_ids : undefined,
+          start_time: new Date(form.value.start_time).toISOString(),
+          end_time: new Date(form.value.end_time).toISOString(),
+          required_skills: selectedSkills.value.length > 0
+            ? selectedSkills.value.map(s => s.name)
+            : form.value.skills.split(',').map(s => s.trim()).filter(Boolean)
+        }
+      ),
+      simulateProgress()
+    ])
 
-      // 步驟 3: 計算技能匹配度
-      await delay(300)
-      completeSearchStep(2)
-
-      // 步驟 4: 評估緩衝時間
-      await delay(200)
-      completeSearchStep(3)
-
-      // 步驟 5: 產生媒合結果
-      await delay(200)
-      completeSearchStep(4)
-    }
-
-    // 並行執行 API 呼叫和進度模擬
-    const apiPromise = (async () => {
-      const api = useApi()
-      const response = await api.post<{ code: number; datas: MatchResult[] }>(`/admin/smart-matching/matches`, {
-        room_ids: form.value.room_ids.length > 0 ? form.value.room_ids : undefined,
-        start_time: new Date(form.value.start_time).toISOString(),
-        end_time: new Date(form.value.end_time).toISOString(),
-        required_skills: selectedSkills.value.length > 0
-          ? selectedSkills.value.map(s => s.name)
-          : form.value.skills.split(',').map(s => s.trim()).filter(Boolean)
-      })
-      return response
-    })()
-
-    // 等待 API 完成或超時
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('搜尋超時')), 8000)
-    })
-
-    const response = await Promise.race([apiPromise, timeoutPromise])
     matches.value = (response as any).datas || []
-
-    // 如果進度模擬還沒完成，繼續顯示到完成
-    await simulateProgress()
 
     // 儲存到近期搜尋
     if (recentSearchesRef.value) {
@@ -1317,9 +1457,14 @@ const findMatches = async () => {
         skills: [...selectedSkills.value]
       })
     }
+
+    if (matches.value.length === 0) {
+      alertWarning('沒有找到符合條件的老師')
+    }
   } catch (error) {
     console.error('Failed to find matches:', error)
     matches.value = []
+    await alertWarning('搜尋失敗，請稍後再試')
   } finally {
     searching.value = false
   }
@@ -1359,10 +1504,13 @@ const fetchRooms = async () => {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   fetchRooms()
   if (recentSearchesRef.value) {
     recentSearchesRef.value.loadFromStorage()
   }
+
+  // 載入人才庫統計
+  await fetchTalentStats()
 })
 </script>

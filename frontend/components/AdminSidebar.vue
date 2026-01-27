@@ -63,6 +63,20 @@
         >
           Teacher Ratings
         </NuxtLink>
+        <NuxtLink
+          to="/admin/line-bind"
+          class="block px-4 py-2 rounded-lg bg-slate-700/50 hover:bg-slate-600 text-slate-300 hover:text-white transition-colors"
+          active-class="bg-primary-500/20 text-primary-400"
+        >
+          LINE 通知
+        </NuxtLink>
+        <NuxtLink
+          to="/admin/queue-monitor"
+          class="block px-4 py-2 rounded-lg bg-slate-700/50 hover:bg-slate-600 text-slate-300 hover:text-white transition-colors"
+          active-class="bg-primary-500/20 text-primary-400"
+        >
+          系統監控
+        </NuxtLink>
         <a href="#" class="block px-4 py-2 rounded-lg bg-slate-700/50 hover:bg-slate-600 text-slate-300 hover:text-white transition-colors">
           Settings
         </a>
@@ -149,6 +163,22 @@
             @click="$emit('close')"
           >
             Teacher Ratings
+          </NuxtLink>
+          <NuxtLink
+            to="/admin/line-bind"
+            class="block px-4 py-2 rounded-lg bg-slate-700/50 hover:bg-slate-600 text-slate-300 hover:text-white transition-colors"
+            active-class="bg-primary-500/20 text-primary-400"
+            @click="$emit('close')"
+          >
+            LINE 通知
+          </NuxtLink>
+          <NuxtLink
+            to="/admin/queue-monitor"
+            class="block px-4 py-2 rounded-lg bg-slate-700/50 hover:bg-slate-600 text-slate-300 hover:text-white transition-colors"
+            active-class="bg-primary-500/20 text-primary-400"
+            @click="$emit('close')"
+          >
+            系統監控
           </NuxtLink>
           <a href="#" class="block px-4 py-2 rounded-lg bg-slate-700/50 hover:bg-slate-600 text-slate-300 hover:text-white transition-colors">
             Settings

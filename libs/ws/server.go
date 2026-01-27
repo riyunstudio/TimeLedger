@@ -247,6 +247,62 @@ func (w *WebSocketServer) BroadcastTo(uuids []string, message string) {
 	}
 }
 
+// SendProgressTo - 發送搜尋進度給指定 client
+func (w *WebSocketServer) SendProgressTo(uuid string, progress int, step string, completedSteps []string) {
+	w.clientsMu.Lock()
+	defer w.clientsMu.Unlock()
+
+	c, ok := w.clients[uuid]
+	if !ok {
+		return
+	}
+
+	progressMsg := fmt.Sprintf(`{"type":"progress","progress":%d,"step":"%s","completed_steps":[%s]}`,
+		progress, step, joinStrings(completedSteps, ","))
+
+	_ = c.Conn.WriteMessage(websocket.TextMessage, []byte(progressMsg))
+}
+
+// SendSearchComplete - 搜尋完成通知
+func (w *WebSocketServer) SendSearchComplete(uuid string, matchCount int) {
+	w.clientsMu.Lock()
+	defer w.clientsMu.Unlock()
+
+	c, ok := w.clients[uuid]
+	if !ok {
+		return
+	}
+
+	completeMsg := fmt.Sprintf(`{"type":"complete","match_count":%d}`, matchCount)
+	_ = c.Conn.WriteMessage(websocket.TextMessage, []byte(completeMsg))
+}
+
+// SendSearchError - 搜尋錯誤通知
+func (w *WebSocketServer) SendSearchError(uuid string, errorMsg string) {
+	w.clientsMu.Lock()
+	defer w.clientsMu.Unlock()
+
+	c, ok := w.clients[uuid]
+	if !ok {
+		return
+	}
+
+	errorJsonMsg := fmt.Sprintf(`{"type":"error","message":"%s"}`, errorMsg)
+	_ = c.Conn.WriteMessage(websocket.TextMessage, []byte(errorJsonMsg))
+}
+
+// 輔助函數：連接字串 slice
+func joinStrings(strs []string, sep string) string {
+	if len(strs) == 0 {
+		return ""
+	}
+	result := strs[0]
+	for i := 1; i < len(strs); i++ {
+		result += sep + strs[i]
+	}
+	return result
+}
+
 func (w *WebSocketServer) Stop() {
 	log.Println("Websocket stopping server...")
 

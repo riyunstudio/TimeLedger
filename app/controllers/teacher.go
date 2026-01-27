@@ -499,10 +499,10 @@ func (ctl *TeacherController) GetSchedule(ctx *gin.Context) {
 			exceptions, _ := ctl.exceptionRepo.GetByRuleAndDate(ctx, item.RuleID, item.Date)
 			for _, exc := range exceptions {
 				if exc.Status == "PENDING" {
-					status = "PENDING_" + exc.Type
-				} else if exc.Status == "APPROVED" && exc.Type == "CANCEL" {
+					status = "PENDING_" + exc.ExceptionType
+				} else if exc.Status == "APPROVED" && exc.ExceptionType == "CANCEL" {
 					status = "CANCELLED"
-				} else if exc.Status == "APPROVED" && exc.Type == "RESCHEDULE" {
+				} else if exc.Status == "APPROVED" && exc.ExceptionType == "RESCHEDULE" {
 					status = "RESCHEDULED"
 				}
 			}

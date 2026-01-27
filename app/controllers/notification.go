@@ -212,3 +212,15 @@ func (ctl *NotificationController) SendTestNotification(ctx *gin.Context) {
 		Message: "Test notification sent",
 	})
 }
+
+// GetQueueStats 取得通知佇列統計（管理員專用）
+func (ctl *NotificationController) GetQueueStats(ctx *gin.Context) {
+	queueService := services.NewNotificationQueueService(ctl.app)
+	stats := queueService.GetQueueStats(ctx.Request.Context())
+
+	ctx.JSON(http.StatusOK, global.ApiResponse{
+		Code:     0,
+		Message:  "OK",
+		Datas:    stats,
+	})
+}

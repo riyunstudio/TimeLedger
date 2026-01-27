@@ -38,6 +38,7 @@ func (db *DB) AutoMigrate() {
 		&models.SessionNote{},
 		&models.AuditLog{},
 		&models.Notification{},
+		&models.NotificationQueue{},
 	); err != nil {
 		panic(fmt.Errorf("MySQL autoMigrate failed: %v", err))
 	}

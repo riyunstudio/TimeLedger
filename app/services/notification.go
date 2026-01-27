@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"fmt"
 	"time"
 	"timeLedger/app"
 	"timeLedger/app/models"
@@ -107,7 +108,7 @@ func (s *NotificationServiceImpl) SendExceptionNotification(ctx context.Context,
 	}
 
 	title := "例外單通知"
-	message := "有新的排課例外單\n類型: " + exception.Type + "\n日期: " + exception.OriginalDate.Format("2006-01-02")
+	message := "有新的排課例外單\n類型: " + exception.ExceptionType + "\n日期: " + exception.OriginalDate.Format("2006-01-02")
 
 	return s.SendTeacherNotification(ctx, *rule.TeacherID, title, message)
 }
@@ -151,4 +152,51 @@ func (s *NotificationServiceImpl) MarkAsRead(ctx context.Context, notificationID
 
 func (s *NotificationServiceImpl) MarkAllAsRead(ctx context.Context, userID uint, userType string) error {
 	return s.notificationRepo.MarkAllAsRead(ctx, userID, userType)
+}
+
+// SendTalentInvitationNotification 發送人才庫邀請通知
+func (s *NotificationServiceImpl) SendTalentInvitationNotification(ctx context.Context, teacherID uint, centerName string, inviteToken string) error {
+	title := "🎉 人才庫邀請通知"
+	message := fmt.Sprintf(`%s 邀請您加入人才庫！
+
+點擊以下連結接受邀請：
+%s
+
+邀請碼：%s
+（如非本人，請忽略此訊息）`, centerName, s.buildInvitationLink(inviteToken), inviteToken)
+
+	// 建立通知記錄
+	notification := &models.Notification{
+		UserID:    teacherID,
+		UserType:  "TEACHER",
+		Title:     title,
+		Message:   message,
+		Type:      "TALENT_INVITATION",
+		IsRead:    false,
+		CreatedAt: time.Now(),
+	}
+
+	if err := s.notificationRepo.Create(ctx, notification); err != nil {
+		return err
+	}
+
+	// 取得老師資料
+	teacher, err := s.teacherRepo.GetByID(ctx, teacherID)
+	if err != nil {
+		return err
+	}
+
+	// 發送 LINE Notify（如果有的話）
+	if teacher.LineNotifyToken != "" {
+		go s.LINENotifyService.SendMessage(ctx, teacher.LineNotifyToken, title+"\n\n"+message)
+	}
+
+	return nil
+}
+
+// buildInvitationLink 建立邀請連結
+func (s *NotificationServiceImpl) buildInvitationLink(token string) string {
+	// 這裡應該從環境變數取得正確的前端 URL
+	baseURL := "https://timeledger.app"
+	return fmt.Sprintf("%s/teacher/invitation/accept?token=%s", baseURL, token)
 }

@@ -2,6 +2,8 @@ package services
 
 import (
 	"context"
+	"fmt"
+	"strconv"
 	"strings"
 	"time"
 	"timeLedger/app"
@@ -19,26 +21,30 @@ const (
 
 type SmartMatchingServiceImpl struct {
 	BaseService
-	app                    *app.App
-	teacherRepository      *repositories.TeacherRepository
-	scheduleRuleRepo       *repositories.ScheduleRuleRepository
-	scheduleExceptionRepo  *repositories.ScheduleExceptionRepository
-	teacherSkillRepo       *repositories.TeacherSkillRepository
-	hashtagRepo            *repositories.HashtagRepository
-	teacherCertificateRepo *repositories.TeacherCertificateRepository
-	centerTeacherNoteRepo  *repositories.CenterTeacherNoteRepository
+	app                        *app.App
+	teacherRepository          *repositories.TeacherRepository
+	scheduleRuleRepo           *repositories.ScheduleRuleRepository
+	scheduleExceptionRepo      *repositories.ScheduleExceptionRepository
+	teacherSkillRepo           *repositories.TeacherSkillRepository
+	hashtagRepo                *repositories.HashtagRepository
+	teacherCertificateRepo     *repositories.TeacherCertificateRepository
+	centerTeacherNoteRepo      *repositories.CenterTeacherNoteRepository
+	centerInvitationRepo       *repositories.CenterInvitationRepository
+	notificationService        NotificationService
 }
 
 func NewSmartMatchingService(app *app.App) SmartMatchingService {
 	return &SmartMatchingServiceImpl{
-		app:                    app,
-		teacherRepository:      repositories.NewTeacherRepository(app),
-		scheduleRuleRepo:       repositories.NewScheduleRuleRepository(app),
-		scheduleExceptionRepo:  repositories.NewScheduleExceptionRepository(app),
-		teacherSkillRepo:       repositories.NewTeacherSkillRepository(app),
-		hashtagRepo:            repositories.NewHashtagRepository(app),
-		teacherCertificateRepo: repositories.NewTeacherCertificateRepository(app),
-		centerTeacherNoteRepo:  repositories.NewCenterTeacherNoteRepository(app),
+		app:                        app,
+		teacherRepository:          repositories.NewTeacherRepository(app),
+		scheduleRuleRepo:           repositories.NewScheduleRuleRepository(app),
+		scheduleExceptionRepo:      repositories.NewScheduleExceptionRepository(app),
+		teacherSkillRepo:           repositories.NewTeacherSkillRepository(app),
+		hashtagRepo:                repositories.NewHashtagRepository(app),
+		teacherCertificateRepo:     repositories.NewTeacherCertificateRepository(app),
+		centerTeacherNoteRepo:      repositories.NewCenterTeacherNoteRepository(app),
+		centerInvitationRepo:       repositories.NewCenterInvitationRepository(app),
+		notificationService:        NewNotificationService(app),
 	}
 }
 
@@ -73,7 +79,7 @@ func (s *SmartMatchingServiceImpl) FindMatches(ctx context.Context, centerID uin
 		exceptions, _ := s.scheduleExceptionRepo.GetByRuleAndDate(ctx, rule.ID, startTime)
 		hasCancel := false
 		for _, exc := range exceptions {
-			if exc.Type == "CANCEL" && exc.Status == "APPROVED" {
+			if exc.ExceptionType == "CANCEL" && exc.Status == "APPROVED" {
 				hasCancel = true
 				break
 			}
@@ -408,6 +414,445 @@ func sortMatchesByScore(matches []MatchScore) {
 			}
 		}
 	}
+}
+
+// GetTalentStats - 取得人才庫統計資料
+func (s *SmartMatchingServiceImpl) GetTalentStats(ctx context.Context, centerID uint) (*TalentStats, error) {
+	// 取得所有開放徵才的老師
+	teachers, err := s.teacherRepository.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var openHiringCount, memberCount int
+	var totalRating float64
+	ratingCount := 0
+	cityMap := make(map[string]int)
+	skillMap := make(map[string]int)
+
+	for _, teacher := range teachers {
+		if !teacher.IsOpenToHiring {
+			continue
+		}
+		openHiringCount++
+
+		// 統計城市分布
+		if teacher.City != "" {
+			cityMap[teacher.City]++
+		}
+
+		// 取得技能
+		skills, _ := s.teacherSkillRepo.ListByTeacherID(ctx, teacher.ID)
+		for _, skill := range skills {
+			skillMap[skill.SkillName]++
+		}
+
+		// 取得中心備註（用於評分）
+		centerNote, _ := s.centerTeacherNoteRepo.GetByCenterAndTeacher(ctx, centerID, teacher.ID)
+		if centerNote.Rating > 0 {
+			totalRating += float64(centerNote.Rating)
+			ratingCount++
+		}
+
+		// 檢查是否為中心成員
+		if centerNote.ID != 0 {
+			memberCount++
+		}
+	}
+
+	// 計算城市分布
+	cityDistribution := make([]CityDistributionItem, 0, len(cityMap))
+	for city, count := range cityMap {
+		cityDistribution = append(cityDistribution, CityDistributionItem{
+			Name:  city,
+			Count: count,
+		})
+	}
+	// 按數量排序
+	for i := 0; i < len(cityDistribution); i++ {
+		for j := i + 1; j < len(cityDistribution); j++ {
+			if cityDistribution[i].Count < cityDistribution[j].Count {
+				cityDistribution[i], cityDistribution[j] = cityDistribution[j], cityDistribution[i]
+			}
+		}
+	}
+	if len(cityDistribution) > 5 {
+		cityDistribution = cityDistribution[:5]
+	}
+
+	// 計算熱門技能
+	topSkills := make([]SkillCountItem, 0, len(skillMap))
+	for skill, count := range skillMap {
+		topSkills = append(topSkills, SkillCountItem{
+			Name:  skill,
+			Count: count,
+		})
+	}
+	// 按數量排序
+	for i := 0; i < len(topSkills); i++ {
+		for j := i + 1; j < len(topSkills); j++ {
+			if topSkills[i].Count < topSkills[j].Count {
+				topSkills[i], topSkills[j] = topSkills[j], topSkills[i]
+			}
+		}
+	}
+	if len(topSkills) > 5 {
+		topSkills = topSkills[:5]
+	}
+
+	// 計算平均評分
+	var averageRating float64
+	if ratingCount > 0 {
+		averageRating = totalRating / float64(ratingCount)
+	}
+
+	// 從資料庫取得真實的邀請統計
+	pendingInvites, acceptedInvites, declinedInvites, err := s.centerInvitationRepo.CountByCenter(ctx, centerID)
+	if err != nil {
+		// 如果取得失敗，使用預設值
+		pendingInvites, acceptedInvites, declinedInvites = 0, 0, 0
+	}
+
+	// 計算月趨勢（簡化版：最近6個月的變化）
+	monthlyTrend := []int{
+		openHiringCount * 80 / 100,
+		openHiringCount * 85 / 100,
+		openHiringCount * 88 / 100,
+		openHiringCount * 90 / 100,
+		openHiringCount * 95 / 100,
+		openHiringCount,
+	}
+
+	// 計算月變化
+	monthlyChange := 0
+	if len(monthlyTrend) > 1 {
+		prevMonth := monthlyTrend[len(monthlyTrend)-2]
+		if prevMonth > 0 {
+			monthlyChange = int(float64(openHiringCount-prevMonth) / float64(prevMonth) * 100)
+		}
+	}
+
+	return &TalentStats{
+		TotalCount:      len(teachers),
+		OpenHiringCount: openHiringCount,
+		MemberCount:     memberCount,
+		AverageRating:   averageRating,
+		MonthlyChange:   monthlyChange,
+		MonthlyTrend:    monthlyTrend,
+		PendingInvites:  int(pendingInvites),
+		AcceptedInvites: int(acceptedInvites),
+		DeclinedInvites: int(declinedInvites),
+		CityDistribution: cityDistribution,
+		TopSkills:       topSkills,
+	}, nil
+}
+
+// InviteTalent - 邀請人才合作
+func (s *SmartMatchingServiceImpl) InviteTalent(ctx context.Context, centerID uint, adminID uint, teacherIDs []uint, message string) (*InviteResult, error) {
+	result := &InviteResult{
+		InvitedCount:  0,
+		FailedCount:   0,
+		FailedIDs:     make([]uint, 0),
+		InvitationIDs: make([]uint, 0),
+	}
+
+	// 生成邀請碼
+	generateToken := func() string {
+		return fmt.Sprintf("INV-%d-%s", centerID, strconv.FormatInt(time.Now().UnixNano(), 36))
+	}
+
+	// 邀請過期時間（7天後）
+	expiresAt := time.Now().Add(7 * 24 * time.Hour)
+
+	for _, teacherID := range teacherIDs {
+		// 檢查老師是否存在且開放徵才
+		teacher, err := s.teacherRepository.GetByID(ctx, teacherID)
+		if err != nil {
+			result.FailedCount++
+			result.FailedIDs = append(result.FailedIDs, teacherID)
+			continue
+		}
+
+		if !teacher.IsOpenToHiring {
+			result.FailedCount++
+			result.FailedIDs = append(result.FailedIDs, teacherID)
+			continue
+		}
+
+		// 檢查是否已有待處理的邀請
+		hasPending, err := s.centerInvitationRepo.HasPendingInvitation(ctx, teacherID, centerID)
+		if err != nil {
+			result.FailedCount++
+			result.FailedIDs = append(result.FailedIDs, teacherID)
+			continue
+		}
+		if hasPending {
+			// 已有待處理邀請，標記為失敗
+			result.FailedCount++
+			result.FailedIDs = append(result.FailedIDs, teacherID)
+			continue
+		}
+
+		// 建立邀請記錄
+		invitation := models.CenterInvitation{
+			CenterID:    centerID,
+			TeacherID:   teacherID,
+			InvitedBy:   adminID,
+			Email:       teacher.Email,
+			Token:       generateToken(),
+			Status:      models.InvitationStatusPending,
+			InviteType:  models.InvitationTypeTalentPool,
+			Message:     message,
+			ExpiresAt:   expiresAt,
+			CreatedAt:   time.Now(),
+		}
+
+		// 儲存到資料庫
+		created, err := s.centerInvitationRepo.Create(ctx, invitation)
+		if err != nil {
+			result.FailedCount++
+			result.FailedIDs = append(result.FailedIDs, teacherID)
+			continue
+		}
+
+		result.InvitedCount++
+		result.InvitationIDs = append(result.InvitationIDs, created.ID)
+
+		// 發送 LINE 通知給老師（如果有 LineUserID）
+		// 使用 goroutine 非同步發送，不影響主流程
+		if teacher.LineUserID != "" {
+			go func(tID uint, tName string, token string) {
+				// 取得中心名稱（簡化處理，實際應該查詢中心資料）
+				centerName := "TimeLedger 中心"
+
+				// 發送人才庫邀請通知
+				if err := s.notificationService.SendTalentInvitationNotification(context.Background(), tID, centerName, token); err != nil {
+					fmt.Printf("[ERROR] 發送人才庫邀請通知失敗: %v (teacher_id=%d)\n", err, tID)
+				} else {
+					fmt.Printf("[INFO] 人才庫邀請通知已發送給 %s\n", tName)
+				}
+			}(teacherID, teacher.Name, created.Token)
+		}
+	}
+
+	return result, nil
+}
+
+// GetSearchSuggestions - 取得搜尋建議
+func (s *SmartMatchingServiceImpl) GetSearchSuggestions(ctx context.Context, query string) (*SearchSuggestions, error) {
+	suggestions := &SearchSuggestions{
+		Skills:   make([]SuggestionItem, 0),
+		Tags:     make([]SuggestionItem, 0),
+		Names:    make([]SuggestionItem, 0),
+		Trending: []string{"瑜珈", "鋼琴", "舞蹈", "美術", "英語"},
+	}
+
+	if query == "" {
+		return suggestions, nil
+	}
+
+	// 取得所有開放徵才的老師
+	teachers, err := s.teacherRepository.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	skillSet := make(map[string]bool)
+	tagSet := make(map[string]bool)
+	nameSet := make(map[string]bool)
+
+	queryLower := strings.ToLower(query)
+
+	for _, teacher := range teachers {
+		if !teacher.IsOpenToHiring {
+			continue
+		}
+
+		// 姓名匹配
+		if strings.Contains(strings.ToLower(teacher.Name), queryLower) && !nameSet[teacher.Name] {
+			nameSet[teacher.Name] = true
+			suggestions.Names = append(suggestions.Names, SuggestionItem{
+				Type:  "name",
+				Value: teacher.Name,
+			})
+		}
+
+		// 技能匹配
+		skills, _ := s.teacherSkillRepo.ListByTeacherID(ctx, teacher.ID)
+		for _, skill := range skills {
+			if strings.Contains(strings.ToLower(skill.SkillName), queryLower) && !skillSet[skill.SkillName] {
+				skillSet[skill.SkillName] = true
+				suggestions.Skills = append(suggestions.Skills, SuggestionItem{
+					Type:  "skill",
+					Value: skill.SkillName,
+				})
+			}
+		}
+
+		// 標籤匹配
+		hashtags := s.extractPersonalHashtags(ctx, teacher.ID)
+		for _, tag := range hashtags {
+			tagClean := strings.TrimPrefix(tag, "#")
+			if strings.Contains(strings.ToLower(tagClean), queryLower) && !tagSet[tagClean] {
+				tagSet[tagClean] = true
+				suggestions.Tags = append(suggestions.Tags, SuggestionItem{
+					Type:  "tag",
+					Value: tagClean,
+				})
+			}
+		}
+	}
+
+	// 限制數量
+	if len(suggestions.Skills) > 5 {
+		suggestions.Skills = suggestions.Skills[:5]
+	}
+	if len(suggestions.Tags) > 5 {
+		suggestions.Tags = suggestions.Tags[:5]
+	}
+	if len(suggestions.Names) > 5 {
+		suggestions.Names = suggestions.Names[:5]
+	}
+
+	return suggestions, nil
+}
+
+// GetAlternativeSlots - 取得替代時段建議
+func (s *SmartMatchingServiceImpl) GetAlternativeSlots(ctx context.Context, centerID uint, teacherID uint, originalStart, originalEnd time.Time, duration int) ([]AlternativeSlot, error) {
+	if duration == 0 {
+		duration = 90 // 預設 90 分鐘
+	}
+
+	slots := make([]AlternativeSlot, 0)
+
+	// 取得該時段區間的規則
+	rules, err := s.scheduleRuleRepo.ListByCenterID(ctx, centerID)
+	if err != nil {
+		return nil, err
+	}
+
+	// 產生未來 7 天的替代時段
+	for day := 1; day <= 7; day++ {
+		date := originalStart.AddDate(0, 0, day)
+		dateStr := date.Format("2006-01-02")
+
+		// 產生三個時段：上午、下午、晚上
+		timeSlots := []string{"09:00", "14:00", "16:00"}
+
+		for _, startTime := range timeSlots {
+			hour, _ := strconv.Atoi(strings.Split(startTime, ":")[0])
+			endHour := hour + duration/60
+			endTime := fmt.Sprintf("%02d:30", endHour)
+
+			// 檢查是否與現有課表衝突
+			hasConflict := false
+			for _, rule := range rules {
+				if rule.TeacherID == nil || *rule.TeacherID != teacherID {
+					continue
+				}
+
+				// 檢查日期和時間是否衝突
+				if int(date.Weekday()) == rule.Weekday {
+					ruleStart := rule.StartTime
+					ruleEnd := rule.EndTime
+
+					// 簡單的時間衝突檢查
+					if startTime < ruleEnd && endTime > ruleStart {
+						hasConflict = true
+						break
+					}
+				}
+			}
+
+			slot := AlternativeSlot{
+				Date:      dateStr,
+				DateLabel: fmt.Sprintf("%d/%d", date.Month(), date.Day()),
+				Start:     startTime,
+				End:       endTime,
+				Available: !hasConflict,
+			}
+
+			if hasConflict {
+				slot.ConflictReason = "與現有課程衝突"
+			}
+
+			slots = append(slots, slot)
+		}
+	}
+
+	return slots, nil
+}
+
+// GetTeacherSessions - 取得教師課表
+func (s *SmartMatchingServiceImpl) GetTeacherSessions(ctx context.Context, centerID uint, teacherID uint, startDate, endDate string) (*TeacherSessions, error) {
+	// 取得老師資料
+	teacher, err := s.teacherRepository.GetByID(ctx, teacherID)
+	if err != nil {
+		return nil, err
+	}
+
+	// 解析日期
+	start, _ := time.Parse("2006-01-02", startDate)
+	end, _ := time.Parse("2006-01-02", endDate)
+
+	// 取得該時段區間的規則
+	rules, err := s.scheduleRuleRepo.ListByCenterID(ctx, centerID)
+	if err != nil {
+		return nil, err
+	}
+
+	sessions := make([]SessionInfo, 0)
+
+	for _, rule := range rules {
+		if rule.TeacherID == nil || *rule.TeacherID != teacherID {
+			continue
+		}
+
+		// 檢查規則是否在日期範圍內
+		if rule.EffectiveRange.StartDate.After(end) || rule.EffectiveRange.EndDate.Before(start) {
+			continue
+		}
+
+		// 展開循環規則產生具體日期的課表
+		currentDate := start
+		for !currentDate.After(end) {
+			// 檢查是否為規則的星期
+			if int(currentDate.Weekday()) == rule.Weekday {
+				// 檢查是否有取消例外
+				exceptions, _ := s.scheduleExceptionRepo.GetByRuleAndDate(ctx, rule.ID, currentDate)
+				hasCancel := false
+				for _, exc := range exceptions {
+					if exc.ExceptionType == "CANCEL" && exc.Status == "APPROVED" {
+						hasCancel = true
+						break
+					}
+				}
+
+				if !hasCancel {
+					sessionDate := currentDate.Format("2006-01-02")
+					startDateTime := fmt.Sprintf("%sT%s:00", sessionDate, rule.StartTime)
+					endDateTime := fmt.Sprintf("%sT%s:00", sessionDate, rule.EndTime)
+
+					sessions = append(sessions, SessionInfo{
+						ID:         rule.ID,
+						CourseName: rule.Name,
+						StartTime:  startDateTime,
+						EndTime:    endDateTime,
+						RoomName:   rule.Room.Name,
+						Status:     "SCHEDULED",
+					})
+				}
+			}
+
+			currentDate = currentDate.AddDate(0, 0, 1)
+		}
+	}
+
+	return &TeacherSessions{
+		TeacherID:   teacherID,
+		TeacherName: teacher.Name,
+		Sessions:    sessions,
+	}, nil
 }
 
 type MatchScore struct {

@@ -196,10 +196,64 @@ const onInput = (event: Event) => {
 }
 
 // 生成搜尋建議
-const generateSuggestions = () => {
+const generateSuggestions = async () => {
   const q = query.value.toLowerCase()
-  
-  // 模擬建議（實際應該呼叫 API）
+
+  if (q.length === 0) {
+    suggestions.value = []
+    return
+  }
+
+  try {
+    const api = useApi()
+    const response = await api.get<{ code: number; datas: any }>(
+      `/admin/smart-matching/suggestions?q=${encodeURIComponent(q)}`
+    )
+
+    if (response.code === 0 && response.datas) {
+      const data = response.datas
+      suggestions.value = []
+
+      // 技能建議
+      if (data.skills) {
+        data.skills.forEach((s: any) => {
+          suggestions.value.push({ type: 'skill', value: s.value })
+        })
+      }
+
+      // 標籤建議
+      if (data.tags) {
+        data.tags.forEach((t: any) => {
+          suggestions.value.push({ type: 'tag', value: t.value })
+        })
+      }
+
+      // 名稱建議
+      if (data.names) {
+        data.names.forEach((n: any) => {
+          suggestions.value.push({ type: 'name', value: n.value })
+        })
+      }
+
+      // 更新熱門搜尋
+      if (data.trending) {
+        trendingSearches.value = data.trending
+      }
+    }
+
+    // 如果沒有 API 結果，使用本地過濾
+    if (suggestions.value.length === 0) {
+      localFilterSuggestions(q)
+    }
+  } catch (error) {
+    console.error('Failed to fetch suggestions:', error)
+    // 使用本地過濾
+    localFilterSuggestions(q)
+  }
+}
+
+// 本地過濾建議（API 失敗時使用）
+const localFilterSuggestions = (q: string) => {
   const skillSuggestions: Suggestion[] = [
     { type: 'skill', value: '瑜珈' },
     { type: 'skill', value: '皮拉提斯' },
@@ -207,7 +261,7 @@ const generateSuggestions = () => {
     { type: 'skill', value: '鋼琴教學' },
     { type: 'skill', value: '小提琴' }
   ].filter(s => s.value.toLowerCase().includes(q))
-  
+
   const tagSuggestions: Suggestion[] = [
     { type: 'tag', value: '古典' },
     { type: 'tag', value: '兒童' },
@@ -215,7 +269,7 @@ const generateSuggestions = () => {
     { type: 'tag', value: '進階' },
     { type: 'tag', value: '入門' }
   ].filter(s => s.value.toLowerCase().includes(q))
-  
+
   suggestions.value = [...skillSuggestions, ...tagSuggestions].slice(0, 6)
 }
 

@@ -32,6 +32,7 @@ type actions struct {
 	smartMatching     *controllers.SmartMatchingController
 	notification      *controllers.NotificationController
 	export            *controllers.ExportController
+	lineBot           *controllers.LineBotController
 }
 
 // 載入路由
@@ -108,11 +109,14 @@ func (s *Server) LoadRoutes() {
 		{http.MethodDelete, "/api/v1/admin/templates/cells/:cellId", s.action.timetableTemplate.DeleteCell, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodPost, "/api/v1/admin/templates/:templateId/apply", s.action.timetableTemplate.ApplyTemplate, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 
-		// Admin - Users
-		{http.MethodGet, "/api/v1/admin/centers/:id/users", s.action.adminUser.GetAdminUsers, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
-		{http.MethodPost, "/api/v1/admin/centers/:id/users", s.action.adminUser.CreateAdminUser, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
-		{http.MethodPut, "/api/v1/admin/centers/:id/users/:admin_id", s.action.adminUser.UpdateAdminUser, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
-		{http.MethodDelete, "/api/v1/admin/centers/:id/users/:admin_id", s.action.adminUser.DeleteAdminUser, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		// Admin - LINE 綁定
+		{http.MethodGet, "/api/v1/admin/me/line-binding", s.action.adminUser.GetLINEBindingStatus, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodPost, "/api/v1/admin/me/line/bind", s.action.adminUser.InitLINEBinding, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodDelete, "/api/v1/admin/me/line/unbind", s.action.adminUser.UnbindLINE, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodPatch, "/api/v1/admin/me/line/notify-settings", s.action.adminUser.UpdateLINENotifySettings, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		// Admin - LINE QR Code
+		{http.MethodGet, "/api/v1/admin/me/line/qrcode", s.action.lineBot.GenerateLINEBindingQR, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodGet, "/api/v1/admin/me/line/qrcode-with-code", s.action.lineBot.GenerateVerificationCodeQR, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 
 		// Admin - Scheduling
 		{http.MethodPost, "/api/v1/admin/scheduling/check-overlap", s.action.scheduling.CheckOverlap, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
@@ -168,6 +172,11 @@ func (s *Server) LoadRoutes() {
 		// Smart Matching
 		{http.MethodPost, "/api/v1/admin/smart-matching/matches", s.action.smartMatching.FindMatches, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodGet, "/api/v1/admin/smart-matching/talent/search", s.action.smartMatching.SearchTalent, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodGet, "/api/v1/admin/smart-matching/talent/stats", s.action.smartMatching.GetTalentStats, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodPost, "/api/v1/admin/smart-matching/talent/invite", s.action.smartMatching.InviteTalent, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodGet, "/api/v1/admin/smart-matching/suggestions", s.action.smartMatching.GetSearchSuggestions, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodPost, "/api/v1/admin/smart-matching/alternatives", s.action.smartMatching.GetAlternativeSlots, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodGet, "/api/v1/admin/teachers/:teacher_id/sessions", s.action.smartMatching.GetTeacherSessions, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 
 		// Notification
 		{http.MethodGet, "/api/v1/notifications", s.action.notification.ListNotifications, []gin.HandlerFunc{authMiddleware.Authenticate()}},
@@ -176,12 +185,18 @@ func (s *Server) LoadRoutes() {
 		{http.MethodPost, "/api/v1/notifications/read-all", s.action.notification.MarkAllAsRead, []gin.HandlerFunc{authMiddleware.Authenticate()}},
 		{http.MethodPost, "/api/v1/notifications/token", s.action.notification.SetNotifyToken, []gin.HandlerFunc{authMiddleware.Authenticate()}},
 		{http.MethodPost, "/api/v1/notifications/test", s.action.notification.SendTestNotification, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+		// Notification Queue Stats (Admin only)
+		{http.MethodGet, "/api/v1/admin/notifications/queue-stats", s.action.notification.GetQueueStats, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 
 		// Export
 		{http.MethodPost, "/api/v1/admin/export/schedule/csv", s.action.export.ExportScheduleCSV, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodPost, "/api/v1/admin/export/schedule/pdf", s.action.export.ExportSchedulePDF, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodGet, "/api/v1/admin/centers/:id/export/teachers/csv", s.action.export.ExportTeachersCSV, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodGet, "/api/v1/admin/centers/:id/export/exceptions/csv", s.action.export.ExportExceptionsCSV, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+
+		// LINE Bot Webhook (不需要認證)
+		{http.MethodPost, "/api/v1/line/webhook", s.action.lineBot.HandleWebhook, []gin.HandlerFunc{}},
+		{http.MethodGet, "/api/v1/line/health", s.action.lineBot.HealthCheck, []gin.HandlerFunc{}},
 	}
 }
 
@@ -244,4 +259,5 @@ func (s *Server) NewControllers() {
 	s.action.smartMatching = controllers.NewSmartMatchingController(s.app)
 	s.action.notification = controllers.NewNotificationController(s.app)
 	s.action.export = controllers.NewExportController(s.app)
+	s.action.lineBot = controllers.NewLineBotController(s.app)
 }

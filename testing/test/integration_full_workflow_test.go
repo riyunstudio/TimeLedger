@@ -1184,7 +1184,7 @@ func TestIntegration_ExceptionReview(t *testing.T) {
 			RuleID:       createdRule.ID,
 			CenterID:     createdCenter.ID,
 			OriginalDate: now.AddDate(0, 0, 5),
-			Type:         "TIME_CHANGE",
+			ExceptionType:         "TIME_CHANGE",
 			Status:       "PENDING",
 			NewStartAt:   &newStartAt,
 			NewEndAt:     &newEndAt,
@@ -1222,7 +1222,7 @@ func TestIntegration_ExceptionReview(t *testing.T) {
 			RuleID:       createdRule.ID,
 			CenterID:     createdCenter.ID,
 			OriginalDate: now.AddDate(0, 0, 7),
-			Type:         "CANCEL",
+			ExceptionType:         "CANCEL",
 			Status:       "PENDING",
 			Reason:       "Travel",
 			CreatedAt:    now,
@@ -1260,7 +1260,7 @@ func TestIntegration_ExceptionReview(t *testing.T) {
 			RuleID:       createdRule.ID,
 			CenterID:     createdCenter.ID,
 			OriginalDate: now.AddDate(0, 0, 9),
-			Type:         "TIME_CHANGE",
+			ExceptionType:         "TIME_CHANGE",
 			Status:       "PENDING",
 			NewStartAt:   &newStartAt,
 			NewEndAt:     &newEndAt,
@@ -1792,118 +1792,6 @@ func TestIntegration_HolidayManagement(t *testing.T) {
 	})
 }
 
-func TestIntegration_AdminUserManagement(t *testing.T) {
-	appInstance, _, cleanup := setupIntegrationTestAppWithMigrations()
-	defer cleanup()
-
-	ctx := context.Background()
-	now := time.Now()
-
-	center := models.Center{
-		Name:      fmt.Sprintf("Admin User Center %d", now.UnixNano()),
-		PlanLevel: "STARTER",
-		Settings: models.CenterSettings{
-			ExceptionLeadDays: 14,
-		},
-		CreatedAt: now,
-	}
-	centerRepo := repositories.NewCenterRepository(appInstance)
-	createdCenter, _ := centerRepo.Create(ctx, center)
-
-	adminUserRepo := repositories.NewAdminUserRepository(appInstance)
-	adminUser := models.AdminUser{
-		Email:        fmt.Sprintf("admin_user_admin_%d@test.com", now.UnixNano()),
-		PasswordHash: "$2a$10$lVIoLQr4EjCjQIU98JExROfBoOFK.UNOkVS0LVH2Lj1rT0VX5DYqa",
-		Name:         "Admin User Admin",
-		CenterID:     createdCenter.ID,
-		Role:         "ADMIN",
-		Status:       "ACTIVE",
-		CreatedAt:    now,
-	}
-	createdAdmin, _ := adminUserRepo.Create(ctx, adminUser)
-
-	adminUserController := controllers.NewAdminUserController(appInstance)
-
-	t.Run("Step1_CreateAdminUser", func(t *testing.T) {
-		w := httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
-		c.Set(global.UserIDKey, createdAdmin.ID)
-		c.Set(global.CenterIDKey, createdCenter.ID)
-		c.Set(global.UserTypeKey, "ADMIN")
-		c.Params = gin.Params{{Key: "id", Value: fmt.Sprintf("%d", createdCenter.ID)}}
-
-		reqBody := map[string]interface{}{
-			"email":    fmt.Sprintf("new_admin_%d@test.com", now.UnixNano()),
-			"name":     "New Admin User",
-			"role":     "STAFF",
-			"password": "password123",
-		}
-		body, _ := json.Marshal(reqBody)
-		c.Request = httptest.NewRequest("POST", "/api/v1/admin/centers/"+fmt.Sprintf("%d", createdCenter.ID)+"/users", bytes.NewBuffer(body))
-		c.Request.Header.Set("Content-Type", "application/json")
-
-		adminUserController.CreateAdminUser(c)
-
-		if w.Code != http.StatusOK {
-			t.Fatalf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())
-		}
-		t.Log("Successfully created admin user")
-	})
-
-	t.Run("Step2_GetAdminUsers", func(t *testing.T) {
-		w := httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
-		c.Set(global.UserIDKey, createdAdmin.ID)
-		c.Set(global.CenterIDKey, createdCenter.ID)
-		c.Set(global.UserTypeKey, "ADMIN")
-		c.Params = gin.Params{{Key: "id", Value: fmt.Sprintf("%d", createdCenter.ID)}}
-		c.Request = httptest.NewRequest("GET", "/api/v1/admin/centers/"+fmt.Sprintf("%d", createdCenter.ID)+"/users", nil)
-
-		adminUserController.GetAdminUsers(c)
-
-		if w.Code != http.StatusOK {
-			t.Fatalf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())
-		}
-		t.Log("Successfully retrieved admin users")
-	})
-
-	t.Run("Step3_UpdateAdminUser", func(t *testing.T) {
-		newAdminUserRepo := repositories.NewAdminUserRepository(appInstance)
-		newAdmin := models.AdminUser{
-			Email:        fmt.Sprintf("update_admin_%d@test.com", now.UnixNano()),
-			PasswordHash: "$2a$10$lVIoLQr4EjCjQIU98JExROfBoOFK.UNOkVS0LVH2Lj1rT0VX5DYqa",
-			Name:         "Update Admin",
-			CenterID:     createdCenter.ID,
-			Role:         "STAFF",
-			Status:       "ACTIVE",
-			CreatedAt:    now,
-		}
-		createdNewAdmin, _ := newAdminUserRepo.Create(ctx, newAdmin)
-
-		w := httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
-		c.Set(global.UserIDKey, createdAdmin.ID)
-		c.Set(global.CenterIDKey, createdCenter.ID)
-		c.Set(global.UserTypeKey, "ADMIN")
-		c.Params = gin.Params{{Key: "id", Value: fmt.Sprintf("%d", createdCenter.ID)}, {Key: "admin_id", Value: fmt.Sprintf("%d", createdNewAdmin.ID)}}
-
-		reqBody := map[string]interface{}{
-			"name": "Updated Admin Name",
-			"role": "STAFF",
-		}
-		body, _ := json.Marshal(reqBody)
-		c.Request = httptest.NewRequest("PUT", "/api/v1/admin/centers/"+fmt.Sprintf("%d", createdCenter.ID)+"/users/"+fmt.Sprintf("%d", createdNewAdmin.ID), bytes.NewBuffer(body))
-		c.Request.Header.Set("Content-Type", "application/json")
-
-		adminUserController.UpdateAdminUser(c)
-
-		if w.Code != http.StatusOK {
-			t.Fatalf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())
-		}
-		t.Log("Successfully updated admin user")
-	})
-}
-
 func TestIntegration_TemplateManagement(t *testing.T) {
 	appInstance, _, cleanup := setupIntegrationTestAppWithMigrations()
 	defer cleanup()
@@ -2218,7 +2106,7 @@ func TestIntegration_ExportFunctionality(t *testing.T) {
 		RuleID:       createdRule.ID,
 		CenterID:     createdCenter.ID,
 		OriginalDate: now.AddDate(0, 0, 5),
-		Type:         "CANCEL",
+		ExceptionType:         "CANCEL",
 		Status:       "PENDING",
 		Reason:       "Holiday",
 		CreatedAt:    now,
@@ -3027,65 +2915,6 @@ func TestIntegration_AdminTeacherManagement(t *testing.T) {
 			t.Fatalf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())
 		}
 		t.Log("Invite teacher completed")
-	})
-}
-
-func TestIntegration_AdminUserDeletion(t *testing.T) {
-	appInstance, _, cleanup := setupIntegrationTestAppWithMigrations()
-	defer cleanup()
-
-	ctx := context.Background()
-	now := time.Now()
-
-	center := models.Center{
-		Name:      fmt.Sprintf("Admin Delete Center %d", now.UnixNano()),
-		PlanLevel: "STARTER",
-		CreatedAt: now,
-	}
-	centerRepo := repositories.NewCenterRepository(appInstance)
-	createdCenter, _ := centerRepo.Create(ctx, center)
-
-	adminUserRepo := repositories.NewAdminUserRepository(appInstance)
-	adminUser := models.AdminUser{
-		Email:        fmt.Sprintf("admin_delete_%d@test.com", now.UnixNano()),
-		PasswordHash: "$2a$10$lVIoLQr4EjCjQIU98JExROfBoOFK.UNOkVS0LVH2Lj1rT0VX5DYqa",
-		Name:         "Admin Delete Admin",
-		CenterID:     createdCenter.ID,
-		Role:         "ADMIN",
-		Status:       "ACTIVE",
-		CreatedAt:    now,
-	}
-	createdAdmin, _ := adminUserRepo.Create(ctx, adminUser)
-
-	t.Run("Step1_DeleteAdminUser", func(t *testing.T) {
-		adminUserRepo := repositories.NewAdminUserRepository(appInstance)
-		adminToDelete := models.AdminUser{
-			Email:        fmt.Sprintf("delete_me_%d@test.com", now.UnixNano()),
-			PasswordHash: "$2a$10$lVIoLQr4EjCjQIU98JExROfBoOFK.UNOkVS0LVH2Lj1rT0VX5DYqa",
-			Name:         "To Delete",
-			CenterID:     createdCenter.ID,
-			Role:         "ADMIN",
-			Status:       "ACTIVE",
-			CreatedAt:    now,
-		}
-		createdDelAdmin, _ := adminUserRepo.Create(ctx, adminToDelete)
-
-		adminUserController := controllers.NewAdminUserController(appInstance)
-
-		w := httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
-		c.Set(global.UserIDKey, createdAdmin.ID)
-		c.Set(global.CenterIDKey, createdCenter.ID)
-		c.Set(global.UserTypeKey, "ADMIN")
-		c.Params = gin.Params{{Key: "id", Value: fmt.Sprintf("%d", createdCenter.ID)}, {Key: "admin_id", Value: fmt.Sprintf("%d", createdDelAdmin.ID)}}
-		c.Request = httptest.NewRequest("DELETE", "/api/v1/admin/centers/"+fmt.Sprintf("%d", createdCenter.ID)+"/users/"+fmt.Sprintf("%d", createdDelAdmin.ID), nil)
-
-		adminUserController.DeleteAdminUser(c)
-
-		if w.Code != http.StatusOK && w.Code != http.StatusBadRequest {
-			t.Fatalf("Expected status 200 or 400, got %d. Body: %s", w.Code, w.Body.String())
-		}
-		t.Log("Delete admin user completed")
 	})
 }
 

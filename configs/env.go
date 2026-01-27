@@ -47,6 +47,14 @@ type Env struct {
 	RabbitMqPort     string
 
 	WsServerPort string
+
+	// LINE Messaging API
+	LineChannelSecret      string
+	LineChannelAccessToken string
+
+	// Frontend
+	FrontendBaseURL        string
+	LineOfficialAccountID  string
 }
 
 func LoadEnv() *Env {
@@ -93,6 +101,14 @@ func LoadEnv() *Env {
 		RabbitMqPort:     os.Getenv("RABBIT_MQ_PORT"),
 
 		WsServerPort: os.Getenv("WS_SERVER_PORT"),
+
+		// LINE Messaging API
+		LineChannelSecret:      os.Getenv("LINE_CHANNEL_SECRET"),
+		LineChannelAccessToken: os.Getenv("LINE_CHANNEL_ACCESS_TOKEN"),
+
+		// Frontend
+		FrontendBaseURL:       os.Getenv("FRONTEND_BASE_URL"),
+		LineOfficialAccountID: os.Getenv("LINE_OFFICIAL_ACCOUNT_ID"),
 	}
 }
 

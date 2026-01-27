@@ -1238,13 +1238,13 @@ func handleSingleUpdate(ctx context.Context, ruleRepo *repositories.ScheduleRule
 
 	now := time.Now()
 	cancelException := models.ScheduleException{
-		CenterID:     centerID,
-		RuleID:       existingRule.ID,
-		OriginalDate: targetDate,
-		Type:         "CANCEL",
-		Status:       "APPROVED", // SINGLE 模式直接核准
-		Reason:       req.Name,   // 使用更新原因作為取消原因
-		ReviewedAt:   &now,
+		CenterID:       centerID,
+		RuleID:         existingRule.ID,
+		OriginalDate:   targetDate,
+		ExceptionType:  "CANCEL",
+		Status:         "APPROVED", // SINGLE 模式直接核准
+		Reason:         req.Name,   // 使用更新原因作為取消原因
+		ReviewedAt:     &now,
 	}
 
 	if _, err := exceptionRepo.Create(ctx, cancelException); err != nil {
@@ -1286,15 +1286,15 @@ func handleSingleUpdate(ctx context.Context, ruleRepo *repositories.ScheduleRule
 	newEndAt := time.Date(targetDate.Year(), targetDate.Month(), targetDate.Day(), endHour, 0, 0, 0, time.UTC)
 
 	rescheduleException := models.ScheduleException{
-		CenterID:     centerID,
-		RuleID:       existingRule.ID, // 關聯原規則
-		OriginalDate: targetDate,
-		Type:         "RESCHEDULE",
-		Status:       "APPROVED",
-		Reason:       req.Name,
-		NewStartAt:   &newStartAt,
-		NewEndAt:     &newEndAt,
-		ReviewedAt:   &now,
+		CenterID:       centerID,
+		RuleID:         existingRule.ID, // 關聯原規則
+		OriginalDate:   targetDate,
+		ExceptionType:  "RESCHEDULE",
+		Status:         "APPROVED",
+		Reason:         req.Name,
+		NewStartAt:     &newStartAt,
+		NewEndAt:       &newEndAt,
+		ReviewedAt:     &now,
 	}
 
 	if _, err := exceptionRepo.Create(ctx, rescheduleException); err != nil {

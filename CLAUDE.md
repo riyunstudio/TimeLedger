@@ -32,10 +32,146 @@ This file provides comprehensive guidance to Claude Code (claude.ai/code) when w
 - **LIFF Silent Login**：點開即登入，利用 LIFF SDK 取得 `id_token`
 - **換手機處理**：安裝 LINE 登入即可自動恢復
 - **帳號遺失處理**：聯繫中心管理員，由 Admin 後台重新綁定新的 `line_user_id`
+- **LINE 綁定**：首次登入自動綁定，**不可解除綁定**（LINE 即為帳號本身）
 
 ### 管理員端
 - **Email/Password + JWT**（24 小時效期）
 - 支援角色分級：OWNER、ADMIN、STAFF
+- **LINE 綁定**：用於接收 Exception 即時通知（可綁定/解除綁定）
+
+---
+
+## 3.1 LINE 通知系統 (LINE Notification System)
+
+### 3.1.1 通知策略
+
+**多管理員通知：全員通知 + 已讀機制**
+- 老師提交 Exception 時，發送 LINE 通知給中心所有管理員（OWNER + ADMIN）
+- 每位管理員都會收到通知，可依情況處理
+- 第一位處理者完成後，狀態更新，其他管理員可看到「已由他人處理」
+
+**通知觸發時機**
+| 事件 | 通知對象 | 訊息類型 |
+|:---|:---|:---|
+| 老師提交 Exception | 所有已綁定管理員 | 新例外申請 |
+| 管理員核准 Exception | 申請老師 | 核准結果 |
+| 管理員拒絕 Exception | 申請老師 | 拒絕結果 |
+
+### 3.1.2 LINE Bot 訊息格式
+
+**Exception 申請通知（Flex Message）**
+```json
+{
+  "type": "flex",
+  "altText": "新的例外申請通知",
+  "contents": {
+    "type": "bubble",
+    "body": {
+      "type": "box",
+      "layout": "vertical",
+      "contents": [
+        { "type": "text", "text": "🔔 新的例外申請", "weight": "bold" },
+        { "type": "text", "text": "━━━━━━━━━━━━━━" },
+        { "type": "text", "text": "👤 申請人：陳小美 老師" },
+        { "type": "text", "text": "📋 類型：調課申請" },
+        { "type": "text", "text": "📅 日期：2026/01/28 (三)" },
+        { "type": "text", "text": "🕐 時間：14:00 → 16:00" },
+        { "type": "text", "text": "📝 原因：與客戶會議衝突" },
+        { "type": "text", "text": "━━━━━━━━━━━━━━" },
+        { "type": "text", "text": "⚠️ 此時段已有其他課程，請確認是否有衝突" }
+      ]
+    },
+    "footer": {
+      "type": "box",
+      "layout": "horizontal",
+      "contents": [
+        {
+          "type": "button",
+          "style": "primary",
+          "action": { "type": "uri", "label": "前往處理", "uri": "https://timeledger.app/admin/exceptions/456" }
+        }
+      ]
+    }
+  }
+}
+```
+
+### 3.1.3 管理員 LINE 綁定功能
+
+**綁定流程**
+1. 管理員登入後台 → 設定 → 通知設定
+2. 點擊「開始綁定」
+3. 後端產生 6 位數驗證碼 + 顯示 QR Code
+4. 管理員開啟 LINE，搜尋官方帳號並傳送驗證碼
+5. LINE Bot 驗證成功，回覆「綁定成功」
+
+**解除綁定流程**
+1. 管理員點擊「解除綁定」
+2. 彈出確認對話框
+3. 點擊「確定解除」
+4. 後端清除 `line_user_id`
+5. 發送 LINE 通知告知已解除綁定
+
+**通知開關**
+- 可選擇性關閉特定類型的通知（不解除綁定）
+- 選項：接收新例外通知、接收審核結果通知
+
+### 3.1.4 官方帳號歡迎訊息
+
+**老師歡迎訊息（首次登入/受邀請）**
+- 標題：👋 歡迎加入 TimeLedger！
+- 內容：中心名稱、功能說明
+- 按鈕：立即綁定（開啟 LIFF 頁面）
+
+**管理員歡迎訊息（首次登入且未綁定）**
+- 標題：🎉 歡迎使用 TimeLedger！
+- 內容：中心名稱、角色、即時通知功能說明
+- 按鈕：立即綁定、稍後再說
+
+### 3.1.5 資料庫擴展
+
+```go
+// AdminUser - 管理員
+type AdminUser struct {
+    // ... 現有欄位
+    LineUserID         string     `gorm:"type:varchar(64);index" json:"-"`                    // LINE 用戶 ID
+    LineBindingCode    string     `gorm:"type:varchar(8)" json:"-"`                          // 綁定驗證碼
+    LineBindingExpires *time.Time `json:"-"`                                                 // 驗證碼過期時間
+    LineNotifyEnabled  bool       `gorm:"default:true" json:"line_notify_enabled"`           // 是否接收通知
+    LineBoundAt        *time.Time `json:"line_bound_at"`                                     // 綁定時間
+}
+
+// Teacher - 老師
+type Teacher struct {
+    // ... 現有欄位
+    LineUserID   string     `gorm:"type:varchar(64);index" json:"line_user_id"` // 帳號 ID，不可解除綁定
+    IsActive     bool       `gorm:"default:false" json:"is_active"`             // 是否已激活
+    InvitedAt    *time.Time `json:"invited_at"`                                 // 邀請時間
+    ActivatedAt  *time.Time `json:"activated_at"`                               // 激活時間
+}
+```
+
+### 3.1.6 API 設計
+
+| Method | Endpoint | 說明 |
+|:---:|:---|:---|
+| **管理員 LINE 綁定** |
+| GET | `/admin/me/line-binding` | 取得綁定狀態 |
+| POST | `/admin/me/line/bind` | 產生綁定驗證碼 |
+| POST | `/admin/me/line/verify` | 驗證綁定（輸入驗證碼） |
+| DELETE | `/admin/me/line/unbind` | 解除綁定 |
+| PATCH | `/admin/me/line/notify-settings` | 更新通知開關 |
+| **老師邀請** |
+| POST | `/admin/teachers/:id/invite` | 發送邀請 Email + LINE 歡迎訊息 |
+
+### 3.1.7 LINE Bot 回覆關鍵字
+
+| 關鍵字 | 回覆 |
+|:---|:---|
+| `綁定` | 顯示綁定連結 |
+| `幫助` | 使用說明 |
+| `狀態` | 查詢綁定狀態 |
+| `解除綁定` | 顯示解除綁定連結 |
 
 ---
 
@@ -305,7 +441,90 @@ TeacherBuffer = max(
 
 ---
 
-## 12. 智慧媒合評分因子 (Smart Matching)
+## 12. 智慧媒合與人才庫 (Smart Matching & Talent Pool)
+
+### 12.1 API 端點總覽
+
+#### 智慧媒合 API
+
+| Method | Endpoint | 說明 |
+|:---:|:---|:---|
+| POST | /admin/smart-matching/matches | 智慧媒合搜尋 |
+| GET | /admin/smart-matching/suggestions | 搜尋建議 |
+| POST | /admin/smart-matching/alternatives | 替代時段建議 |
+| GET | /admin/teachers/:id/sessions | 教師課表查詢 |
+
+#### 人才庫 API
+
+| Method | Endpoint | 說明 |
+|:---:|:---|:---|
+| GET | /admin/smart-matching/talent/search | 人才庫搜尋 |
+| GET | /admin/smart-matching/talent/stats | 人才庫統計 |
+| POST | /admin/smart-matching/talent/invite | 邀請人才合作 |
+
+#### 系統監控 API
+
+| Method | Endpoint | 說明 |
+|:---:|:---|:---|
+| GET | /admin/notifications/queue-stats | 通知佇列統計 |
+
+### 12.2 人才庫統計 Response 格式
+
+```json
+{
+  "total_count": 156,
+  "open_hiring_count": 89,
+  "member_count": 45,
+  "average_rating": 4.2,
+  "monthly_change": 12,
+  "monthly_trend": [65, 72, 78, 85, 92, 88, 95],
+  "pending_invites": 23,
+  "accepted_invites": 45,
+  "declined_invites": 8,
+  "city_distribution": [
+    {"name": "台北市", "count": 52},
+    {"name": "新北市", "count": 38}
+  ],
+  "top_skills": [
+    {"name": "瑜珈", "count": 45},
+    {"name": "鋼琴", "count": 38}
+  ]
+}
+```
+
+### 12.3 邀請人才功能
+
+**API**: `POST /admin/smart-matching/talent/invite`
+
+**Request Body**:
+```json
+{
+  "teacher_ids": [1, 2, 3],
+  "message": "誠摯邀請您加入我們的人才庫..."
+}
+```
+
+**Response**:
+```json
+{
+  "success_count": 2,
+  "failed_count": 1,
+  "failed_ids": [2],
+  "invitations": [
+    {"teacher_id": 1, "token": "INV-1-abc123", "status": "PENDING"},
+    {"teacher_id": 3, "token": "INV-1-def456", "status": "PENDING"}
+  ],
+  "message": "1 位老師已有待處理邀請，無法重複邀請"
+}
+```
+
+**邀請邏輯規則**：
+- 同一個老師對同一個中心只能有一筆待處理邀請
+- 如果已有待處理邀請，再次邀請會被拒絕並回傳 failed_ids
+- 邀請有效期為 7 天
+- 發送 LINE 通知（非同步處理）
+
+### 12.4 評分因子
 
 | 因子 | 權重 | 評分邏輯 |
 |:---|:---:|:---|
@@ -315,7 +534,75 @@ TeacherBuffer = max(
 
 ---
 
-## 13. Hashtag 標籤管理
+## 13. 通知佇列系統 (Notification Queue System)
+
+### 13.1 架構
+
+```
+前端監控頁面 (/admin/queue-monitor)
+         ↓
+通知佇列統計 API (/admin/notifications/queue-stats)
+         ↓
+Redis Queue (notification:pending, notification:retry)
+         ↓
+Background Worker (非同步處理)
+```
+
+### 13.2 Redis Queue 結構
+
+| Queue Key | 說明 |
+|:---|:---|
+| `notification:pending` | 待處理的通知 |
+| `notification:retry` | 需要重試的通知 |
+| `notification:completed` | 已完成的通知 |
+| `notification:failed` | 失敗的通知（超過最大重試次數） |
+
+### 13.3 佇列統計 API
+
+**Response 格式**：
+```json
+{
+  "pending_count": 15,
+  "retry_count": 3,
+  "completed_count": 1250,
+  "failed_count": 12,
+  "failure_rate": 0.95,
+  "redis_connected": true,
+  "worker_running": true
+}
+```
+
+### 13.4 Notification Worker 配置
+
+**環境變數**：
+```bash
+# Notification Worker（預設關閉）
+NOTIFICATION_WORKER_ENABLED=true
+```
+
+**啟動方式**：
+```bash
+# 僅啟動 Worker
+NOTIFICATION_WORKER_ENABLED=true go run main.go
+
+# 同時啟動 API Server 和 Worker
+go run main.go
+```
+
+### 13.5 監控頁面
+
+**路徑**：管理員選單 → 系統監控 `/admin/queue-monitor`
+
+**功能特色**：
+- 通知佇列統計卡片（待處理/重試/已完成/失敗）
+- 失敗率警示（超過 10% 顯示警告）
+- Redis 連線狀態
+- 人才庫邀請統計
+- 自動重新整理（每 30 秒）
+
+---
+
+## 14. Hashtag 標籤管理
 
 ### 儲存時同步
 - 教師儲存檔案時，後端同步更新 `hashtags` 字典表與 `usage_count`
@@ -338,7 +625,7 @@ TeacherBuffer = max(
 
 ---
 
-## 14. 循環行程與例外處理 (Recurrence & Exceptions)
+## 15. 循環行程與例外處理 (Recurrence & Exceptions)
 
 ### 循環類型
 - `NONE`（單次）、`DAILY`（日）、`WEEKLY`（週）、`MONTHLY`（月）、`CUSTOM`（自訂）
@@ -360,24 +647,24 @@ TeacherBuffer = max(
 
 ---
 
-## 15. 開發鐵律 (Development Rules)
+## 16. 開發鐵律 (Development Rules)
 
-### 15.1 遵循計劃
+### 16.1 遵循計劃
 - 嚴格按照 `pdr/Stages.md` 的檢查清單執行
 - **禁止跳階段** 或 超前部署
 
-### 15.2 TDD 強制執行
+### 16.2 TDD 強制執行
 - 每個 Service 或 Logic 模組 **必須先寫測試**
 - **開發階段**：使用現有開發資料庫（MySQL port 3306）進行測試，建立測試資料後驗證功能
 - **測試資料**：建立測試資料 → 執行測試 → 驗證結果 → 清理測試資料（或標記便於識別）
 - 後端功能未通過測試視為 **未完成**
 
-### 15.3 原子化開發（Vertical Slices）
+### 16.3 原子化開發（Vertical Slices）
 - 一次僅開發一個獨立子功能
 - **嚴禁** 同時改動多個不相關模組
 - 開發順序：`Migration → Unit Test → Backend Service → API → Frontend UI → Integration Test`
 
-### 15.4 提交規範 (Commit Standards)
+### 16.4 提交規範 (Commit Standards)
 - 後端完成且測試通過 → **Commit**
 - 前端完成 → **再次 Commit**
 - **每次修改（包含小修正）都必須立即 commit**，避免累積大量未提交的變更
@@ -394,11 +681,11 @@ docs: update progress tracker with test coverage results
 
 **錯誤的 Commit Message 範例（禁止使用）：**
 ```
-新增快速登入功能  <-- 使用中文
-修正登入問題      <-- 使用中文
+新增快速登入功能 <-- 使用中文
+修正登入問題 <-- 使用中文
 ```
 
-### 15.5 文件回饋循環（Gap Handling）
+### 16.5 文件回饋循環（Gap Handling）
 發現 API、欄位或邏輯缺失於 PDR 文件時：
 1. **暫停**開發
 2. **更新**相關 PDR 文件
@@ -406,7 +693,7 @@ docs: update progress tracker with test coverage results
 
 ---
 
-## 16. API 設計規範 (API Standards)
+## 17. API 設計規範 (API Standards)
 
 ### Response 格式
 ```json
@@ -442,7 +729,7 @@ docs: update progress tracker with test coverage results
 
 ---
 
-## 17. 當前開發階段 (Current Stage)
+## 18. 當前開發階段 (Current Stage)
 
 **Stage 1：基建與設計系統（Core & Design Tokens）**
 - [ ] 1.1 Workspace Init：Docker Compose（MySQL 8、Redis）、Monorepo 初始化
@@ -454,7 +741,7 @@ docs: update progress tracker with test coverage results
 
 ---
 
-## 18. 專案結構 (Project Structure)
+## 19. 專案結構 (Project Structure)
 
 ```
 /
@@ -530,7 +817,7 @@ interface TeacherProfile {
 
 ---
 
-## 18.5 Alert/Confirm UI 規範
+## 19.5 Alert/Confirm UI 規範
 
 ### 禁止使用原生 alert/confirm
 
@@ -597,7 +884,7 @@ error('操作失敗')
 
 ---
 
-## 19. 通用命令 (Common Commands)
+## 20. 通用命令 (Common Commands)
 
 ```bash
 # Build
@@ -610,7 +897,7 @@ go run main.go
 go test ./testing/test/... -v
 
 # Run a single test
-go test ./testing/test/... -v -run TestUserService_CreateAndGet
+go test ./testing/test -run TestUser/... -vService_CreateAndGet
 
 # Lint
 golangci-lint run --timeout 10m
@@ -627,7 +914,7 @@ go env -w GOPRIVATE=gitlab.en.mcbwvx.com
 
 ---
 
-## 20. 環境設定 (Environment Setup)
+## 21. 環境設定 (Environment Setup)
 
 Copy `.env.example` to `.env`. Key services：
 - HTTP API：`localhost:8888`（Swagger at `/swagger/index.html`）
@@ -639,7 +926,7 @@ MySQL master-slave replication：RDB（read/slave）、WDB（write/master）
 
 ---
 
-## 21. 導入組織 (Import Organization)
+## 22. 導入組織 (Import Organization)
 
 ```go
 import (
@@ -658,7 +945,7 @@ import (
 
 ---
 
-## 22. 資料庫操作 (Database Operations)
+## 23. 資料庫操作 (Database Operations)
 
 - **Read：** `app.Mysql.RDB.WithContext(ctx)`（slave）
 - **Write：** `app.Mysql.WDB.WithContext(ctx)`（master）
@@ -666,7 +953,7 @@ import (
 
 ---
 
-## 23. 請求驗證 (Request Validation)
+## 24. 請求驗證 (Request Validation)
 
 ```go
 func Validate[T any](ctx *gin.Context) (*T, *errInfos.Res, error) {
@@ -682,7 +969,7 @@ func Validate[T any](ctx *gin.Context) (*T, *errInfos.Res, error) {
 
 ---
 
-## 24. 通用模式 (General Patterns)
+## 25. 通用模式 (General Patterns)
 
 - Time fields：Unix timestamps (`int64`)
 - JSON fields：stored as strings in DB, unmarshaled in resources
@@ -694,7 +981,7 @@ func Validate[T any](ctx *gin.Context) (*T, *errInfos.Res, error) {
 
 ---
 
-## 25. 新增端點流程 (Adding New Endpoints)
+## 26. 新增端點流程 (Adding New Endpoints)
 
 1. Model → `app/models/<entity>.go`
 2. Request → `app/requests/<entity>.go`
@@ -706,7 +993,7 @@ func Validate[T any](ctx *gin.Context) (*T, *errInfos.Res, error) {
 
 ---
 
-## 26. gRPC 服務 (gRPC Services)
+## 27. gRPC 服務 (gRPC Services)
 
 1. Define proto in `grpc/proto/` with `go_package`
 2. Compile with `protoc`
@@ -715,7 +1002,7 @@ func Validate[T any](ctx *gin.Context) (*T, *errInfos.Res, error) {
 
 ---
 
-## 27. 測試規範 (Testing)
+## 28. 測試規範 (Testing)
 
 ### 開發階段測試策略
 開發期間使用實際開發資料庫進行測試，簡化測試環境維護：
@@ -771,7 +1058,7 @@ appInstance := &app.App{
 
 ---
 
-## 28. 程式碼格式化 (Formatting)
+## 29. 程式碼格式化 (Formatting)
 
 - Use tabs for indentation
 - Struct tags with backticks and proper spacing
@@ -780,7 +1067,7 @@ appInstance := &app.App{
 
 ---
 
-## 29. 內部套件 (Internal Packages)
+## 30. 內部套件 (Internal Packages)
 
 - `gitlab.en.mcbwvx.com/frame/teemo` - Tools (timezone, JSON utilities)
 - `gitlab.en.mcbwvx.com/frame/zilean` - Logging
@@ -788,7 +1075,7 @@ appInstance := &app.App{
 
 ---
 
-## 30. 語言與溝通 (Language)
+## 31. 語言與溝通 (Language)
 
 - **開發文件**：繁體中文與英文混用（代碼、API 為英文）
 - **與用戶溝通**：**繁體中文**
@@ -796,7 +1083,7 @@ appInstance := &app.App{
 
 ---
 
-## 31. Agent 技能 (Agent Skills)
+## 32. Agent 技能 (Agent Skills)
 
 - **auth-adapter-guard**：Mock Login vs LINE Login abstraction；使用 `AuthService` interface，永遠不要直接呼叫 `liff.*`
 - **contract-sync**：保持 API 規格與 Go struct 和 TypeScript interface 同步；修改 `pdr/API.md` 或 `pdr/Mysql.md` 時更新 model

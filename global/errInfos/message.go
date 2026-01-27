@@ -58,4 +58,14 @@ var messagesMap = map[ErrCode]message{
 
 	// 搜尋與媒合類
 	TALENT_NOT_OPEN: {EN: "Talent search not available", TW: "該老師未開放搜尋", CN: "该老师未开放搜索"},
+
+	// LINE Bot 與通知類
+	LINE_ALREADY_BOUND:      {EN: "LINE account already bound", TW: "LINE 帳號已綁定", CN: "LINE 账号已绑定"},
+	LINE_NOT_BOUND:          {EN: "LINE account not bound", TW: "LINE 帳號未綁定", CN: "LINE 账号未绑定"},
+	LINE_BINDING_CODE_INVALID: {EN: "Invalid binding code", TW: "驗證碼無效", CN: "验证码无效"},
+	LINE_BINDING_EXPIRED:    {EN: "Binding code expired", TW: "驗證碼已過期，請重新產生", CN: "验证码已过期，请重新产生"},
+	LINE_NOTIFY_FAILED:      {EN: "Failed to send LINE notification", TW: "LINE 通知發送失敗", CN: "LINE 通知发送失败"},
+
+	// 管理員類
+	ADMIN_NOT_FOUND: {EN: "Admin user not found", TW: "管理員不存在", CN: "管理员不存在"},
 }

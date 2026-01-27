@@ -168,7 +168,7 @@ func (s *ExportServiceImpl) ExportExceptionsToCSV(ctx context.Context, centerID 
 		records = append(records, []string{
 			fmt.Sprintf("%d", exc.ID),
 			exc.OriginalDate.Format("2006-01-02"),
-			exc.Type,
+			exc.ExceptionType,
 			exc.Status,
 			newStartAt,
 			newEndAt,
@@ -276,7 +276,7 @@ func (s *ExportServiceImpl) GenerateExceptionCSV(ctx context.Context, centerID u
 		records = append(records, []string{
 			fmt.Sprintf("%d", exc.ID),
 			exc.OriginalDate.Format("2006-01-02"),
-			exc.Type,
+			exc.ExceptionType,
 			exc.Status,
 			newStartAt,
 			newEndAt,

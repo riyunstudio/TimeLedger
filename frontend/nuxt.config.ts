@@ -24,6 +24,7 @@ export default defineNuxtConfig({
     public: {
       apiBase: '/api/v1',
       liffId: process.env.LIFF_ID || '',
+      lineOfficialAccountId: process.env.LINE_OFFICIAL_ACCOUNT_ID || '@timeledger',
     },
   },
 
