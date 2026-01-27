@@ -1,12 +1,43 @@
 <template>
   <div class="p-4 md:p-6 max-w-7xl mx-auto">
     <div class="mb-6 md:mb-8">
-      <h1 class="text-2xl md:text-3xl font-bold text-slate-100 mb-2">
-        審核中心
-      </h1>
-      <p class="text-slate-400 text-sm md:text-base">
-        處理課程變更申請（停課/改期/找代課）
-      </p>
+      <div class="flex items-center justify-between">
+        <div>
+          <h1 class="text-2xl md:text-3xl font-bold text-slate-100 mb-2">
+            審核中心
+          </h1>
+          <p class="text-slate-400 text-sm md:text-base">
+            處理課程變更申請（停課/改期/找代課）
+          </p>
+        </div>
+        <!-- 即時更新指示器 -->
+        <div class="flex items-center gap-3">
+          <div class="flex items-center gap-2 text-xs text-slate-500">
+            <span
+              class="w-2 h-2 rounded-full animate-pulse"
+              :class="isPolling ? 'bg-success-500' : 'bg-slate-500'"
+            ></span>
+            <span v-if="lastUpdated">更新於 {{ formatLastUpdated }}</span>
+            <span v-else>尚未更新</span>
+          </div>
+          <button
+            @click="refreshData"
+            :disabled="isRefreshing"
+            class="p-2 rounded-lg hover:bg-white/10 transition-colors"
+            title="手動重新整理"
+          >
+            <svg
+              class="w-5 h-5 text-slate-400"
+              :class="{ 'animate-spin': isRefreshing }"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- 篩選器區域 -->
@@ -150,11 +181,12 @@
               審核
             </button>
             <button
-              @click="showDetailModal = exception"
+              @click="openDetail(exception)"
+              aria-label="查看詳情"
               class="p-2 rounded-lg hover:bg-white/10 transition-colors"
             >
               <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 9h.01" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </button>
           </div>
@@ -220,6 +252,12 @@ const loading = ref(false)
 const { getCenterId } = useCenterId()
 const toast = useToast()
 
+// 即時更新相關
+const isPolling = ref(true)
+const isRefreshing = ref(false)
+const lastUpdated = ref<Date | null>(null)
+let pollTimer: ReturnType<typeof setInterval> | null = null
+
 // 日期範圍篩選
 const dateFrom = ref('')
 const dateTo = ref('')
@@ -280,18 +318,58 @@ const pendingCount = computed(() => {
   return exceptions.value.filter(exc => exc.status === 'PENDING').length
 })
 
+// 格式化最後更新時間
+const formatLastUpdated = computed(() => {
+  if (!lastUpdated.value) return ''
+  const now = new Date()
+  const diff = Math.floor((now.getTime() - lastUpdated.value.getTime()) / 1000)
+
+  if (diff < 60) return '剛剛'
+  if (diff < 3600) return `${Math.floor(diff / 60)} 分鐘前`
+  return lastUpdated.value.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })
+})
+
 const fetchExceptions = async () => {
-  loading.value = true
   try {
     const api = useApi()
     // 查詢所有例外申請（不再只查待審核）
     const response = await api.get<{ code: number; datas: any[] }>('/admin/exceptions/all')
     exceptions.value = response.datas || []
+    // 更新最後刷新時間
+    lastUpdated.value = new Date()
   } catch (error) {
     console.error('Failed to fetch exceptions:', error)
     exceptions.value = []
   } finally {
     loading.value = false
+  }
+}
+
+// 手動重新整理
+const refreshData = async () => {
+  isRefreshing.value = true
+  await fetchExceptions()
+  await fetchFilters()
+  setTimeout(() => {
+    isRefreshing.value = false
+  }, 500)
+}
+
+// 開始輪詢
+const startPolling = () => {
+  // 每 30 秒自動刷新
+  pollTimer = setInterval(() => {
+    if (!document.hidden) {
+      fetchExceptions()
+    }
+  }, 30000)
+}
+
+// 停止輪詢
+const stopPolling = () => {
+  if (pollTimer) {
+    clearInterval(pollTimer)
+    pollTimer = null
   }
 }
 
@@ -446,8 +524,33 @@ const handleRejected = async (_id: number, note: string) => {
   showReviewModal.value = null
 }
 
-onMounted(() => {
-  fetchExceptions()
-  fetchFilters()
+// 打開詳情Modal
+const openDetail = (exception: any) => {
+  console.log('Opening detail for exception:', exception)
+  showDetailModal.value = exception
+}
+
+onMounted(async () => {
+  loading.value = true
+  await fetchExceptions()
+  await fetchFilters()
+  // 開始輪詢
+  startPolling()
+
+  // 頁面可見性變化時刷新
+  document.addEventListener('visibilitychange', handleVisibilityChange)
 })
+
+onUnmounted(() => {
+  stopPolling()
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
+})
+
+// 處理頁面可見性變化
+const handleVisibilityChange = () => {
+  if (!document.hidden) {
+    // 頁面重新可見時刷新數據
+    fetchExceptions()
+  }
+}
 </script>

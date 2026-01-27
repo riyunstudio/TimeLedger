@@ -16,13 +16,51 @@
         type="text"
         placeholder="搜尋老師..."
         class="input-field"
+        :disabled="loading"
       />
     </div>
 
-    <div v-if="filteredTeachers.length === 0" class="text-center py-12 text-slate-500 glass-card">
-      {{ searchQuery ? '找不到符合的老師' : '尚未添加老師' }}
+    <!-- 骨架屏載入狀態 -->
+    <div v-if="loading" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div
+        v-for="i in 6"
+        :key="i"
+        class="glass-card p-5"
+      >
+        <div class="animate-pulse">
+          <div class="flex items-start justify-between mb-3">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 rounded-full bg-white/10"></div>
+              <div>
+                <div class="h-5 w-32 bg-white/10 rounded mb-2"></div>
+                <div class="h-4 w-48 bg-white/10 rounded"></div>
+              </div>
+            </div>
+            <div class="w-8 h-8 bg-white/10 rounded-lg"></div>
+          </div>
+          <div class="space-y-2">
+            <div class="flex gap-2">
+              <div class="h-6 w-16 bg-white/10 rounded-full"></div>
+              <div class="h-6 w-16 bg-white/10 rounded-full"></div>
+              <div class="h-6 w-16 bg-white/10 rounded-full"></div>
+            </div>
+            <div class="flex items-center gap-2">
+              <div class="h-5 w-20 bg-white/10 rounded"></div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
+    <!-- 空狀態 -->
+    <div v-else-if="filteredTeachers.length === 0" class="text-center py-12 text-slate-500 glass-card">
+      <svg class="w-16 h-16 mx-auto mb-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20H2v-2a3 3 0 015.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+      </svg>
+      <p>{{ searchQuery ? '找不到符合的老師' : '尚未添加老師' }}</p>
+    </div>
+
+    <!-- 老師列表 -->
     <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div
         v-for="teacher in filteredTeachers"

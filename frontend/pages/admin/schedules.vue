@@ -10,33 +10,97 @@
       </button>
     </div>
 
-    <div class="glass-card p-6">
-      <div v-if="loading" class="text-center py-8 text-slate-400">
+    <!-- 搜尋與篩選區域 -->
+    <div class="glass-card p-4 mb-6">
+      <div class="flex flex-col md:flex-row gap-4">
+        <!-- 搜尋框 -->
+        <div class="flex-1">
+          <label for="search-input" class="sr-only">搜尋課程、老師或教室名稱</label>
+          <input
+            id="search-input"
+            v-model="searchQuery"
+            type="text"
+            placeholder="搜尋課程、老師或教室名稱..."
+            aria-label="搜尋課程、老師或教室名稱"
+            class="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-primary-500/50"
+          />
+        </div>
+        <!-- 星期篩選 -->
+        <div class="relative">
+          <label for="weekday-filter" class="sr-only">篩選星期</label>
+          <select
+            id="weekday-filter"
+            v-model="filterWeekday"
+            aria-label="篩選星期"
+            class="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-primary-500/50 appearance-none"
+          >
+          <option value="">全部星期</option>
+          <option v-for="(day, index) in ['週日', '週一', '週二', '週三', '週四', '週五', '週六']" :key="index" :value="index === 0 ? 7 : index">
+            {{ day }}
+          </option>
+        </select>
+        <!-- 狀態篩選 -->
+        <div class="relative">
+          <label for="status-filter" class="sr-only">篩選狀態</label>
+          <select
+            id="status-filter"
+            v-model="filterStatus"
+            aria-label="篩選課程狀態"
+            class="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-primary-500/50 appearance-none"
+          >
+            <option value="">全部狀態</option>
+            <option value="upcoming">尚未開始</option>
+            <option value="ongoing">進行中</option>
+            <option value="ended">已結束</option>
+          </select>
+        </div>
+        <!-- 清除篩選 -->
+        <button
+          v-if="searchQuery || filterWeekday || filterStatus"
+          @click="clearFilters"
+          aria-label="清除所有篩選條件"
+          class="px-4 py-2 text-slate-400 hover:text-white transition-colors"
+        >
+          清除篩選
+        </button>
+      </div>
+      <!-- 篩選結果計數 -->
+      <div v-if="rules.length > 0" class="mt-2 text-sm text-slate-500" role="status" aria-live="polite">
+        顯示 {{ filteredRules.length }} / {{ rules.length }} 筆資料
+      </div>
+    </div>
+
+    <div class="glass-card p-6" role="region" aria-label="課程時段列表">
+      <div v-if="loading" class="text-center py-8 text-slate-400" role="status" aria-live="polite">
         載入中...
       </div>
 
-      <div v-else-if="rules.length === 0" class="text-center py-8 text-slate-400">
+      <div v-else-if="rules.length === 0" class="text-center py-8 text-slate-400" role="status">
         尚未建立課程時段
       </div>
 
+      <div v-else-if="filteredRules.length === 0" class="text-center py-8 text-slate-400" role="status">
+        沒有符合搜尋條件的課程時段
+      </div>
+
       <div v-else class="overflow-x-auto -mx-6">
-        <table class="w-full min-w-[600px]">
-          <thead>
+        <table class="w-full min-w-[600px]" role="table" aria-label="課程時段列表">
+          <thead class="sticky top-0 bg-slate-900/95 backdrop-blur-sm z-10">
             <tr class="text-left text-slate-400 text-sm border-b border-white/10">
-              <th class="pb-3 pl-4">課程</th>
-              <th class="pb-3">星期</th>
-              <th class="pb-3">時間</th>
-              <th class="pb-3">教室</th>
-              <th class="pb-3">老師</th>
-              <th class="pb-3">狀態</th>
-              <th class="pb-3 pr-4 text-right">操作</th>
+              <th class="pb-3 pl-4" scope="col">課程</th>
+              <th class="pb-3" scope="col">星期</th>
+              <th class="pb-3" scope="col">時間</th>
+              <th class="pb-3" scope="col">教室</th>
+              <th class="pb-3" scope="col">老師</th>
+              <th class="pb-3" scope="col">狀態</th>
+              <th class="pb-3 pr-4 text-right" scope="col">操作</th>
             </tr>
           </thead>
           <tbody>
             <tr
-              v-for="rule in rules"
+              v-for="rule in filteredRules"
               :key="rule.id"
-              class="border-b border-white/5 hover:bg-white/5"
+              class="border-b border-white/5 hover:bg-white/5 transition-colors"
             >
               <td class="py-3 pl-4 text-white">{{ rule.offering?.name || '-' }}</td>
               <td class="py-3 text-slate-300">{{ getWeekdayText(rule.weekday) }}</td>
@@ -54,12 +118,14 @@
               <td class="py-3 pr-4 text-right">
                 <button
                   @click="editRule(rule)"
+                  aria-label="編輯課程時段"
                   class="text-primary-500 hover:text-primary-400 mr-3"
                 >
                   編輯
                 </button>
                 <button
                   @click="deleteRule(rule.id)"
+                  :aria-label="'刪除課程時段 ' + (rule.offering?.name || '')"
                   class="text-critical-500 hover:text-critical-400"
                 >
                   刪除
@@ -91,6 +157,7 @@
     v-if="notificationUI.show.value"
     @close="notificationUI.close()"
   />
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -108,8 +175,63 @@ const showUpdateModeModal = ref(false)
 const pendingEditData = ref<any>(null)
 const { getCenterId } = useCenterId()
 
+// 搜尋與篩選
+const searchQuery = ref('')
+const filterWeekday = ref('')
+const filterStatus = ref('')
+
 // Alert composable
 const { error: alertError, confirm: alertConfirm } = useAlert()
+
+// 清除所有篩選條件
+const clearFilters = () => {
+  searchQuery.value = ''
+  filterWeekday.value = ''
+  filterStatus.value = ''
+}
+
+// 篩選後的規則列表
+const filteredRules = computed(() => {
+  let result = [...rules.value]
+
+  // 搜尋過濾
+  if (searchQuery.value) {
+    const query = searchQuery.value.toLowerCase()
+    result = result.filter(rule =>
+      rule.offering?.name?.toLowerCase().includes(query) ||
+      rule.teacher?.name?.toLowerCase().includes(query) ||
+      rule.room?.name?.toLowerCase().includes(query)
+    )
+  }
+
+  // 星期過濾
+  if (filterWeekday.value) {
+    const weekdayValue = parseInt(filterWeekday.value)
+    result = result.filter(rule => rule.weekday === weekdayValue)
+  }
+
+  // 狀態過濾
+  if (filterStatus.value) {
+    const now = new Date()
+    result = result.filter(rule => {
+      const startDate = new Date(rule.effective_range?.start_date)
+      const endDate = rule.effective_range?.end_date ? new Date(rule.effective_range.end_date) : null
+
+      switch (filterStatus.value) {
+        case 'upcoming':
+          return now < startDate
+        case 'ongoing':
+          return now >= startDate && (!endDate || now <= endDate)
+        case 'ended':
+          return endDate && now > endDate
+        default:
+          return true
+      }
+    })
+  }
+
+  return result
+})
 
 const fetchRules = async () => {
   loading.value = true

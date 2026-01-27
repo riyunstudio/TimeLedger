@@ -635,6 +635,175 @@ Export exceptions to CSV.
 
 ---
 
+## Admin Resource Endpoints
+
+### Dashboard
+
+#### Get Today Summary
+
+Get today's schedule summary for the admin dashboard.
+
+|**Endpoint:** `GET /admin/dashboard/today-summary`
+|**Headers:** `Authorization: Bearer <token>`
+
+|**Response:**
+```json
+{
+  "code": "SUCCESS",
+  "data": {
+    "today_stats": {
+      "completed": 12,
+      "in_progress": 3,
+      "upcoming": 8
+    },
+    "pending_exceptions": 5,
+    "schedule_changes": [
+      "明日 14:00 瑜伽課程教室異動",
+      "週三 10:00 鋼琴個別課暫停"
+    ]
+  }
+}
+```
+
+---
+
+## Timetable Template Endpoints
+
+### Templates CRUD
+
+#### Get Templates
+
+Get all templates for the center.
+
+|**Endpoint:** `GET /admin/templates`
+|**Headers:** `Authorization: Bearer <token>`
+
+---
+
+#### Create Template
+
+Create a new timetable template.
+
+|**Endpoint:** `POST /admin/templates`
+|**Headers:** `Authorization: Bearer <token>`
+
+|**Request:**
+```json
+{
+  "name": "夏季課程模板",
+  "description": "夏季密集課程排課模板"
+}
+```
+
+---
+
+#### Update Template
+
+Update an existing template.
+
+|**Endpoint:** `PUT /admin/templates/:templateId`
+|**Headers:** `Authorization: Bearer <token>`
+
+---
+
+#### Delete Template
+
+Delete a template.
+
+|**Endpoint:** `DELETE /admin/templates/:templateId`
+|**Headers:** `Authorization: Bearer <token>`
+
+---
+
+### Template Cells
+
+#### Get Cells
+
+Get all cells in a template.
+
+|**Endpoint:** `GET /admin/templates/:templateId/cells`
+|**Headers:** `Authorization: Bearer <token>`
+
+---
+
+#### Create Cells
+
+Create cells in a template.
+
+|**Endpoint:** `POST /admin/templates/:templateId/cells`
+|**Headers:** `Authorization: Bearer <token>`
+
+|**Request:**
+```json
+{
+  "cells": [
+    {
+      "row": 1,
+      "col": 1,
+      "start_time": "09:00",
+      "end_time": "10:00",
+      "weekday": 1
+    }
+  ]
+}
+```
+
+---
+
+#### Delete Cell
+
+Delete a cell from a template.
+
+|**Endpoint:** `DELETE /admin/templates/cells/:cellId`
+|**Headers:** `Authorization: Bearer <token>`
+
+---
+
+#### Apply Template
+
+Apply a template to generate schedule rules.
+
+|**Endpoint:** `POST /admin/templates/:templateId/apply`
+|**Headers:** `Authorization: Bearer <token>`
+
+|**Request:**
+```json
+{
+  "offering_id": 1,
+  "start_date": "2026-02-01",
+  "end_date": "2026-12-31",
+  "weekdays": [1, 3, 5],
+  "override_buffer": false
+}
+```
+
+|**Response (Success):**
+```json
+{
+  "code": "SUCCESS",
+  "message": "模板套用成功",
+  "data": {
+    "rules_created": 15,
+    "sessions_generated": 45
+  }
+}
+```
+
+|**Response (Buffer Conflict):**
+```json
+{
+  "code": 40003,
+  "message": "套用模板會產生緩衝時間衝突，是否繼續？",
+  "datas": {
+    "conflicts": [...],
+    "conflict_count": 2,
+    "can_override": true
+  }
+}
+```
+
+---
+
 ## Error Codes
 
 | Code | Description |

@@ -13,10 +13,47 @@
       </button>
     </div>
 
-    <div v-if="offerings.length === 0" class="text-center py-12 text-slate-500 glass-card">
-      尚未添加待排課程
+    <!-- 骨架屏載入狀態 -->
+    <div v-if="loading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div
+        v-for="i in 6"
+        :key="i"
+        class="glass-card p-5"
+      >
+        <div class="animate-pulse">
+          <div class="flex items-start justify-between mb-3">
+            <div class="flex-1">
+              <div class="h-5 w-40 bg-white/10 rounded mb-2"></div>
+              <div class="h-4 w-24 bg-white/10 rounded"></div>
+            </div>
+            <div class="flex gap-2">
+              <div class="w-8 h-8 bg-white/10 rounded-lg"></div>
+              <div class="w-8 h-8 bg-white/10 rounded-lg"></div>
+            </div>
+          </div>
+          <div class="space-y-2">
+            <div class="h-4 w-32 bg-white/10 rounded"></div>
+            <div class="h-4 w-32 bg-white/10 rounded"></div>
+          </div>
+        </div>
+      </div>
     </div>
 
+    <!-- 空狀態 -->
+    <div v-else-if="offerings.length === 0" class="text-center py-12 text-slate-500 glass-card">
+      <svg class="w-16 h-16 mx-auto mb-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+      </svg>
+      <p class="mb-4">尚未添加待排課程</p>
+      <button
+        @click="createNewOffering"
+        class="px-4 py-2 rounded-lg bg-primary-500 text-white hover:bg-primary-600 transition-colors"
+      >
+        新增第一個待排課程
+      </button>
+    </div>
+
+    <!-- 待排課程列表 -->
     <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       <div
         v-for="offering in offerings"
@@ -91,6 +128,7 @@ import { alertConfirm, alertError } from '~/composables/useAlert'
 const showModal = ref(false)
 const editingOffering = ref<any>(null)
 const offerings = ref<any[]>([])
+const loading = ref(false)
 
 // 資源快取
 const teachersCache = ref<Map<number, any>>(new Map())
@@ -138,6 +176,7 @@ const fetchResources = async () => {
 }
 
 const fetchOfferings = async () => {
+  loading.value = true
   try {
     const api = useApi()
     const centerId = getCenterId()
@@ -150,6 +189,8 @@ const fetchOfferings = async () => {
   } catch (error) {
     console.error('Failed to fetch offerings:', error)
     offerings.value = []
+  } finally {
+    loading.value = false
   }
 }
 

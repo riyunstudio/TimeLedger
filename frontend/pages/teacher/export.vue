@@ -12,6 +12,26 @@
         返回
       </button>
       <button
+        @click="handleDownloadICal"
+        class="px-4 py-2 rounded-lg bg-secondary-500 text-white hover:bg-secondary-600 transition-colors flex items-center gap-2"
+        title="匯出到日曆 App"
+      >
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+        iCal
+      </button>
+      <button
+        @click="handleShareLINE"
+        class="px-4 py-2 rounded-lg bg-[#06C755] text-white hover:bg-[#05b546] transition-colors flex items-center gap-2"
+        title="分享到 LINE"
+      >
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.6 9.5c-.17 1.1-1.3 2.08-2.5 2.55-.35.14-.6.22-.86.22-.32 0-.64-.1-.86-.35-.22-.25-.33-.55-.33-.9 0-.6.45-1.1 1-1.35.1-.05.18-.08.28-.08.55 0 1.05.45 1.1 1 .02.1.02.2.02.32zm-3.1 2.7c-.1.05-.18.08-.28.08-.55 0-1.05-.45-1.1-1-.02-.1-.02-.2-.02-.32 0-.6.45-1.1 1-1.35.1-.05.18-.08.28-.08.32 0 .64.1.86.35.22.25.33.55.33.9 0 .6-.45 1.1-1 1.1zm-3.1-2.7c.17-1.1 1.3-2.08 2.5-2.55.35-.14.6-.22.86-.22.32 0 .64.1.86.35.22.25.33.55.33.9 0 .6-.45 1.1-1 1.35-.1.05-.18.08-.28.08-.55 0-1.05-.45-1.1-1-.02-.1-.02-.2-.02-.32 0 .6.45 1.1 1 1.35.1.05.18.08.28.08.32 0 .64-.1.86-.35.22-.25.33-.55.33-.9 0-.6-.45-1.1-1-1.35-.1-.05-.18-.08-.28-.08-.55 0-1.05.45-1.1 1-.02.1-.02.2-.02.32 0-.6.45-1.1 1-1.35z"/>
+        </svg>
+        LINE
+      </button>
+      <button
         @click="handleDownloadPDF"
         class="px-4 py-2 rounded-lg bg-primary-500 text-white hover:bg-primary-600 transition-colors flex items-center gap-2"
       >
@@ -787,6 +807,104 @@ const handleDownloadPDF = () => {
         })
       })
     })
+  }
+}
+
+// 產生 iCal 格式的課表資料
+const generateICalData = (): string => {
+  const now = new Date()
+  const events: string[] = []
+
+  // iCal 檔案頭
+  events.push('BEGIN:VCALENDAR')
+  events.push('VERSION:2.0')
+  events.push('PRODID:-//TimeLedger//課表管理系統//ZH')
+  events.push('CALSCALE:GREGORIAN')
+  events.push('METHOD:PUBLISH')
+  events.push('X-WR-CALNAME:TimeLedger 課表')
+  events.push(`DTSTART:${now.toISOString().replace(/[-:]/g, '').split('.')[0]}Z`)
+  events.push(`DTEND:${now.toISOString().replace(/[-:]/g, '').split('.')[0]}Z`)
+
+  // 產生每個課程事件
+  scheduleDays.value.forEach(day => {
+    day.items.forEach(item => {
+      const [startHour, startMinute] = item.start_time.split(':').map(Number)
+      const [endHour, endMinute] = item.end_time.split(':').map(Number)
+
+      const dayDate = new Date(day.date)
+      const startDate = new Date(dayDate)
+      startDate.setHours(startHour, startMinute, 0, 0)
+      const endDate = new Date(dayDate)
+      endDate.setHours(endHour, endMinute, 0, 0)
+
+      const formatICalDate = (date: Date) => {
+        return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
+      }
+
+      const uid = `${item.id}-${day.date}@timeledger`
+
+      events.push('BEGIN:VEVENT')
+      events.push(`UID:${uid}`)
+      events.push(`DTSTAMP:${formatICalDate(now)}`)
+      events.push(`DTSTART:${formatICalDate(startDate)}`)
+      events.push(`DTEND:${formatICalDate(endDate)}`)
+      events.push(`SUMMARY:${item.title}`)
+      if (item.center_name) {
+        events.push(`LOCATION:${item.center_name}`)
+      }
+      if (item.status && item.status !== 'APPROVED') {
+        events.push(`STATUS:CONFIRMED`)
+      }
+      events.push('END:VEVENT')
+    })
+  })
+
+  // iCal 檔案尾
+  events.push('END:VCALENDAR')
+
+  return events.join('\r\n')
+}
+
+// 下載 iCal 檔案
+const handleDownloadICal = () => {
+  const icalData = generateICalData()
+  const blob = new Blob([icalData], { type: 'text/calendar;charset=utf-8' })
+  const link = document.createElement('a')
+  link.href = URL.createObjectURL(blob)
+  link.download = `課表-${weekLabel.value}.ics`
+  link.click()
+  URL.revokeObjectURL(link.href)
+}
+
+// 分享到 LINE（產生圖片後開啟 LINE）
+const handleShareLINE = async () => {
+  if (!scheduleRef.value) return
+
+  try {
+    const { default: html2canvas } = await import('html2canvas')
+    const canvas = await html2canvas(scheduleRef.value, {
+      backgroundColor: getBackgroundColor(),
+      scale: 2,
+    })
+
+    // 將圖片轉為 base64
+    const imageData = canvas.toDataURL('image/png')
+
+    // 嘗試開啟 LINE（會失敗但會複製圖片）
+    const lineUrl = `https://line.me/R/msg/text/?${encodeURIComponent(`${authStore.user?.name} 的課表 - ${weekLabel.value}`)}`
+    window.open(lineUrl, '_blank')
+
+    // 提示使用者手動分享
+    notificationUI.showSuccess('圖片已產生，請在 LINE 中貼上')
+
+    // 也可以選擇下載圖片讓使用者手動分享
+    const link = document.createElement('a')
+    link.href = imageData
+    link.download = `課表-${weekLabel.value}-${Date.now()}.png`
+    link.click()
+  } catch (error) {
+    console.error('Failed to share to LINE:', error)
+    notificationUI.showError('分享失敗，請嘗試下載圖片')
   }
 }
 

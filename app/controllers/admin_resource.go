@@ -1540,11 +1540,12 @@ type UpsertTeacherNoteRequest struct {
 // @Produce json
 // @Security BearerAuth
 // @Success 200 {object} global.ApiResponse{data=[]TeacherResponse}
-// @Router /api/v1/admin/centers/{id}/teachers [get]
+// @Router /api/v1/admin/teachers [get]
 func (ctl *AdminResourceController) GetTeachers(ctx *gin.Context) {
-	centerID, err := ctl.getUintParam(ctx, "id")
-	if err != nil {
-		ctl.respondError(ctx, global.BAD_REQUEST, "Invalid center ID")
+	// 從 JWT Token 取得 center_id
+	centerID := ctl.getCenterID(ctx)
+	if centerID == 0 {
+		ctl.respondError(ctx, global.FORBIDDEN, "Center ID is required")
 		return
 	}
 

@@ -48,7 +48,10 @@
         </div>
 
         <!-- 待審核申請 -->
-        <div class="glass-card p-4">
+        <button
+          @click="navigateToApproval"
+          class="glass-card p-4 text-left w-full hover:bg-white/5 transition-colors"
+        >
           <div class="flex items-center justify-between">
             <div>
               <p class="text-sm text-slate-400">待審核</p>
@@ -63,7 +66,7 @@
           <div class="mt-2 text-xs text-slate-400">
             {{ todayStats.pendingExceptions > 0 ? '點擊查看詳情' : '無待審核項目' }}
           </div>
-        </div>
+        </button>
 
         <!-- 異動提醒 -->
         <div class="glass-card p-4">
@@ -146,6 +149,11 @@ definePageMeta({
 const notificationStore = useNotificationStore()
 const notificationUI = useNotification()
 const router = useRouter()
+
+// 跳轉到審核頁面
+const navigateToApproval = () => {
+  router.push('/admin/approval')
+}
 
 // 視圖模式：'calendar' | 'teacher_matrix' | 'room_matrix'
 const viewMode = ref<'calendar' | 'teacher_matrix' | 'room_matrix'>('calendar')

@@ -37,6 +37,11 @@ func (s *authService) AdminLogin(ctx context.Context, email, password string) (L
 		return LoginResponse{}, errors.New("admin account is inactive")
 	}
 
+	// 驗證 center_id 必須有效
+	if admin.CenterID == 0 {
+		return LoginResponse{}, errors.New("admin account is not associated with any center")
+	}
+
 	if err := bcrypt.CompareHashAndPassword([]byte(admin.PasswordHash), []byte(password)); err != nil {
 		return LoginResponse{}, errors.New("invalid password")
 	}

@@ -1,20 +1,56 @@
 <template>
   <div class="flex items-center justify-between mb-6">
-    <h2 class="text-xl font-semibold text-white">例外申請</h2>
-    <button @click="showModal = true" class="px-4 py-2 rounded-lg bg-primary-500 text-white hover:bg-primary-600 transition-colors">
+    <div>
+      <h2 class="text-xl font-semibold text-white">例外申請</h2>
+      <p class="text-sm text-slate-400 mt-1">管理您的請假和調課申請</p>
+    </div>
+    <button
+      @click="showModal = true"
+      class="px-4 py-2 rounded-lg bg-primary-500 text-white hover:bg-primary-600 transition-colors flex items-center gap-2"
+    >
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+      </svg>
       新增申請
     </button>
   </div>
 
-  <div class="flex gap-2 mb-4">
+  <!-- 申請統計摘要 -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+    <div class="glass-card p-4">
+      <p class="text-sm text-slate-400">全部申請</p>
+      <p class="text-2xl font-bold text-white mt-1">{{ teacherStore.exceptions.length }}</p>
+    </div>
+    <div class="glass-card p-4">
+      <p class="text-sm text-slate-400">待審核</p>
+      <p class="text-2xl font-bold text-warning-500 mt-1">{{ statusCounts.PENDING }}</p>
+    </div>
+    <div class="glass-card p-4">
+      <p class="text-sm text-slate-400">已核准</p>
+      <p class="text-2xl font-bold text-success-500 mt-1">{{ statusCounts.APPROVED }}</p>
+    </div>
+    <div class="glass-card p-4">
+      <p class="text-sm text-slate-400">已拒絕</p>
+      <p class="text-2xl font-bold text-critical-500 mt-1">{{ statusCounts.REJECTED }}</p>
+    </div>
+  </div>
+
+  <div class="flex gap-2 mb-4 overflow-x-auto pb-2">
     <button
       v-for="status in statusFilters"
       :key="status.value"
       @click="currentFilter = status.value"
-      class="px-3 py-1.5 rounded-lg text-sm font-medium transition-all"
+      class="px-3 py-1.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap"
       :class="currentFilter === status.value ? 'bg-primary-500 text-white' : 'bg-white/5 text-slate-400 hover:text-white'"
     >
       {{ status.label }}
+      <span
+        v-if="status.count > 0"
+        class="ml-1 px-1.5 py-0.5 rounded-full text-xs"
+        :class="currentFilter === status.value ? 'bg-white/20' : 'bg-white/10'"
+      >
+        {{ status.count }}
+      </span>
     </button>
   </div>
 
@@ -33,19 +69,67 @@
             >
               {{ getStatusText(exception.status) }}
             </span>
+            <span
+              class="px-2 py-0.5 rounded-full text-xs font-medium"
+              :class="exception.type === 'CANCEL' ? 'bg-critical-500/20 text-critical-500' : 'bg-secondary-500/20 text-secondary-500'"
+            >
+              {{ exception.type === 'CANCEL' ? '停課' : '改期' }}
+            </span>
             <span class="text-xs text-slate-500">
               {{ formatDateTime(exception.created_at) }}
             </span>
           </div>
           <div class="text-white font-medium mb-1">
-            {{ exception.type === 'CANCEL' ? '停課' : '改期' }} - {{ exception.original_date }}
+            {{ exception.original_date }}
           </div>
-          <p class="text-sm text-slate-400">{{ exception.reason }}</p>
-          <div v-if="exception.type === 'RESCHEDULE'" class="mt-2 text-sm text-slate-300">
-            新時間: {{ formatDateTime(exception.new_start_at || '') }} - {{ formatDateTime(exception.new_end_at || '') }}
+          <p class="text-sm text-slate-400 line-clamp-2">{{ exception.reason }}</p>
+
+          <!-- 詳細資訊展開區塊 -->
+          <div v-if="expandedException === exception.id" class="mt-4 p-3 bg-white/5 rounded-lg">
+            <div class="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <p class="text-slate-400">申請時間</p>
+                <p class="text-white">{{ formatDateTime(exception.created_at) }}</p>
+              </div>
+              <div v-if="exception.type === 'RESCHEDULE'">
+                <p class="text-slate-400">新時間</p>
+                <p class="text-white">{{ formatDateTime(exception.new_start_at || '') }} - {{ formatDateTime(exception.new_end_at || '') }}</p>
+              </div>
+              <div v-if="exception.new_teacher_name">
+                <p class="text-slate-400">代課老師</p>
+                <p class="text-white">{{ exception.new_teacher_name }}</p>
+              </div>
+              <div v-if="exception.reviewed_by">
+                <p class="text-slate-400">審核人</p>
+                <p class="text-white">{{ exception.reviewed_by }}</p>
+              </div>
+              <div v-if="exception.reviewed_at">
+                <p class="text-slate-400">審核時間</p>
+                <p class="text-white">{{ formatDateTime(exception.reviewed_at) }}</p>
+              </div>
+              <div v-if="exception.review_note">
+                <p class="text-slate-400">審核回覆</p>
+                <p class="text-white">{{ exception.review_note }}</p>
+              </div>
+            </div>
           </div>
         </div>
         <div class="flex gap-2">
+          <button
+            @click="toggleExpand(exception.id)"
+            class="p-2 rounded-lg hover:bg-white/10 transition-colors"
+            title="查看詳情"
+          >
+            <svg
+              class="w-4 h-4 text-slate-400 transition-transform"
+              :class="expandedException === exception.id ? 'rotate-180' : ''"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
           <button
             v-if="exception.status === 'PENDING'"
             @click="handleRevoke(exception.id)"
@@ -57,8 +141,48 @@
       </div>
     </div>
 
-    <div v-if="filteredExceptions.length === 0" class="text-center py-12 text-slate-500">
-      暫無例外申請紀錄
+    <div v-if="teacherStore.loading" class="space-y-3">
+    <!-- 統計摘要骨架屏 -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div v-for="i in 4" :key="i" class="glass-card p-4 animate-pulse">
+        <div class="h-3 w-16 bg-white/10 rounded mb-2"></div>
+        <div class="h-7 w-12 bg-white/10 rounded"></div>
+      </div>
+    </div>
+
+    <!-- 篩選按鈕骨架屏 -->
+    <div class="flex gap-2 overflow-x-auto pb-2">
+      <div v-for="i in 5" :key="i" class="h-9 w-20 bg-white/10 rounded-lg flex-shrink-0 animate-pulse"></div>
+    </div>
+
+    <!-- 申請列表骨架屏 -->
+    <div v-for="i in 3" :key="i" class="glass-card p-4 animate-pulse">
+      <div class="flex items-start justify-between">
+        <div class="flex-1">
+          <div class="flex items-center gap-2 mb-2">
+            <div class="w-16 h-5 bg-white/10 rounded-full"></div>
+            <div class="w-24 h-3 bg-white/10 rounded"></div>
+          </div>
+          <div class="h-4 w-32 bg-white/10 rounded mb-1"></div>
+          <div class="h-3 w-48 bg-white/10 rounded"></div>
+        </div>
+        <div class="w-12 h-8 bg-white/10 rounded"></div>
+      </div>
+    </div>
+  </div>
+
+  <div v-else-if="filteredExceptions.length === 0" class="text-center py-12 text-slate-500 glass-card">
+      <svg class="w-16 h-16 mx-auto mb-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+      </svg>
+      <p class="text-lg mb-2">暫無例外申請紀錄</p>
+      <p class="text-sm text-slate-500 mb-4">點擊上方按鈕新增申請</p>
+      <button
+        @click="showModal = true"
+        class="px-4 py-2 rounded-lg bg-primary-500 text-white hover:bg-primary-600 transition-colors"
+      >
+        新增申請
+      </button>
     </div>
   </div>
 
@@ -83,42 +207,49 @@ import type { ScheduleException } from '~/types'
  })
 
  const teacherStore = useTeacherStore()
-const sidebarStore = useSidebar()
-const notificationUI = useNotification()
-const { confirm: alertConfirm } = useAlert()
-const showModal = ref(false)
-const currentFilter = ref('')
+ const sidebarStore = useSidebar()
+ const notificationUI = useNotification()
+ const { confirm: alertConfirm } = useAlert()
+ const showModal = ref(false)
+ const currentFilter = ref('')
+ const expandedException = ref<number | null>(null)
 
-const statusFilters = [
-  { value: '', label: '全部' },
-  { value: 'PENDING', label: '待審核' },
-  { value: 'APPROVED', label: '已核准' },
-  { value: 'REJECTED', label: '已拒絕' },
-  { value: 'REVOKED', label: '已撤回' },
-]
+ const statusFilters = computed(() => {
+   const counts = {
+     '': teacherStore.exceptions.length,
+     PENDING: teacherStore.exceptions.filter(e => e.status === 'PENDING').length,
+     APPROVED: teacherStore.exceptions.filter(e => e.status === 'APPROVED' || e.status === 'APPROVE').length,
+     REJECTED: teacherStore.exceptions.filter(e => e.status === 'REJECTED' || e.status === 'REJECT').length,
+     REVOKED: teacherStore.exceptions.filter(e => e.status === 'REVOKED').length,
+   }
+   return [
+     { value: '', label: '全部', count: counts[''] },
+     { value: 'PENDING', label: '待審核', count: counts.PENDING },
+     { value: 'APPROVED', label: '已核准', count: counts.APPROVED },
+     { value: 'REJECTED', label: '已拒絕', count: counts.REJECTED },
+     { value: 'REVOKED', label: '已撤回', count: counts.REVOKED },
+   ]
+ })
 
-const centers = computed(() => {
-  return teacherStore.centers.map(m => ({
-    center_id: m.center_id,
-    center_name: m.center_name || '',
-  }))
-})
+ const statusCounts = computed(() => ({
+   PENDING: teacherStore.exceptions.filter(e => e.status === 'PENDING').length,
+   APPROVED: teacherStore.exceptions.filter(e => e.status === 'APPROVED' || e.status === 'APPROVE').length,
+   REJECTED: teacherStore.exceptions.filter(e => e.status === 'REJECTED' || e.status === 'REJECT').length,
+   REVOKED: teacherStore.exceptions.filter(e => e.status === 'REVOKED').length,
+ }))
 
-const scheduleRules = ref<Array<{
-  id: number
-  title: string
-  original_date: string
-  start_time: string
-  end_time: string
-}>>([])
+ const filteredExceptions = computed(() => {
+   if (!currentFilter.value) return teacherStore.exceptions
+   return teacherStore.exceptions.filter(e => e.status === currentFilter.value || e.status === currentFilter.value + 'D')
+ })
 
-const filteredExceptions = computed(() => {
-  return teacherStore.exceptions
-})
+ const toggleExpand = (id: number) => {
+   expandedException.value = expandedException.value === id ? null : id
+ }
 
-const fetchExceptions = async () => {
-  await teacherStore.fetchExceptions(currentFilter.value || undefined)
-}
+ const fetchExceptions = async () => {
+   await teacherStore.fetchExceptions(currentFilter.value || undefined)
+ }
 
 // 监听筛选器变化，重新获取数据
 watch(currentFilter, async () => {

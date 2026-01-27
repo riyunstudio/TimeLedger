@@ -13,10 +13,56 @@
       </button>
     </div>
 
-    <div v-if="rooms.length === 0" class="text-center py-12 text-slate-500 glass-card">
-      尚未添加教室
+    <!-- 骨架屏載入狀態 -->
+    <div v-if="loading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div
+        v-for="i in 6"
+        :key="i"
+        class="glass-card p-5"
+      >
+        <div class="animate-pulse">
+          <div class="flex items-start justify-between mb-3">
+            <div class="flex-1">
+              <div class="h-5 w-32 bg-white/10 rounded mb-2"></div>
+              <div class="h-4 w-20 bg-white/10 rounded"></div>
+            </div>
+            <div class="flex gap-2">
+              <div class="w-8 h-8 bg-white/10 rounded-lg"></div>
+              <div class="w-8 h-8 bg-white/10 rounded-lg"></div>
+            </div>
+          </div>
+          <div class="space-y-2">
+            <div class="flex items-center gap-2">
+              <div class="w-5 h-5 bg-white/10 rounded"></div>
+              <div class="h-4 w-16 bg-white/10 rounded"></div>
+            </div>
+            <div class="flex gap-2">
+              <div class="h-6 w-16 bg-white/10 rounded-full"></div>
+              <div class="h-6 w-16 bg-white/10 rounded-full"></div>
+            </div>
+          </div>
+          <div class="mt-3 pt-3 border-t border-white/10">
+            <div class="h-3 w-24 bg-white/10 rounded"></div>
+          </div>
+        </div>
+      </div>
     </div>
 
+    <!-- 空狀態 -->
+    <div v-else-if="rooms.length === 0" class="text-center py-12 text-slate-500 glass-card">
+      <svg class="w-16 h-16 mx-auto mb-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+      </svg>
+      <p class="mb-4">尚未添加教室</p>
+      <button
+        @click="showCreateModal = true"
+        class="px-4 py-2 rounded-lg bg-primary-500 text-white hover:bg-primary-600 transition-colors"
+      >
+        新增第一間教室
+      </button>
+    </div>
+
+    <!-- 教室列表 -->
     <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       <div
         v-for="room in rooms"

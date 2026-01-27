@@ -26,7 +26,7 @@
       <nav class="p-4 space-y-2">
         <NuxtLink
           to="/teacher/dashboard"
-          class="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors"
+          class="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors relative"
           :class="{ 'bg-primary-500/20 text-primary-500': route.path === '/teacher/dashboard' }"
           @click="sidebarStore.close()"
         >
@@ -34,6 +34,12 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
           </svg>
           <span>我的課表</span>
+          <span
+            v-if="pendingCount > 0"
+            class="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-critical-500 text-white text-xs flex items-center justify-center"
+          >
+            {{ pendingCount > 9 ? '9+' : pendingCount }}
+          </span>
         </NuxtLink>
 
         <NuxtLink
@@ -50,7 +56,7 @@
 
         <NuxtLink
           to="/teacher/exceptions"
-          class="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors"
+          class="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors relative"
           :class="{ 'bg-primary-500/20 text-primary-500': route.path === '/teacher/exceptions' }"
           @click="sidebarStore.close()"
         >
@@ -58,6 +64,12 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
           <span>例外申請</span>
+          <span
+            v-if="pendingExceptions > 0"
+            class="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-warning-500 text-white text-xs flex items-center justify-center"
+          >
+            {{ pendingExceptions > 9 ? '9+' : pendingExceptions }}
+          </span>
         </NuxtLink>
 
         <NuxtLink
@@ -82,6 +94,20 @@
           <span>登出</span>
         </button>
       </nav>
+
+      <!-- 快速統計 -->
+      <div class="absolute bottom-0 left-0 right-0 p-4 border-t border-white/10 bg-slate-900/95">
+        <div class="grid grid-cols-2 gap-3 text-center">
+          <div>
+            <p class="text-2xl font-bold text-white">{{ pendingExceptions }}</p>
+            <p class="text-xs text-slate-400">待審核</p>
+          </div>
+          <div>
+            <p class="text-2xl font-bold text-white">{{ pendingCount }}</p>
+            <p class="text-xs text-slate-400">待處理</p>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -92,7 +118,21 @@ import { alertConfirm } from '~/composables/useAlert'
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+const teacherStore = useTeacherStore()
 const sidebarStore = useSidebar()
+
+// 待審核申請數
+const pendingExceptions = computed(() => {
+  return teacherStore.exceptions.filter(e => e.status === 'PENDING').length
+})
+
+// 待處理事項總數
+const pendingCount = computed(() => {
+  let count = pendingExceptions.value
+  // 可擴展：加入其他待處理事項
+  // 例如：未讀通知、待確認的邀請等
+  return count
+})
 
 const handleLogout = async () => {
   if (await alertConfirm('確定要登出嗎？')) {

@@ -13,6 +13,22 @@
     <p v-if="authStore.user?.bio" class="text-slate-400">
       {{ authStore.user?.bio }}
     </p>
+
+    <!-- 檔案完整度指標 -->
+    <div class="mt-4 max-w-xs mx-auto">
+      <div class="flex items-center justify-between text-xs text-slate-400 mb-1">
+        <span>檔案完整度</span>
+        <span class="text-white font-medium">{{ profileCompleteness }}%</span>
+      </div>
+      <div class="h-2 bg-white/10 rounded-full overflow-hidden">
+        <div
+          class="h-full rounded-full transition-all duration-500"
+          :class="getCompletenessColor()"
+          :style="{ width: `${profileCompleteness}%` }"
+        ></div>
+      </div>
+      <p class="text-xs text-slate-500 mt-1">{{ getCompletenessHint() }}</p>
+    </div>
   </div>
 
   <div class="space-y-4">
@@ -159,40 +175,82 @@
  })
 
  const authStore = useAuthStore()
-const teacherStore = useTeacherStore()
-const sidebarStore = useSidebar()
-const notificationUI = useNotification()
+ const teacherStore = useTeacherStore()
+ const sidebarStore = useSidebar()
+ const notificationUI = useNotification()
 
-const showProfileModal = ref(false)
-const showHiringModal = ref(false)
-const showSkillsModal = ref(false)
-const showExportModal = ref(false)
+ const showProfileModal = ref(false)
+ const showHiringModal = ref(false)
+ const showSkillsModal = ref(false)
+ const showExportModal = ref(false)
 
-const getMembershipStatusClass = (status: string): string => {
-  switch (status) {
-    case 'ACTIVE':
-      return 'bg-success-500/20 text-success-500'
-    case 'INVITED':
-      return 'bg-warning-500/20 text-warning-500'
-    case 'INACTIVE':
-      return 'bg-slate-500/20 text-slate-400'
-    default:
-      return 'bg-slate-500/20 text-slate-400'
-  }
-}
+ // 計算檔案完整度
+ const profileCompleteness = computed(() => {
+   let score = 0
+   const user = authStore.user
+   const teacher = teacherStore.centers.length > 0 ? teacherStore.centers[0] : null
 
-const getMembershipStatusText = (status: string): string => {
-  switch (status) {
-    case 'ACTIVE':
-      return '已加入'
-    case 'INVITED':
-      return '邀請中'
-    case 'INACTIVE':
-      return '已離開'
-    default:
-      return status
-  }
-}
+   // 基本資料（30分）
+   if (user?.name) score += 10
+   if (user?.email) score += 10
+   if (user?.phone) score += 10
+
+   // 簡介（20分）
+   if (user?.bio && user.bio.length >= 10) score += 20
+
+   // 技能（30分）
+   if (teacher?.skills && teacher.skills.length > 0) {
+     score += Math.min(teacher.skills.length * 10, 30)
+   }
+
+   // 證照（20分）
+   if (teacher?.certificates && teacher.certificates.length > 0) {
+     score += Math.min(teacher.certificates.length * 5, 20)
+   }
+
+   return Math.min(score, 100)
+ })
+
+ const getCompletenessColor = () => {
+   const score = profileCompleteness.value
+   if (score >= 80) return 'bg-success-500'
+   if (score >= 50) return 'bg-warning-500'
+   return 'bg-critical-500'
+ }
+
+ const getCompletenessHint = () => {
+   const score = profileCompleteness.value
+   if (score >= 100) return '太棒了！您的檔案已經完整'
+   if (score >= 80) return '很不錯！再完善一些就能獲得更好的曝光'
+   if (score >= 50) return '請補完基本資料和技能，讓更多人認識您'
+   return '建議您先填寫基本資料和簡介'
+ }
+
+ const getMembershipStatusClass = (status: string): string => {
+   switch (status) {
+     case 'ACTIVE':
+       return 'bg-success-500/20 text-success-500'
+     case 'INVITED':
+       return 'bg-warning-500/20 text-warning-500'
+     case 'INACTIVE':
+       return 'bg-slate-500/20 text-slate-400'
+     default:
+       return 'bg-slate-500/20 text-slate-400'
+   }
+ }
+
+ const getMembershipStatusText = (status: string): string => {
+   switch (status) {
+     case 'ACTIVE':
+       return '已加入'
+     case 'INVITED':
+       return '邀請中'
+     case 'INACTIVE':
+       return '已離開'
+     default:
+       return status
+   }
+ }
 
 onMounted(() => {
   teacherStore.fetchCenters()
