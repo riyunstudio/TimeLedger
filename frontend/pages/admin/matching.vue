@@ -377,10 +377,8 @@
         :popular-tags="['古典', '兒童', '成人', '入門', '進階']"
         :active-skills="activeSkillFilters"
         :active-tags="activeTagFilters"
-        :active-rating="activeRatingFilter"
         @filter-by-skill="onSkillFilter"
         @filter-by-tag="onTagFilter"
-        @filter-by-rating="onRatingFilter"
         @clear-all="clearQuickFilters"
       />
 
@@ -395,7 +393,6 @@
             class="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white text-sm"
           >
             <option value="relevance">相關程度</option>
-            <option value="rating">評分最高</option>
             <option value="skills">技能最多</option>
             <option value="name">姓名順序</option>
           </select>
@@ -678,7 +675,6 @@ const talentSortBy = ref('relevance')
 const talentSortOrder = ref<'asc' | 'desc'>('desc')
 const activeSkillFilters = ref<string[]>([])
 const activeTagFilters = ref<string[]>([])
-const activeRatingFilter = ref(0)
 
 // 統計資料 - 從 API 載入
 const talentStats = ref({
@@ -734,49 +730,23 @@ const fetchTalentStats = async () => {
     }
   } catch (error) {
     console.error('Failed to fetch talent stats:', error)
-    // 使用預設假資料
-    useDefaultStats()
+    // 發生錯誤時清空統計
+    talentStats.value = {
+      totalCount: 0,
+      openHiringCount: 0,
+      memberCount: 0,
+      averageRating: 0,
+      monthlyChange: 0,
+      monthlyTrend: [],
+      pendingInvites: 0,
+      acceptedInvites: 0,
+      declinedInvites: 0
+    }
+    cityDistribution.value = []
+    topSkills.value = []
+    skillDistribution.value = []
+    popularSearchSkills.value = []
   }
-}
-
-// 使用預設統計資料
-const useDefaultStats = () => {
-  talentStats.value = {
-    totalCount: 156,
-    openHiringCount: 89,
-    memberCount: 45,
-    averageRating: 4.2,
-    monthlyChange: 12,
-    monthlyTrend: [65, 72, 78, 85, 92, 88, 95],
-    pendingInvites: 23,
-    acceptedInvites: 45,
-    declinedInvites: 8
-  }
-  cityDistribution.value = [
-    { name: '台北市', count: 52 },
-    { name: '新北市', count: 38 },
-    { name: '桃園市', count: 24 },
-    { name: '台中市', count: 22 },
-    { name: '高雄市', count: 20 }
-  ]
-  topSkills.value = [
-    { name: '瑜珈', count: 45 },
-    { name: '鋼琴', count: 38 },
-    { name: '舞蹈', count: 32 },
-    { name: '美術', count: 28 },
-    { name: '英語', count: 25 }
-  ]
-  skillDistribution.value = [
-    { name: '瑜珈', count: 45 },
-    { name: '鋼琴', count: 38 },
-    { name: '舞蹈', count: 32 },
-    { name: '美術', count: 28 },
-    { name: '英語', count: 25 },
-    { name: '書法', count: 18 },
-    { name: '烹飪', count: 15 },
-    { name: '程式', count: 12 }
-  ]
-  popularSearchSkills.value = ['瑜珈', '鋼琴', '舞蹈', '美術', '英語', '書法']
 }
 
 // 篩選後的結果
@@ -797,26 +767,12 @@ const filteredResults = computed(() => {
     )
   }
   
-  // 評分篩選
-  if (activeRatingFilter.value > 0) {
-    result = result.filter(t => {
-      // 模擬評分欄位
-      const rating = t.id % 5 + 1
-      return rating >= activeRatingFilter.value
-    })
-  }
-  
   // 排序
   result.sort((a, b) => {
     let comparison = 0
     switch (talentSortBy.value) {
       case 'name':
         comparison = a.name.localeCompare(b.name)
-        break
-      case 'rating':
-        const ratingA = a.id % 5 + 1
-        const ratingB = b.id % 5 + 1
-        comparison = ratingA - ratingB
         break
       case 'skills':
         const skillsA = a.skills?.length || 0
@@ -1081,53 +1037,20 @@ const searchTalent = async (query?: string) => {
       `/admin/smart-matching/talent/search?${params.toString()}`
     )
     
-    // 如果沒有結果，產生模擬資料用於展示
-    if (!response.datas || response.datas.length === 0) {
-      talentResults.value = generateMockTalentResults()
-    } else {
-      talentResults.value = response.datas
-    }
-    
+    // 如果沒有結果，顯示空狀態
+    talentResults.value = response.datas || []
+
     // 顯示統計面板
     showStats.value = true
   } catch (error) {
     console.error('Failed to search talent:', error)
-    // 產生模擬資料用於展示
-    talentResults.value = generateMockTalentResults()
+    // 發生錯誤時顯示空結果
+    talentResults.value = []
     showStats.value = true
+    await alertError('搜尋人才失敗，請稍後再試')
   } finally {
     talentSearching.value = false
   }
-}
-
-// 產生模擬人才資料（用於展示）
-const generateMockTalentResults = (): TalentResult[] => {
-  const names = ['林雅筑', '陳志明', '王小華', '李美玲', '張國榮', '劉德華', '周杰倫', '蔡依林', '王力宏', '徐佳瑩']
-  const cities = ['台北市', '新北市', '桃園市', '台中市', '高雄市']
-  const skills = [
-    { name: '瑜珈', category: '運動' },
-    { name: '鋼琴', category: '音樂' },
-    { name: '舞蹈', category: '藝術' },
-    { name: '美術', category: '藝術' },
-    { name: '英語', category: '語言' },
-    { name: '書法', category: '傳統' },
-    { name: '烹飪', category: '生活' },
-    { name: '游泳', category: '運動' }
-  ]
-  const tags = ['古典', '兒童', '成人', '入門', '進階', '專業']
-  
-  return names.map((name, index) => ({
-    id: index + 1,
-    name,
-    bio: `${name} 是一位專業的老師，擁有豐富的教學經驗。`,
-    city: cities[index % cities.length],
-    district: '未知區',
-    skills: skills.slice(0, Math.floor(Math.random() * 4) + 2).map(s => ({ ...s })),
-    personal_hashtags: tags.slice(0, Math.floor(Math.random() * 3) + 1),
-    is_open_to_hiring: index % 3 !== 0,
-    is_member: index % 4 === 0,
-    public_contact_info: index % 3 !== 0 ? 'LINE: @example' : undefined
-  }))
 }
 
 // 搜尋建議選取
@@ -1166,16 +1089,10 @@ const onTagFilter = (tag: string) => {
   }
 }
 
-// 評分篩選
-const onRatingFilter = (rating: number) => {
-  activeRatingFilter.value = activeRatingFilter.value === rating ? 0 : rating
-}
-
 // 清除快速篩選
 const clearQuickFilters = () => {
   activeSkillFilters.value = []
   activeTagFilters.value = []
-  activeRatingFilter.value = 0
 }
 
 // 人才篩選面板 - 套用篩選
@@ -1250,13 +1167,13 @@ const viewTeacherTimeline = async (teacher: MatchResult) => {
         room_name: s.room_name || '未指定教室'
       }))
     } else {
-      // 使用假資料
-      teacherSessions.value = generateMockSessions(teacher.teacher_id)
+      // 沒有課表資料
+      teacherSessions.value = []
     }
   } catch (error) {
     console.error('Failed to fetch teacher sessions:', error)
-    // 使用假資料
-    teacherSessions.value = generateMockSessions(teacher.teacher_id)
+    teacherSessions.value = []
+    await alertError('取得老師課表失敗')
   }
 
   // 取得替代時段建議
@@ -1268,7 +1185,8 @@ const viewTeacherTimeline = async (teacher: MatchResult) => {
 // 取得替代時段建議
 const fetchAlternativeSlots = async (teacher: MatchResult) => {
   if (!form.value.start_time || !form.value.end_time) {
-    alternativeSlots.value = generateAlternativeSlots()
+    // 沒有指定時間時，顯示空替代時段
+    alternativeSlots.value = []
     return
   }
 
@@ -1295,77 +1213,12 @@ const fetchAlternativeSlots = async (teacher: MatchResult) => {
         conflictReason: slot.conflict_reason
       }))
     } else {
-      alternativeSlots.value = generateAlternativeSlots()
+      alternativeSlots.value = []
     }
   } catch (error) {
     console.error('Failed to fetch alternative slots:', error)
-    alternativeSlots.value = generateAlternativeSlots()
+    alternativeSlots.value = []
   }
-}
-
-// 產生模擬課表資料
-const generateMockSessions = (teacherId: number): Session[] => {
-  const sessions: Session[] = []
-  const startDate = new Date(form.value.start_time)
-  
-  // 產生當天及前後的課程
-  for (let day = -2; day <= 2; day++) {
-    const date = new Date(startDate)
-    date.setDate(date.getDate() + day)
-    
-    // 隨機產生 1-3 個課程
-    const numSessions = Math.floor(Math.random() * 3) + 1
-    for (let i = 0; i < numSessions; i++) {
-      const hour = 9 + i * 2
-      const sessionStart = new Date(date)
-      sessionStart.setHours(hour, 0, 0, 0)
-      const sessionEnd = new Date(date)
-      sessionEnd.setHours(hour + 1, 30, 0, 0)
-      
-      sessions.push({
-        id: sessions.length + 1,
-        course_name: ['瑜珈基礎', '鋼琴入門', '舞蹈課程'][Math.floor(Math.random() * 3)],
-        start_time: sessionStart.toISOString(),
-        end_time: sessionEnd.toISOString(),
-        room_name: ['A教室', 'B教室', '多功能廳'][Math.floor(Math.random() * 3)]
-      })
-    }
-  }
-  
-  return sessions
-}
-
-// 產生替代時段建議
-const generateAlternativeSlots = (): AlternativeSlot[] => {
-  const slots: AlternativeSlot[] = []
-  const startDate = new Date(form.value.start_time)
-  
-  for (let day = 0; day < 7; day++) {
-    const date = new Date(startDate)
-    date.setDate(date.getDate() + day)
-    
-    // 產生 3 個時段
-    const times = ['09:00-10:30', '14:00-15:30', '16:00-17:30']
-    times.forEach((time, index) => {
-      const [start, end] = time.split('-')
-      const slotDate = date.toISOString().split('T')[0]
-      
-      slots.push({
-        date: slotDate,
-        dateLabel: `${date.getMonth() + 1}/${date.getDate()}`,
-        start,
-        end,
-        available: Math.random() > 0.3, // 70% 機率可用
-        availableRooms: [
-          { id: 1, name: 'A教室' },
-          { id: 2, name: 'B教室' }
-        ].slice(0, Math.floor(Math.random() * 2) + 1),
-        conflictReason: Math.random() > 0.7 ? '與現有課程衝突' : undefined
-      })
-    })
-  }
-  
-  return slots.slice(0, 8) // 只顯示前 8 個
 }
 
 // 選擇替代時段
