@@ -286,7 +286,7 @@ const handleRuleUpdated = async () => {
   selectedSession.value = null
 }
 
-const timeSlots = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
+const timeSlots = [0, 1, 2, 3, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
 
 const weekDays = [
   { value: 1, name: '週一' },
@@ -403,9 +403,17 @@ const getSessionStyle = (session: any) => {
   const [startHour, startMin] = session.start_time.split(':').map(Number)
   const [endHour, endMin] = session.end_time.split(':').map(Number)
 
-  // 從 6:00 開始計算偏移
-  const startOffset = (startHour - 6) * 60 + startMin
-  const duration = (endHour - startHour) * 60 + (endMin - startMin)
+  // 處理跨日課程（結束時間早於開始時間）
+  let adjustedEndHour = endHour
+  let duration = (endHour - startHour) * 60 + (endMin - startMin)
+  if (endHour < startHour) {
+    // 跨日：結束時間加 24 小時
+    adjustedEndHour = endHour + 24
+    duration = (adjustedEndHour - startHour) * 60 + (endMin - startMin)
+  }
+
+  // 計算 top 位置（從 0:00 開始）
+  const startOffset = startHour * 60 + startMin
 
   // 計算星期位置（0-6）
   const weekdayIndex = session.weekday - 1

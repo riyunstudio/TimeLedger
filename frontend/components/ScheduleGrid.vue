@@ -443,7 +443,7 @@ const weekLabel = computed(() => {
   return `${start} - ${end}`
 })
 
-const timeSlots = [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]
+const timeSlots = [0, 1, 2, 3, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
 
 const weekDays = [
   { value: 1, name: '週一' },
