@@ -163,7 +163,7 @@
         </div>
 
         <!-- 課程卡片層 - 絕對定位 -->
-        <div class="absolute top-0 left-[80px] right-0 bottom-0 pointer-events-none">
+        <div class="absolute top-0 left-0 right-0 bottom-0 pointer-events-none">
           <div
             v-for="schedule in displaySchedules"
             :key="schedule.key"
@@ -627,9 +627,12 @@ const formatTime = (hour: number): string => {
 const getScheduleStyle = (schedule: any) => {
   const { weekday, start_hour, start_minute, duration_minutes } = schedule
 
-  // 計算水平位置
+  // 計算水平位置 - 對齊到星期網格
+  // 網格結構：時間列(80px) + 7天網格
+  // 卡片容器 left-[80px] 是從時間列右邊開始
+  // 卡片需要額外加上 TIME_COLUMN_WIDTH 才能對齊到正確的星期列
   const dayIndex = weekday - 1 // 0-6
-  const left = dayIndex * slotWidth.value
+  const left = TIME_COLUMN_WIDTH + (dayIndex * slotWidth.value)
 
   // 計算垂直位置
   // 計算 start_hour 前面有多少個時段格子
