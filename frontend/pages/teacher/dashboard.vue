@@ -792,8 +792,34 @@ const getScheduleItemsAt = (date: string, hour: number): ScheduleItem[] => {
   const hourNum = hour
   return items.filter(item => {
     const startHour = parseInt(item.start_time.split(':')[0])
+    const startMin = parseInt(item.start_time.split(':')[1])
     const endHour = parseInt(item.end_time.split(':')[0])
-    return hourNum >= startHour && hourNum < endHour
+    const endMin = parseInt(item.end_time.split(':')[1])
+
+    // 處理跨日課程
+    if (endHour < startHour) {
+      // 跨日課程：檢查是否在當天時間範圍內
+      if (hourNum >= startHour) {
+        // 開始日 22:00 以後：顯示到 24:00
+        item.display_start = item.start_time
+        item.display_end = '24:00'
+        return true
+      } else if (hourNum < endHour) {
+        // 結束日 01:00 以前：顯示從 00:00
+        item.display_start = '00:00'
+        item.display_end = item.end_time
+        return true
+      }
+      return false
+    }
+
+    // 普通課程
+    const inRange = hourNum >= startHour && hourNum < endHour
+    if (inRange) {
+      item.display_start = item.start_time
+      item.display_end = item.end_time
+    }
+    return inRange
   })
 }
 
