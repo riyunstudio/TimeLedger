@@ -38,7 +38,9 @@
           </div>
           <div class="flex justify-between">
             <span class="text-slate-400">時間</span>
-            <span class="text-slate-100">{{ formatTime(props.time ?? 0) }} - {{ formatTime((props.time ?? 0) + 1) }}</span>
+            <span class="text-slate-100">
+              {{ schedule?.start_time }} - {{ schedule?.end_time }}
+            </span>
           </div>
         </div>
       </div>

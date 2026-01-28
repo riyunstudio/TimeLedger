@@ -523,10 +523,105 @@ if (isMidnightEnd || endHour < startHour) {
 
 ---
 
+## 二十、排課週曆顯示修復（2026-01-28）
+
+### 20.1 問題分析
+
+| 問題 | 影響範圍 | 嚴重程度 |
+|:---|:---|:---:|
+| 課程卡片顯示在錯誤的時間格子 | 週曆視圖、老師矩陣、教室矩陣 | 🔴 高 |
+| 19:30 開始的課程顯示在 19:00 格子 | 所有非整點開始的課程 | 🔴 高 |
+| 同一堂課重複顯示在多個格子 | 去重邏輯失效 | 🔴 高 |
+| 跨日課程分割後重複顯示 | 跨日課程顯示異常 | 🟡 中 |
+
+### 20.2 根本原因
+
+1. **時間匹配邏輯錯誤**：`getScheduleAt` 函數使用粗略的小時匹配
+   - 19:30 的課程會同時顯示在多個格子
+
+2. **缺乏去重機制**：後端返回的 expanded schedules 可能包含重複條目
+
+3. **定位計算 Off-By-One 錯誤**：`topSlotIndex` 計算導致位置上移一個格子
+
+### 20.3 解決方案
+
+#### 20.3.1 絕對定位系統
+
+**`frontend/components/ScheduleGrid.vue`**：
+
+```javascript
+// 計算課程卡片樣式（基於實際開始時間和持續時間）
+const getScheduleStyle = (schedule: any) => {
+  const { weekday, start_hour, start_minute, duration_minutes } = schedule
+
+  // 計算水平位置（基於星期）
+  const dayIndex = weekday - 1
+  const left = dayIndex * slotWidth.value
+
+  // 計算垂直位置（基於實際開始時間）
+  let topSlotIndex = 0
+  for (let t = 0; t < start_hour; t++) {
+    if (t >= 0 && t <= 3) {
+      topSlotIndex++
+    } else if (t >= 9) {
+      topSlotIndex++
+    }
+  }
+
+  const slotHeight = TIME_SLOT_HEIGHT // 60px
+  const baseTop = topSlotIndex * slotHeight
+  const minuteOffset = (start_minute / 60) * slotHeight
+  const top = baseTop + minuteOffset
+
+  // 計算高度（基於持續分鐘數）
+  const height = (duration_minutes / 60) * slotHeight
+  const width = slotWidth.value - 4
+
+  return { left: `${left}px`, top: `${top}px`, width: `${width}px`, height: `${height}px` }
+}
+```
+
+#### 20.3.2 去重邏輯
+
+```javascript
+const displaySchedules = computed(() => {
+  const seen = new Set<string>()
+  const result: any[] = []
+
+  for (const schedule of schedules.value) {
+    const key = `${schedule.id}-${schedule.weekday}-${schedule.start_time}`
+    if (!seen.has(key)) {
+      seen.add(key)
+      result.push(schedule)
+    }
+  }
+
+  return result
+})
+```
+
+### 20.4 顯示效果示例
+
+| 課程 | 開始時間 | 持續時間 | 顯示效果 |
+|:---|:---:|:---:|:---|
+| 週五晚間肌力訓練 | 19:30 | 60 分鐘 | 顯示在 19:30 位置，上方 50% 留白 |
+| 週三熱瑜伽 | 22:00-01:00 | 180 分鐘 | 顯示在 22:00 位置，跨越三個格子 |
+| 週一早班哈達瑜伽 | 09:00 | 60 分鐘 | 顯示在 09:00 位置，無留白 |
+
+### 20.5 修改檔案清單
+
+| 檔案 | 變更類型 | 說明 |
+|:---|:---:|:---|
+| `frontend/components/ScheduleGrid.vue` | 重構 | 實現絕對定位系統、時間匹配、去重邏輯 |
+| `frontend/components/ScheduleDetailPanel.vue` | 修正 | 修正時間顯示使用實際課程時間 |
+| `frontend/components/ScheduleMatrixView.vue` | 修正 | 修正時間解析函數處理秒數格式 |
+
+---
+
 **專案狀態**：✅ **健康**
 **測試覆蓋率**：✅ **95%**
 **跨日課程支援**：✅ **完成**
 **API 速率限制**：✅ **完成**
 **教師端互動優化**：✅ **完成**
-**跨日課程顯示**：✅ **完成**
+**排課週曆顯示**：✅ **完成**
 **下一里程碑**：監控告警系統（Sentry/Grafana）

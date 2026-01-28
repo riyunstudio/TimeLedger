@@ -56,20 +56,26 @@
     </div>
 
     <div
-      class="flex-1 overflow-auto"
+      class="flex-1 overflow-auto relative"
       @dragover.prevent="handleDragOver"
       @drop="handleDrop"
     >
-      <div class="min-w-[800px]">
+      <!-- 調試資訊 -->
+      <div class="fixed bottom-4 right-4 bg-slate-800 p-2 rounded text-xs text-slate-300 z-50">
+        <div>slotWidth: {{ slotWidth }}px</div>
+        <div>container: {{ tableContainerRef?.offsetWidth || 'N/A' }}px</div>
+      </div>
+
+      <div class="min-w-[800px]" ref="tableContainerRef">
         <!-- 表頭：時段 -->
-        <div class="grid" :style="{ gridTemplateColumns: `120px repeat(${timeSlots.length}, 1fr)` }">
-          <div class="p-3 border-b border-white/10 text-center bg-slate-800/50">
+        <div class="grid" :style="gridStyle">
+          <div class="p-3 border-b border-white/10 text-center bg-slate-800/50 sticky top-0 z-20">
             <span class="text-sm font-medium text-slate-300">資源 / 時段</span>
           </div>
           <div
             v-for="time in timeSlots"
             :key="time"
-            class="p-3 border-b border-white/10 text-center bg-slate-800/50"
+            class="p-3 border-b border-white/10 text-center bg-slate-800/50 sticky top-0 z-20"
           >
             <span class="text-sm font-medium text-slate-300">{{ formatTime(time) }}</span>
           </div>
@@ -79,64 +85,46 @@
         <div
           v-for="resource in resourceList"
           :key="resource.id"
-          class="grid hover:bg-white/5 transition-colors"
-          :style="{ gridTemplateColumns: `120px repeat(${timeSlots.length}, 1fr)` }"
+          class="grid relative"
+          :style="gridStyle"
         >
           <!-- 資源名稱 -->
-          <div class="p-3 border-r border-b border-white/10 flex items-center">
+          <div class="p-3 border-r border-b border-white/10 flex items-center bg-slate-900/50 sticky left-0 z-10">
             <div class="w-8 h-8 rounded-full bg-gradient-to-br from-primary-500 to-secondary-500 flex items-center justify-center shrink-0 mr-2">
               <span class="text-white text-sm font-medium">{{ resource.name?.charAt(0) || '?' }}</span>
             </div>
             <span class="text-sm text-slate-300 truncate">{{ resource.name }}</span>
           </div>
 
-          <!-- 時段儲存格 -->
+          <!-- 時段網格背景 -->
           <div
             v-for="time in timeSlots"
-            :key="`${resource.id}-${time}`"
-            class="p-1 min-h-[60px] border-b border-white/5 border-r relative"
+            :key="`${resource.id}-bg-${time}`"
+            class="p-1 min-h-[80px] border-b border-white/5 border-r relative"
             :class="getCellClass(resource.id, time)"
             @dragenter="handleDragEnter(resource.id, time)"
             @dragleave="handleDragLeave"
             @dragover.prevent
-          >
-            <div
-              v-if="getScheduleAt(resource.id, time)"
-              class="h-full rounded-lg p-2 text-xs cursor-pointer hover:opacity-80 transition-opacity group relative"
-              :class="getScheduleCardClass(getScheduleAt(resource.id, time))"
-              @click="selectSchedule(resource, time)"
-            >
-              <!-- 簡短資訊 -->
-              <div class="font-medium truncate text-slate-100">
-                {{ getScheduleAt(resource.id, time)?.offering_name }}
-              </div>
-              <div class="text-slate-400 truncate">
-                {{ getScheduleAt(resource.id, time)?.teacher_name || getScheduleAt(resource.id, time)?.room_name }}
-              </div>
+          />
 
-              <!-- 懸停 Tooltip -->
-              <div
-                v-if="!selectedCell"
-                class="absolute left-0 bottom-full mb-2 hidden group-hover:block w-64 z-[150] pointer-events-none"
-              >
-                <div class="glass p-3 rounded-lg shadow-xl border border-white/10">
-                  <div class="font-medium text-white mb-2">{{ getScheduleAt(resource.id, time)?.offering_name }}</div>
-                  <div class="space-y-1 text-xs">
-                    <div class="flex justify-between text-slate-400">
-                      <span>老師：</span>
-                      <span class="text-slate-200">{{ getScheduleAt(resource.id, time)?.teacher_name }}</span>
-                    </div>
-                    <div class="flex justify-between text-slate-400">
-                      <span>教室：</span>
-                      <span class="text-slate-200">{{ getScheduleAt(resource.id, time)?.room_name }}</span>
-                    </div>
-                    <div class="flex justify-between text-slate-400">
-                      <span>時間：</span>
-                      <span class="text-slate-200">{{ formatTime(time) }} - {{ formatTime(time + 1) }}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
+          <!-- 課程卡片層 - 相對於資源列定位 -->
+          <div
+            v-for="schedule in getSchedulesForResource(resource.id)"
+            :key="`${schedule.rule_id}-${schedule.weekday}-${schedule.start_hour}-${schedule.start_minute}`"
+            class="absolute rounded-lg p-2 text-xs cursor-pointer hover:opacity-90 transition-opacity pointer-events-auto"
+            :class="getScheduleCardClass(schedule)"
+            :style="getScheduleStyle(schedule)"
+            @click="selectSchedule(resource, schedule)"
+          >
+            <!-- 簡短資訊 -->
+            <div class="font-medium truncate text-slate-100">
+              {{ schedule.offering_name }}
+            </div>
+            <div class="text-slate-400 truncate">
+              {{ schedule.teacher_name || schedule.room_name }}
+            </div>
+            <div class="text-slate-500 text-[10px] mt-0.5">
+              {{ schedule.start_time }} - {{ schedule.end_time }}
             </div>
           </div>
         </div>
@@ -177,7 +165,8 @@
 </template>
 
 <script setup lang="ts">
-import { formatDateToString } from '~/composables/useTaiwanTime'
+import { formatDateToString, getTodayString } from '~/composables/useTaiwanTime'
+import { nextTick } from 'vue'
 
 const emit = defineEmits<{
   selectCell: { resource: any, time: number, weekday: number }
@@ -199,6 +188,8 @@ const selectedCell = ref<{ resource: any, time: number, weekday: number } | null
 const selectedSchedule = ref<any>(null)
 const dragTarget = ref<{ resourceId: number, time: number } | null>(null)
 const validationResults = ref<Record<string, any>>({})
+const tableContainerRef = ref<HTMLElement | null>(null)
+const slotWidth = ref(100) // 每個時段槽的像素寬度
 
 const handleEdit = () => {
   if (selectedSchedule.value) {
@@ -230,7 +221,10 @@ const handleRuleUpdated = async () => {
 
 const { getCenterId } = useCenterId()
 
+// 擴展時間段：包含 00:00-03:00 和 22:00-23:00
 const timeSlots = [0, 1, 2, 3, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
+const RESOURCE_COLUMN_WIDTH = 120 // 資源名稱列的寬度 (px)
+const SLOT_COUNT = 19 // 時段數量
 
 const weekDays = [
   { value: 1, name: '週一' },
@@ -242,9 +236,28 @@ const weekDays = [
   { value: 7, name: '週日' },
 ]
 
-const schedules = ref<{ teachers: Record<string, any>, rooms: Record<string, any> }>({
-  teachers: {},
-  rooms: {}
+// 課程資料結構
+interface ScheduleData {
+  id: number
+  rule_id: number
+  offering_name: string
+  teacher_name: string
+  teacher_id: number
+  room_id: number
+  room_name: string
+  weekday: number
+  start_time: string
+  end_time: string
+  start_hour: number
+  start_minute: number
+  duration: number
+  is_cross_day?: boolean
+  is_split_entry?: boolean // 標記是否為跨日分割後的條目
+}
+
+const schedules = ref<{ teachers: ScheduleData[], rooms: ScheduleData[] }>({
+  teachers: [],
+  rooms: []
 })
 const teachers = ref<any[]>([])
 const rooms = ref<any[]>([])
@@ -274,7 +287,41 @@ const resourceList = computed(() => {
 })
 
 const formatTime = (hour: number): string => {
-  return `${hour}:00`
+  return `${hour.toString().padStart(2, '0')}:00`
+}
+
+// Grid 樣式
+const gridStyle = computed(() => ({
+  gridTemplateColumns: `${RESOURCE_COLUMN_WIDTH}px repeat(${SLOT_COUNT}, 1fr)`
+}))
+
+// 解析時間字串為小時和分鐘
+const parseTime = (timeStr: string): { hour: number, minute: number } => {
+  // 處理 "HH:mm:ss" 或 "HH:mm" 格式
+  const parts = timeStr.split(':')
+  const hour = parseInt(parts[0], 10)
+  const minute = parseInt(parts[1], 10)
+  return { hour, minute }
+}
+
+// 計算課程持續小時數
+const calculateDuration = (startTime: string, endTime: string): number => {
+  const start = parseTime(startTime)
+  const end = parseTime(endTime)
+
+  // 計算分鐘差
+  const startMinutes = start.hour * 60 + start.minute
+  const endMinutes = end.hour * 60 + end.minute
+
+  let durationMinutes = endMinutes - startMinutes
+
+  // 跨日處理：如果結束時間早於開始時間，表示跨日
+  if (durationMinutes <= 0) {
+    durationMinutes += 24 * 60
+  }
+
+  // 返回小時數（向上取整到最接近的整數，確保顯示完整）
+  return Math.max(1, Math.ceil(durationMinutes / 60))
 }
 
 const fetchData = async () => {
@@ -293,18 +340,29 @@ const fetchData = async () => {
     // 處理教室資料
     rooms.value = roomsRes.datas || []
 
-    // 將規則轉換為 schedule map（分別存儲老師和教室）
-    const teacherScheduleMap: Record<string, any> = {}
-    const roomScheduleMap: Record<string, any> = {}
+    // 將規則轉換為 schedule 陣列
+    const teacherSchedules: ScheduleData[] = []
+    const roomSchedules: ScheduleData[] = []
     const rules = rulesRes.datas || []
+
     rules.forEach((rule: any) => {
-      // 後端返回的是 weekday（單一值），不是 weekdays 陣列
       const day = rule.weekday
       if (!day) return
 
-      const time = rule.start_time.split(':')[0]
-      const scheduleData = {
+      const { hour: startHour, minute: startMinute } = parseTime(rule.start_time)
+      const duration = calculateDuration(rule.start_time, rule.end_time)
+
+      // 判斷是否跨日
+      const { hour: endHour } = parseTime(rule.end_time)
+      const isCrossDay = endHour < startHour || (endHour === startHour && rule.end_time > rule.start_time)
+
+      // 判斷是否為跨日分割條目
+      const originalRuleId = rule.rule_id || rule.id
+      const isSplitEntry = rule.rule_id !== undefined && rule.rule_id !== rule.id
+
+      const scheduleData: ScheduleData = {
         id: rule.id,
+        rule_id: originalRuleId,
         offering_name: rule.offering?.name || '-',
         teacher_name: rule.teacher?.name || '-',
         teacher_id: rule.teacher_id,
@@ -313,51 +371,92 @@ const fetchData = async () => {
         weekday: day,
         start_time: rule.start_time,
         end_time: rule.end_time,
-        ...rule,
+        start_hour: startHour,
+        start_minute: startMinute,
+        duration: duration,
+        is_cross_day: isCrossDay,
+        is_split_entry: isSplitEntry,
       }
 
       // 根據資源類型分別存儲
       if (rule.teacher_id) {
-        const key = `${rule.teacher_id}-${time}-${day}`
-        teacherScheduleMap[key] = scheduleData
+        teacherSchedules.push(scheduleData)
       }
       if (rule.room_id) {
-        const key = `${rule.room_id}-${time}-${day}`
-        roomScheduleMap[key] = scheduleData
+        roomSchedules.push(scheduleData)
       }
     })
 
-    // 存儲為包含兩個視圖的對象
     schedules.value = {
-      teachers: teacherScheduleMap,
-      rooms: roomScheduleMap
+      teachers: teacherSchedules,
+      rooms: roomSchedules
     }
   } catch (error) {
     console.error('Failed to fetch data:', error)
   }
 }
 
-const getScheduleAt = (resourceId: number, time: number) => {
-  // 確保 schedules 結構存在
-  if (!schedules.value || !schedules.value.teachers || !schedules.value.rooms) {
-    return null
-  }
+// 獲取資源的課程列表（排除跨日分割的條目，只顯示原始條目）
+const getSchedulesForResource = (resourceId: number): ScheduleData[] => {
+  const scheduleList = props.resourceType === 'teacher' ? schedules.value.teachers : schedules.value.rooms
 
-  // 根據資源類型取得對應的排課 map
-  const scheduleMap = props.resourceType === 'teacher' ? schedules.value.teachers : schedules.value.rooms
+  // 過濾出非分割條目，或者雖然是分割條目但沒有找到原始條目的
+  const filtered = scheduleList.filter(s => {
+    // 檢查是否屬於該資源
+    const isResourceMatch = s.teacher_id === resourceId || s.room_id === resourceId
+    if (!isResourceMatch) return false
 
-  // 搜尋所有星期
-  for (const day of weekDays) {
-    const key = `${resourceId}-${time}-${day.value}`
-    if (scheduleMap[key]) {
-      return scheduleMap[key]
+    // 如果是分割條目，檢查是否有對應的原始條目
+    if (s.is_split_entry) {
+      const hasOriginal = scheduleList.some(other =>
+        other.rule_id === s.rule_id &&
+        !other.is_split_entry &&
+        other.id !== s.id
+      )
+      // 如果有原始條目，不顯示這個分割條目
+      if (hasOriginal) return false
     }
+
+    return true
+  })
+
+  return filtered
+}
+
+// 計算課程卡片的樣式
+const getScheduleStyle = (schedule: ScheduleData): Record<string, string> => {
+  const slotIndex = timeSlots.indexOf(schedule.start_hour)
+  if (slotIndex === -1) return { display: 'none' }
+
+  const { start_minute, duration, start_hour } = schedule
+
+  // 使用計算好的 slotWidth
+  const currentSlotWidth = slotWidth.value || 100
+
+  // 左邊位置：資源列寬度 + slotIndex * 每格寬度 + 分鐘偏移
+  const left = RESOURCE_COLUMN_WIDTH + slotIndex * currentSlotWidth + (start_minute / 60) * currentSlotWidth
+
+  // 寬度：持續時間 * 每格寬度
+  const width = duration * currentSlotWidth
+
+  // 頂部位置（基於分鐘偏移，相對於儲存格高度）
+  const top = (start_minute / 60) * 100
+
+  // 高度：持續時間對應的時段數量百分比
+  const height = duration * 100
+
+  // 調試記錄
+  console.log(`Schedule: ${schedule.offering_name}, start: ${start_hour}:${start_minute}, slotIndex: ${slotIndex}, slotWidth: ${currentSlotWidth}, left: ${left}px`)
+
+  return {
+    left: `${left}px`,
+    top: `${top}%`,
+    width: `${width}px`,
+    height: `${height}%`,
   }
-  return null
 }
 
 const getCellClass = (resourceId: number, time: number): string => {
-  const scheduleMap = props.resourceType === 'teacher' ? schedules.value.teachers : schedules.value.rooms
   const key = `${resourceId}-${time}`
   const validation = validationResults.value[key]
 
@@ -367,31 +466,32 @@ const getCellClass = (resourceId: number, time: number): string => {
     return 'bg-warning-500/10 border-warning-500/50'
   } else if (validation?.valid === true) {
     return 'bg-success-500/10 border-success-500/50'
-  } else if (getScheduleAt(resourceId, time)) {
-    return 'bg-primary-500/10'
   }
 
   return ''
 }
 
-const getScheduleCardClass = (schedule: any): string => {
+const getScheduleCardClass = (schedule: ScheduleData): string => {
   if (!schedule) return ''
+  // 跨日課程使用不同的樣式
+  if (schedule.is_cross_day) {
+    return 'bg-gradient-to-r from-amber-500/30 to-orange-500/30 border border-amber-500/50'
+  }
   return 'bg-slate-700/80 border border-white/10'
 }
 
-const selectSchedule = (resource: any, time: number) => {
-  const scheduleMap = props.resourceType === 'teacher' ? schedules.value.teachers : schedules.value.rooms
-
-  // 找到對應的星期
-  for (const day of weekDays) {
-    const key = `${resource.id}-${time}-${day.value}`
-    if (scheduleMap[key]) {
-      selectedCell.value = { resource, time, weekday: day.value }
-      selectedSchedule.value = scheduleMap[key]
-      emit('selectCell', { resource, time, weekday: day.value })
-      return
-    }
+const selectSchedule = (resource: any, schedule: ScheduleData) => {
+  selectedCell.value = {
+    resource,
+    time: schedule.start_hour,
+    weekday: schedule.weekday
   }
+  selectedSchedule.value = schedule
+  emit('selectCell', {
+    resource,
+    time: schedule.start_hour,
+    weekday: schedule.weekday
+  })
 }
 
 const changeWeek = (delta: number) => {
@@ -464,7 +564,37 @@ const handleRuleCreated = () => {
   fetchData()
 }
 
-onMounted(() => {
+// 計算時段槽寬度
+const calculateSlotWidth = () => {
+  if (!tableContainerRef.value) return
+
+  // 找到表格容器的寬度
+  const containerWidth = tableContainerRef.value.offsetWidth
+  // 減去資源列寬度，再除以時段數量
+  slotWidth.value = Math.max(50, (containerWidth - RESOURCE_COLUMN_WIDTH) / SLOT_COUNT)
+}
+
+onMounted(async () => {
   fetchData()
+
+  // 等待 DOM 更新後計算槽寬度
+  await nextTick()
+  calculateSlotWidth()
+
+  // 強制更新一次
+  await nextTick()
+
+  // 使用 ResizeObserver 監控表格容器的大小變化
+  if (tableContainerRef.value) {
+    const resizeObserver = new ResizeObserver(() => {
+      calculateSlotWidth()
+    })
+    resizeObserver.observe(tableContainerRef.value)
+
+    // 頁面卸載時取消監控
+    onUnmounted(() => {
+      resizeObserver.disconnect()
+    })
+  }
 })
 </script>
