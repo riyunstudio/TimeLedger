@@ -271,12 +271,12 @@
               <div
                 v-for="item in getScheduleItemsAt(day.date, hour)"
                 :key="item.id"
-                class="rounded p-1 text-xs cursor-grab hover:opacity-80 transition-opacity"
+                class="rounded p-1 text-xs transition-opacity cursor-grab hover:opacity-80"
                 :class="getItemBgClass(item)"
                 draggable="true"
                 @dragstart="handleDragStart(item, hour, day.date, $event)"
                 @dragend="handleDragEnd"
-                @click="openItemDetail(item)"
+                @click="openItemDetail(item, hour, day.date)"
               >
                 <div class="font-medium text-[clamp(10px,2vw,14px)] truncate text-white leading-tight">
                   {{ item.title }}
@@ -452,6 +452,105 @@
     @close="handleNoteModalClose"
     @saved="handleNoteModalSaved"
   />
+
+  <!-- 動作選擇對話框 -->
+  <Teleport to="body">
+    <div
+      v-if="showActionDialog"
+      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+      @click.self="closeActionDialog"
+    >
+      <div class="glass-card w-full max-w-sm">
+        <div class="p-4 border-b border-white/10">
+          <h3 class="text-lg font-semibold text-white">選擇操作</h3>
+          <p v-if="actionDialogItem" class="text-sm text-slate-400 mt-1">
+            {{ actionDialogItem.title }}
+          </p>
+        </div>
+        <div class="p-4 space-y-3">
+          <!-- 中心課程選項 -->
+          <template v-if="actionDialogItem && (actionDialogItem.type === 'SCHEDULE_RULE' || actionDialogItem.type === 'CENTER_SESSION')">
+            <button
+              @click="handleActionSelect('exception')"
+              class="w-full p-4 rounded-lg bg-warning-500/20 border border-warning-500/30 hover:bg-warning-500/30 transition-colors text-left"
+            >
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-warning-500/30 flex items-center justify-center">
+                  <svg class="w-5 h-5 text-warning-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+                <div>
+                  <div class="font-medium text-white">課程例外申請</div>
+                  <div class="text-xs text-slate-400">申請調課、請假或找代課</div>
+                </div>
+              </div>
+            </button>
+            <button
+              @click="handleActionSelect('note')"
+              class="w-full p-4 rounded-lg bg-primary-500/20 border border-primary-500/30 hover:bg-primary-500/30 transition-colors text-left"
+            >
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-primary-500/30 flex items-center justify-center">
+                  <svg class="w-5 h-5 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                </div>
+                <div>
+                  <div class="font-medium text-white">課堂備註</div>
+                  <div class="text-xs text-slate-400">撰寫或查看課程筆記</div>
+                </div>
+              </div>
+            </button>
+          </template>
+
+          <!-- 個人行程選項 -->
+          <template v-else-if="actionDialogItem && actionDialogItem.type === 'PERSONAL_EVENT'">
+            <button
+              @click="handleActionSelect('edit')"
+              class="w-full p-4 rounded-lg bg-success-500/20 border border-success-500/30 hover:bg-success-500/30 transition-colors text-left"
+            >
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-success-500/30 flex items-center justify-center">
+                  <svg class="w-5 h-5 text-success-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                </div>
+                <div>
+                  <div class="font-medium text-white">編輯行程</div>
+                  <div class="text-xs text-slate-400">修改行程時間或內容</div>
+                </div>
+              </div>
+            </button>
+            <button
+              @click="handleActionSelect('note')"
+              class="w-full p-4 rounded-lg bg-primary-500/20 border border-primary-500/30 hover:bg-primary-500/30 transition-colors text-left"
+            >
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-primary-500/30 flex items-center justify-center">
+                  <svg class="w-5 h-5 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <div>
+                  <div class="font-medium text-white">新增備註</div>
+                  <div class="text-xs text-slate-400">為行程添加備註資訊</div>
+                </div>
+              </div>
+            </button>
+          </template>
+        </div>
+        <div class="p-4 border-t border-white/10">
+          <button
+            @click="closeActionDialog"
+            class="w-full px-4 py-2 rounded-lg bg-white/5 text-white hover:bg-white/10 transition-colors"
+          >
+            取消
+          </button>
+        </div>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
@@ -738,16 +837,9 @@ const changeWeek = (delta: number) => {
   teacherStore.fetchPersonalEvents()
 }
 
-const openItemDetail = (item: ScheduleItem) => {
-  // SCHEDULE_RULE 或 CENTER_SESSION 都視為課程
-  if ((item.type === 'SCHEDULE_RULE' || item.type === 'CENTER_SESSION') && item.data?.id) {
-    selectedScheduleItem.value = item
-    showSessionNoteModal.value = true
-  } else if (item.type === 'PERSONAL_EVENT') {
-    // 編輯個人行程
-    editingEvent.value = item.data as any
-    showPersonalEventModal.value = true
-  }
+const openItemDetail = (item: ScheduleItem, hour?: number, date?: string) => {
+  // 中心課程或個人行程：顯示動作選擇對話框
+  showActionChooser(item, hour, date)
 }
 
 const showSessionNoteModal = ref(false)
@@ -759,6 +851,12 @@ const draggedItem = ref<ScheduleItem | null>(null)
 const sourceDate = ref<string>('')
 const sourceHour = ref<number>(0)
 
+// 動作選擇對話框狀態
+const showActionDialog = ref(false)
+const actionDialogItem = ref<ScheduleItem | null>(null)
+const actionDialogTarget = ref<{ hour: number, date: string } | null>(null)
+
+// 處理拖曳開始
 const handleDragStart = (item: ScheduleItem, hour: number, date: string, event: DragEvent) => {
   isDragging.value = true
   draggedItem.value = item
@@ -778,6 +876,69 @@ const handleDragEnd = () => {
   draggedItem.value = null
 }
 
+// 顯示動作選擇對話框
+const showActionChooser = (item: ScheduleItem, hour?: number, date?: string) => {
+  actionDialogItem.value = item
+  actionDialogTarget.value = hour && date ? { hour, date } : null
+  showActionDialog.value = true
+}
+
+// 處理動作選擇
+const handleActionSelect = async (action: 'exception' | 'note' | 'edit') => {
+  const item = actionDialogItem.value
+  if (!item) return
+
+  const itemData = item.data as any
+  const title = itemData?.offering_name || item.title
+  const itemDate = item.date
+  const time = `${item.start_time} - ${item.end_time}`
+
+  if (item.type === 'PERSONAL_EVENT') {
+    // 個人行程
+    if (action === 'edit') {
+      // 編輯個人行程
+      editingEvent.value = item.data as any
+      showPersonalEventModal.value = true
+    } else if (action === 'note') {
+      // 打開課堂備註（個人行程也可以有備註）
+      selectedScheduleItem.value = item
+      showSessionNoteModal.value = true
+    }
+  } else {
+    // 中心課程
+    if (action === 'exception') {
+      // 導向例外申請頁面
+      router.push({
+        path: '/teacher/exceptions',
+        query: {
+          action: 'create',
+          rule_id: itemData?.id || item.id,
+          course_name: title,
+          original_date: itemDate,
+          original_time: time,
+          center_id: item.center_id,
+        }
+      })
+    } else if (action === 'note') {
+      // 打開課堂備註
+      selectedScheduleItem.value = item
+      showSessionNoteModal.value = true
+    }
+  }
+
+  // 關閉對話框
+  showActionDialog.value = false
+  actionDialogItem.value = null
+  actionDialogTarget.value = null
+}
+
+// 關閉動作選擇對話框
+const closeActionDialog = () => {
+  showActionDialog.value = false
+  actionDialogItem.value = null
+  actionDialogTarget.value = null
+}
+
 const handleDragEnter = (hour: number, date: string) => {
   dragTarget.value = { time: hour, date }
 }
@@ -791,45 +952,52 @@ const handleDrop = async (hour: number, date: string) => {
   const sourceKey = `${sourceHour.value}-${sourceDate.value}`
   const targetKey = `${hour}-${date}`
 
-  if (sourceKey !== targetKey && teacherStore.schedule) {
-    const day = teacherStore.schedule.days.find(d => d.date === date)
-    if (day && draggedItem.value) {
-      const itemData = draggedItem.value.data
-      let itemId = itemData?.id || draggedItem.value.id
+  // 個人行程：允許移動
+  if (draggedItem.value.type === 'PERSONAL_EVENT') {
+    if (sourceKey !== targetKey && teacherStore.schedule) {
+      const day = teacherStore.schedule.days.find(d => d.date === date)
+      if (day) {
+        const itemData = draggedItem.value.data
+        let itemId = itemData?.id || draggedItem.value.id
 
-      // Handle string IDs like "center_1023_rule_344_20260122"
-      if (typeof itemId === 'string') {
-        const numericMatch = itemId.match(/_(\d+)$/)
-        if (numericMatch) {
-          itemId = parseInt(numericMatch[1])
-        } else {
-          itemId = parseInt(itemId.replace(/\D/g, '')) || 0
+        // Handle string IDs
+        if (typeof itemId === 'string') {
+          const numericMatch = itemId.match(/_(\d+)$/)
+          if (numericMatch) {
+            itemId = parseInt(numericMatch[1])
+          } else {
+            itemId = parseInt(itemId.replace(/\D/g, '')) || 0
+          }
         }
-      }
 
-      if (itemId) {
-        const duration = parseInt(draggedItem.value.end_time.split(':')[0]) - parseInt(draggedItem.value.start_time.split(':')[0])
-        const newEndHour = hour + duration
-        const newStartTime = `${hour.toString().padStart(2, '0')}:00`
-        const newEndTime = `${newEndHour.toString().padStart(2, '0')}:00`
+        if (itemId) {
+          const duration = parseInt(draggedItem.value.end_time.split(':')[0]) - parseInt(draggedItem.value.start_time.split(':')[0])
+          const newEndHour = hour + duration
+          const newStartTime = `${hour.toString().padStart(2, '0')}:00`
+          const newEndTime = `${newEndHour.toString().padStart(2, '0')}:00`
 
-        try {
-          await teacherStore.moveScheduleItem({
-            item_id: itemId,
-            item_type: draggedItem.value.type as 'SCHEDULE_RULE' | 'PERSONAL_EVENT' | 'CENTER_SESSION',
-            center_id: draggedItem.value.center_id || 1,
-            new_date: date,
-            new_start_time: newStartTime,
-            new_end_time: newEndTime,
-          })
+          try {
+            await teacherStore.moveScheduleItem({
+              item_id: itemId,
+              item_type: 'PERSONAL_EVENT',
+              center_id: 0,
+              new_date: date,
+              new_start_time: newStartTime,
+              new_end_time: newEndTime,
+            })
 
-          await teacherStore.fetchSchedule()
-        } catch (error) {
-          console.error('Failed to move schedule:', error)
-          await alertError('更新失敗，請稍後再試')
+            await teacherStore.fetchSchedule()
+            await teacherStore.fetchPersonalEvents()
+          } catch (error) {
+            console.error('Failed to move schedule:', error)
+            await alertError('更新失敗，請稍後再試')
+          }
         }
       }
     }
+  } else {
+    // 中心課程：顯示動作選擇對話框
+    showActionChooser(draggedItem.value, hour, date)
   }
 
   isDragging.value = false

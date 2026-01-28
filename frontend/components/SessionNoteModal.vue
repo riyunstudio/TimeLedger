@@ -113,9 +113,11 @@ const formatDate = (dateStr?: string): string => {
 }
 
 const loadNote = async () => {
-  if (!scheduleItem?.data?.id || !scheduleItem.date) return
+  // 優先使用 rule_id，其次從 data 取得
+  const ruleId = scheduleItem?.rule_id || scheduleItem?.data?.id
+  if (!ruleId || !scheduleItem?.date) return
 
-  const note = await teacherStore.fetchSessionNote(scheduleItem.data.id, scheduleItem.date)
+  const note = await teacherStore.fetchSessionNote(ruleId, scheduleItem.date)
   if (note) {
     form.content = note.content || ''
     form.prepNote = note.prep_note || ''
@@ -136,12 +138,14 @@ const handleClose = () => {
 }
 
 const handleSave = async () => {
-  if (!scheduleItem?.data?.id || !scheduleItem.date) return
+  // 優先使用 rule_id，其次從 data 取得
+  const ruleId = scheduleItem?.rule_id || scheduleItem?.data?.id
+  if (!ruleId || !scheduleItem?.date) return
 
   isSaving.value = true
   try {
     await teacherStore.saveSessionNote(
-      scheduleItem.data.id,
+      ruleId,
       scheduleItem.date,
       form.content,
       form.prepNote

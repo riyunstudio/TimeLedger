@@ -190,7 +190,8 @@
     v-if="showModal"
     :centers="centers"
     :schedule-rules="scheduleRules"
-    @close="showModal = false"
+    :prefill="prefillData"
+    @close="showModal = false; prefillData = null"
     @submit="fetchExceptions"
   />
 
@@ -206,6 +207,8 @@ import type { ScheduleException } from '~/types'
    layout: 'default',
  })
 
+ const route = useRoute()
+ const router = useRouter()
  const teacherStore = useTeacherStore()
  const sidebarStore = useSidebar()
  const notificationUI = useNotification()
@@ -213,6 +216,15 @@ import type { ScheduleException } from '~/types'
  const showModal = ref(false)
  const currentFilter = ref('')
  const expandedException = ref<number | null>(null)
+
+ // 預填資料（從課表拖曳過來）
+ const prefillData = ref<{
+   rule_id?: number
+   center_id?: number
+   course_name?: string
+   original_date?: string
+   original_time?: string
+ } | null>(null)
 
  const statusFilters = computed(() => {
    const counts = {
@@ -239,9 +251,18 @@ import type { ScheduleException } from '~/types'
  }))
 
  const filteredExceptions = computed(() => {
-   if (!currentFilter.value) return teacherStore.exceptions
-   return teacherStore.exceptions.filter(e => e.status === currentFilter.value || e.status === currentFilter.value + 'D')
+  if (!currentFilter.value) return teacherStore.exceptions
+  return teacherStore.exceptions.filter(e => e.status === currentFilter.value || e.status === currentFilter.value + 'D')
  })
+
+ // 中心列表
+ const centers = computed(() => teacherStore.centers.map(c => ({
+   center_id: c.center_id,
+   center_name: c.center_name
+ })))
+
+ // 課程規則列表（用於預填）
+ const scheduleRules = ref<any[]>([])
 
  const toggleExpand = (id: number) => {
    expandedException.value = expandedException.value === id ? null : id
@@ -307,5 +328,20 @@ onMounted(async () => {
     teacherStore.fetchCenters(),
     fetchExceptions(),
   ])
+
+  // 檢查是否有 query 參數（從課表拖曳過來）
+  if (route.query.action === 'create') {
+    prefillData.value = {
+      rule_id: route.query.rule_id ? Number(route.query.rule_id) : undefined,
+      center_id: route.query.center_id ? Number(route.query.center_id) : undefined,
+      course_name: route.query.course_name as string | undefined,
+      original_date: route.query.original_date as string | undefined,
+      original_time: route.query.original_time as string | undefined,
+    }
+    showModal.value = true
+
+    // 清除 query 參數，避免重新整理時再次彈出
+    router.replace({ path: route.path, query: {} })
+  }
 })
 </script>

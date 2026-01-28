@@ -5,10 +5,10 @@ import (
 )
 
 type SessionNoteResource struct {
-	ID          uint      `json:"id,omitempty"`
-	RuleID      *uint     `json:"rule_id,omitempty"`
-	SessionDate string    `json:"session_date,omitempty"`
-	Content     string    `json:"content,omitempty"`
-	PrepNote    string    `json:"prep_note,omitempty"`
-	UpdatedAt   time.Time `json:"updated_at,omitempty"`
+	ID          uint      `json:"id"`
+	RuleID      *uint     `json:"rule_id"`
+	SessionDate string    `json:"session_date"`
+	Content     string    `json:"content"`
+	PrepNote    string    `json:"prep_note"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }

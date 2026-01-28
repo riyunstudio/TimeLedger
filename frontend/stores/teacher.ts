@@ -20,6 +20,7 @@ export interface TeacherScheduleItem {
   center_id: number
   center_name?: string
   status: string
+  rule_id?: number
   data?: any
 }
 
@@ -107,10 +108,28 @@ export const useTeacherStore = defineStore('teacher', () => {
       d.setDate(d.getDate() + i)
       const dateStr = formatDateToString(d)
       const dayOfWeek = d.getDay()
+
+      // 將 TeacherScheduleItem 轉換為 ScheduleItem
+      const dayItems: ScheduleItem[] = (daysMap.get(dateStr) || []).map(item => ({
+        type: item.type as 'SCHEDULE_RULE' | 'PERSONAL_EVENT' | 'CENTER_SESSION',
+        id: item.id,
+        title: item.title,
+        start_time: item.start_time,
+        end_time: item.end_time,
+        color: item.status === 'PENDING_CANCEL' ? '#F59E0B' : undefined,
+        status: item.status,
+        center_name: item.center_name,
+        data: item.data,
+        date: item.date,
+        room_id: item.room_id,
+        center_id: item.center_id,
+        rule_id: item.rule_id, // 保留 rule_id 用於課堂筆記
+      }))
+
       days.push({
         date: dateStr,
         day_of_week: dayOfWeek,
-        items: daysMap.get(dateStr) || [],
+        items: dayItems,
       })
     }
 

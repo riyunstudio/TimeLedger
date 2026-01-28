@@ -307,9 +307,9 @@ func (ctl *TeacherController) UpdateProfile(ctx *gin.Context) {
 
 			// 創建關聯
 			ctl.app.MySQL.WDB.WithContext(ctx).Create(&models.TeacherPersonalHashtag{
-				TeacherID:  teacherID,
-				HashtagID:  hashtag.ID,
-				SortOrder:  0,
+				TeacherID: teacherID,
+				HashtagID: hashtag.ID,
+				SortOrder: 0,
 			})
 		}
 	}
@@ -365,12 +365,12 @@ func (ctl *TeacherController) UpdateProfile(ctx *gin.Context) {
 }
 
 type UpdateTeacherProfileRequest struct {
-	Bio                 string `json:"bio"`
-	City                string `json:"city"`
-	District            string `json:"district"`
-	PublicContactInfo   string `json:"public_contact_info"`
-	IsOpenToHiring      bool   `json:"is_open_to_hiring"`
-	PersonalHashtags    []string `json:"personal_hashtags"`
+	Bio               string   `json:"bio"`
+	City              string   `json:"city"`
+	District          string   `json:"district"`
+	PublicContactInfo string   `json:"public_contact_info"`
+	IsOpenToHiring    bool     `json:"is_open_to_hiring"`
+	PersonalHashtags  []string `json:"personal_hashtags"`
 }
 
 // GetCenters 取得老師已加入的中心列表
@@ -539,6 +539,7 @@ func (ctl *TeacherController) GetSchedule(ctx *gin.Context) {
 					CenterID:   m.CenterID,
 					CenterName: centerName,
 					Status:     status,
+					RuleID:     item.RuleID,
 				})
 			}
 		}
@@ -611,14 +612,14 @@ func (ctl *TeacherController) GetCenterScheduleRules(ctx *gin.Context) {
 
 	// 過濾出該老師的課程，並格式化輸出
 	type RuleResponse struct {
-		ID                  uint   `json:"id"`
-		Title               string `json:"title"`
-		Weekday             int    `json:"weekday"`
-		WeekdayText         string `json:"weekday_text"`
-		StartTime           string `json:"start_time"`
-		EndTime             string `json:"end_time"`
-		EffectiveStartDate  string `json:"effective_start_date"`
-		EffectiveEndDate    string `json:"effective_end_date"`
+		ID                 uint   `json:"id"`
+		Title              string `json:"title"`
+		Weekday            int    `json:"weekday"`
+		WeekdayText        string `json:"weekday_text"`
+		StartTime          string `json:"start_time"`
+		EndTime            string `json:"end_time"`
+		EffectiveStartDate string `json:"effective_start_date"`
+		EffectiveEndDate   string `json:"effective_end_date"`
 	}
 
 	weekdayTexts := []string{"週日", "週一", "週二", "週三", "週四", "週五", "週六"}
@@ -870,6 +871,7 @@ type TeacherScheduleItem struct {
 	CenterID   uint   `json:"center_id"`
 	CenterName string `json:"center_name"`
 	Status     string `json:"status"`
+	RuleID     uint   `json:"rule_id"` // 用於關聯課堂筆記
 }
 
 type TeacherCreateExceptionRequest struct {
@@ -923,7 +925,13 @@ func (ctl *TeacherController) GetSessionNote(ctx *gin.Context) {
 	}
 
 	var ruleIDUint uint
-	fmt.Sscanf(ruleID, "%d", &ruleIDUint)
+	if _, err := fmt.Sscanf(ruleID, "%d", &ruleIDUint); err != nil || ruleIDUint == 0 {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Invalid rule_id format",
+		})
+		return
+	}
 
 	sessionDate, parseErr := time.Parse("2006-01-02", sessionDateStr)
 	if parseErr != nil {
@@ -1684,9 +1692,9 @@ type CreateSkillRequest struct {
 }
 
 type UpdateSkillRequest struct {
-	Category   string `json:"category" binding:"required"`
-	SkillName  string `json:"skill_name" binding:"required"`
-	Hashtags   []string `json:"hashtags"`
+	Category  string   `json:"category" binding:"required"`
+	SkillName string   `json:"skill_name" binding:"required"`
+	Hashtags  []string `json:"hashtags"`
 }
 
 type CreateCertificateRequest struct {
@@ -1711,7 +1719,7 @@ type UpdatePersonalEventRequest struct {
 	IsAllDay       *bool                  `json:"is_all_day"`
 	ColorHex       *string                `json:"color_hex"`
 	RecurrenceRule *models.RecurrenceRule `json:"recurrence_rule"`
-	UpdateMode     string     `json:"update_mode" binding:"required,oneof=SINGLE FUTURE ALL"`
+	UpdateMode     string                 `json:"update_mode" binding:"required,oneof=SINGLE FUTURE ALL"`
 }
 
 type UpdatePersonalEventResponse struct {

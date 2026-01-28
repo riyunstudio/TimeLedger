@@ -281,4 +281,5 @@ export interface ScheduleItem {
   room_id?: number
   teacher_id?: number
   center_id?: number
+  rule_id?: number  // 用於關聯課堂筆記
 }

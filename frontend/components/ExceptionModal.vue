@@ -147,6 +147,13 @@ interface Props {
   exception?: ScheduleException
   centers: Array<{ center_id: number; center_name: string }>
   scheduleRules?: ScheduleRuleData[]
+  prefill?: {
+    rule_id?: number
+    center_id?: number
+    course_name?: string
+    original_date?: string
+    original_time?: string
+  }
 }
 
 const props = defineProps<Props>()
@@ -173,6 +180,31 @@ const form = reactive({
 
 // 代課模式：'center' = 由中心找, 'manual' = 手動輸入
 const replaceTeacherMode = ref<'center' | 'manual'>('center')
+
+// 處理預填資料
+onMounted(async () => {
+  if (props.prefill) {
+    const { center_id, rule_id, original_date, original_time } = props.prefill
+
+    if (center_id) {
+      form.center_id = center_id
+    }
+
+    if (original_date) {
+      form.original_date = original_date
+    }
+
+    // 如果有 center_id，載入課程列表
+    if (form.center_id && form.center_id > 0) {
+      await fetchScheduleRules(form.center_id)
+
+      // 如果有 rule_id，選中對應課程
+      if (rule_id) {
+        form.rule_id = rule_id
+      }
+    }
+  }
+})
 
 // 今天日期（用於日期選擇的最小值）
 const today = computed(() => {
