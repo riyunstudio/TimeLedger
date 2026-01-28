@@ -163,7 +163,7 @@
         </div>
 
         <!-- 課程卡片層 - 絕對定位 -->
-        <div class="absolute top-0 left-0 right-0 bottom-0 pointer-events-none">
+        <div class="absolute top-0 left-0 right-0 bottom-0 pointer-events-none" :style="{ paddingTop: `${HEADER_HEIGHT}px` }">
           <div
             v-for="schedule in displaySchedules"
             :key="schedule.key"
@@ -339,6 +339,7 @@ const slotWidth = ref(100)
 const TIME_SLOT_HEIGHT = 60 // 每個時段格子的高度 (px)
 const RESOURCE_COLUMN_WIDTH = 200 // 資源列寬度 (px)
 const TIME_COLUMN_WIDTH = 80 // 時間列寬度 (px)
+const HEADER_HEIGHT = 49 // 表頭高度 (px)
 
 const showCreateModal = ref(false)
 const showEditModal = ref(false)
