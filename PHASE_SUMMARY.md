@@ -618,10 +618,239 @@ const displaySchedules = computed(() => {
 
 ---
 
+## 二十一、卡片位置與週曆對齊修復（2026-01-28）
+
+### 21.1 問題分析
+
+| 問題 | 影響範圍 | 嚴重程度 |
+|:---|:---|:---:|
+| 卡片水平位置偏移 | 週曆視圖、老師矩陣、教室矩陣 | 🔴 高 |
+| 00:00 卡片被表頭遮擋 | 週曆視圖 | 🔴 高 |
+| 跨日課程位置計算錯誤 | 跨日課程顯示 | 🟡 中 |
+
+### 21.2 解決方案
+
+#### 21.2.1 卡片水平位置修正
+
+**`frontend/components/ScheduleGrid.vue`**：
+
+```javascript
+// 計算水平位置 - 對齊到星期網格
+const dayIndex = weekday - 1 // 0-6
+const left = TIME_COLUMN_WIDTH + (dayIndex * slotWidth.value)
+```
+
+**修正內容**：
+- 卡片水平位置計算加上 `TIME_COLUMN_WIDTH`（80px）
+- 移除容器的 `left-[80px]` 偏移
+
+#### 21.2.2 表頭遮擋修正
+
+**`frontend/components/ScheduleGrid.vue`**：
+
+```html
+<!-- 課程卡片層 - 絕對定位 -->
+<div class="absolute top-0 left-0 right-0 bottom-0 pointer-events-none"></div>
+```
+
+**修正內容**：
+- 移除表頭的 `bg-slate-800/90` 和 `backdrop-blur-sm`
+- 移除表頭的 `z-10`
+- 卡片從 `top-0` 開始定位
+
+### 21.3 修改檔案清單
+
+| 檔案 | 變更類型 | 說明 |
+|:---|:---:|:---|
+| `frontend/components/ScheduleGrid.vue` | 修正 | 卡片位置計算、移除表頭背景 |
+| `frontend/components/ScheduleTimelineView.vue` | 修正 | 時間標記定位從 `(hour - 6) * 60` 改為 `hour * 60` |
+
+### 21.4 Commit 記錄
+
+| 提交紀錄 | 說明 |
+|:---|:---|
+| c129260 | fix(frontend): correct schedule card positioning to align with day columns |
+| f3a2cd7 | fix(frontend): add header height padding to schedule card layer |
+| 943db40 | fix(frontend): remove header background and z-index for clear card visibility |
+| 30b41a4 | fix(frontend): fix teacher timeline view alignment |
+
+---
+
+## 二十二、證照檔案上傳功能（2026-01-28）
+
+### 22.1 功能概述
+
+**原有問題**：證照上傳功能沒有串接實際的上傳 API，只是產生假 URL
+
+**解決方案**：
+- 後端新增檔案上傳 API
+- 前端串接上傳功能
+
+### 22.2 後端實作
+
+#### 22.2.1 上傳配置
+
+**`configs/env.go`**：
+
+```go
+// File Upload
+UploadPath        string
+UploadMaxSize     int
+UploadAllowedExts []string
+```
+
+#### 22.2.2 上傳 API
+
+**`app/controllers/teacher.go`**：
+
+```go
+// UploadCertificateFile 上傳證照檔案
+// POST /api/v1/teacher/me/certificates/upload
+func (ctl *TeacherController) UploadCertificateFile(ctx *gin.Context) {
+  // 1. 檢查檔案大小（最大 10MB）
+  // 2. 檢查檔案類型（jpg, jpeg, png, pdf）
+  // 3. 生成唯一的檔案名稱
+  // 4. 儲存檔案到 ./uploads/certificates/
+  // 5. 返回檔案 URL
+}
+```
+
+#### 22.2.3 靜態檔案服務
+
+**`app/servers/server.go`**：
+
+```go
+// 註冊靜態檔案路由
+s.engine.Static("/uploads", "./uploads")
+```
+
+### 22.3 前端實作
+
+#### 22.3.1 API 上傳函數
+
+**`frontend/composables/useApi.ts`**：
+
+```typescript
+const upload = async <T>(endpoint: string, file: File, fieldName: string = 'file'): Promise<T> => {
+  const formData = new FormData()
+  formData.append(fieldName, file)
+  // ... 發送 multipart/form-data 請求
+}
+```
+
+#### 22.3.2 證照上傳 Modal
+
+**`frontend/components/AddCertificateModal.vue`**：
+
+```typescript
+const handleSubmit = async () => {
+  // 1. 先上傳檔案
+  const uploadResponse = await api.upload('/teacher/me/certificates/upload', selectedFile.value)
+  // 2. 建立證照記錄
+  await teacherStore.createCertificate({
+    name: form.value.name,
+    file_url: uploadResponse.datas.file_url,
+    issued_at: formatDateTimeForApi(form.value.issued_at),
+  })
+}
+```
+
+### 22.4 API 規格
+
+```
+POST /api/v1/teacher/me/certificates/upload
+Content-Type: multipart/form-data
+
+Request: form-data with file field named "file"
+
+Response:
+{
+  "code": 0,
+  "message": "File uploaded successfully",
+  "datas": {
+    "file_url": "/uploads/certificates/cert_1_20260128_153045.jpg",
+    "file_name": "my-certificate.jpg",
+    "file_size": 1024000
+  }
+}
+```
+
+### 22.5 修改檔案清單
+
+| 檔案 | 變更類型 | 說明 |
+|:---|:---:|:---|
+| `configs/env.go` | 修改 | 新增上傳配置 |
+| `app/controllers/teacher.go` | 修改 | 新增 UploadCertificateFile API |
+| `app/servers/route.go` | 修改 | 註冊上傳路由 |
+| `app/servers/server.go` | 修改 | 新增靜態檔案服務 |
+| `frontend/composables/useApi.ts` | 修改 | 新增 upload 函數 |
+| `frontend/components/AddCertificateModal.vue` | 修改 | 串接上傳 API |
+
+### 22.6 Commit 記錄
+
+| 提交紀錄 | 說明 |
+|:---|:---|
+| 8cbee9b | feat(backend): add certificate file upload API |
+
+---
+
+## 二十三、老師端週曆布局統一（2026-01-28）
+
+### 23.1 問題分析
+
+**原有問題**：
+- 老師端使用自定義的網格/列表視圖
+- 布局與管理員端不一致
+- 時間軸定位計算有 Off-By-One 錯誤
+
+### 23.2 解決方案
+
+建立 `TeacherScheduleGrid.vue` 組件，使用與管理員端 `ScheduleGrid.vue` 相同的布局結構：
+
+| 特性 | 教師端 | 管理員端 |
+|:---|:---:|:---:|
+| Sticky 表頭 | ✅ | ✅ |
+| 週一~週日網格 | ✅ | ✅ |
+| 時間槽 (00:00-03:00, 09:00-23:00) | ✅ | ✅ |
+| 絕對定位課程卡片 | ✅ | ✅ |
+| 卡片樣式（例外狀態顏色） | ✅ | ✅ |
+
+### 23.3 新增組件
+
+**`frontend/components/TeacherScheduleGrid.vue`**：
+
+- 基於 `ScheduleGrid.vue` 的布局結構
+- 支援教師端特定的資料格式
+- 支援快捷操作按鈕（個人行程、請假/調課）
+- 點擊卡片觸發動作選擇對話框
+
+### 23.4 修改檔案清單
+
+| 檔案 | 變更類型 | 說明 |
+|:---|:---:|:---|
+| `frontend/components/TeacherScheduleGrid.vue` | 新增 | 教師端課表週曆組件 |
+| `frontend/pages/teacher/dashboard.vue` | 重構 | 使用新組件，移除重複的網格/列表視圖 |
+
+### 23.5 變更統計
+
+```
+2 files changed, 529 insertions(+), 646 deletions(-)
+```
+
+### 23.6 Commit 記錄
+
+| 提交紀錄 | 說明 |
+|:---|:---|
+| ec15fbc | feat(frontend): add TeacherScheduleGrid with consistent admin layout |
+
+---
+
 **專案狀態**：✅ **健康**
 **測試覆蓋率**：✅ **95%**
 **跨日課程支援**：✅ **完成**
 **API 速率限制**：✅ **完成**
 **教師端互動優化**：✅ **完成**
 **排課週曆顯示**：✅ **完成**
+**證照上傳功能**：✅ **完成**
+**老師端布局統一**：✅ **完成**
 **下一里程碑**：監控告警系統（Sentry/Grafana）
