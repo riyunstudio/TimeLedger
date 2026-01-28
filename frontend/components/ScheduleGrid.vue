@@ -125,7 +125,7 @@
       <!-- 週曆視圖 -->
       <div v-if="viewMode === 'calendar'" class="min-w-[600px] relative" ref="calendarContainerRef">
         <!-- 表頭 -->
-        <div class="grid sticky top-0 z-10 bg-slate-800/90 backdrop-blur-sm" style="grid-template-columns: 80px repeat(7, 1fr);">
+        <div class="grid sticky top-0" style="grid-template-columns: 80px repeat(7, 1fr);">
           <div class="p-2 border-b border-white/10 text-center">
             <span class="text-xs text-slate-400">時段</span>
           </div>
@@ -163,7 +163,7 @@
         </div>
 
         <!-- 課程卡片層 - 絕對定位 -->
-        <div class="absolute left-0 right-0 bottom-0 pointer-events-none" :style="{ top: `${HEADER_HEIGHT}px` }">
+        <div class="absolute top-0 left-0 right-0 bottom-0 pointer-events-none">
           <div
             v-for="schedule in displaySchedules"
             :key="schedule.key"
@@ -339,7 +339,6 @@ const slotWidth = ref(100)
 const TIME_SLOT_HEIGHT = 60 // 每個時段格子的高度 (px)
 const RESOURCE_COLUMN_WIDTH = 200 // 資源列寬度 (px)
 const TIME_COLUMN_WIDTH = 80 // 時間列寬度 (px)
-const HEADER_HEIGHT = 80 // 表頭高度 (px) - 兩行標題
 
 const showCreateModal = ref(false)
 const showEditModal = ref(false)
