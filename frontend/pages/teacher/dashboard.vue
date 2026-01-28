@@ -149,239 +149,68 @@
   </div>
 
   <!-- 視圖切換和課表顯示 -->
-  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
-    <div class="flex items-center gap-4">
-      <!-- 週次導航 -->
-      <div class="flex items-center gap-1">
-        <button
-          @click="changeWeek(-1)"
-          class="glass-btn p-2 rounded-lg hover:bg-white/10 transition-colors"
-          title="上一週"
-        >
-          <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-          </svg>
-        </button>
-        <span class="text-sm font-medium text-slate-200 min-w-[140px] text-center">
-          {{ weekRangeLabel }}
-        </span>
-        <button
-          @click="changeWeek(1)"
-          class="glass-btn p-2 rounded-lg hover:bg-white/10 transition-colors"
-          title="下一週"
-        >
-          <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-          </svg>
-        </button>
-      </div>
-
-      <div class="glass rounded-lg p-1 flex" role="tablist" aria-label="課表檢視模式">
-        <button
-          @click="viewMode = 'grid'"
-          role="tab"
-          aria-selected="true"
-          aria-label="網格檢視"
-          class="px-3 py-1.5 rounded-md text-sm font-medium transition-all"
-          :class="viewMode === 'grid' ? 'bg-primary-500 text-white' : 'text-slate-400 hover:text-slate-200'"
-        >
-          <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-          </svg>
-          網格
-        </button>
-        <button
-          @click="viewMode = 'list'"
-          role="tab"
-          aria-selected="false"
-          aria-label="列表檢視"
-          class="px-3 py-1.5 rounded-md text-sm font-medium transition-all"
-          :class="viewMode === 'list' ? 'bg-primary-500 text-white' : 'text-slate-400 hover:text-slate-200'"
-        >
-          <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-          </svg>
-          列表
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <div
-    v-if="teacherStore.schedule"
-    class="space-y-4"
-  >
-    <!-- Grid View -->
-    <div
-      v-if="viewMode === 'grid'"
-      class="glass-card p-3 sm:p-4 overflow-x-auto"
-    >
-      <!-- Mobile Navigation for Grid -->
-      <div v-if="isMobile" class="flex items-center justify-between mb-2">
-        <button
-          @click="changeGridDay(-1)"
-          class="glass-btn p-2 rounded-lg shrink-0"
-        >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-          </svg>
-        </button>
-        <span class="text-sm font-medium text-slate-200">{{ gridDayLabel }}</span>
-        <button
-          @click="changeGridDay(1)"
-          class="glass-btn p-2 rounded-lg shrink-0"
-        >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-          </svg>
-        </button>
-      </div>
-
-      <div class="min-w-[350px] sm:min-w-[500px]">
-        <div class="grid" :class="gridColsClass" gap-0.5 sm:gap-1>
-          <!-- Header Row -->
-          <div class="p-1 sm:p-2 text-center bg-white/5 rounded-tl-lg">
-            <span class="text-[10px] text-slate-400"></span>
-          </div>
-          <div
-            v-for="day in displayWeekDays"
-            :key="day.date"
-            class="p-1 sm:p-2 text-center bg-white/5"
+  <div class="mb-4">
+    <!-- 週次導航 -->
+    <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center gap-4">
+        <div class="flex items-center gap-1">
+          <button
+            @click="changeWeek(-1)"
+            class="glass-btn p-2 rounded-lg hover:bg-white/10 transition-colors"
+            title="上一週"
           >
-            <div class="text-[10px] text-slate-400">{{ day.weekday }}</div>
-            <div class="text-[clamp(10px,2vw,14px)] font-medium text-slate-100">{{ day.day }}</div>
-          </div>
-
-          <!-- Time Slots -->
-          <template v-for="hour in timeSlots" :key="hour">
-            <div class="p-1 sm:p-2 flex items-center justify-center border-t border-white/5">
-              <span class="text-[clamp(9px,1.8vw,12px)] text-slate-500">{{ hour }}:00</span>
-            </div>
-
-            <div
-              v-for="day in displayWeekDays"
-              :key="`${hour}-${day.date}`"
-              class="p-0.5 min-h-[45px] sm:min-h-[50px] border-t border-l border-white/5 relative"
-              :class="getGridCellClass(day.date, hour)"
-              @dragenter.prevent="handleDragEnter(hour, day.date)"
-              @dragleave.prevent="handleDragLeave"
-              @drop.prevent="handleDrop(hour, day.date)"
-              @dragover.prevent
-            >
-              <div
-                v-for="item in getScheduleItemsAt(day.date, hour)"
-                :key="item.id"
-                class="rounded p-1 text-xs transition-opacity cursor-grab hover:opacity-80"
-                :class="getItemBgClass(item)"
-                draggable="true"
-                @dragstart="handleDragStart(item, hour, day.date, $event)"
-                @dragend="handleDragEnd"
-                @click="openItemDetail(item, hour, day.date)"
-              >
-                <div class="font-medium text-[clamp(10px,2vw,14px)] truncate text-white leading-tight">
-                  {{ item.title }}
-                </div>
-                <div class="text-[9px] sm:text-[10px] text-slate-300 truncate">
-                  {{ item.start_time }}
-                  <span v-if="item.center_name" class="text-primary-400 ml-1">@{{ item.center_name }}</span>
-                </div>
-              </div>
-
-              <div
-                v-if="isDragging && isTargetCell(hour, day.date)"
-                class="absolute inset-0 border-2 border-dashed border-primary-500/50 bg-primary-500/10 flex items-center justify-center rounded"
-              >
-                <span class="text-xs text-primary-400">放置</span>
-              </div>
-            </div>
-          </template>
-        </div>
-      </div>
-    </div>
-
-    <!-- List View - Daily View -->
-    <div v-else class="space-y-4">
-      <div class="flex items-center justify-between mb-4">
-        <button
-          @click="changeListDay(-1)"
-          class="glass-btn p-2 rounded-lg"
-        >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-          </svg>
-        </button>
-
-        <h3 class="text-lg font-semibold text-slate-100">
-          {{ formatDate(listCurrentDate) }}
-        </h3>
-
-        <button
-          @click="changeListDay(1)"
-          class="glass-btn p-2 rounded-lg"
-        >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-          </svg>
-        </button>
-      </div>
-
-      <div class="glass-card p-4">
-        <div
-          v-if="currentDayItems.length === 0"
-          class="text-center py-12 text-slate-500"
-        >
-          今日無行程
-        </div>
-
-        <div
-          v-else
-          class="space-y-3"
-        >
-          <div
-            v-for="item in currentDayItems"
-            :key="item.id"
-            class="border rounded-xl p-4 cursor-pointer hover:bg-white/5 transition-all"
-            :class="getItemBorderClass(item)"
-            @click="openItemDetail(item)"
+            <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <span class="text-sm font-medium text-slate-200 min-w-[140px] text-center">
+            {{ weekRangeLabel }}
+          </span>
+          <button
+            @click="changeWeek(1)"
+            class="glass-btn p-2 rounded-lg hover:bg-white/10 transition-colors"
+            title="下一週"
           >
-            <div class="flex items-start gap-4">
-              <div class="flex-shrink-0 w-16 text-center">
-                <div class="text-xs text-slate-500 mb-1">{{ item.start_time }}</div>
-                <div class="text-xs text-slate-600">-</div>
-                <div class="text-xs text-slate-500 mt-1">{{ item.end_time }}</div>
-              </div>
-
-              <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-2 mb-1">
-                  <span
-                    class="w-2 h-2 rounded-full"
-                    :style="{ backgroundColor: item.color || '#10B981' }"
-                  ></span>
-                  <h4 class="font-medium text-slate-100 truncate">
-                    {{ item.title }}
-                    <span v-if="(item.data as any)?.center_name" class="text-primary-400 font-normal">@{{ (item.data as any).center_name }}</span>
-                  </h4>
-                </div>
-                <p v-if="item.type === 'SCHEDULE_RULE'" class="text-sm text-slate-400">
-                  課程時段
-                </p>
-                <p v-else class="text-sm text-slate-400">
-                  個人行程
-                </p>
-              </div>
-
-              <div
-                v-if="item.status"
-                class="flex-shrink-0 px-2 py-1 rounded-full text-xs font-medium"
-                :class="getStatusClass(item.status)"
-              >
-                {{ getStatusText(item.status) }}
-              </div>
-            </div>
-          </div>
+            <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
         </div>
       </div>
+
+      <!-- 快捷操作按鈕 -->
+      <div class="flex items-center gap-2">
+        <button
+          @click="showPersonalEventModal = true"
+          class="px-4 py-2 rounded-lg bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 transition-colors flex items-center gap-2 text-sm"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+          個人行程
+        </button>
+        <button
+          @click="goToExceptions"
+          class="px-4 py-2 rounded-lg bg-warning-500/20 text-warning-400 hover:bg-warning-500/30 transition-colors flex items-center gap-2 text-sm"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01" />
+          </svg>
+          請假/調課
+        </button>
+      </div>
     </div>
+
+    <!-- 教師課表週曆組件 -->
+    <TeacherScheduleGrid
+      v-if="teacherStore.schedule"
+      :schedules="transformedSchedules"
+      :week-start="teacherStore.weekStart"
+      @update:weekStart="handleWeekStartChange"
+      @select-schedule="handleScheduleSelect"
+      @add-personal-event="showPersonalEventModal = true"
+      @add-exception="goToExceptions"
+    />
   </div>
 
   <!-- 載入狀態 -->
@@ -558,43 +387,97 @@ import type { ScheduleItem, WeekSchedule } from '~/types'
 import { alertError } from '~/composables/useAlert'
 import { formatDateToString } from '~/composables/useTaiwanTime'
 
- definePageMeta({
-   middleware: 'auth-teacher',
-   layout: 'default',
- })
+definePageMeta({
+  middleware: 'auth-teacher',
+  layout: 'default',
+})
 
- const teacherStore = useTeacherStore()
- const sidebarStore = useSidebar()
- const notificationUI = useNotification()
- const router = useRouter()
- const showPersonalEventModal = ref(false)
- const editingEvent = ref<any>(null)
- const viewMode = ref('grid')
- const listCurrentDate = ref('')
- const isMobile = ref(false)
- const gridDayOffset = ref(0)
+const teacherStore = useTeacherStore()
+const sidebarStore = useSidebar()
+const notificationUI = useNotification()
+const router = useRouter()
+const showPersonalEventModal = ref(false)
+const editingEvent = ref<any>(null)
 
- const timeSlots = [0, 1, 2, 3, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
+// 課表資料轉換
+const transformedSchedules = computed(() => {
+  if (!teacherStore.schedule) return []
 
- // 今日課表摘要相關
- const todayStats = ref({
-   totalSessions: 0,
-   completedSessions: 0,
-   upcomingSessions: 0,
-   inProgressSessions: 0,
-   inProgressTeacherNames: [] as string[]
- })
+  const result: any[] = []
 
- const upcomingSessions = ref<Array<{
-   id: number | string
-   time: string
-   title: string
-   centerName: string
-   minutesUntil: number
-   data?: any
- }>>([])
+  teacherStore.schedule.days.forEach(day => {
+    const date = new Date(day.date)
+    const weekday = date.getDay() === 0 ? 7 : date.getDay()
 
- const pendingExceptions = ref(0)
+    day.items.forEach(item => {
+      const [startHour, startMinute] = item.start_time.split(':').map(Number)
+      const [endHour, endMinute] = item.end_time.split(':').map(Number)
+      const durationMinutes = (endHour * 60 + endMinute) - (startHour * 60 + startMinute)
+
+      result.push({
+        id: item.id,
+        key: `${item.id}-${weekday}-${item.start_time}`,
+        offering_name: item.title,
+        center_name: (item.data as any)?.center_name || '',
+        teacher_name: '',
+        weekday: weekday,
+        start_time: item.start_time,
+        end_time: item.end_time,
+        start_hour: startHour,
+        start_minute: startMinute,
+        duration_minutes: durationMinutes,
+        date: day.date,
+        has_exception: (item.data as any)?.has_exception || false,
+        exception_type: (item.data as any)?.exception_type || null,
+        data: item.data,
+      })
+    })
+  })
+
+  return result
+})
+
+// 週次範圍標籤
+const weekRangeLabel = computed(() => {
+  return teacherStore.weekLabel || '本週'
+})
+
+const changeWeek = (delta: number) => {
+  teacherStore.changeWeek(delta)
+  teacherStore.fetchSchedule().then(() => {
+    calculateTodayStats()
+  })
+  teacherStore.fetchPersonalEvents()
+}
+
+const handleWeekStartChange = (newStart: Date) => {
+  teacherStore.weekStart = newStart
+}
+
+const handleScheduleSelect = (schedule: any) => {
+  // 顯示動作選擇對話框
+  showActionChooser(schedule, schedule.start_hour, schedule.date)
+}
+
+// 今日課表摘要相關
+const todayStats = ref({
+  totalSessions: 0,
+  completedSessions: 0,
+  upcomingSessions: 0,
+  inProgressSessions: 0,
+  inProgressTeacherNames: [] as string[]
+})
+
+const upcomingSessions = ref<Array<{
+  id: number | string
+  time: string
+  title: string
+  centerName: string
+  minutesUntil: number
+  data?: any
+}>>([])
+
+const pendingExceptions = ref(0)
 
 // 計算今日課表統計
 const calculateTodayStats = () => {
@@ -604,306 +487,95 @@ const calculateTodayStats = () => {
   const todayStr = formatDateToString(today)
 
   const todayDay = teacherStore.schedule.days.find(d => d.date === todayStr)
-   if (!todayDay) {
-     todayStats.value = {
-       totalSessions: 0,
-       completedSessions: 0,
-       upcomingSessions: 0,
-       inProgressSessions: 0,
-       inProgressTeacherNames: []
-     }
-     upcomingSessions.value = []
-     return
-   }
-
-   const now = new Date()
-   const currentHour = now.getHours()
-   const currentMinute = now.getMinutes()
-
-   let completed = 0
-   let inProgress = 0
-   let upcoming = 0
-   const inProgressTeachers: string[] = []
-   const upcomingList: typeof upcomingSessions.value = []
-
-   todayDay.items.forEach((item: ScheduleItem) => {
-     const [startHour, startMinute] = item.start_time.split(':').map(Number)
-     const [endHour, endMinute] = item.end_time.split(':').map(Number)
-     const startTime = startHour * 60 + startMinute
-     const endTime = endHour * 60 + endMinute
-     const currentTime = currentHour * 60 + currentMinute
-
-     if (currentTime >= endTime) {
-       completed++
-     } else if (currentTime >= startTime && currentTime < endTime) {
-       inProgress++
-       const centerName = (item.data as any)?.center_name || '未知中心'
-       if (!inProgressTeachers.includes(centerName)) {
-         inProgressTeachers.push(centerName)
-       }
-     } else {
-       upcoming++
-       const minutesUntil = startTime - currentTime
-       upcomingList.push({
-         id: item.id,
-         time: item.start_time,
-         title: item.title,
-         centerName: (item.data as any)?.center_name || '',
-         minutesUntil,
-         data: item.data
-       })
-     }
-   })
-
-   upcomingList.sort((a, b) => a.minutesUntil - b.minutesUntil)
-
-   todayStats.value = {
-     totalSessions: todayDay.items.length,
-     completedSessions: completed,
-     upcomingSessions: upcoming,
-     inProgressSessions: inProgress,
-     inProgressTeacherNames: inProgressTeachers
-   }
-
-   upcomingSessions.value = upcomingList
- }
-
- // 計算待審核申請數
- const calculatePendingExceptions = () => {
-   pendingExceptions.value = teacherStore.exceptions.filter(e => e.status === 'PENDING').length
- }
-
- // 跳轉到例外申請頁面
- const goToExceptions = () => {
-   router.push('/teacher/exceptions')
- }
-
- // 跳轉到匯出頁面
- const goToExport = () => {
-   router.push('/teacher/export')
- }
-
- const allWeekDays = computed(() => {
-   if (!teacherStore.schedule) return []
-   
-   return teacherStore.schedule.days.map(day => {
-     const date = new Date(day.date)
-     return {
-       date: day.date,
-       weekday: date.toLocaleDateString('zh-TW', { weekday: 'short' }),
-       day: date.getDate(),
-     }
-   })
- })
-
-const displayWeekDays = computed(() => {
-  if (!isMobile.value) return allWeekDays.value
-  
-  const start = gridDayOffset.value
-  const days = []
-  for (let i = 0; i < 3; i++) {
-    const index = (start + i) % 7
-    if (allWeekDays.value[index]) {
-      days.push(allWeekDays.value[index])
+  if (!todayDay) {
+    todayStats.value = {
+      totalSessions: 0,
+      completedSessions: 0,
+      upcomingSessions: 0,
+      inProgressSessions: 0,
+      inProgressTeacherNames: []
     }
+    upcomingSessions.value = []
+    return
   }
-  return days
-})
 
-const gridColsClass = computed(() => {
-  return isMobile.value ? 'grid-cols-[50px_repeat(3,1fr)]' : 'grid-cols-[80px_repeat(7,1fr)]'
-})
+  const now = new Date()
+  const currentHour = now.getHours()
+  const currentMinute = now.getMinutes()
 
-const gridDayLabel = computed(() => {
-  if (!displayWeekDays.value.length) return ''
-  const start = displayWeekDays.value[0]
-  const end = displayWeekDays.value[displayWeekDays.value.length - 1]
-  return `${start.weekday} - ${end.weekday}`
-})
+  let completed = 0
+  let inProgress = 0
+  let upcoming = 0
+  const inProgressTeachers: string[] = []
+  const upcomingList: typeof upcomingSessions.value = []
 
-// 週次範圍標籤（使用 store 中的 weekLabel）
-const weekRangeLabel = computed(() => {
-  return teacherStore.weekLabel || '本週'
-})
+  todayDay.items.forEach((item: ScheduleItem) => {
+    const [startHour, startMinute] = item.start_time.split(':').map(Number)
+    const [endHour, endMinute] = item.end_time.split(':').map(Number)
+    const startTime = startHour * 60 + startMinute
+    const endTime = endHour * 60 + endMinute
+    const currentTime = currentHour * 60 + currentMinute
 
-const changeGridDay = (delta: number) => {
-  gridDayOffset.value = (gridDayOffset.value + delta + 7) % 7
-}
-
-const weekDayHeaders = computed(() => allWeekDays.value)
-
-const currentDayItems = computed(() => {
-  if (!teacherStore.schedule || !listCurrentDate.value) return []
-  
-  const day = teacherStore.schedule.days.find(d => d.date === listCurrentDate.value)
-  return day?.items || []
-})
-
-const changeListDay = (delta: number) => {
-  if (!teacherStore.schedule) return
-  
-  const currentIndex = teacherStore.schedule.days.findIndex(d => d.date === listCurrentDate.value)
-  const newIndex = currentIndex + delta
-  
-  if (newIndex >= 0 && newIndex < teacherStore.schedule.days.length) {
-    listCurrentDate.value = teacherStore.schedule.days[newIndex].date
-  }
-}
-
-const getScheduleItemsAt = (date: string, hour: number): ScheduleItem[] => {
-  const day = teacherStore.schedule?.days.find(d => d.date === date)
-  let items: ScheduleItem[] = day?.items || []
-
-  // Add personal events
-  const personalEventsAtHour = teacherStore.personalEvents
-    .filter(event => {
-      // Skip events with invalid dates
-      if (!event.start_at || !event.end_at) return false
-      const eventDateObj = new Date(event.start_at)
-      if (isNaN(eventDateObj.getTime())) return false
-      const eventDate = formatDateToString(eventDateObj)
-      if (eventDate !== date) return false
-      const localStartHour = eventDateObj.getHours()
-      const localEndHour = new Date(event.end_at).getHours()
-      return hour >= localStartHour && hour < localEndHour
-    })
-    .map(event => {
-      const startDateObj = new Date(event.start_at)
-      const endDateObj = new Date(event.end_at)
-      return {
-        id: event.id,
-        type: 'PERSONAL_EVENT' as const,
-        title: event.title,
-        date: date,
-        start_time: `${startDateObj.getHours().toString().padStart(2, '0')}:${startDateObj.getMinutes().toString().padStart(2, '0')}`,
-        end_time: `${endDateObj.getHours().toString().padStart(2, '0')}:${endDateObj.getMinutes().toString().padStart(2, '0')}`,
-        room_id: 0,
-        teacher_id: event.teacher_id,
-        center_id: 0,
-        center_name: '',
-        status: 'APPROVED' as const,
-        color: event.color,
-        data: event,
+    if (currentTime >= endTime) {
+      completed++
+    } else if (currentTime >= startTime && currentTime < endTime) {
+      inProgress++
+      const centerName = (item.data as any)?.center_name || '未知中心'
+      if (!inProgressTeachers.includes(centerName)) {
+        inProgressTeachers.push(centerName)
       }
-    })
-
-  items = items.concat(personalEventsAtHour)
-
-  const hourNum = hour
-  return items.filter(item => {
-    let startHour = parseInt(item.start_time.split(':')[0])
-    let startMin = parseInt(item.start_time.split(':')[1])
-    let endHour = parseInt(item.end_time.split(':')[0])
-    let endMin = parseInt(item.end_time.split(':')[1])
-
-    // 處理 "24:00" 特殊情況（跨日課程的結束時間）
-    const isMidnightEnd = item.end_time === '24:00'
-    if (isMidnightEnd) {
-      endHour = 24
+    } else {
+      upcoming++
+      const minutesUntil = startTime - currentTime
+      upcomingList.push({
+        id: item.id,
+        time: item.start_time,
+        title: item.title,
+        centerName: (item.data as any)?.center_name || '',
+        minutesUntil,
+        data: item.data
+      })
     }
-
-    // 處理跨日課程
-    if (isMidnightEnd || endHour < startHour) {
-      // 跨日課程：檢查是否在當天時間範圍內
-      if (hourNum >= startHour) {
-        // 開始日 22:00 以後
-        item.display_start = item.start_time
-        item.display_end = '24:00'
-        return true
-      }
-      return false
-    }
-
-    if (hourNum >= startHour && hourNum < endHour) {
-      item.display_start = item.start_time
-      item.display_end = item.end_time
-      return true
-    }
-    return false
   })
-}
 
-const getGridCellClass = (date: string, hour: number): string => {
-  const items = getScheduleItemsAt(date, hour)
-  if (items.length > 0) return ''
-  
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const cellDate = new Date(date)
-  const isPast = cellDate < today
-  
-  if (isPast) return 'bg-slate-800/50'
-  return 'hover:bg-white/5'
-}
+  upcomingList.sort((a, b) => a.minutesUntil - b.minutesUntil)
 
-const getItemBgClass = (item: ScheduleItem): string => {
-  if (item.type === 'PERSONAL_EVENT') {
-    return 'bg-purple-500/30 border border-purple-500/50'
+  todayStats.value = {
+    totalSessions: todayDay.items.length,
+    completedSessions: completed,
+    upcomingSessions: upcoming,
+    inProgressSessions: inProgress,
+    inProgressTeacherNames: inProgressTeachers
   }
-  
-  // CENTER_SESSION 或 SCHEDULE_RULE 都視為課程
-  const data = item.data as any
-  if (data?.has_exception) {
-    return 'bg-warning-500/30 border border-warning-500/50'
-  }
-  
-  return 'bg-success-500/20 border border-success-500/30'
+
+  upcomingSessions.value = upcomingList
 }
 
-const changeWeek = (delta: number) => {
-  teacherStore.changeWeek(delta)
-  gridDayOffset.value = 0
-  teacherStore.fetchSchedule().then(() => {
-    if (teacherStore.schedule?.days.length) {
-      listCurrentDate.value = teacherStore.schedule.days[0].date
-    }
-    // 重新計算今日統計
-    calculateTodayStats()
-  })
-  teacherStore.fetchPersonalEvents()
+// 計算待審核申請數
+const calculatePendingExceptions = () => {
+  pendingExceptions.value = teacherStore.exceptions.filter(e => e.status === 'PENDING').length
 }
 
-const openItemDetail = (item: ScheduleItem, hour?: number, date?: string) => {
-  // 中心課程或個人行程：顯示動作選擇對話框
-  showActionChooser(item, hour, date)
+// 跳轉到例外申請頁面
+const goToExceptions = () => {
+  router.push('/teacher/exceptions')
+}
+
+// 跳轉到匯出頁面
+const goToExport = () => {
+  router.push('/teacher/export')
 }
 
 const showSessionNoteModal = ref(false)
 const selectedScheduleItem = ref<ScheduleItem | null>(null)
 
-const isDragging = ref(false)
-const dragTarget = ref<{ time: number, date: string } | null>(null)
-const draggedItem = ref<ScheduleItem | null>(null)
-const sourceDate = ref<string>('')
-const sourceHour = ref<number>(0)
-
 // 動作選擇對話框狀態
 const showActionDialog = ref(false)
-const actionDialogItem = ref<ScheduleItem | null>(null)
+const actionDialogItem = ref<any>(null)
 const actionDialogTarget = ref<{ hour: number, date: string } | null>(null)
 
-// 處理拖曳開始
-const handleDragStart = (item: ScheduleItem, hour: number, date: string, event: DragEvent) => {
-  isDragging.value = true
-  draggedItem.value = item
-  sourceHour.value = hour
-  sourceDate.value = date
-  event.dataTransfer?.setData('application/json', JSON.stringify({
-    type: 'schedule',
-    item,
-    sourceHour: hour,
-    sourceDate: date,
-  }))
-}
-
-const handleDragEnd = () => {
-  isDragging.value = false
-  dragTarget.value = null
-  draggedItem.value = null
-}
-
 // 顯示動作選擇對話框
-const showActionChooser = (item: ScheduleItem, hour?: number, date?: string) => {
+const showActionChooser = (item: any, hour?: number, date?: string) => {
   actionDialogItem.value = item
   actionDialogTarget.value = hour && date ? { hour, date } : null
   showActionDialog.value = true
@@ -914,42 +586,40 @@ const handleActionSelect = async (action: 'exception' | 'note' | 'edit') => {
   const item = actionDialogItem.value
   if (!item) return
 
-  const itemData = item.data as any
-  const title = itemData?.offering_name || item.title
+  const itemData = item.data || {}
+  const title = itemData?.offering_name || item.offering_name || item.title
   const itemDate = item.date
   const time = `${item.start_time} - ${item.end_time}`
 
-  if (item.type === 'PERSONAL_EVENT') {
-    // 個人行程
-    if (action === 'edit') {
-      // 編輯個人行程
-      editingEvent.value = item.data as any
-      showPersonalEventModal.value = true
-    } else if (action === 'note') {
-      // 打開課堂備註（個人行程也可以有備註）
-      selectedScheduleItem.value = item
-      showSessionNoteModal.value = true
+  if (action === 'exception') {
+    // 導向例外申請頁面
+    router.push({
+      path: '/teacher/exceptions',
+      query: {
+        action: 'create',
+        rule_id: itemData?.id || item.id,
+        course_name: title,
+        original_date: itemDate,
+        original_time: time,
+        center_id: itemData?.center_id || item.center_id,
+      }
+    })
+  } else if (action === 'note') {
+    // 打開課堂備註
+    selectedScheduleItem.value = {
+      id: item.id,
+      type: 'SCHEDULE_RULE' as const,
+      title: item.offering_name || title,
+      start_time: item.start_time,
+      end_time: item.end_time,
+      date: itemDate,
+      room_id: itemData?.room_id || 0,
+      center_id: itemData?.center_id || 0,
+      center_name: itemData?.center_name || '',
+      status: 'APPROVED' as const,
+      data: itemData,
     }
-  } else {
-    // 中心課程
-    if (action === 'exception') {
-      // 導向例外申請頁面
-      router.push({
-        path: '/teacher/exceptions',
-        query: {
-          action: 'create',
-          rule_id: itemData?.id || item.id,
-          course_name: title,
-          original_date: itemDate,
-          original_time: time,
-          center_id: item.center_id,
-        }
-      })
-    } else if (action === 'note') {
-      // 打開課堂備註
-      selectedScheduleItem.value = item
-      showSessionNoteModal.value = true
-    }
+    showSessionNoteModal.value = true
   }
 
   // 關閉對話框
@@ -965,76 +635,6 @@ const closeActionDialog = () => {
   actionDialogTarget.value = null
 }
 
-const handleDragEnter = (hour: number, date: string) => {
-  dragTarget.value = { time: hour, date }
-}
-
-const handleDragLeave = () => {
-}
-
-const handleDrop = async (hour: number, date: string) => {
-  if (!isDragging.value || !draggedItem.value) return
-
-  const sourceKey = `${sourceHour.value}-${sourceDate.value}`
-  const targetKey = `${hour}-${date}`
-
-  // 個人行程：允許移動
-  if (draggedItem.value.type === 'PERSONAL_EVENT') {
-    if (sourceKey !== targetKey && teacherStore.schedule) {
-      const day = teacherStore.schedule.days.find(d => d.date === date)
-      if (day) {
-        const itemData = draggedItem.value.data
-        let itemId = itemData?.id || draggedItem.value.id
-
-        // Handle string IDs
-        if (typeof itemId === 'string') {
-          const numericMatch = itemId.match(/_(\d+)$/)
-          if (numericMatch) {
-            itemId = parseInt(numericMatch[1])
-          } else {
-            itemId = parseInt(itemId.replace(/\D/g, '')) || 0
-          }
-        }
-
-        if (itemId) {
-          const duration = parseInt(draggedItem.value.end_time.split(':')[0]) - parseInt(draggedItem.value.start_time.split(':')[0])
-          const newEndHour = hour + duration
-          const newStartTime = `${hour.toString().padStart(2, '0')}:00`
-          const newEndTime = `${newEndHour.toString().padStart(2, '0')}:00`
-
-          try {
-            await teacherStore.moveScheduleItem({
-              item_id: itemId,
-              item_type: 'PERSONAL_EVENT',
-              center_id: 0,
-              new_date: date,
-              new_start_time: newStartTime,
-              new_end_time: newEndTime,
-            })
-
-            await teacherStore.fetchSchedule()
-            await teacherStore.fetchPersonalEvents()
-          } catch (error) {
-            console.error('Failed to move schedule:', error)
-            await alertError('更新失敗，請稍後再試')
-          }
-        }
-      }
-    }
-  } else {
-    // 中心課程：顯示動作選擇對話框
-    showActionChooser(draggedItem.value, hour, date)
-  }
-
-  isDragging.value = false
-  dragTarget.value = null
-  draggedItem.value = null
-}
-
-const isTargetCell = (hour: number, date: string): boolean => {
-  return dragTarget.value?.time === hour && dragTarget.value?.date === date
-}
-
 const handleNoteModalClose = () => {
   showSessionNoteModal.value = false
   selectedScheduleItem.value = null
@@ -1045,10 +645,8 @@ const handleNoteModalSaved = () => {
 }
 
 const handlePersonalEventSaved = () => {
-  // Refresh personal events and schedule
   teacherStore.fetchPersonalEvents()
   teacherStore.fetchSchedule().then(() => {
-    // 重新計算統計
     calculateTodayStats()
   })
 }
@@ -1076,7 +674,6 @@ const getItemBorderClass = (item: ScheduleItem): string => {
     return 'border-purple-500/50 bg-purple-500/10'
   }
 
-  // CENTER_SESSION 或 SCHEDULE_RULE 都視為課程
   const data = item.data as any
   if (data?.has_exception) {
     return 'border-warning-500/50 bg-warning-500/10'
@@ -1112,30 +709,14 @@ const getStatusText = (status: string): string => {
 }
 
 onMounted(() => {
-  const checkMobile = () => {
-    isMobile.value = window.innerWidth < 640
-  }
-  checkMobile()
-  window.addEventListener('resize', checkMobile)
-
   teacherStore.fetchCenters()
   teacherStore.fetchSchedule()
   teacherStore.fetchPersonalEvents()
   teacherStore.fetchExceptions()
 
-  // 等待資料載入完成後計算統計
-  const checkAndCalculateStats = () => {
-    if (teacherStore.schedule) {
-      calculateTodayStats()
-    }
-  }
-
   // 使用 watch 監聽 schedule 變化
   watch(() => teacherStore.schedule, () => {
     calculateTodayStats()
-    if (teacherStore.schedule?.days.length) {
-      listCurrentDate.value = teacherStore.schedule.days[0].date
-    }
   }, { immediate: true })
 
   // 監聽例外申請變化
