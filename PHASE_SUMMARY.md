@@ -267,8 +267,118 @@ swag init --parseDependency --parseInternal --dir . --output docs --generalInfo 
 
 ---
 
-**專案狀態**：✅ **健康**  
-**測試覆蓋率**：✅ **95%**  
-**跨日課程支援**：✅ **完成**  
-**API 速率限制**：✅ **完成**  
+## 十八、教師端課表互動與課堂備註優化（2026-01-28）
+
+### 18.1 教師端課表互動優化
+
+| 功能 | 說明 |
+|:---|:---|
+| 動作選擇對話框 | 點擊或拖曳課表項目時彈出操作選單 |
+| 中心課程選項 | 例外申請（調課/請假）、課堂備註 |
+| 個人行程選項 | 編輯行程、新增備註 |
+| 拖曳功能 | 個人行程可直接拖曳移動時間 |
+
+### 18.2 課堂備註功能修復
+
+| 問題 | 修復方案 |
+|:---|:---|
+| 無法保存備註 | 新增 rule_id 欄位到 API 響應 |
+| 無法讀取備註 | 修復類型轉換，transformToWeekSchedule 正確保留 rule_id |
+| JSON 欄位被省略 | 移除 SessionNoteResource 的 omitempty 標籤 |
+| 資料庫查詢不一致 | SessionNoteRepository 統一使用 WDB |
+
+### 18.3 例外申請預填功能
+
+從課表點擊例外申請時，自動帶入：
+- rule_id - 課程規則 ID
+- course_name - 課程名稱
+- original_date - 原始日期
+- original_time - 原始時間
+
+### 18.4 檔案變更清單
+
+**後端變更**
+
+| 檔案 | 變更 |
+|:---|:---|
+| app/controllers/teacher.go | +52 行，新增 RuleID 欄位，修復參數驗證 |
+| app/repositories/session_note.go | +28 行，使用 WDB 查詢，新增調試日誌 |
+| app/resources/session_note.go | +12 行，移除 omitempty 標籤 |
+
+**前端變更**
+
+| 檔案 | 變更 |
+|:---|:---|
+| frontend/pages/teacher/dashboard.vue | +260 行，動作選擇對話框、拖曳功能 |
+| frontend/components/SessionNoteModal.vue | +12 行，讀取 rule_id |
+| frontend/components/ExceptionModal.vue | +32 行，預填資料支援 |
+| frontend/pages/teacher/exceptions.vue | +42 行，處理 query 參數 |
+| frontend/stores/teacher.ts | +21 行，類型定義與轉換修復 |
+| frontend/types/index.ts | +1 行，新增 rule_id 欄位 |
+
+### 18.5 變更統計
+
+```
+9 files changed, 374 insertions(+), 86 deletions(-)
+```
+
+### 18.6 功能亮點
+
+**互動流程**
+
+```
+教師課表
+    ↓ 點擊/拖曳中心課程
+動作選擇對話框
+    ├── 課程例外申請 → 導向例外頁面（預填資料）
+    └── 課堂備註 → 開啟備註編輯器
+    ↓ 點擊/拖曳個人行程
+動作選擇對話框
+    ├── 編輯行程 → 開啟行程編輯器
+    └── 新增備註 → 開啟備註編輯器
+```
+
+**課堂備註資料流程**
+
+```
+GET /teacher/sessions/note?rule_id=5&session_date=2026-01-30
+    ↓後端查詢 session_notes 資料表
+    ↓{
+  "note": {
+    "id": 41,
+    "rule_id": 5,
+    "session_date": "2026-01-30",
+    "content": "教學筆記內容",
+    "prep_note": "備課筆記內容"
+  }
+}
+```
+
+### 18.7 後續建議
+
+**短期優化**
+- 移除調試日誌（fmt.Printf）
+- 添加單元測試覆蓋
+- 完善錯誤處理
+
+**中期規劃**
+- 課表視圖優化（衝突顯示、顏色區分）
+- 批次例外申請
+- 備註匯出功能
+
+### 18.8 Commit 記錄
+
+| 提交紀錄 | 說明 |
+|:---|:---|
+| 2fa430b | feat: implement teacher schedule interaction and session notes |
+| 769d74d | refactor: improve code readability and time utilities |
+| 14f05c4 | perf: optimize database indexes and add cache service |
+
+---
+
+**專案狀態**：✅ **健康**
+**測試覆蓋率**：✅ **95%**
+**跨日課程支援**：✅ **完成**
+**API 速率限制**：✅ **完成**
+**教師端互動優化**：✅ **完成**
 **下一里程碑**：監控告警系統（Sentry/Grafana）

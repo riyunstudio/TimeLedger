@@ -568,9 +568,9 @@ func (ctl *SchedulingController) ExpandRules(ctx *gin.Context) {
 
 	// 手動解析請求參數，支援 YYYY-MM-DD 格式
 	var reqBody struct {
-		RuleIDs   []uint  `json:"rule_ids"`
-		StartDate string  `json:"start_date"`
-		EndDate   string  `json:"end_date"`
+		RuleIDs   []uint `json:"rule_ids"`
+		StartDate string `json:"start_date"`
+		EndDate   string `json:"end_date"`
 	}
 	if err := ctx.ShouldBindJSON(&reqBody); err != nil {
 		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
@@ -633,17 +633,17 @@ func (ctl *SchedulingController) ExpandRules(ctx *gin.Context) {
 }
 
 type CreateRuleRequest struct {
-	Name              string  `json:"name" binding:"required"`
-	OfferingID        uint    `json:"offering_id" binding:"required"`
-	TeacherID         uint    `json:"teacher_id"`
-	RoomID            uint    `json:"room_id" binding:"required"`
-	StartTime         string  `json:"start_time" binding:"required"`
-	EndTime           string  `json:"end_time" binding:"required"`
-	Duration          int     `json:"duration" binding:"required"`
-	Weekdays          []int   `json:"weekdays" binding:"required,min=1"`
-	StartDate         string  `json:"start_date" binding:"required"`
-	EndDate           *string `json:"end_date"`
-	OverrideBuffer    bool    `json:"override_buffer"` // 允許覆蓋 Buffer 衝突
+	Name           string  `json:"name" binding:"required"`
+	OfferingID     uint    `json:"offering_id" binding:"required"`
+	TeacherID      uint    `json:"teacher_id"`
+	RoomID         uint    `json:"room_id" binding:"required"`
+	StartTime      string  `json:"start_time" binding:"required"`
+	EndTime        string  `json:"end_time" binding:"required"`
+	Duration       int     `json:"duration" binding:"required"`
+	Weekdays       []int   `json:"weekdays" binding:"required,min=1"`
+	StartDate      string  `json:"start_date" binding:"required"`
+	EndDate        *string `json:"end_date"`
+	OverrideBuffer bool    `json:"override_buffer"` // 允許覆蓋 Buffer 衝突
 }
 
 func (ctl *SchedulingController) CreateRule(ctx *gin.Context) {
@@ -724,12 +724,12 @@ func (ctl *SchedulingController) CreateRule(ctx *gin.Context) {
 		// 產生衝突訊息 - 去重，只顯示衝突的星期
 		conflictSet := make(map[string]bool) // 用於去重
 		conflictMessages := []string{}
-		
+
 		// 排課規則衝突
 		for _, rule := range overlappingRules {
 			dayNames := []string{"", "週一", "週二", "週三", "週四", "週五", "週六", "週日"}
 			key := fmt.Sprintf("rule-%d-%s-%s", rule.Weekday, rule.StartTime, rule.EndTime)
-			
+
 			if !conflictSet[key] {
 				conflictSet[key] = true
 				msg := fmt.Sprintf("%s %s-%s", dayNames[rule.Weekday], rule.StartTime, rule.EndTime)
@@ -745,7 +745,7 @@ func (ctl *SchedulingController) CreateRule(ctx *gin.Context) {
 		// 個人行程衝突
 		for _, event := range personalEventConflicts {
 			key := fmt.Sprintf("event-%s", event.Title)
-			
+
 			if !conflictSet[key] {
 				conflictSet[key] = true
 				eventDate := event.StartAt
@@ -772,7 +772,7 @@ func (ctl *SchedulingController) CreateRule(ctx *gin.Context) {
 
 	// 【新增】Buffer 檢查
 	var bufferConflicts []map[string]interface{}
-	
+
 	// 取得課程設定（包含緩衝時間）- 先取得 offering 再取得 course
 	offering, err := ctl.offeringRepo.GetByID(ctl.makeCtx(ctx), req.OfferingID)
 	if err != nil {
@@ -782,7 +782,7 @@ func (ctl *SchedulingController) CreateRule(ctx *gin.Context) {
 		})
 		return
 	}
-	
+
 	_, err = ctl.courseRepo.GetByID(ctl.makeCtx(ctx), offering.CourseID)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
@@ -812,7 +812,7 @@ func (ctl *SchedulingController) CreateRule(ctx *gin.Context) {
 		// 檢查 Teacher Buffer
 		if req.TeacherID > 0 {
 			prevEndTime, _ := ctl.getTeacherPreviousSessionEndTime(ctx, centerID, req.TeacherID, weekday, req.StartTime, newStartTime)
-			
+
 			if !prevEndTime.IsZero() {
 				teacherBufferResult, err := ctl.validationService.CheckTeacherBuffer(ctx, centerID, req.TeacherID, prevEndTime, newStartTime, offering.CourseID)
 				if err != nil {
@@ -827,15 +827,15 @@ func (ctl *SchedulingController) CreateRule(ctx *gin.Context) {
 					dayNames := []string{"", "週一", "週二", "週三", "週四", "週五", "週六", "週日"}
 					for _, conflict := range teacherBufferResult.Conflicts {
 						bufferConflicts = append(bufferConflicts, map[string]interface{}{
-							"weekday":        weekday,
-							"day_name":       dayNames[weekday],
-							"start_time":     req.StartTime,
-							"end_time":       req.EndTime,
-							"conflict_type":  conflict.Type,
-							"message":        conflict.Message,
-							"can_override":   conflict.CanOverride,
+							"weekday":          weekday,
+							"day_name":         dayNames[weekday],
+							"start_time":       req.StartTime,
+							"end_time":         req.EndTime,
+							"conflict_type":    conflict.Type,
+							"message":          conflict.Message,
+							"can_override":     conflict.CanOverride,
 							"required_minutes": conflict.RequiredMinutes,
-							"diff_minutes":  conflict.DiffMinutes,
+							"diff_minutes":     conflict.DiffMinutes,
 						})
 					}
 				}
@@ -859,15 +859,15 @@ func (ctl *SchedulingController) CreateRule(ctx *gin.Context) {
 					dayNames := []string{"", "週一", "週二", "週三", "週四", "週五", "週六", "週日"}
 					for _, conflict := range roomBufferResult.Conflicts {
 						bufferConflicts = append(bufferConflicts, map[string]interface{}{
-							"weekday":        weekday,
-							"day_name":       dayNames[weekday],
-							"start_time":     req.StartTime,
-							"end_time":       req.EndTime,
-							"conflict_type":  conflict.Type,
-							"message":        conflict.Message,
-							"can_override":   conflict.CanOverride,
+							"weekday":          weekday,
+							"day_name":         dayNames[weekday],
+							"start_time":       req.StartTime,
+							"end_time":         req.EndTime,
+							"conflict_type":    conflict.Type,
+							"message":          conflict.Message,
+							"can_override":     conflict.CanOverride,
 							"required_minutes": conflict.RequiredMinutes,
-							"diff_minutes":  conflict.DiffMinutes,
+							"diff_minutes":     conflict.DiffMinutes,
 						})
 					}
 				}
@@ -1119,13 +1119,13 @@ type UpdateRuleRequest struct {
 	StartDate  string  `json:"start_date"`
 	EndDate    *string `json:"end_date"`
 	// 更新模式：SINGLE - 只修改這一天，FUTURE - 修改這天及之後，ALL - 修改所有
-	UpdateMode string  `json:"update_mode"`
+	UpdateMode string `json:"update_mode"`
 }
 
 const (
-	UpdateModeSingle  = "SINGLE"
-	UpdateModeFuture  = "FUTURE"
-	UpdateModeAll     = "ALL"
+	UpdateModeSingle = "SINGLE"
+	UpdateModeFuture = "FUTURE"
+	UpdateModeAll    = "ALL"
 )
 
 func (ctl *SchedulingController) UpdateRule(ctx *gin.Context) {
@@ -1302,13 +1302,13 @@ func handleSingleUpdate(ctx context.Context, ruleRepo *repositories.ScheduleRule
 
 	now := time.Now()
 	cancelException := models.ScheduleException{
-		CenterID:       centerID,
-		RuleID:         existingRule.ID,
-		OriginalDate:   targetDate,
-		ExceptionType:  "CANCEL",
-		Status:         "APPROVED", // SINGLE 模式直接核准
-		Reason:         req.Name,   // 使用更新原因作為取消原因
-		ReviewedAt:     &now,
+		CenterID:      centerID,
+		RuleID:        existingRule.ID,
+		OriginalDate:  targetDate,
+		ExceptionType: "CANCEL",
+		Status:        "APPROVED", // SINGLE 模式直接核准
+		Reason:        req.Name,   // 使用更新原因作為取消原因
+		ReviewedAt:    &now,
 	}
 
 	if _, err := exceptionRepo.Create(ctx, cancelException); err != nil {
@@ -1322,15 +1322,15 @@ func handleSingleUpdate(ctx context.Context, ruleRepo *repositories.ScheduleRule
 	}
 
 	newRule := models.ScheduleRule{
-		CenterID:       centerID,
-		OfferingID:     req.OfferingID,
-		TeacherID:      req.TeacherID,
-		RoomID:         req.RoomID,
-		Name:           req.Name,
-		Weekday:        weekday,
-		StartTime:      req.StartTime,
-		EndTime:        req.EndTime,
-		Duration:       req.Duration,
+		CenterID:   centerID,
+		OfferingID: req.OfferingID,
+		TeacherID:  req.TeacherID,
+		RoomID:     req.RoomID,
+		Name:       req.Name,
+		Weekday:    weekday,
+		StartTime:  req.StartTime,
+		EndTime:    req.EndTime,
+		Duration:   req.Duration,
 		EffectiveRange: models.DateRange{
 			StartDate: targetDate,
 			EndDate:   targetDate, // 只有這一天
@@ -1350,15 +1350,15 @@ func handleSingleUpdate(ctx context.Context, ruleRepo *repositories.ScheduleRule
 	newEndAt := time.Date(targetDate.Year(), targetDate.Month(), targetDate.Day(), endHour, 0, 0, 0, time.UTC)
 
 	rescheduleException := models.ScheduleException{
-		CenterID:       centerID,
-		RuleID:         existingRule.ID, // 關聯原規則
-		OriginalDate:   targetDate,
-		ExceptionType:  "RESCHEDULE",
-		Status:         "APPROVED",
-		Reason:         req.Name,
-		NewStartAt:     &newStartAt,
-		NewEndAt:       &newEndAt,
-		ReviewedAt:     &now,
+		CenterID:      centerID,
+		RuleID:        existingRule.ID, // 關聯原規則
+		OriginalDate:  targetDate,
+		ExceptionType: "RESCHEDULE",
+		Status:        "APPROVED",
+		Reason:        req.Name,
+		NewStartAt:    &newStartAt,
+		NewEndAt:      &newEndAt,
+		ReviewedAt:    &now,
 	}
 
 	if _, err := exceptionRepo.Create(ctx, rescheduleException); err != nil {
@@ -1732,10 +1732,10 @@ func (ctl *SchedulingController) GetTodaySummary(ctx *gin.Context) {
 
 	// 建構 response
 	response := TodaySummaryResponse{
-		Sessions:            []TodaySession{},
-		PendingExceptions:   len(pendingExceptions),
-		ChangesCount:        changesCount,
-		HasScheduleChanges:  hasScheduleChanges,
+		Sessions:           []TodaySession{},
+		PendingExceptions:  len(pendingExceptions),
+		ChangesCount:       changesCount,
+		HasScheduleChanges: hasScheduleChanges,
 	}
 
 	now := today
@@ -1782,6 +1782,13 @@ func (ctl *SchedulingController) GetTodaySummary(ctx *gin.Context) {
 
 		// 判斷課程狀態
 		var status string
+		// 檢查是否為跨日課程（結束時間早於開始時間）
+		isCrossDay := endDateTime.Before(startDateTime)
+		if isCrossDay {
+			// 跨日課程：結束時間加 24 小時
+			endDateTime = endDateTime.Add(24 * time.Hour)
+		}
+
 		if now.After(endDateTime) {
 			status = "completed"
 		} else if now.After(startDateTime) && now.Before(endDateTime) {
@@ -1791,13 +1798,13 @@ func (ctl *SchedulingController) GetTodaySummary(ctx *gin.Context) {
 		}
 
 		response.Sessions = append(response.Sessions, TodaySession{
-			ID:         session.RuleID,
-			StartTime:  startDateTime,
-			EndTime:    endDateTime,
-			Offering:   TodayOffering{Name: offeringName},
-			Teacher:    TodayTeacher{Name: teacherName},
-			Room:       TodayRoom{Name: roomName},
-			Status:     status,
+			ID:        session.RuleID,
+			StartTime: startDateTime,
+			EndTime:   endDateTime,
+			Offering:  TodayOffering{Name: offeringName},
+			Teacher:   TodayTeacher{Name: teacherName},
+			Room:      TodayRoom{Name: roomName},
+			Status:    status,
 		})
 	}
 
@@ -1844,25 +1851,25 @@ func (ctl *SchedulingController) GetTodaySummary(ctx *gin.Context) {
 }
 
 type TodaySummaryResponse struct {
-	Sessions           []TodaySession `json:"sessions"`
-	TotalSessions      int            `json:"totalSessions"`
-	CompletedSessions  int            `json:"completedSessions"`
-	UpcomingSessions   int            `json:"upcomingSessions"`
-	InProgressSessions int            `json:"inProgressSessions"`
-	InProgressTeacherNames []string   `json:"inProgressTeacherNames,omitempty"`
-	PendingExceptions  int            `json:"pendingExceptions"`
-	ChangesCount       int            `json:"changesCount"`
-	HasScheduleChanges bool           `json:"hasScheduleChanges"`
+	Sessions               []TodaySession `json:"sessions"`
+	TotalSessions          int            `json:"totalSessions"`
+	CompletedSessions      int            `json:"completedSessions"`
+	UpcomingSessions       int            `json:"upcomingSessions"`
+	InProgressSessions     int            `json:"inProgressSessions"`
+	InProgressTeacherNames []string       `json:"inProgressTeacherNames,omitempty"`
+	PendingExceptions      int            `json:"pendingExceptions"`
+	ChangesCount           int            `json:"changesCount"`
+	HasScheduleChanges     bool           `json:"hasScheduleChanges"`
 }
 
 type TodaySession struct {
-	ID         uint           `json:"id"`
-	StartTime  time.Time      `json:"start_time"`
-	EndTime    time.Time      `json:"end_time"`
-	Offering   TodayOffering  `json:"offering"`
-	Teacher    TodayTeacher   `json:"teacher"`
-	Room       TodayRoom      `json:"room"`
-	Status     string         `json:"status"`
+	ID        uint          `json:"id"`
+	StartTime time.Time     `json:"start_time"`
+	EndTime   time.Time     `json:"end_time"`
+	Offering  TodayOffering `json:"offering"`
+	Teacher   TodayTeacher  `json:"teacher"`
+	Room      TodayRoom     `json:"room"`
+	Status    string        `json:"status"`
 }
 
 type TodayOffering struct {

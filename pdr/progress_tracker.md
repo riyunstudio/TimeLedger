@@ -68,12 +68,10 @@
 | | 11.3 Pagination & Sorting | 分頁排序 | `[X] DONE` | ✅ 已有標準分頁實作 |
 | | 11.4 Smart Matcher | 智慧媒合 | `[X] DONE` | ✅ SmartMatchingService 已實作 |
 | | 11.5 Internal Notes | 內部評分與備註 | `[X] DONE` | ✅ CenterTeacherNote model 已實作 |
-| | **Stage 12** | **營運、通知與登陸頁** | `[COMPLETED]` | ✅ 完成 |
-| | 12.1 Migrations (Notes & Logs) | 建立 `session_notes`, `audit_logs` | `[X] DONE` | ✅ 完成 |
-| | 12.2 Operation Logic | 教學筆記、稽核紀錄 | `[X] DONE` | ✅ 已實作相關 Controller 和 Repository |
-| | 12.3 Notifications | LINE 提醒推播 | `[X] DONE` | ✅ NotificationController 和 LineNotifyService 已實作 |
-| | 12.4 Export & Branding | 匯出精美課表圖 | `[X] DONE` | ✅ ExportController 已實作 |
-| | 12.5 Public Sandbox | 公開排課模擬器 | `[X] DONE` | ✅ 已有 `/` landing page |
+| | **Stage 18** | **教師端互動與課堂備註優化** | `[COMPLETED]` | ✅ 完成 |
+| | 18.1 課表互動優化 | 動作選擇對話框、拖曳功能 | `[X] DONE` | ✅ 完成 |
+| | 18.2 課堂備註修復 | rule_id 欄位、類型轉換修復 | `[X] DONE` | ✅ 完成 |
+| | 18.3 例外申請預填 | 從課表帶入預設資料 | `[X] DONE` | ✅ 完成 |
 
 ## 2. Stage 1 完整修正記錄 (Stage 1 Complete)
 
