@@ -104,6 +104,7 @@ type ExpandedSchedule struct {
 	RoomName       string             `json:"room_name,omitempty"`
 	OfferingID     uint               `json:"offering_id,omitempty"`
 	EffectiveRange *models.DateRange   `json:"effective_range,omitempty"`
+	IsCrossDayPart bool               `json:"is_cross_day_part,omitempty"` // 跨日課程的一部分
 }
 
 type ExpandedException struct {

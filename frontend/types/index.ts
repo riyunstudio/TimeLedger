@@ -282,4 +282,5 @@ export interface ScheduleItem {
   teacher_id?: number
   center_id?: number
   rule_id?: number  // 用於關聯課堂筆記
+  is_cross_day_part?: boolean // 跨日課程的一部分
 }

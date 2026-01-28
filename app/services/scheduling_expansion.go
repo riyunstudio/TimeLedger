@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 	"timeLedger/app"
 	"timeLedger/app/models"
@@ -117,36 +119,61 @@ func (s *ScheduleExpansionServiceImpl) ExpandRules(ctx context.Context, rules []
 						continue
 					}
 
-					schedule := ExpandedSchedule{
-						RuleID:         rule.ID,
-						Date:           date,
-						StartTime:      rule.StartTime,
-						EndTime:        rule.EndTime,
-						RoomID:         rule.RoomID,
-						TeacherID:      rule.TeacherID,
-						IsHoliday:      isHoliday,
-						HasException:   pendingException != nil || approvedException != nil,
-						// 關聯資料
-						OfferingName:   rule.Offering.Name,
-						TeacherName:    rule.Teacher.Name,
-						RoomName:       rule.Room.Name,
-						OfferingID:     rule.OfferingID,
-						EffectiveRange: &rule.EffectiveRange,
-					}
+					// 解析開始和結束時間
+					startParts := strings.Split(rule.StartTime, ":")
+					endParts := strings.Split(rule.EndTime, ":")
+					startHour, _ := strconv.Atoi(startParts[0])
+					endHour, _ := strconv.Atoi(endParts[0])
 
-					// 添加例外資訊供前端顯示
-					if pendingException != nil {
-						schedule.ExceptionInfo = &ExpandedException{
-							ID:           pendingException.ID,
-							Type:         pendingException.ExceptionType,
-							Status:       pendingException.Status,
-							NewTeacherID: pendingException.NewTeacherID,
-							NewStartAt:   pendingException.NewStartAt,
-							NewEndAt:     pendingException.NewEndAt,
+					// 處理跨日課程（結束時間早於開始時間）
+					isCrossDay := endHour < startHour
+
+					// 創建課表項目
+					createScheduleEntry := func(scheduleDate time.Time, sTime, eTime string) {
+						schedule := ExpandedSchedule{
+							RuleID:         rule.ID,
+							Date:           scheduleDate,
+							StartTime:      sTime,
+							EndTime:        eTime,
+							RoomID:         rule.RoomID,
+							TeacherID:      rule.TeacherID,
+							IsHoliday:      isHoliday,
+							HasException:   pendingException != nil || approvedException != nil,
+							// 關聯資料
+							OfferingName:   rule.Offering.Name,
+							TeacherName:    rule.Teacher.Name,
+							RoomName:       rule.Room.Name,
+							OfferingID:     rule.OfferingID,
+							EffectiveRange: &rule.EffectiveRange,
+							IsCrossDayPart: isCrossDay, // 標記是否為跨日課程的一部分
 						}
+
+						// 添加例外資訊供前端顯示
+						if pendingException != nil {
+							schedule.ExceptionInfo = &ExpandedException{
+								ID:           pendingException.ID,
+								Type:         pendingException.ExceptionType,
+								Status:       pendingException.Status,
+								NewTeacherID: pendingException.NewTeacherID,
+								NewStartAt:   pendingException.NewStartAt,
+								NewEndAt:     pendingException.NewEndAt,
+							}
+						}
+
+						schedules = append(schedules, schedule)
 					}
 
-					schedules = append(schedules, schedule)
+					if isCrossDay {
+						// 跨日課程：生成兩個條目
+						// 條目1：開始日 22:00-24:00
+						createScheduleEntry(date, rule.StartTime, "24:00")
+						// 條目2：結束日（隔天）00:00-01:00
+						nextDay := date.AddDate(0, 0, 1)
+						createScheduleEntry(nextDay, "00:00", rule.EndTime)
+					} else {
+						// 普通課程：生成一個條目
+						createScheduleEntry(date, rule.StartTime, rule.EndTime)
+					}
 				}
 			}
 

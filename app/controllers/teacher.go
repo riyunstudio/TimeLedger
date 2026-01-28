@@ -528,18 +528,27 @@ func (ctl *TeacherController) GetSchedule(ctx *gin.Context) {
 				}
 
 				schedule = append(schedule, TeacherScheduleItem{
-					ID:         fmt.Sprintf("center_%d_rule_%d_%s", m.CenterID, item.RuleID, item.Date.Format("20060102")),
-					Type:       "CENTER_SESSION",
-					Title:      title,
-					Date:       item.Date.Format("2006-01-02"),
-					StartTime:  item.StartTime,
-					EndTime:    item.EndTime,
-					RoomID:     item.RoomID,
-					TeacherID:  item.TeacherID,
-					CenterID:   m.CenterID,
-					CenterName: centerName,
-					Status:     status,
-					RuleID:     item.RuleID,
+					ID:             fmt.Sprintf("center_%d_rule_%d_%s_%s", m.CenterID, item.RuleID, item.Date.Format("20060102"), func() string {
+						if item.IsCrossDayPart {
+							if item.StartTime == "00:00" {
+								return "end"
+							}
+							return "start"
+						}
+						return "normal"
+					}()),
+					Type:           "CENTER_SESSION",
+					Title:          title,
+					Date:           item.Date.Format("2006-01-02"),
+					StartTime:      item.StartTime,
+					EndTime:        item.EndTime,
+					RoomID:         item.RoomID,
+					TeacherID:      item.TeacherID,
+					CenterID:       m.CenterID,
+					CenterName:     centerName,
+					Status:         status,
+					RuleID:         item.RuleID,
+					IsCrossDayPart: item.IsCrossDayPart,
 				})
 			}
 		}
@@ -860,18 +869,19 @@ func (ctl *TeacherController) GetExceptions(ctx *gin.Context) {
 }
 
 type TeacherScheduleItem struct {
-	ID         string `json:"id"`
-	Type       string `json:"type"`
-	Title      string `json:"title"`
-	Date       string `json:"date"`
-	StartTime  string `json:"start_time"`
-	EndTime    string `json:"end_time"`
-	RoomID     uint   `json:"room_id"`
-	TeacherID  *uint  `json:"teacher_id"`
-	CenterID   uint   `json:"center_id"`
-	CenterName string `json:"center_name"`
-	Status     string `json:"status"`
-	RuleID     uint   `json:"rule_id"` // 用於關聯課堂筆記
+	ID            string `json:"id"`
+	Type          string `json:"type"`
+	Title         string `json:"title"`
+	Date          string `json:"date"`
+	StartTime     string `json:"start_time"`
+	EndTime       string `json:"end_time"`
+	RoomID        uint   `json:"room_id"`
+	TeacherID     *uint  `json:"teacher_id"`
+	CenterID      uint   `json:"center_id"`
+	CenterName    string `json:"center_name"`
+	Status        string `json:"status"`
+	RuleID        uint   `json:"rule_id"`                     // 用於關聯課堂筆記
+	IsCrossDayPart bool  `json:"is_cross_day_part,omitempty"` // 跨日課程的一部分
 }
 
 type TeacherCreateExceptionRequest struct {

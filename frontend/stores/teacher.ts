@@ -22,6 +22,7 @@ export interface TeacherScheduleItem {
   status: string
   rule_id?: number
   data?: any
+  is_cross_day_part?: boolean
 }
 
 export const useTeacherStore = defineStore('teacher', () => {
@@ -124,6 +125,7 @@ export const useTeacherStore = defineStore('teacher', () => {
         room_id: item.room_id,
         center_id: item.center_id,
         rule_id: item.rule_id, // 保留 rule_id 用於課堂筆記
+        is_cross_day_part: item.is_cross_day_part,
       }))
 
       days.push({
