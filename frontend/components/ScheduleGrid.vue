@@ -125,7 +125,7 @@
       <!-- 週曆視圖 -->
       <div v-if="viewMode === 'calendar'" class="min-w-[600px] relative" ref="calendarContainerRef">
         <!-- 表頭 -->
-        <div class="grid sticky top-0" style="grid-template-columns: 80px repeat(7, 1fr);">
+        <div class="grid sticky top-0 z-10 bg-slate-900/95 backdrop-blur-sm" style="grid-template-columns: 80px repeat(7, 1fr);">
           <div class="p-2 border-b border-white/10 text-center">
             <span class="text-xs text-slate-400">時段</span>
           </div>
@@ -138,49 +138,52 @@
           </div>
         </div>
 
-        <!-- 時間列和網格 -->
-        <div
-          v-for="time in timeSlots"
-          :key="time"
-          class="grid relative"
-          style="grid-template-columns: 80px repeat(7, 1fr);"
-        >
-          <!-- 時間標籤 -->
-          <div class="p-2 border-r border-b border-white/5 text-right text-xs text-slate-400">
-            {{ formatTime(time) }}
+        <!-- 時間列和網格區域 -->
+        <div class="relative">
+          <!-- 課程卡片層 - 絕對定位 -->
+          <div class="absolute top-0 left-0 right-0 bottom-0 pointer-events-none">
+            <div
+              v-for="schedule in displaySchedules"
+              :key="schedule.key"
+              class="absolute rounded-lg p-2 text-xs cursor-pointer hover:opacity-90 transition-opacity pointer-events-auto"
+              :class="getScheduleCardClass(schedule)"
+              :style="getScheduleStyle(schedule)"
+              @click="selectSchedule(schedule)"
+            >
+              <div class="font-medium truncate">
+                {{ schedule.offering_name }}
+              </div>
+              <div class="text-slate-400 truncate">
+                {{ schedule.teacher_name }}
+              </div>
+              <div class="text-slate-500 text-[10px] mt-0.5">
+                {{ schedule.start_time }} - {{ schedule.end_time }}
+              </div>
+            </div>
           </div>
 
-          <!-- 每日網格 -->
+          <!-- 時間格子 -->
           <div
-            v-for="day in weekDays"
-            :key="`${time}-${day.value}`"
-            class="p-0 min-h-[60px] border-b border-white/5 border-r relative"
-            :class="getCellClass(time, day.value)"
-            @dragenter="handleDragEnter(time, day.value)"
-            @dragleave="handleDragLeave"
-            @dragover.prevent
-          />
-        </div>
-
-        <!-- 課程卡片層 - 絕對定位 -->
-        <div class="absolute top-0 left-0 right-0 bottom-0 pointer-events-none">
-          <div
-            v-for="schedule in displaySchedules"
-            :key="schedule.key"
-            class="absolute rounded-lg p-2 text-xs cursor-pointer hover:opacity-90 transition-opacity pointer-events-auto"
-            :class="getScheduleCardClass(schedule)"
-            :style="getScheduleStyle(schedule)"
-            @click="selectSchedule(schedule)"
+            v-for="time in timeSlots"
+            :key="time"
+            class="grid relative"
+            style="grid-template-columns: 80px repeat(7, 1fr);"
           >
-            <div class="font-medium truncate">
-              {{ schedule.offering_name }}
+            <!-- 時間標籤 -->
+            <div class="p-2 border-r border-b border-white/5 text-right text-xs text-slate-400">
+              {{ formatTime(time) }}
             </div>
-            <div class="text-slate-400 truncate">
-              {{ schedule.teacher_name }}
-            </div>
-            <div class="text-slate-500 text-[10px] mt-0.5">
-              {{ schedule.start_time }} - {{ schedule.end_time }}
-            </div>
+
+            <!-- 每日網格 -->
+            <div
+              v-for="day in weekDays"
+              :key="`${time}-${day.value}`"
+              class="p-0 min-h-[60px] border-b border-white/5 border-r relative"
+              :class="getCellClass(time, day.value)"
+              @dragenter="handleDragEnter(time, day.value)"
+              @dragleave="handleDragLeave"
+              @dragover.prevent
+            />
           </div>
         </div>
       </div>
