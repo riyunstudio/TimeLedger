@@ -34,12 +34,6 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
           </svg>
           <span>我的課表</span>
-          <span
-            v-if="pendingCount > 0"
-            class="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-critical-500 text-white text-xs flex items-center justify-center"
-          >
-            {{ pendingCount > 9 ? '9+' : pendingCount }}
-          </span>
         </NuxtLink>
 
         <NuxtLink
@@ -97,15 +91,9 @@
 
       <!-- 快速統計 -->
       <div class="absolute bottom-0 left-0 right-0 p-4 border-t border-white/10 bg-slate-900/95">
-        <div class="grid grid-cols-2 gap-3 text-center">
-          <div>
-            <p class="text-2xl font-bold text-white">{{ pendingExceptions }}</p>
-            <p class="text-xs text-slate-400">待審核</p>
-          </div>
-          <div>
-            <p class="text-2xl font-bold text-white">{{ pendingCount }}</p>
-            <p class="text-xs text-slate-400">待處理</p>
-          </div>
+        <div class="text-center">
+          <p class="text-2xl font-bold text-white">{{ pendingExceptions }}</p>
+          <p class="text-xs text-slate-400">待審核例外申請</p>
         </div>
       </div>
     </div>
@@ -124,14 +112,6 @@ const sidebarStore = useSidebar()
 // 待審核申請數
 const pendingExceptions = computed(() => {
   return teacherStore.exceptions.filter(e => e.status === 'PENDING').length
-})
-
-// 待處理事項總數
-const pendingCount = computed(() => {
-  let count = pendingExceptions.value
-  // 可擴展：加入其他待處理事項
-  // 例如：未讀通知、待確認的邀請等
-  return count
 })
 
 const handleLogout = async () => {
