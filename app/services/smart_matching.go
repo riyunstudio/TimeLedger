@@ -21,30 +21,30 @@ const (
 
 type SmartMatchingServiceImpl struct {
 	BaseService
-	app                        *app.App
-	teacherRepository          *repositories.TeacherRepository
-	scheduleRuleRepo           *repositories.ScheduleRuleRepository
-	scheduleExceptionRepo      *repositories.ScheduleExceptionRepository
-	teacherSkillRepo           *repositories.TeacherSkillRepository
-	hashtagRepo                *repositories.HashtagRepository
-	teacherCertificateRepo     *repositories.TeacherCertificateRepository
-	centerTeacherNoteRepo      *repositories.CenterTeacherNoteRepository
-	centerInvitationRepo       *repositories.CenterInvitationRepository
-	notificationService        NotificationService
+	app                    *app.App
+	teacherRepository      *repositories.TeacherRepository
+	scheduleRuleRepo       *repositories.ScheduleRuleRepository
+	scheduleExceptionRepo  *repositories.ScheduleExceptionRepository
+	teacherSkillRepo       *repositories.TeacherSkillRepository
+	hashtagRepo            *repositories.HashtagRepository
+	teacherCertificateRepo *repositories.TeacherCertificateRepository
+	centerTeacherNoteRepo  *repositories.CenterTeacherNoteRepository
+	centerInvitationRepo   *repositories.CenterInvitationRepository
+	notificationService    NotificationService
 }
 
 func NewSmartMatchingService(app *app.App) SmartMatchingService {
 	return &SmartMatchingServiceImpl{
-		app:                        app,
-		teacherRepository:          repositories.NewTeacherRepository(app),
-		scheduleRuleRepo:           repositories.NewScheduleRuleRepository(app),
-		scheduleExceptionRepo:      repositories.NewScheduleExceptionRepository(app),
-		teacherSkillRepo:           repositories.NewTeacherSkillRepository(app),
-		hashtagRepo:                repositories.NewHashtagRepository(app),
-		teacherCertificateRepo:     repositories.NewTeacherCertificateRepository(app),
-		centerTeacherNoteRepo:      repositories.NewCenterTeacherNoteRepository(app),
-		centerInvitationRepo:       repositories.NewCenterInvitationRepository(app),
-		notificationService:        NewNotificationService(app),
+		app:                    app,
+		teacherRepository:      repositories.NewTeacherRepository(app),
+		scheduleRuleRepo:       repositories.NewScheduleRuleRepository(app),
+		scheduleExceptionRepo:  repositories.NewScheduleExceptionRepository(app),
+		teacherSkillRepo:       repositories.NewTeacherSkillRepository(app),
+		hashtagRepo:            repositories.NewHashtagRepository(app),
+		teacherCertificateRepo: repositories.NewTeacherCertificateRepository(app),
+		centerTeacherNoteRepo:  repositories.NewCenterTeacherNoteRepository(app),
+		centerInvitationRepo:   repositories.NewCenterInvitationRepository(app),
+		notificationService:    NewNotificationService(app),
 	}
 }
 
@@ -209,14 +209,14 @@ func (s *SmartMatchingServiceImpl) SearchTalent(ctx context.Context, searchParam
 		if len(searchParams.Hashtags) > 0 {
 			personalHashtags := s.extractPersonalHashtags(ctx, teacher.ID)
 			hasMatchingHashtag := false
-			
+
 			for _, requiredTag := range searchParams.Hashtags {
 				// 移除 # 符號進行比對
 				normalizedTag := strings.TrimPrefix(requiredTag, "#")
 				for _, personalTag := range personalHashtags {
 					personalTagNormalized := strings.TrimPrefix(personalTag, "#")
 					if strings.Contains(strings.ToLower(personalTagNormalized), strings.ToLower(normalizedTag)) ||
-					   strings.Contains(strings.ToLower(normalizedTag), strings.ToLower(personalTagNormalized)) {
+						strings.Contains(strings.ToLower(normalizedTag), strings.ToLower(personalTagNormalized)) {
 						hasMatchingHashtag = true
 						break
 					}
@@ -225,7 +225,7 @@ func (s *SmartMatchingServiceImpl) SearchTalent(ctx context.Context, searchParam
 					break
 				}
 			}
-			
+
 			// 也檢查技能標籤
 			if !hasMatchingHashtag {
 				for _, skill := range skillsList {
@@ -237,7 +237,7 @@ func (s *SmartMatchingServiceImpl) SearchTalent(ctx context.Context, searchParam
 						for _, reqTag := range searchParams.Hashtags {
 							normalizedReqTag := strings.TrimPrefix(reqTag, "#")
 							if strings.Contains(strings.ToLower(tagNormalized), strings.ToLower(normalizedReqTag)) ||
-							   strings.Contains(strings.ToLower(normalizedReqTag), strings.ToLower(tagNormalized)) {
+								strings.Contains(strings.ToLower(normalizedReqTag), strings.ToLower(tagNormalized)) {
 								hasMatchingHashtag = true
 								break
 							}
@@ -251,7 +251,7 @@ func (s *SmartMatchingServiceImpl) SearchTalent(ctx context.Context, searchParam
 					}
 				}
 			}
-			
+
 			if !hasMatchingHashtag {
 				continue
 			}
@@ -364,7 +364,7 @@ func calculateInternalScore(rating int, internalNote string) int {
 func extractSkills(skills []models.TeacherSkill) []Skill {
 	result := make([]Skill, 0, len(skills))
 	for _, skill := range skills {
-		hashtags := make([]string, 0, 0)
+		hashtags := make([]string, 0)
 		for _, tag := range skill.Hashtags {
 			if tag.Hashtag.Name != "" {
 				hashtags = append(hashtags, tag.Hashtag.Name)
@@ -533,17 +533,17 @@ func (s *SmartMatchingServiceImpl) GetTalentStats(ctx context.Context, centerID 
 	}
 
 	return &TalentStats{
-		TotalCount:      len(teachers),
-		OpenHiringCount: openHiringCount,
-		MemberCount:     memberCount,
-		AverageRating:   averageRating,
-		MonthlyChange:   monthlyChange,
-		MonthlyTrend:    monthlyTrend,
-		PendingInvites:  int(pendingInvites),
-		AcceptedInvites: int(acceptedInvites),
-		DeclinedInvites: int(declinedInvites),
+		TotalCount:       len(teachers),
+		OpenHiringCount:  openHiringCount,
+		MemberCount:      memberCount,
+		AverageRating:    averageRating,
+		MonthlyChange:    monthlyChange,
+		MonthlyTrend:     monthlyTrend,
+		PendingInvites:   int(pendingInvites),
+		AcceptedInvites:  int(acceptedInvites),
+		DeclinedInvites:  int(declinedInvites),
 		CityDistribution: cityDistribution,
-		TopSkills:       topSkills,
+		TopSkills:        topSkills,
 	}, nil
 }
 
@@ -595,16 +595,16 @@ func (s *SmartMatchingServiceImpl) InviteTalent(ctx context.Context, centerID ui
 
 		// 建立邀請記錄
 		invitation := models.CenterInvitation{
-			CenterID:    centerID,
-			TeacherID:   teacherID,
-			InvitedBy:   adminID,
-			Email:       teacher.Email,
-			Token:       generateToken(),
-			Status:      models.InvitationStatusPending,
-			InviteType:  models.InvitationTypeTalentPool,
-			Message:     message,
-			ExpiresAt:   expiresAt,
-			CreatedAt:   time.Now(),
+			CenterID:   centerID,
+			TeacherID:  teacherID,
+			InvitedBy:  adminID,
+			Email:      teacher.Email,
+			Token:      generateToken(),
+			Status:     models.InvitationStatusPending,
+			InviteType: models.InvitationTypeTalentPool,
+			Message:    message,
+			ExpiresAt:  expiresAt,
+			CreatedAt:  time.Now(),
 		}
 
 		// 儲存到資料庫

@@ -85,11 +85,11 @@ func (s *ExportServiceImpl) ExportScheduleToPDF(ctx context.Context, centerID ui
 		return nil, err
 	}
 
-	content := fmt.Sprintf("排課表\n\n")
+	content := "排課表\n\n"
 	content += fmt.Sprintf("開始日期: %s\n", startDate.Format("2006-01-02"))
 	content += fmt.Sprintf("結束日期: %s\n\n", endDate.Format("2006-01-02"))
 	content += fmt.Sprintf("%-12s %-10s %-10s %-10s %-20s %-15s\n", "日期", "星期", "開始", "結束", "老師", "教室")
-	content += fmt.Sprintf("--------------------------------------------------------------------------------\n")
+	content += "--------------------------------------------------------------------------------\n"
 
 	for _, rule := range rules {
 		teacherName := "未指定"

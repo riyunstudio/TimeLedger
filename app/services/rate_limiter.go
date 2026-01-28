@@ -206,7 +206,7 @@ func RateLimitMiddleware(rateLimiter RateLimiterService) gin.HandlerFunc {
 				"code":    errInfos.RATE_LIMIT_EXCEEDED,
 				"message": "請求頻率過高，請稍後再試",
 				"datas": gin.H{
-					"retry_after": int(resetAt.Sub(time.Now()).Seconds()),
+					"retry_after": int(time.Until(resetAt).Seconds()),
 				},
 			})
 			c.Abort()
