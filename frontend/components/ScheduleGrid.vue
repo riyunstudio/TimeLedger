@@ -163,7 +163,7 @@
         </div>
 
         <!-- 課程卡片層 - 絕對定位 -->
-        <div class="absolute top-0 left-0 right-0 bottom-0 pointer-events-none z-20" :style="{ paddingTop: `${HEADER_HEIGHT}px` }">
+        <div class="absolute left-0 right-0 bottom-0 pointer-events-none" :style="{ top: `${HEADER_HEIGHT}px` }">
           <div
             v-for="schedule in displaySchedules"
             :key="schedule.key"
