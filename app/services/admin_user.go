@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"fmt"
 	"math/rand"
 	"strings"
 	"time"
@@ -9,6 +10,8 @@ import (
 	"timeLedger/app/models"
 	"timeLedger/app/repositories"
 	"timeLedger/global/errInfos"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 // AdminUserService 管理員服務
@@ -40,6 +43,20 @@ type LINEBindingStatus struct {
 	BoundAt       *time.Time `json:"bound_at,omitempty"`
 	NotifyEnabled bool       `json:"notify_enabled"`
 	WelcomeSent   bool       `json:"welcome_sent"`
+}
+
+// AdminProfileResponse 管理員個人資料回應
+type AdminProfileResponse struct {
+	ID                uint       `json:"id"`
+	CenterID          uint       `json:"center_id"`
+	CenterName        string     `json:"center_name"`
+	Email             string     `json:"email"`
+	Name              string     `json:"name"`
+	Role              string     `json:"role"`
+	Status            string     `json:"status"`
+	LineNotifyEnabled bool       `json:"line_notify_enabled"`
+	LineBoundAt       *time.Time `json:"line_bound_at,omitempty"`
+	CreatedAt         time.Time  `json:"created_at"`
 }
 
 // GenerateBindingCode 生成綁定驗證碼
@@ -229,4 +246,324 @@ func (s *AdminUserService) SendWelcomeMessageIfNeeded(ctx context.Context, admin
 	}
 
 	return nil
+}
+
+// ChangePasswordRequest 修改密碼請求
+type ChangePasswordRequest struct {
+	OldPassword string `json:"old_password" binding:"required,min=6"`
+	NewPassword string `json:"new_password" binding:"required,min=6"`
+}
+
+// ChangePassword 修改管理員密碼
+func (s *AdminUserService) ChangePassword(ctx context.Context, adminID uint, req *ChangePasswordRequest) (*errInfos.Res, error) {
+	admin, err := s.adminRepo.GetByID(ctx, adminID)
+	if err != nil {
+		return s.app.Err.New(errInfos.ADMIN_NOT_FOUND), err
+	}
+
+	// 驗證舊密碼
+	if !s.adminRepo.VerifyPassword(ctx, admin.Email, req.OldPassword) {
+		return s.app.Err.New(errInfos.PASSWORD_NOT_MATCH), nil
+	}
+
+	// 加密新密碼
+	hashedPassword, err := s.adminRepo.HashPassword(req.NewPassword)
+	if err != nil {
+		return s.app.Err.New(errInfos.SQL_ERROR), err
+	}
+
+	// 更新密碼
+	updates := map[string]interface{}{
+		"password": hashedPassword,
+	}
+
+	if err := s.adminRepo.UpdateFields(ctx, adminID, updates); err != nil {
+		return s.app.Err.New(errInfos.SQL_ERROR), err
+	}
+
+	return nil, nil
+}
+
+// GetAdminProfile 取得管理員個人資料
+func (s *AdminUserService) GetAdminProfile(ctx context.Context, adminID uint) (*AdminProfileResponse, *errInfos.Res, error) {
+	admin, err := s.adminRepo.GetByID(ctx, adminID)
+	if err != nil {
+		return nil, s.app.Err.New(errInfos.ADMIN_NOT_FOUND), err
+	}
+
+	// 查詢中心名稱
+	centerName := ""
+	center, err := s.centerRepo.GetByID(ctx, admin.CenterID)
+	if err == nil {
+		centerName = center.Name
+	}
+
+	profile := &AdminProfileResponse{
+		ID:                admin.ID,
+		CenterID:          admin.CenterID,
+		CenterName:        centerName,
+		Email:             admin.Email,
+		Name:              admin.Name,
+		Role:              admin.Role,
+		Status:            admin.Status,
+		LineNotifyEnabled: admin.LineNotifyEnabled,
+		LineBoundAt:       admin.LineBoundAt,
+		CreatedAt:         admin.CreatedAt,
+	}
+
+	return profile, nil, nil
+}
+
+// AdminListItem 管理員列表項目
+type AdminListItem struct {
+	ID                uint       `json:"id"`
+	Email             string     `json:"email"`
+	Name              string     `json:"name"`
+	Role              string     `json:"role"`
+	Status            string     `json:"status"`
+	LineUserID        string     `json:"line_user_id,omitempty"`
+	LineBoundAt       *time.Time `json:"line_bound_at,omitempty"`
+	LineNotifyEnabled bool       `json:"line_notify_enabled"`
+	CreatedAt         time.Time  `json:"created_at"`
+}
+
+// ListAdmins 取得管理員列表
+func (s *AdminUserService) ListAdmins(ctx context.Context, centerID uint) ([]AdminListItem, *errInfos.Res, error) {
+	admins, err := s.adminRepo.GetByCenterID(ctx, centerID)
+	if err != nil {
+		return nil, s.app.Err.New(errInfos.SQL_ERROR), err
+	}
+
+	result := make([]AdminListItem, 0, len(admins))
+	for _, admin := range admins {
+		item := AdminListItem{
+			ID:                admin.ID,
+			Email:             admin.Email,
+			Name:              admin.Name,
+			Role:              admin.Role,
+			Status:            admin.Status,
+			LineUserID:        admin.LineUserID,
+			LineBoundAt:       admin.LineBoundAt,
+			LineNotifyEnabled: admin.LineNotifyEnabled,
+			CreatedAt:         admin.CreatedAt,
+		}
+		result = append(result, item)
+	}
+
+	return result, nil, nil
+}
+
+// ToggleAdminStatus 切換管理員狀態
+func (s *AdminUserService) ToggleAdminStatus(ctx context.Context, adminID uint, targetAdminID uint, newStatus string) (*errInfos.Res, error) {
+	// 檢查操作者權限
+	operator, err := s.adminRepo.GetByID(ctx, adminID)
+	if err != nil {
+		return s.app.Err.New(errInfos.ADMIN_NOT_FOUND), err
+	}
+
+	// 只有 OWNER 可以停用/啟用管理員
+	if operator.Role != "OWNER" {
+		return s.app.Err.New(errInfos.FORBIDDEN), nil
+	}
+
+	// 不能停用自己
+	if adminID == targetAdminID {
+		return s.app.Err.New(errInfos.INVALID_STATUS), nil
+	}
+
+	// 檢查目標管理員
+	target, err := s.adminRepo.GetByID(ctx, targetAdminID)
+	if err != nil {
+		return s.app.Err.New(errInfos.ADMIN_NOT_FOUND), err
+	}
+
+	// 不能停用 OWNER
+	if target.Role == "OWNER" {
+		return s.app.Err.New(errInfos.FORBIDDEN), nil
+	}
+
+	// 檢查是否為同一中心
+	if operator.CenterID != target.CenterID {
+		return s.app.Err.New(errInfos.FORBIDDEN), nil
+	}
+
+	updates := map[string]interface{}{
+		"status": newStatus,
+	}
+
+	if err := s.adminRepo.UpdateFields(ctx, targetAdminID, updates); err != nil {
+		return s.app.Err.New(errInfos.SQL_ERROR), err
+	}
+
+	return nil, nil
+}
+
+// ResetAdminPassword 重設管理員密碼（僅 OWNER 可執行）
+func (s *AdminUserService) ResetAdminPassword(ctx context.Context, adminID uint, targetAdminID uint, newPassword string) (*errInfos.Res, error) {
+	// 檢查操作者權限
+	operator, err := s.adminRepo.GetByID(ctx, adminID)
+	if err != nil {
+		return s.app.Err.New(errInfos.ADMIN_NOT_FOUND), err
+	}
+
+	// 只有 OWNER 可以重設密碼
+	if operator.Role != "OWNER" {
+		return s.app.Err.New(errInfos.FORBIDDEN), nil
+	}
+
+	// 不能重設 OWNER 的密碼
+	if targetAdminID == adminID {
+		return s.app.Err.New(errInfos.INVALID_STATUS), nil
+	}
+
+	// 檢查目標管理員
+	target, err := s.adminRepo.GetByID(ctx, targetAdminID)
+	if err != nil {
+		return s.app.Err.New(errInfos.ADMIN_NOT_FOUND), err
+	}
+
+	// 檢查是否為同一中心
+	if operator.CenterID != target.CenterID {
+		return s.app.Err.New(errInfos.FORBIDDEN), nil
+	}
+
+	// 不能重設 OWNER 的密碼
+	if target.Role == "OWNER" {
+		return s.app.Err.New(errInfos.FORBIDDEN), nil
+	}
+
+	// 加密新密碼
+	hashedPassword, err := s.adminRepo.HashPassword(newPassword)
+	if err != nil {
+		return s.app.Err.New(errInfos.SQL_ERROR), err
+	}
+
+	// 更新密碼
+	updates := map[string]interface{}{
+		"password": hashedPassword,
+	}
+
+	if err := s.adminRepo.UpdateFields(ctx, targetAdminID, updates); err != nil {
+		return s.app.Err.New(errInfos.SQL_ERROR), err
+	}
+
+	return nil, nil
+}
+
+// ChangeAdminRole 修改管理員角色（僅 OWNER 可執行）
+func (s *AdminUserService) ChangeAdminRole(ctx context.Context, adminID uint, targetAdminID uint, newRole string) (*errInfos.Res, error) {
+	// 檢查操作者權限
+	operator, err := s.adminRepo.GetByID(ctx, adminID)
+	if err != nil {
+		return s.app.Err.New(errInfos.ADMIN_NOT_FOUND), err
+	}
+
+	// 只有 OWNER 可以修改角色
+	if operator.Role != "OWNER" {
+		return s.app.Err.New(errInfos.FORBIDDEN), nil
+	}
+
+	// 不能修改自己的角色
+	if targetAdminID == adminID {
+		return s.app.Err.New(errInfos.INVALID_STATUS), nil
+	}
+
+	// 檢查目標管理員
+	target, err := s.adminRepo.GetByID(ctx, targetAdminID)
+	if err != nil {
+		return s.app.Err.New(errInfos.ADMIN_NOT_FOUND), err
+	}
+
+	// 檢查是否為同一中心
+	if operator.CenterID != target.CenterID {
+		return s.app.Err.New(errInfos.FORBIDDEN), nil
+	}
+
+	// 不能修改 OWNER 的角色
+	if target.Role == "OWNER" {
+		return s.app.Err.New(errInfos.FORBIDDEN), nil
+	}
+
+	// 更新角色
+	updates := map[string]interface{}{
+		"role": newRole,
+	}
+
+	if err := s.adminRepo.UpdateFields(ctx, targetAdminID, updates); err != nil {
+		return s.app.Err.New(errInfos.SQL_ERROR), err
+	}
+
+	return nil, nil
+}
+
+// AdminInvitation 管理員邀請
+type AdminInvitation struct {
+	Code      string    `json:"code"`
+	Email     string    `json:"email"`
+	Name      string    `json:"name"`
+	Role      string    `json:"role"`
+	CenterID  uint      `json:"center_id"`
+	ExpiresAt time.Time `json:"expires_at"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// CreateAdminInvitation 建立管理員邀請
+func (s *AdminUserService) CreateAdminInvitation(ctx context.Context, centerID uint, email string, name string, role string) (*AdminInvitation, *errInfos.Res, error) {
+	// 檢查 Email 是否已存在
+	existingAdmin, err := s.adminRepo.GetByEmail(ctx, email)
+	if err == nil && existingAdmin.ID > 0 {
+		return nil, s.app.Err.New(errInfos.ADMIN_EMAIL_EXISTS), fmt.Errorf("email already exists")
+	}
+
+	// 生成邀請碼
+	code := GenerateBindingCode()
+	expiresAt := time.Now().Add(7 * 24 * time.Hour) // 7天過期
+
+	// 創建邀請記錄
+	invitation := AdminInvitation{
+		Code:      code,
+		Email:     email,
+		Name:      name,
+		Role:      role,
+		CenterID:  centerID,
+		ExpiresAt: expiresAt,
+		CreatedAt: time.Now(),
+	}
+
+	// 這裡可以選擇發送 email 或 LINE 通知
+	// 目前先返回邀請碼，由管理員手動發送
+
+	return &invitation, nil, nil
+}
+
+// CreateAdmin 直接建立管理員
+func (s *AdminUserService) CreateAdmin(ctx context.Context, centerID uint, email string, name string, role string, password string) (*models.AdminUser, *errInfos.Res, error) {
+	// 檢查 Email 是否已存在
+	existingAdmin, err := s.adminRepo.GetByEmail(ctx, email)
+	if err == nil && existingAdmin.ID > 0 {
+		return nil, s.app.Err.New(errInfos.ADMIN_EMAIL_EXISTS), fmt.Errorf("email already exists")
+	}
+
+	// 密碼加密
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, s.app.Err.New(errInfos.SQL_ERROR), err
+	}
+
+	// 建立管理員
+	admin := models.AdminUser{
+		CenterID:     centerID,
+		Email:        email,
+		Name:         name,
+		Role:         role,
+		PasswordHash: string(passwordHash),
+		Status:       "ACTIVE",
+	}
+
+	createdAdmin, err := s.adminRepo.Create(ctx, admin)
+	if err != nil {
+		return nil, s.app.Err.New(errInfos.SQL_ERROR), err
+	}
+
+	return &createdAdmin, nil, nil
 }
