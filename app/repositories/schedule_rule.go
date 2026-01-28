@@ -78,75 +78,203 @@ func (rp *ScheduleRuleRepository) CheckOverlap(ctx context.Context, centerID uin
 	var data []models.ScheduleRule
 	var personalEventConflicts []models.PersonalEvent
 
+	// 判斷是否為跨日課程
+	isCrossDay := IsCrossDayTime(startTime, endTime)
+
 	query := rp.app.MySQL.RDB.WithContext(ctx).
 		Where("center_id = ?", centerID).
-		Where("weekday = ?", weekday).
 		Where("deleted_at IS NULL")
 
-	// Check room overlap
-	roomQuery := query.Where("room_id = ?", roomID)
-	if excludeRuleID != nil {
-		roomQuery = roomQuery.Where("id != ?", *excludeRuleID)
-	}
-
-	var roomRules []models.ScheduleRule
-	if err := roomQuery.Find(&roomRules).Error; err != nil {
-		return nil, nil, err
-	}
-
-	// Check time overlap for room rules
-	for _, rule := range roomRules {
-		if timesOverlap(rule.StartTime, rule.EndTime, startTime, endTime) {
-			data = append(data, rule)
+	// 如果是跨日課程，需要檢查：
+	// 1. 當天（weekday）的課程中，開始時間在 20:00 以後的
+	// 2. 下一天（weekday+1）的課程中，結束時間在 08:00 以前的
+	if isCrossDay {
+		// 檢查跨日衝突 - 當天晚間時段
+		nextWeekday := weekday + 1
+		if nextWeekday > 7 {
+			nextWeekday = 1
 		}
-	}
 
-	// Check teacher overlap (if teacher_id is provided)
-	if teacherID != nil && *teacherID != 0 {
-		teacherQuery := query.Where("teacher_id = ?", *teacherID)
+		// 查詢當天晚間課程（20:00 以後開始）
+		eveningQuery := query.Where("weekday = ?", weekday)
 		if excludeRuleID != nil {
-			teacherQuery = teacherQuery.Where("id != ?", *excludeRuleID)
+			eveningQuery = eveningQuery.Where("id != ?", *excludeRuleID)
 		}
-
-		var teacherRules []models.ScheduleRule
-		if err := teacherQuery.Find(&teacherRules).Error; err != nil {
+		var eveningRules []models.ScheduleRule
+		if err := eveningQuery.Find(&eveningRules).Error; err != nil {
 			return nil, nil, err
 		}
 
-		// Check time overlap for teacher rules
-		for _, rule := range teacherRules {
-			if timesOverlap(rule.StartTime, rule.EndTime, startTime, endTime) {
-				// Avoid duplicate entries if room and teacher are the same
-				exists := false
-				for _, existing := range data {
-					if existing.ID == rule.ID {
-						exists = true
-						break
-					}
-				}
-				if !exists {
+		for _, rule := range eveningRules {
+			// 如果規則也是跨日課程，或開始時間在 20:00 以後
+			if rule.IsCrossDay || ParseTimeToMinutes(rule.StartTime) >= 20*60 {
+				if TimesOverlapCrossDay(startTime, endTime, true, rule.StartTime, rule.EndTime, rule.IsCrossDay) {
 					data = append(data, rule)
 				}
 			}
 		}
 
-		// Check personal events for this teacher
-		personalEventRepo := NewPersonalEventRepository(rp.app)
-		events, err := personalEventRepo.CheckPersonalEventConflict(ctx, *teacherID, weekday, startTime, endTime, checkDate)
-		if err != nil {
+		// 查詢隔天凌晨課程（08:00 以前結束）
+		morningQuery := query.Where("weekday = ?", nextWeekday)
+		if excludeRuleID != nil {
+			morningQuery = morningQuery.Where("id != ?", *excludeRuleID)
+		}
+		var morningRules []models.ScheduleRule
+		if err := morningQuery.Find(&morningRules).Error; err != nil {
 			return nil, nil, err
 		}
-		personalEventConflicts = events
+
+		for _, rule := range morningRules {
+			// 如果規則是跨日課程，或結束時間在 08:00 以前
+			if rule.IsCrossDay || ParseTimeToMinutes(rule.EndTime) <= 8*60 {
+				// 使用 TimesOverlapCrossDayWithNextDay 來比較隔天課程
+				if TimesOverlapCrossDayWithNextDay(startTime, endTime, true, rule.StartTime, rule.EndTime) {
+					// 避免重複
+					exists := false
+					for _, existing := range data {
+						if existing.ID == rule.ID {
+							exists = true
+							break
+						}
+					}
+					if !exists {
+						data = append(data, rule)
+					}
+				}
+			}
+		}
+	} else {
+		// 普通課程的衝突檢測邏輯（保持原有行為）
+		roomQuery := query.Where("weekday = ?", weekday)
+		if excludeRuleID != nil {
+			roomQuery = roomQuery.Where("id != ?", *excludeRuleID)
+		}
+
+		var roomRules []models.ScheduleRule
+		if err := roomQuery.Find(&roomRules).Error; err != nil {
+			return nil, nil, err
+		}
+
+		// Check time overlap for room rules
+		for _, rule := range roomRules {
+			if TimesOverlapCrossDay(startTime, endTime, false, rule.StartTime, rule.EndTime, rule.IsCrossDay) {
+				data = append(data, rule)
+			}
+		}
+	}
+
+	// Check teacher overlap (if teacher_id is provided)
+	if teacherID != nil && *teacherID != 0 {
+		// 對於跨日課程，還需要檢查老師在隔天的課程
+		if isCrossDay {
+			nextWeekday := weekday + 1
+			if nextWeekday > 7 {
+				nextWeekday = 1
+			}
+
+			// 分開查詢當天和隔天的課程
+			sameDayQuery := query.Where("teacher_id = ? AND weekday = ?", *teacherID, weekday)
+			if excludeRuleID != nil {
+				sameDayQuery = sameDayQuery.Where("id != ?", *excludeRuleID)
+			}
+			var sameDayRules []models.ScheduleRule
+			if err := sameDayQuery.Find(&sameDayRules).Error; err != nil {
+				return nil, nil, err
+			}
+
+			nextDayQuery := query.Where("teacher_id = ? AND weekday = ?", *teacherID, nextWeekday)
+			if excludeRuleID != nil {
+				nextDayQuery = nextDayQuery.Where("id != ?", *excludeRuleID)
+			}
+			var nextDayRules []models.ScheduleRule
+			if err := nextDayQuery.Find(&nextDayRules).Error; err != nil {
+				return nil, nil, err
+			}
+
+			// 檢查當天課程（使用 TimesOverlapCrossDay）
+			for _, rule := range sameDayRules {
+				if rule.IsCrossDay || ParseTimeToMinutes(rule.StartTime) >= 20*60 {
+					if TimesOverlapCrossDay(startTime, endTime, true, rule.StartTime, rule.EndTime, rule.IsCrossDay) {
+						// Avoid duplicate entries if room and teacher are the same
+						exists := false
+						for _, existing := range data {
+							if existing.ID == rule.ID {
+								exists = true
+								break
+							}
+						}
+						if !exists {
+							data = append(data, rule)
+						}
+					}
+				}
+			}
+
+			// 檢查隔天課程（使用 TimesOverlapCrossDayWithNextDay）
+			for _, rule := range nextDayRules {
+				if rule.IsCrossDay || ParseTimeToMinutes(rule.EndTime) <= 8*60 {
+					if TimesOverlapCrossDayWithNextDay(startTime, endTime, true, rule.StartTime, rule.EndTime) {
+						// Avoid duplicate entries if room and teacher are the same
+						exists := false
+						for _, existing := range data {
+							if existing.ID == rule.ID {
+								exists = true
+								break
+							}
+						}
+						if !exists {
+							data = append(data, rule)
+						}
+					}
+				}
+			}
+
+			// 檢查老師的個人行程（跨日）
+			personalEventRepo := NewPersonalEventRepository(rp.app)
+			events, err := personalEventRepo.CheckPersonalEventConflictCrossDay(ctx, *teacherID, weekday, startTime, endTime, checkDate)
+			if err != nil {
+				return nil, nil, err
+			}
+			personalEventConflicts = events
+		} else {
+			teacherQuery := query.Where("teacher_id = ?", *teacherID)
+			if excludeRuleID != nil {
+				teacherQuery = teacherQuery.Where("id != ?", *excludeRuleID)
+			}
+
+			var teacherRules []models.ScheduleRule
+			if err := teacherQuery.Find(&teacherRules).Error; err != nil {
+				return nil, nil, err
+			}
+
+			// Check time overlap for teacher rules
+			for _, rule := range teacherRules {
+				if TimesOverlapCrossDay(startTime, endTime, false, rule.StartTime, rule.EndTime, rule.IsCrossDay) {
+					// Avoid duplicate entries if room and teacher are the same
+					exists := false
+					for _, existing := range data {
+						if existing.ID == rule.ID {
+							exists = true
+							break
+						}
+					}
+					if !exists {
+						data = append(data, rule)
+					}
+				}
+			}
+
+			// Check personal events for this teacher
+			personalEventRepo := NewPersonalEventRepository(rp.app)
+			events, err := personalEventRepo.CheckPersonalEventConflict(ctx, *teacherID, weekday, startTime, endTime, checkDate)
+			if err != nil {
+				return nil, nil, err
+			}
+			personalEventConflicts = events
+		}
 	}
 
 	return data, personalEventConflicts, nil
-}
-
-// timesOverlap checks if two time ranges overlap
-func timesOverlap(start1, end1, start2, end2 string) bool {
-	// Simple string comparison works for HH:MM format
-	// Returns true if ranges overlap (not just adjacent)
-	return start1 < end2 && end1 > start2
 }
 
 func (rp *ScheduleRuleRepository) Create(ctx context.Context, data models.ScheduleRule) (models.ScheduleRule, error) {
@@ -198,19 +326,23 @@ func (rp *ScheduleRuleRepository) CheckPersonalEventConflict(ctx context.Context
 		return nil, err
 	}
 
-	// 取得事件的星期幾（1-7，週一到週日）
-	eventWeekday := int(eventStartAt.Weekday())
+	// 將事件時間轉換為台北時區，確保 weekday 計算正確
+	loc := app.GetTaiwanLocation()
+	eventStartAtTaipei := eventStartAt.In(loc)
+	eventEndAtTaipei := eventEndAt.In(loc)
+
+	// 取得事件的星期幾（1-7，週一到週日），使用台灣時區
+	eventWeekday := int(eventStartAtTaipei.Weekday())
 	if eventWeekday == 0 {
 		eventWeekday = 7 // 週日轉換為 7
 	}
 
 	// 將事件時間轉換為台北時區的 HH:MM 格式
-	// 課程規則的時間是台北時區，需要統一比較
-	loc, _ := time.LoadLocation("Asia/Taipei")
-	eventStartAtTaipei := eventStartAt.In(loc)
-	eventEndAtTaipei := eventEndAt.In(loc)
 	eventStartTime := eventStartAtTaipei.Format("15:04")
 	eventEndTime := eventEndAtTaipei.Format("15:04")
+
+	// 事件日期（使用台灣時區）
+	eventDate := eventStartAtTaipei.Format("2006-01-02")
 
 	for _, rule := range rules {
 		// 只檢查同一天的規則
@@ -219,9 +351,9 @@ func (rp *ScheduleRuleRepository) CheckPersonalEventConflict(ctx context.Context
 		}
 
 		// 檢查事件日期是否在課程規則的有效範圍內
-		eventDate := eventStartAtTaipei.Format("2006-01-02")
-		ruleStartDate := rule.EffectiveRange.StartDate.Format("2006-01-02")
-		ruleEndDate := rule.EffectiveRange.EndDate.Format("2006-01-02")
+		// 規則的有效範圍也應該轉換為台灣時區進行比較
+		ruleStartDate := rule.EffectiveRange.StartDate.In(loc).Format("2006-01-02")
+		ruleEndDate := rule.EffectiveRange.EndDate.In(loc).Format("2006-01-02")
 
 		if eventDate < ruleStartDate || eventDate > ruleEndDate {
 			// 事件日期不在課程規則的有效範圍內，跳過
@@ -253,4 +385,18 @@ func (rp *ScheduleRuleRepository) CheckPersonalEventConflictAllCenters(ctx conte
 	}
 
 	return allConflicts, nil
+}
+
+// IsCrossDayTime 檢查是否為跨日時間（結束時間早於開始時間）
+func IsCrossDayTime(startTime, endTime string) bool {
+	// 如果開始時間和結束時間相同，視為非跨日（全天課程的特例）
+	if startTime == endTime {
+		return false
+	}
+	return endTime < startTime
+}
+
+// timesOverlap checks if two time ranges overlap
+func timesOverlap(start1, end1, start2, end2 string) bool {
+	return start1 < end2 && end1 > start2
 }

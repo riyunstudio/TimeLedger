@@ -8,6 +8,7 @@ import (
 	"time"
 	"timeLedger/configs"
 	"timeLedger/global"
+	"net/url"
 
 	"gitlab.en.mcbwvx.com/frame/zilean/logs"
 
@@ -22,7 +23,7 @@ type DB struct {
 }
 
 // 初始化主從資料庫
-func Initialize(env *configs.Env) *DB {
+func Initialize(env *configs.Env, timezone string) *DB {
 	var (
 		writeDB *gorm.DB
 		readDB  *gorm.DB
@@ -38,6 +39,7 @@ func Initialize(env *configs.Env) *DB {
 			env.MysqlMasterPass,
 			env.MysqlMasterName,
 			env.AppDebug,
+			timezone,
 		)
 
 		// 從DB - 如果Slave設定與Master相同或為空，則使用同一個連線
@@ -55,6 +57,7 @@ func Initialize(env *configs.Env) *DB {
 				env.MysqlSlavePass,
 				env.MysqlSlaveName,
 				env.AppDebug,
+				timezone,
 			)
 			log.Println("MySQL Master/Slave connected")
 		}
@@ -66,9 +69,16 @@ func Initialize(env *configs.Env) *DB {
 	}
 }
 
-func connectDB(host, port, user, pass, name string, debug bool) *gorm.DB {
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
-		user, pass, host, port, name)
+func connectDB(host, port, user, pass, name string, debug bool, timezone string) *gorm.DB {
+	// 使用設定的時區，確保資料庫時間與應用程式時區一致
+	loc := timezone
+	if loc == "" {
+		loc = "Local"
+	}
+	// 對時區進行 URL 編碼（斜槓需要轉碼）
+	locEncoded := url.QueryEscape(loc)
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=%s",
+		user, pass, host, port, name, locEncoded)
 
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
 		Logger: &GormTraceLogger{debug: debug},
