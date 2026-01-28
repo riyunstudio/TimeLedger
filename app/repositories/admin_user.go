@@ -4,6 +4,8 @@ import (
 	"context"
 	"timeLedger/app"
 	"timeLedger/app/models"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 type AdminUserRepository struct {
@@ -36,11 +38,11 @@ func (rp *AdminUserRepository) ListByCenterID(ctx context.Context, centerID uint
 	return data, err
 }
 
-// GetByCenterID 依中心 ID 取得所有管理員（返回指標）
+// GetByCenterID 依中心 ID 取得所有管理員（返回指標，不過濾狀態）
 func (rp *AdminUserRepository) GetByCenterID(ctx context.Context, centerID uint) ([]*models.AdminUser, error) {
 	var data []*models.AdminUser
 	err := rp.app.MySQL.RDB.WithContext(ctx).
-		Where("center_id = ? AND status = ?", centerID, "ACTIVE").
+		Where("center_id = ?", centerID).
 		Find(&data).Error
 	return data, err
 }
@@ -81,4 +83,31 @@ func (rp *AdminUserRepository) UpdateFields(ctx context.Context, id uint, fields
 
 func (rp *AdminUserRepository) Delete(ctx context.Context, id uint) error {
 	return rp.app.MySQL.WDB.WithContext(ctx).Delete(&models.AdminUser{}, id).Error
+}
+
+// VerifyPassword 驗證密碼
+func (rp *AdminUserRepository) VerifyPassword(ctx context.Context, email string, password string) bool {
+	var data models.AdminUser
+	err := rp.app.MySQL.RDB.WithContext(ctx).Where("email = ?", email).First(&data).Error
+	if err != nil {
+		return false
+	}
+	// 使用bcrypt驗證密碼
+	return rp.checkPassword(data.PasswordHash, password)
+}
+
+// HashPassword 產生密碼哈希
+func (rp *AdminUserRepository) HashPassword(password string) (string, error) {
+	// 使用bcrypt加密密碼
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+	return string(hash), nil
+}
+
+// checkPassword 檢查密碼是否匹配
+func (rp *AdminUserRepository) checkPassword(hashedPassword, password string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
+	return err == nil
 }
