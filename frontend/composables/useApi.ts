@@ -146,5 +146,21 @@ export const useApi = () => {
     return response.json()
   }
 
-  return { get, post, put, patch, delete: del }
+  const upload = async <T>(endpoint: string, file: File, fieldName: string = 'file'): Promise<T> => {
+    const headers: Record<string, string> = {
+      ...getAuthHeader(),
+    }
+    const formData = new FormData()
+    formData.append(fieldName, file)
+
+    const response = await fetch(`${apiBase}${endpoint}`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    })
+    await checkResponse(response)
+    return response.json()
+  }
+
+  return { get, post, put, patch, delete: del, upload }
 }

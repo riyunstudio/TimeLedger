@@ -61,6 +61,11 @@ type Env struct {
 	RateLimitRequests      int
 	RateLimitWindow        string
 	RateLimitBlockDuration string
+
+	// File Upload
+	UploadPath        string
+	UploadMaxSize     int
+	UploadAllowedExts []string
 }
 
 func LoadEnv() *Env {
@@ -121,6 +126,11 @@ func LoadEnv() *Env {
 		RateLimitRequests:      getEnvAsInt("RATE_LIMIT_REQUESTS", 100),
 		RateLimitWindow:        getEnvAsString("RATE_LIMIT_WINDOW", "1m"),
 		RateLimitBlockDuration: getEnvAsString("RATE_LIMIT_BLOCK_DURATION", "5m"),
+
+		// File Upload
+		UploadPath:        getEnvAsString("UPLOAD_PATH", "./uploads"),
+		UploadMaxSize:     getEnvAsInt("UPLOAD_MAX_SIZE", 10), // 10MB
+		UploadAllowedExts: []string{".jpg", ".jpeg", ".png", ".pdf"},
 	}
 }
 

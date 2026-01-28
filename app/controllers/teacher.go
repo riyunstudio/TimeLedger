@@ -4,6 +4,8 @@ import (
 	"crypto/rand"
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 	"timeLedger/app"
@@ -1408,6 +1410,99 @@ func (ctl *TeacherController) CreateCertificate(ctx *gin.Context) {
 		Message: "Certificate created",
 		Datas:   certificate,
 	})
+}
+
+// UploadCertificateFile 上傳證照檔案
+// @Summary 上傳證照檔案
+// @Tags Teacher
+// @Accept multipart/form-data
+// @Produce json
+// @Security BearerAuth
+// @Param file formData file true "證照檔案"
+// @Success 200 {object} global.ApiResponse{data=UploadFileResponse}
+// @Router /api/v1/teacher/me/certificates/upload [post]
+func (ctl *TeacherController) UploadCertificateFile(ctx *gin.Context) {
+	teacherID := ctx.GetUint(global.UserIDKey)
+	if teacherID == 0 {
+		ctx.JSON(http.StatusUnauthorized, global.ApiResponse{
+			Code:    global.UNAUTHORIZED,
+			Message: "Teacher ID required",
+		})
+		return
+	}
+
+	// 獲取上傳的檔案
+	file, err := ctx.FormFile("file")
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "No file uploaded: " + err.Error(),
+		})
+		return
+	}
+
+	// 檢查檔案大小
+	maxSize := 10 * 1024 * 1024 // 10MB
+	if file.Size > int64(maxSize) {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "File size exceeds maximum limit (10MB)",
+		})
+		return
+	}
+
+	// 檢查檔案類型
+	allowedExts := map[string]bool{".jpg": true, ".jpeg": true, ".png": true, ".pdf": true}
+	ext := strings.ToLower(filepath.Ext(file.Filename))
+	if !allowedExts[ext] {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Invalid file type. Allowed: jpg, jpeg, png, pdf",
+		})
+		return
+	}
+
+	// 確保上傳目錄存在
+	uploadPath := "./uploads/certificates"
+	if err := os.MkdirAll(uploadPath, 0755); err != nil {
+		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
+			Code:    500,
+			Message: "Failed to create upload directory: " + err.Error(),
+		})
+		return
+	}
+
+	// 生成唯一的檔案名稱
+	timestamp := time.Now().Format("20060102_150405")
+	uniqueFilename := fmt.Sprintf("cert_%d_%s%s", teacherID, timestamp, ext)
+	filePath := filepath.Join(uploadPath, uniqueFilename)
+
+	// 儲存檔案
+	if err := ctx.SaveUploadedFile(file, filePath); err != nil {
+		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
+			Code:    500,
+			Message: "Failed to save file: " + err.Error(),
+		})
+		return
+	}
+
+	// 返回檔案 URL
+	fileURL := fmt.Sprintf("/uploads/certificates/%s", uniqueFilename)
+	ctx.JSON(http.StatusOK, global.ApiResponse{
+		Code:    0,
+		Message: "File uploaded successfully",
+		Datas: UploadFileResponse{
+			FileURL: fileURL,
+			FileName: file.Filename,
+			FileSize: file.Size,
+		},
+	})
+}
+
+type UploadFileResponse struct {
+	FileURL  string `json:"file_url"`
+	FileName string `json:"file_name"`
+	FileSize int64  `json:"file_size"`
 }
 
 // DeleteCertificate 刪除老師證照

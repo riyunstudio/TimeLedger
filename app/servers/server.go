@@ -67,6 +67,9 @@ func (s *Server) Start() {
 	// 註冊所有路由
 	s.registerRoutes(s.engine)
 
+	// 註冊靜態檔案路由（用於存取上傳的檔案）
+	s.engine.Static("/uploads", "./uploads")
+
 	s.srv = &http.Server{
 		Addr:    ":" + s.app.Env.ServerPort,
 		Handler: s.engine,
