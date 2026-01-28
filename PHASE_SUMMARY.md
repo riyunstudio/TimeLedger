@@ -376,9 +376,157 @@ GET /teacher/sessions/note?rule_id=5&session_date=2026-01-30
 
 ---
 
+## 十九、跨日課程顯示修復（2026-01-28）
+
+### 19.1 問題描述
+
+**管理員儀表板首頁** `api/v1/admin/dashboard/today-summary`：
+- 跨日課程（22:00-01:00）狀態判斷錯誤
+- 課程已結束但狀態顯示為 `upcoming`
+- 課程進行中但狀態顯示為 `completed`
+
+**教師端課表** `api/v1/teacher/me/schedule`：
+- 跨日課程只顯示在開始日期，無法正確分割顯示
+- 前端時間軸只顯示到 21:00，凌晨時段無法呈現
+
+### 19.2 解決方案
+
+#### 19.2.1 管理員儀表板跨日狀態判斷
+
+**修改檔案**：`app/controllers/scheduling.go`
+
+```go
+// 判斷課程狀態
+var status string
+// 檢查是否為跨日課程（結束時間早於開始時間）
+isCrossDay := endDateTime.Before(startDateTime)
+if isCrossDay {
+    // 跨日課程：結束時間加 24 小時
+    endDateTime = endDateTime.Add(24 * time.Hour)
+}
+
+if now.After(endDateTime) {
+    status = "completed"
+} else if now.After(startDateTime) && now.Before(endDateTime) {
+    status = "in_progress"
+} else {
+    status = "upcoming"
+}
+```
+
+#### 19.2.2 前端課表時間範圍擴展
+
+**修改檔案**：
+- `frontend/components/ScheduleTimelineView.vue`
+- `frontend/components/ScheduleGrid.vue`
+- `frontend/components/ScheduleMatrixView.vue`
+- `frontend/pages/teacher/dashboard.vue`
+
+**變更內容**：
+```javascript
+// 之前
+const timeSlots = [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]
+
+// 現在
+const timeSlots = [0, 1, 2, 3, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
+```
+
+#### 19.2.3 後端跨日課程分割
+
+**修改檔案**：`app/services/scheduling_expansion.go`
+
+跨日課程現在會生成兩個條目：
+- 條目 1：開始日 22:00-24:00
+- 條目 2：結束日（隔天）00:00-01:00
+
+**API 響應範例**：
+```json
+// 1/28 的部分
+{
+  "id": "center_1_rule_8_20260128_start",
+  "date": "2026-01-28",
+  "start_time": "22:00",
+  "end_time": "24:00",
+  "is_cross_day_part": true
+}
+
+// 1/29 的部分
+{
+  "id": "center_1_rule_8_20260129_end",
+  "date": "2026-01-29",
+  "start_time": "00:00",
+  "end_time": "01:00",
+  "is_cross_day_part": true
+}
+```
+
+#### 19.2.4 前端跨日課程顯示邏輯
+
+**修改檔案**：`frontend/pages/teacher/dashboard.vue`
+
+```javascript
+// 處理跨日課程
+if (isMidnightEnd || endHour < startHour) {
+  if (hourNum >= startHour) {
+    item.display_start = item.start_time
+    item.display_end = '24:00'
+    return true
+  }
+  return false
+}
+```
+
+### 19.3 檔案變更清單
+
+| 檔案 | 變更類型 | 說明 |
+|:---|:---:|:---|
+| app/controllers/scheduling.go | 修改 | 跨日課程狀態判斷修復 |
+| app/services/scheduling_expansion.go | 修改 | 跨日課程分割為兩個條目 |
+| app/services/scheduling_interface.go | 修改 | 新增 IsCrossDayPart 欄位 |
+| app/controllers/teacher.go | 修改 | 更新 ID 格式，加入分段標記 |
+| frontend/types/index.ts | 修改 | 新增 is_cross_day_part 欄位 |
+| frontend/stores/teacher.ts | 修改 | 正確處理跨日課程資料 |
+| frontend/pages/teacher/dashboard.vue | 修改 | 跨日課程顯示邏輯修復 |
+| frontend/components/ScheduleTimelineView.vue | 修改 | 時間範圍擴展、跨日位置計算 |
+| frontend/components/ScheduleGrid.vue | 修改 | 時間範圍擴展 |
+| frontend/components/ScheduleMatrixView.vue | 修改 | 時間範圍擴展 |
+
+### 19.4 變更統計
+
+```
+12 files changed, 182 insertions(+), 86 deletions(-)
+```
+
+### 19.5 效果展示
+
+**管理員儀表板**：
+
+| 課程時間 | 原本狀態 | 修復後狀態 |
+|:---|:---:|:---:|
+| 19:00-20:00（20:00 時） | upcoming ❌ | completed ✅ |
+| 22:00-01:00（23:00 時） | completed ❌ | in_progress ✅ |
+
+**教師端課表**：
+
+| 課程 | 之前顯示 | 修復後顯示 |
+|:---|:---|:---|
+| 週三熱瑜伽 22:00-01:00 | 1/28 顯示全部 ❌ | 1/28 22:00-24:00 ✅<br>1/29 00:00-01:00 ✅ |
+
+### 19.6 Commit 記錄
+
+| 提交紀錄 | 說明 |
+|:---|:---|
+| 29b31e7 | feat(backend): split cross-day courses into two entries |
+| 944dfb5 | fix(frontend): handle cross-day courses in teacher schedule display |
+| 9dcbb7b | feat(frontend): extend schedule time range to support cross-day courses |
+| dc533c5 | fix(admin): correct cross-day course status determination in today summary |
+
+---
+
 **專案狀態**：✅ **健康**
 **測試覆蓋率**：✅ **95%**
 **跨日課程支援**：✅ **完成**
 **API 速率限制**：✅ **完成**
 **教師端互動優化**：✅ **完成**
+**跨日課程顯示**：✅ **完成**
 **下一里程碑**：監控告警系統（Sentry/Grafana）
