@@ -128,7 +128,7 @@
             class="grid absolute w-full"
             :style="{
               gridTemplateColumns: `60px repeat(7, 1fr)`,
-              top: `${(hour - 6) * 60}px`,
+              top: `${hour * 60}px`,
               height: '60px'
             }"
           >
@@ -146,7 +146,7 @@
           </div>
 
           <!-- 課程卡片容器 -->
-          <div class="relative" :style="{ height: `${timeSlots.length * 60}px` }">
+          <div class="absolute inset-0" :style="{ top: '0' }">
             <!-- 課程卡片 -->
             <div
               v-for="session in filteredSessions"
