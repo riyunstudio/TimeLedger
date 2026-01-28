@@ -339,7 +339,7 @@ const slotWidth = ref(100)
 const TIME_SLOT_HEIGHT = 60 // 每個時段格子的高度 (px)
 const RESOURCE_COLUMN_WIDTH = 200 // 資源列寬度 (px)
 const TIME_COLUMN_WIDTH = 80 // 時間列寬度 (px)
-const HEADER_HEIGHT = 49 // 表頭高度 (px)
+const HEADER_HEIGHT = 80 // 表頭高度 (px) - 兩行標題
 
 const showCreateModal = ref(false)
 const showEditModal = ref(false)
