@@ -286,6 +286,8 @@
 </template>
 
 <script setup lang="ts">
+import { formatDateToString } from '~/composables/useTaiwanTime'
+
 const emit = defineEmits<{
   selectCell: { time: number, weekday: number }
   'update:viewMode': [value: 'calendar' | 'teacher_matrix' | 'room_matrix']
@@ -475,8 +477,8 @@ const fetchSchedules = async () => {
     const api = useApi()
     
     // 取得當前週的日期範圍
-    const startDate = weekStart.value.toISOString().split('T')[0]
-    const endDate = weekEnd.value.toISOString().split('T')[0]
+    const startDate = formatDateToString(weekStart.value)
+    const endDate = formatDateToString(weekEnd.value)
     
     // 使用 ExpandRules API，取得已展開並處理例外的排課
     const response = await api.post<{ code: number; datas: any[] }>('/admin/expand-rules', {
@@ -664,7 +666,7 @@ const handleDrop = async (event: DragEvent) => {
 }
 
 const formatDate = (date: Date): string => {
-  return date.toISOString().split('T')[0]
+  return formatDateToString(date)
 }
 
 const handleRuleCreated = () => {

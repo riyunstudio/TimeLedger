@@ -14,7 +14,13 @@ import (
 	"timeLedger/app/repositories"
 	"timeLedger/app/services"
 	"timeLedger/configs"
-	dbmysql "timeLedger/database/mysql"
+	"timeLedger/database/mysql"
+	"timeLedger/database/redis"
+	"timeLedger/global/errInfos"
+	mockRedis "timeLedger/testing/redis"
+
+	"gitlab.en.mcbwvx.com/frame/teemo/tools"
+	gormMysql "gorm.io/driver/mysql"
 )
 
 // Generate unique identifier for test data
@@ -23,21 +29,52 @@ func generateUniqueID() string {
 	return fmt.Sprintf("%d%d", time.Now().UnixNano(), rand.Intn(10000))
 }
 
-func setupAuthTestDB(t *testing.T) *gorm.DB {
-	db, err := InitializeTestDB()
+func setupAuthTestApp() (*app.App, *gorm.DB, func()) {
+	dsn := "root:timeledger_root_2026@tcp(127.0.0.1:3306)/timeledger?charset=utf8mb4&parseTime=True&loc=Local"
+	mysqlDB, err := gorm.Open(gormMysql.Open(dsn), &gorm.Config{})
 	if err != nil {
-		t.Fatalf("Failed to create test database: %v", err)
+		panic(fmt.Sprintf("MySQL init error: %s", err.Error()))
 	}
 
-	if err := db.AutoMigrate(
+	if err := mysqlDB.AutoMigrate(
 		&models.Center{},
 		&models.AdminUser{},
 		&models.Teacher{},
 	); err != nil {
-		t.Fatalf("Failed to migrate test database: %v", err)
+		panic(fmt.Sprintf("AutoMigrate error: %s", err.Error()))
 	}
 
-	return db
+	rdb, mr, err := mockRedis.Initialize()
+	if err != nil {
+		panic(fmt.Sprintf("Redis init error: %s", err.Error()))
+	}
+
+	e := errInfos.Initialize(1)
+	tool := tools.Initialize("Asia/Taipei")
+
+	env := &configs.Env{
+		JWTSecret:       "test-jwt-secret-key-for-testing-only",
+		AppEnv:          "test",
+		AppDebug:        true,
+		AppTimezone:     "Asia/Taipei",
+		FrontendBaseURL: "http://localhost:3000",
+	}
+
+	appInstance := &app.App{
+		Env:   env,
+		Err:   e,
+		Tools: tool,
+		MySQL: &mysql.DB{WDB: mysqlDB, RDB: mysqlDB},
+		Redis: &redis.Redis{DB0: rdb},
+		Api:   nil,
+		Rpc:   nil,
+	}
+
+	cleanup := func() {
+		mr.Close()
+	}
+
+	return appInstance, mysqlDB, cleanup
 }
 
 func createTestCenter(t *testing.T, db *gorm.DB) *models.Center {
@@ -86,27 +123,14 @@ func createTestTeacher(t *testing.T, db *gorm.DB, lineUserID string) *models.Tea
 }
 
 func TestAuthController_AdminLogin_Success(t *testing.T) {
-	db := setupAuthTestDB(t)
-	defer CloseDB(db)
+	appInstance, db, cleanup := setupAuthTestApp()
+	defer cleanup()
 
 	center := createTestCenter(t, db)
 	admin := createTestAdminUser(t, db, center.ID, "password123")
 
-	// 初始化測試用的 Env 配置
-	env := &configs.Env{
-		JWTSecret:      "test-jwt-secret-key-for-testing-only",
-		AppEnv:         "test",
-		AppDebug:       true,
-		AppTimezone:    "Asia/Taipei",
-	}
-
-	testApp := &app.App{
-		Env:   env,
-		MySQL: &dbmysql.DB{WDB: db, RDB: db},
-	}
-
-	authService := services.NewAuthService(testApp)
-	adminRepo := repositories.NewAdminUserRepository(testApp)
+	authService := services.NewAuthService(appInstance)
+	adminRepo := repositories.NewAdminUserRepository(appInstance)
 
 	response, err := authService.AdminLogin(context.Background(), admin.Email, "password123")
 	if err != nil {
@@ -129,18 +153,13 @@ func TestAuthController_AdminLogin_Success(t *testing.T) {
 }
 
 func TestAuthController_AdminLogin_InvalidPassword(t *testing.T) {
-	db := setupAuthTestDB(t)
-	defer CloseDB(db)
+	appInstance, db, cleanup := setupAuthTestApp()
+	defer cleanup()
 
 	center := createTestCenter(t, db)
 	admin := createTestAdminUser(t, db, center.ID, "password123")
 
-	testApp := &app.App{
-		Env:   &configs.Env{JWTSecret: "test-jwt-secret-key-for-testing-only"},
-		MySQL: &dbmysql.DB{WDB: db, RDB: db},
-	}
-
-	authService := services.NewAuthService(testApp)
+	authService := services.NewAuthService(appInstance)
 
 	_, err := authService.AdminLogin(context.Background(), admin.Email, "wrongpassword")
 	if err == nil {
@@ -149,17 +168,12 @@ func TestAuthController_AdminLogin_InvalidPassword(t *testing.T) {
 }
 
 func TestAuthController_AdminLogin_AdminNotFound(t *testing.T) {
-	db := setupAuthTestDB(t)
-	defer CloseDB(db)
+	appInstance, _, cleanup := setupAuthTestApp()
+	defer cleanup()
 
-	_ = createTestCenter(t, db)
+	_ = createTestCenter(t, appInstance.MySQL.RDB)
 
-	testApp := &app.App{
-		Env:   &configs.Env{JWTSecret: "test-jwt-secret-key-for-testing-only"},
-		MySQL: &dbmysql.DB{WDB: db, RDB: db},
-	}
-
-	authService := services.NewAuthService(testApp)
+	authService := services.NewAuthService(appInstance)
 
 	_, err := authService.AdminLogin(context.Background(), "nonexistent@test.com", "password123")
 	if err == nil {
@@ -168,20 +182,15 @@ func TestAuthController_AdminLogin_AdminNotFound(t *testing.T) {
 }
 
 func TestAuthController_TeacherLineLogin_Success(t *testing.T) {
-	db := setupAuthTestDB(t)
-	defer CloseDB(db)
+	appInstance, db, cleanup := setupAuthTestApp()
+	defer cleanup()
 
 	uniqueID := generateUniqueID()
 	lineUserID := fmt.Sprintf("U%s", uniqueID)
 	teacher := createTestTeacher(t, db, lineUserID)
 	_ = teacher.ID
 
-	testApp := &app.App{
-		Env:   &configs.Env{JWTSecret: "test-jwt-secret-key-for-testing-only"},
-		MySQL: &dbmysql.DB{WDB: db, RDB: db},
-	}
-
-	authService := services.NewAuthService(testApp)
+	authService := services.NewAuthService(appInstance)
 
 	response, err := authService.TeacherLineLogin(context.Background(), lineUserID, "mock-token")
 	if err != nil {
@@ -198,15 +207,10 @@ func TestAuthController_TeacherLineLogin_Success(t *testing.T) {
 }
 
 func TestAuthController_TeacherLineLogin_TeacherNotFound(t *testing.T) {
-	db := setupAuthTestDB(t)
-	defer CloseDB(db)
+	appInstance, _, cleanup := setupAuthTestApp()
+	defer cleanup()
 
-	testApp := &app.App{
-		Env:   &configs.Env{JWTSecret: "test-jwt-secret-key-for-testing-only"},
-		MySQL: &dbmysql.DB{WDB: db, RDB: db},
-	}
-
-	authService := services.NewAuthService(testApp)
+	authService := services.NewAuthService(appInstance)
 
 	_, err := authService.TeacherLineLogin(context.Background(), "UNKNOWN_USER", "mock-token")
 	if err == nil {
@@ -215,20 +219,15 @@ func TestAuthController_TeacherLineLogin_TeacherNotFound(t *testing.T) {
 }
 
 func TestAuthController_RefreshToken_Success(t *testing.T) {
-	db := setupAuthTestDB(t)
-	defer CloseDB(db)
+	appInstance, db, cleanup := setupAuthTestApp()
+	defer cleanup()
 
 	uniqueID := generateUniqueID()
 	lineUserID := fmt.Sprintf("U%s", uniqueID)
 	teacher := createTestTeacher(t, db, lineUserID)
 	_ = teacher.ID
 
-	testApp := &app.App{
-		Env:   &configs.Env{JWTSecret: "test-jwt-secret-key-for-testing-only"},
-		MySQL: &dbmysql.DB{WDB: db, RDB: db},
-	}
-
-	authService := services.NewAuthService(testApp)
+	authService := services.NewAuthService(appInstance)
 
 	loginResponse, err := authService.TeacherLineLogin(context.Background(), lineUserID, "mock-token")
 	if err != nil {
@@ -246,15 +245,10 @@ func TestAuthController_RefreshToken_Success(t *testing.T) {
 }
 
 func TestAuthController_RefreshToken_InvalidToken(t *testing.T) {
-	db := setupAuthTestDB(t)
-	defer CloseDB(db)
+	appInstance, _, cleanup := setupAuthTestApp()
+	defer cleanup()
 
-	testApp := &app.App{
-		Env:   &configs.Env{JWTSecret: "test-jwt-secret-key-for-testing-only"},
-		MySQL: &dbmysql.DB{WDB: db, RDB: db},
-	}
-
-	authService := services.NewAuthService(testApp)
+	authService := services.NewAuthService(appInstance)
 
 	_, err := authService.RefreshToken(context.Background(), "invalid-token")
 	if err == nil {
@@ -263,15 +257,10 @@ func TestAuthController_RefreshToken_InvalidToken(t *testing.T) {
 }
 
 func TestAuthController_Logout_Success(t *testing.T) {
-	db := setupAuthTestDB(t)
-	defer CloseDB(db)
+	appInstance, _, cleanup := setupAuthTestApp()
+	defer cleanup()
 
-	testApp := &app.App{
-		Env:   &configs.Env{JWTSecret: "test-jwt-secret-key-for-testing-only"},
-		MySQL: &dbmysql.DB{WDB: db, RDB: db},
-	}
-
-	authService := services.NewAuthService(testApp)
+	authService := services.NewAuthService(appInstance)
 
 	err := authService.Logout(context.Background(), "any-token")
 	if err != nil {
@@ -280,19 +269,14 @@ func TestAuthController_Logout_Success(t *testing.T) {
 }
 
 func TestAuthController_TokenValidation(t *testing.T) {
-	db := setupAuthTestDB(t)
-	defer CloseDB(db)
+	appInstance, db, cleanup := setupAuthTestApp()
+	defer cleanup()
 
 	uniqueID := generateUniqueID()
 	lineUserID := fmt.Sprintf("U%s", uniqueID)
 	teacher := createTestTeacher(t, db, lineUserID)
 
-	testApp := &app.App{
-		Env:   &configs.Env{JWTSecret: "test-jwt-secret-key-for-testing-only"},
-		MySQL: &dbmysql.DB{WDB: db, RDB: db},
-	}
-
-	authService := services.NewAuthService(testApp)
+	authService := services.NewAuthService(appInstance)
 
 	loginResponse, err := authService.TeacherLineLogin(context.Background(), lineUserID, "mock-token")
 	if err != nil {
@@ -314,18 +298,13 @@ func TestAuthController_TokenValidation(t *testing.T) {
 }
 
 func TestAuthController_AdminTokenValidation(t *testing.T) {
-	db := setupAuthTestDB(t)
-	defer CloseDB(db)
+	appInstance, db, cleanup := setupAuthTestApp()
+	defer cleanup()
 
 	center := createTestCenter(t, db)
 	admin := createTestAdminUser(t, db, center.ID, "password123")
 
-	testApp := &app.App{
-		Env:   &configs.Env{JWTSecret: "test-jwt-secret-key-for-testing-only"},
-		MySQL: &dbmysql.DB{WDB: db, RDB: db},
-	}
-
-	authService := services.NewAuthService(testApp)
+	authService := services.NewAuthService(appInstance)
 
 	loginResponse, err := authService.AdminLogin(context.Background(), admin.Email, "password123")
 	if err != nil {

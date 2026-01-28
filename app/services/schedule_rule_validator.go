@@ -3,6 +3,8 @@ package services
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 	"timeLedger/app"
 	"timeLedger/app/models"
@@ -14,16 +16,18 @@ import (
 // ScheduleRuleValidator 統一的排課規則驗證服務
 // 整合所有檢查邏輯（重疊、緩衝、個人行程）
 type ScheduleRuleValidator struct {
-	app              *app.App
-	validationService ScheduleValidationService
-	scheduleRuleRepo *models.ScheduleRule
+	app                *app.App
+	validationService  ScheduleValidationService
+	scheduleRuleRepo   *models.ScheduleRule
+	offeringRepo       *repositories.OfferingRepository
 }
 
 // NewScheduleRuleValidator 建立統一的驗證服務
 func NewScheduleRuleValidator(app *app.App) *ScheduleRuleValidator {
 	return &ScheduleRuleValidator{
-		app:              app,
+		app:               app,
 		validationService: NewScheduleValidationService(app),
+		offeringRepo:      repositories.NewOfferingRepository(app),
 	}
 }
 
@@ -79,11 +83,24 @@ func (v *ScheduleRuleValidator) ValidateForApplyTemplate(ctx context.Context, ce
 	}
 
 	parsedStartDate, _ := time.Parse("2006-01-02", startDate)
-	
+
+	// 轉換為中央時區，確保 weekday 計算正確
+	loc := app.GetTaiwanLocation()
+	parsedStartDate = time.Date(parsedStartDate.Year(), parsedStartDate.Month(), parsedStartDate.Day(), 0, 0, 0, 0, loc)
+
 	dayNames := []string{"", "週一", "週二", "週三", "週四", "週五", "週六", "週日"}
 
+	// 取得 offering 的 course ID（用於 buffer 檢查）
+	courseID := uint(0)
+	if offeringID > 0 {
+		offering, err := v.offeringRepo.GetByID(ctx, offeringID)
+		if err == nil {
+			courseID = offering.CourseID
+		}
+	}
+
 	for _, weekday := range weekdays {
-		// 找到該 weekday 的第一個日期
+		// 找到該 weekday 的第一個日期（使用中央時區計算）
 		current := parsedStartDate
 		weekdayDiff := weekday - int(current.Weekday())
 		if weekdayDiff <= 0 {
@@ -124,7 +141,7 @@ func (v *ScheduleRuleValidator) ValidateForApplyTemplate(ctx context.Context, ce
 					RuleID:       rule.ID,
 					CanOverride:  false, // Overlap 不可覆蓋
 				}
-				
+
 				summary.AllConflicts = append(summary.AllConflicts, conflict)
 				summary.Valid = false
 			}
@@ -145,21 +162,26 @@ func (v *ScheduleRuleValidator) ValidateForApplyTemplate(ctx context.Context, ce
 					Message:      msg,
 					CanOverride:  false, // Personal Event 不可覆蓋
 				}
-				
+
 				summary.AllConflicts = append(summary.AllConflicts, conflict)
 				summary.Valid = false
 			}
 
-			// 檢查 Buffer（如果課程有設定）
+			// 檢查 Buffer（如果課程有 offeringID > 設定）
 			if offeringID > 0 {
-				// 產生新課程的時間
-				newStartTime, _ := time.Parse("2006-01-02 15:04", targetDate.Format("2006-01-02")+" "+cell.StartTime)
+				// 產生新課程的時間（使用中央時區避免日期偏移）
+				loc := app.GetTaiwanLocation()
+				targetDateLocal := time.Date(
+					targetDate.Year(), targetDate.Month(), targetDate.Day(),
+					0, 0, 0, 0, loc,
+				)
+				newStartTime, _ := time.ParseInLocation("2006-01-02 15:04", targetDateLocal.Format("2006-01-02")+" "+cell.StartTime, loc)
 
 				// 檢查 Teacher Buffer
 				if cell.TeacherID != nil && *cell.TeacherID > 0 {
-					prevEndTime, _ := v.getPreviousSessionEndTime(ctx, centerID, *cell.TeacherID, weekday, cell.StartTime)
+					prevEndTime, _ := v.getPreviousSessionEndTime(ctx, centerID, *cell.TeacherID, weekday, cell.StartTime, newStartTime)
 					if !prevEndTime.IsZero() {
-						bufferResult, err := v.validationService.CheckTeacherBuffer(ctx, centerID, *cell.TeacherID, prevEndTime, newStartTime, offeringID)
+						bufferResult, err := v.validationService.CheckTeacherBuffer(ctx, centerID, *cell.TeacherID, prevEndTime, newStartTime, courseID)
 						if err != nil {
 							return nil, fmt.Errorf("failed to check teacher buffer: %w", err)
 						}
@@ -186,9 +208,9 @@ func (v *ScheduleRuleValidator) ValidateForApplyTemplate(ctx context.Context, ce
 
 				// 檢查 Room Buffer
 				if roomID > 0 {
-					prevRoomEndTime, _ := v.getPreviousRoomSessionEndTime(ctx, centerID, roomID, weekday, cell.StartTime)
+					prevRoomEndTime, _ := v.getPreviousRoomSessionEndTime(ctx, centerID, roomID, weekday, cell.StartTime, newStartTime)
 					if !prevRoomEndTime.IsZero() {
-						bufferResult, err := v.validationService.CheckRoomBuffer(ctx, centerID, roomID, prevRoomEndTime, newStartTime, offeringID)
+						bufferResult, err := v.validationService.CheckRoomBuffer(ctx, centerID, roomID, prevRoomEndTime, newStartTime, courseID)
 						if err != nil {
 							return nil, fmt.Errorf("failed to check room buffer: %w", err)
 						}
@@ -228,11 +250,24 @@ func (v *ScheduleRuleValidator) ValidateForCreateRule(ctx context.Context, cente
 	}
 
 	parsedStartDate, _ := time.Parse("2006-01-02", startDate)
-	
+
+	// 轉換為中央時區，確保 weekday 計算正確
+	loc := app.GetTaiwanLocation()
+	parsedStartDate = time.Date(parsedStartDate.Year(), parsedStartDate.Month(), parsedStartDate.Day(), 0, 0, 0, 0, loc)
+
 	dayNames := []string{"", "週一", "週二", "週三", "週四", "週五", "週六", "週日"}
 
+	// 取得 offering 的 course ID（用於 buffer 檢查）
+	courseID := uint(0)
+	if offeringID > 0 {
+		offering, err := v.offeringRepo.GetByID(ctx, offeringID)
+		if err == nil {
+			courseID = offering.CourseID
+		}
+	}
+
 	for _, weekday := range weekdays {
-		// 找到該 weekday 的第一個日期
+		// 找到該 weekday 的第一個日期（使用中央時區計算）
 		current := parsedStartDate
 		weekdayDiff := weekday - int(current.Weekday())
 		if weekdayDiff <= 0 {
@@ -291,13 +326,19 @@ func (v *ScheduleRuleValidator) ValidateForCreateRule(ctx context.Context, cente
 
 		// 檢查 Buffer
 		if offeringID > 0 {
-			newStartTime, _ := time.Parse("2006-01-02 15:04", targetDate.Format("2006-01-02")+" "+startTime)
+			// 使用中央時區避免日期偏移
+			loc := app.GetTaiwanLocation()
+			targetDateLocal := time.Date(
+				targetDate.Year(), targetDate.Month(), targetDate.Day(),
+				0, 0, 0, 0, loc,
+			)
+			newStartTime, _ := time.ParseInLocation("2006-01-02 15:04", targetDateLocal.Format("2006-01-02")+" "+startTime, loc)
 
 			// 檢查 Teacher Buffer
 			if teacherID != nil && *teacherID > 0 {
-				prevEndTime, _ := v.getPreviousSessionEndTime(ctx, centerID, *teacherID, weekday, startTime)
+				prevEndTime, _ := v.getPreviousSessionEndTime(ctx, centerID, *teacherID, weekday, startTime, newStartTime)
 				if !prevEndTime.IsZero() {
-					bufferResult, err := v.validationService.CheckTeacherBuffer(ctx, centerID, *teacherID, prevEndTime, newStartTime, offeringID)
+					bufferResult, err := v.validationService.CheckTeacherBuffer(ctx, centerID, *teacherID, prevEndTime, newStartTime, courseID)
 					if err != nil {
 						return nil, fmt.Errorf("failed to check teacher buffer: %w", err)
 					}
@@ -326,9 +367,9 @@ func (v *ScheduleRuleValidator) ValidateForCreateRule(ctx context.Context, cente
 
 			// 檢查 Room Buffer
 			if roomID > 0 {
-				prevRoomEndTime, _ := v.getPreviousRoomSessionEndTime(ctx, centerID, roomID, weekday, startTime)
+				prevRoomEndTime, _ := v.getPreviousRoomSessionEndTime(ctx, centerID, roomID, weekday, startTime, newStartTime)
 				if !prevRoomEndTime.IsZero() {
-					bufferResult, err := v.validationService.CheckRoomBuffer(ctx, centerID, roomID, prevRoomEndTime, newStartTime, offeringID)
+					bufferResult, err := v.validationService.CheckRoomBuffer(ctx, centerID, roomID, prevRoomEndTime, newStartTime, courseID)
 					if err != nil {
 						return nil, fmt.Errorf("failed to check room buffer: %w", err)
 					}
@@ -424,20 +465,22 @@ func (v *ScheduleRuleValidator) checkOverlap(ctx context.Context, centerID uint,
 }
 
 // getPreviousSessionEndTime 取得老師在指定 weekday 之前的最後一筆課程結束時間
-func (v *ScheduleRuleValidator) getPreviousSessionEndTime(ctx context.Context, centerID, teacherID uint, weekday int, beforeTimeStr string) (time.Time, error) {
+// newStartTime 用於構造正確的日期，以便計算緩衝時間
+func (v *ScheduleRuleValidator) getPreviousSessionEndTime(ctx context.Context, centerID, teacherID uint, weekday int, beforeTimeStr string, newStartTime time.Time) (time.Time, error) {
 	weekdayVal := weekday
 	if weekdayVal == 0 {
 		weekdayVal = 7
 	}
 
 	var rule models.ScheduleRule
-	err := v.app.MySQL.RDB.WithContext(ctx).
+	query := v.app.MySQL.RDB.WithContext(ctx).
 		Where("center_id = ?", centerID).
 		Where("teacher_id = ?", teacherID).
 		Where("weekday = ?", weekdayVal).
 		Where("end_time <= ?", beforeTimeStr).
-		Order("end_time DESC").
-		First(&rule).Error
+		Order("end_time DESC")
+	
+	err := query.First(&rule).Error
 
 	if err != nil {
 		// 如果找不到紀錄（gorm.ErrRecordNotFound），這是預期情況，回傳零值時間
@@ -449,12 +492,34 @@ func (v *ScheduleRuleValidator) getPreviousSessionEndTime(ctx context.Context, c
 		return time.Time{}, err
 	}
 
-	endTime, _ := time.Parse("2006-01-02 15:04:05", "2000-01-01"+" "+rule.EndTime)
+	// 使用中央時區解析時間，確保與 newStartTime 的時區一致
+	// 注意：EndTime 格式是 "HH:mm"（沒有秒）
+	loc := app.GetTaiwanLocation()
+
+	// 解析 EndTime 並使用與 newStartTime 相同的日期
+	// 這樣才能正確計算緩衝時間
+	endTimeParts := strings.Split(rule.EndTime, ":")
+	if len(endTimeParts) >= 2 {
+		hour, _ := strconv.Atoi(endTimeParts[0])
+		minute, _ := strconv.Atoi(endTimeParts[1])
+
+		// 使用 newStartTime 的日期來構造 endTime，這樣才能正確比較
+		endTime := time.Date(
+			newStartTime.Year(), newStartTime.Month(), newStartTime.Day(),
+			hour, minute, 0, 0, loc,
+		)
+		return endTime, nil
+	}
+
+	// Fallback: 使用舊的解析方式
+	timeStr := "2000-01-01" + " " + rule.EndTime
+	endTime, _ := time.ParseInLocation("2006-01-02 15:04", timeStr, loc)
 	return endTime, nil
 }
 
 // getPreviousRoomSessionEndTime 取得教室在指定 weekday 之前的最後一筆課程結束時間
-func (v *ScheduleRuleValidator) getPreviousRoomSessionEndTime(ctx context.Context, centerID, roomID uint, weekday int, beforeTimeStr string) (time.Time, error) {
+// newStartTime 用於構造正確的日期，以便計算緩衝時間
+func (v *ScheduleRuleValidator) getPreviousRoomSessionEndTime(ctx context.Context, centerID, roomID uint, weekday int, beforeTimeStr string, newStartTime time.Time) (time.Time, error) {
 	weekdayVal := weekday
 	if weekdayVal == 0 {
 		weekdayVal = 7
@@ -471,6 +536,7 @@ func (v *ScheduleRuleValidator) getPreviousRoomSessionEndTime(ctx context.Contex
 
 	if err != nil {
 		// 如果找不到紀錄（gorm.ErrRecordNotFound），這是預期情況，回傳零值時間
+		// 不要將此視為錯誤，這只是表示該教室在該時段之前沒有排課
 		if err == gorm.ErrRecordNotFound {
 			return time.Time{}, nil
 		}
@@ -478,6 +544,27 @@ func (v *ScheduleRuleValidator) getPreviousRoomSessionEndTime(ctx context.Contex
 		return time.Time{}, err
 	}
 
-	endTime, _ := time.Parse("2006-01-02 15:04:05", "2000-01-01"+" "+rule.EndTime)
+	// 使用中央時區解析時間，確保與 newStartTime 的時區一致
+	// 注意：EndTime 格式是 "HH:mm"（沒有秒）
+	loc := app.GetTaiwanLocation()
+
+	// 解析 EndTime 並使用與 newStartTime 相同的日期
+	// 這樣才能正確計算緩衝時間
+	endTimeParts := strings.Split(rule.EndTime, ":")
+	if len(endTimeParts) >= 2 {
+		hour, _ := strconv.Atoi(endTimeParts[0])
+		minute, _ := strconv.Atoi(endTimeParts[1])
+
+		// 使用 newStartTime 的日期來構造 endTime，這樣才能正確比較
+		endTime := time.Date(
+			newStartTime.Year(), newStartTime.Month(), newStartTime.Day(),
+			hour, minute, 0, 0, loc,
+		)
+		return endTime, nil
+	}
+
+	// Fallback: 使用舊的解析方式
+	timeStr := "2000-01-01" + " " + rule.EndTime
+	endTime, _ := time.ParseInLocation("2006-01-02 15:04", timeStr, loc)
 	return endTime, nil
 }

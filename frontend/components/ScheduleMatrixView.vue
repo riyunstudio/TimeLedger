@@ -177,6 +177,8 @@
 </template>
 
 <script setup lang="ts">
+import { formatDateToString } from '~/composables/useTaiwanTime'
+
 const emit = defineEmits<{
   selectCell: { resource: any, time: number, weekday: number }
   'update:resourceType': [value: 'teacher' | 'room']
@@ -455,7 +457,7 @@ const handleDrop = async (event: DragEvent) => {
 }
 
 const formatDate = (date: Date): string => {
-  return date.toISOString().split('T')[0]
+  return formatDateToString(date)
 }
 
 const handleRuleCreated = () => {

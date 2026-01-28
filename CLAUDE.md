@@ -1083,7 +1083,136 @@ appInstance := &app.App{
 
 ---
 
-## 32. Agent 技能 (Agent Skills)
+## 32. 時區中央化 (Timezone Centralization)
+
+### 32.1 架構設計
+
+整個系統（後端 + 前端）統一使用台灣時區（Asia/Taipei）：
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    TimeLedger 系統                          │
+├─────────────────────────────────────────────────────────────┤
+│  後端 (Go)                                                 │
+│  ├── APP_TIMEZONE=Asia/Taipei (預設)                        │
+│  ├── MySQL: loc=Asia/Taipei                               │
+│  └── app/timezone.go: 中央化時區管理                        │
+├─────────────────────────────────────────────────────────────┤
+│  通訊 (API)                                               │
+│  └── 日期格式: YYYY-MM-DD (字串)                           │
+├─────────────────────────────────────────────────────────────┤
+│  前端 (Nuxt 3)                                            │
+│  ├── useTaiwanTime.ts: 本地時區工具                        │
+│  └── 瀏覽器本地顯示                                       │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 32.2 後端時區管理
+
+**環境設定 (`configs/env.go`)**
+```go
+// 環境變數
+APP_TIMEZONE=Asia/Taipei  // 預設值
+```
+
+**中央時區工具 (`app/timezone.go`)**
+```go
+// 使用 sync.Once 確保執行緒安全
+var loadTaiwanLocationOnce sync.Once
+var taiwanLocation *time.Location
+
+// 載入台灣時區（只執行一次）
+func LoadTaiwanLocation() (*time.Location, error)
+
+// 取得台灣時區
+func GetTaiwanLocation() *time.Location
+
+// 取得台灣現在時間
+func NowInTaiwan() time.Time
+
+// 取得台灣今日日期
+func TodayInTaiwan() time.Time
+```
+
+**MySQL 連線 (`database/mysql/conn.go`)**
+```go
+// DSN 增加 loc 參數，確保資料庫時間與應用程式時區一致
+dsn := "...&loc=Asia/Taipei"
+```
+
+### 32.3 前端時區工具
+
+**`frontend/composables/useTaiwanTime.ts`**
+```typescript
+// 格式化日期為 YYYY-MM-DD 字串
+export function formatDateToString(date: Date): string
+
+// 取得今日日期字串
+export function getTodayString(): Date
+
+// 取得週開始/結束日期
+export function getWeekStart(date?: Date): Date
+export function getWeekEnd(date?: Date): Date
+```
+
+**重要：避免使用 toISOString()**
+- `toISOString()` 會轉換為 UTC，導致凌晨日期偏移
+- 使用本地時間運算避免問題
+
+### 32.4 移除非重複時區載入
+
+以下檔案已移除重複的時區載入邏輯，改用中央時區工具：
+- `app/services/scheduling_validation.go`
+- `app/services/schedule_rule_validator.go`
+- `app/controllers/scheduling.go`
+- `app/repositories/schedule_rule.go`
+
+### 32.5 前端時區修正
+
+以下前端檔案已更新使用中央時區工具（`useTaiwanTime.ts`）：
+
+| 檔案 | 修正內容 |
+|:---|:---|
+| `stores/teacher.ts` | 新增 `formatDateTimeForApi()` 函數，API 資料傳送改用台灣時區 |
+| `components/ExceptionModal.vue` | `today` computed 改用 `getTodayString()` |
+| `components/ScheduleMatrixView.vue` | `formatDate()` 改用 `formatDateToString()` |
+| `components/PersonalEventModal.vue` | 表單初始值與 `formatDateTimeForApi()` 改用台灣時區 |
+| `components/ScheduleTimelineView.vue` | `date` 格式化改用 `formatDateToString()` |
+| `pages/admin/matching.vue` | CSV 匯出、API 查詢參數、請求資料改用台灣時區 |
+
+### 32.6 禁止使用 toISOString() 處理日期
+
+**嚴格禁止**在前端程式碼中使用 `toISOString()` 處理日期相關邏輯：
+
+```typescript
+// ❌ 錯誤做法
+const dateStr = new Date().toISOString().split('T')[0]
+
+// ✅ 正確做法
+import { formatDateToString, getTodayString } from '~/composables/useTaiwanTime'
+
+const dateStr = formatDateToString(new Date())
+const todayStr = getTodayString()
+```
+
+**例外**：以下情境可繼續使用 `toISOString()`：
+- iCal 標準格式匯出（需要 UTC）
+- 測試檔案（模擬資料）
+- 僅用於檔案名稱產生（無業務邏輯）
+
+### 32.7 效益
+
+| 項目 | 改善內容 |
+|:---|:---|
+| 時區一致性 | 後端、資料庫、前端統一使用台灣時區 |
+| 日期正確性 | 避免 toISOString() 導致的凌晨日期偏移問題 |
+| 程式碼維護 | 中央化時區工具，減少重複程式碼 |
+| 執行緒安全 | 使用 sync.Once 確保時區只載入一次 |
+| 可設定性 | 可透過環境變數調整時區 |
+
+---
+
+## 33. Agent 技能 (Agent Skills)
 
 - **auth-adapter-guard**：Mock Login vs LINE Login abstraction；使用 `AuthService` interface，永遠不要直接呼叫 `liff.*`
 - **contract-sync**：保持 API 規格與 Go struct 和 TypeScript interface 同步；修改 `pdr/API.md` 或 `pdr/Mysql.md` 時更新 model

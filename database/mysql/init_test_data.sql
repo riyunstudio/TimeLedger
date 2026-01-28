@@ -6,7 +6,13 @@
 USE timeledger;
 
 -- -------------------------------------------------
--- 清除現有資料（可選，如果需要乾淨的環境）
+-- 0. 新增 is_cross_day 欄位（如果不存在）
+-- -------------------------------------------------
+-- 嘗試新增欄位，如果已存在會忽略錯誤
+-- ALTER TABLE schedule_rules ADD COLUMN is_cross_day BOOLEAN DEFAULT FALSE AFTER end_time;
+
+-- -------------------------------------------------
+-- 清除現有資料
 -- -------------------------------------------------
 -- 注意：請依照順序執行，先刪除子表再刪除主表
 -- 先刪除與 teachers 相關的子表（外鍵約束）
@@ -16,6 +22,7 @@ DELETE FROM personal_events;
 DELETE FROM teacher_skill_hashtags;
 DELETE FROM teacher_certificates;
 DELETE FROM teacher_skills;
+DELETE FROM session_notes;
 DELETE FROM schedule_rules;
 -- 再刪除其他子表
 DELETE FROM center_holidays;
@@ -28,6 +35,10 @@ DELETE FROM admin_users;
 -- 最後刪除主表
 DELETE FROM teachers;
 DELETE FROM centers;
+
+-- 刪除鄉鎮 重新匯入
+DELETE FROM geo_districts;
+DELETE FROM geo_cities;
 
 -- -------------------------------------------------
 -- 1. 城市與鄉鎮區資料（完整 22 縣市）
@@ -219,6 +230,109 @@ INSERT INTO offerings (id, center_id, course_id, name, default_room_id, default_
 (2, 1, 2, '週三熱瑜伽', NULL, NULL, false, true, NOW(), NOW()),
 (3, 1, 3, '週五晚間肌力訓練', NULL, NULL, false, true, NOW(), NOW()),
 (4, 1, 4, '週六芭蕾課程', NULL, NULL, false, true, NOW(), NOW());
+
+-- =====================================================
+-- 新增：排課規則 (Schedule Rules) - 方便測試跨日與衝突
+-- =====================================================
+INSERT INTO schedule_rules (id, center_id, offering_id, teacher_id, room_id, name, weekday, start_time, end_time, duration, is_cross_day, effective_range, created_at, updated_at) VALUES
+-- 普通課程
+(1, 1, 1, 1, 1, '週一上午哈達瑜伽', 1, '09:00', '10:00', 60, FALSE, '{"start_date": "2026-01-01T00:00:00+08:00", "end_date": "2026-12-31T23:59:59+08:00"}', NOW(), NOW()),
+(2, 1, 1, 1, 1, '週一下午哈達瑜伽', 1, '14:00', '15:00', 60, FALSE, '{"start_date": "2026-01-01T00:00:00+08:00", "end_date": "2026-12-31T23:59:59+08:00"}', NOW(), NOW()),
+(3, 1, 2, 1, 2, '週三熱瑜伽', 3, '19:00', '20:00', 60, FALSE, '{"start_date": "2026-01-01T00:00:00+08:00", "end_date": "2026-12-31T23:59:59+08:00"}', NOW(), NOW()),
+(4, 1, 3, 2, 3, '週五晚間肌力訓練', 5, '18:00', '19:00', 45, FALSE, '{"start_date": "2026-01-01T00:00:00+08:00", "end_date": "2026-12-31T23:59:59+08:00"}', NOW(), NOW()),
+(5, 1, 3, 2, 3, '週五夜間肌力訓練', 5, '19:30', '20:30', 45, FALSE, '{"start_date": "2026-01-01T00:00:00+08:00", "end_date": "2026-12-31T23:59:59+08:00"}', NOW(), NOW()),
+(6, 1, 4, 3, 4, '週六芭蕾課程', 6, '10:00', '11:30', 90, FALSE, '{"start_date": "2026-01-01T00:00:00+08:00", "end_date": "2026-12-31T23:59:59+08:00"}', NOW(), NOW()),
+-- 跨日課程（深夜時段）
+(7, 1, 1, 1, 1, '週一跨日瑜伽', 1, '23:00', '02:00', 180, TRUE, '{"start_date": "2026-01-01T00:00:00+08:00", "end_date": "2026-12-31T23:59:59+08:00"}', NOW(), NOW()),
+(8, 1, 2, 2, 2, '週三跨日舞蹈', 3, '22:00', '01:00', 180, TRUE, '{"start_date": "2026-01-01T00:00:00+08:00", "end_date": "2026-12-31T23:59:59+08:00"}', NOW(), NOW()),
+-- 緩衝時間測試用（間隔 5 分鐘）
+(9, 1, 1, 1, 1, '週二密集瑜伽', 2, '10:00', '11:00', 60, FALSE, '{"start_date": "2026-01-01T00:00:00+08:00", "end_date": "2026-12-31T23:59:59+08:00"}', NOW(), NOW()),
+(10, 1, 1, 1, 1, '週二短間隔瑜伽', 2, '11:05', '12:05', 60, FALSE, '{"start_date": "2026-01-01T00:00:00+08:00", "end_date": "2026-12-31T23:59:59+08:00"}', NOW(), NOW());
+
+-- =====================================================
+-- 新增：私人行程 (Personal Events) - 方便測試老師請假
+-- =====================================================
+INSERT INTO personal_events (id, teacher_id, title, start_at, end_at, is_all_day, color_hex, created_at, updated_at) VALUES
+(1, 1, '國外進修', '2026-02-10 00:00:00', '2026-02-20 23:59:59', TRUE, '#FF6B6B', NOW(), NOW()),
+(2, 1, '私人行程', '2026-03-15 09:00:00', '2026-03-15 12:00:00', FALSE, '#4ECDC4', NOW(), NOW()),
+(3, 2, '身體檢查', '2026-02-05 08:00:00', '2026-02-05 12:00:00', FALSE, '#A066D3', NOW(), NOW()),
+(4, 3, '舞蹈比賽', '2026-04-20 00:00:00', '2026-04-22 23:59:59', TRUE, '#FF8E53', NOW(), NOW());
+
+-- =====================================================
+-- 新增：例外申請 (Schedule Exceptions) - 方便測試審核流程
+-- =====================================================
+INSERT INTO schedule_exceptions (id, center_id, rule_id, exception_type, original_date, new_start_at, new_end_at, reason, status, reviewed_by, reviewed_at, review_note, created_at, updated_at) VALUES
+-- 待審核的例外
+(1, 1, 1, 'CANCEL', '2026-02-03', NULL, NULL, '身體不適需要休息', 'PENDING', NULL, NULL, NULL, NOW(), NOW()),
+(2, 1, 3, 'RESCHEDULE', '2026-02-05', '2026-02-06 19:00:00', '2026-02-06 20:00:00', '與重要會議衝突', 'PENDING', NULL, NULL, NULL, NOW(), NOW()),
+-- 已核准的例外
+(3, 1, 2, 'CANCEL', '2026-01-20', NULL, NULL, '臨時有事', 'APPROVED', 1, NOW(), '已核准', NOW(), NOW()),
+-- 已拒絕的例外
+(4, 1, 4, 'CANCEL', '2026-01-25', NULL, NULL, '想要休假', 'REJECTED', 1, NOW(), '請提供更詳細的理由', NOW(), NOW()),
+-- 已撤回的例外
+(5, 1, 1, 'CANCEL', '2026-01-15', NULL, NULL, '重新考慮後決定不休假', 'REVOKED', NULL, NULL, NULL, NOW(), NOW());
+
+-- =====================================================
+-- 新增：中心假日 (Center Holidays) - 方便測試假日停課
+-- =====================================================
+INSERT INTO center_holidays (id, center_id, name, date, created_at, updated_at) VALUES
+(1, 1, '農曆春節', '2026-01-29', NOW(), NOW()),
+(2, 1, '農曆春節', '2026-01-30', NOW(), NOW()),
+(3, 1, '農曆春節', '2026-01-31', NOW(), NOW()),
+(4, 1, '農曆春節', '2026-02-01', NOW(), NOW()),
+(5, 1, '農曆春節', '2026-02-02', NOW(), NOW()),
+(6, 1, '清明節', '2026-04-04', NOW(), NOW()),
+(7, 1, '勞動節', '2026-05-01', NOW(), NOW()),
+(8, 1, '端午節', '2026-05-31', NOW(), NOW()),
+(9, 1, '中秋節', '2026-10-06', NOW(), NOW()),
+(10, 1, '雙十節', '2026-10-10', NOW(), NOW());
+
+-- =====================================================
+-- 新增：中心邀請 (Center Invitations)
+-- =====================================================
+INSERT INTO center_invitations (id, center_id, teacher_id, email, token, invite_type, status, invited_by, message, expires_at, responded_at, created_at) VALUES
+(1, 1, NULL, NULL, 'INV-001-ABC123', 'TALENT_POOL', 'PENDING', 1, '誠摯邀請您加入我們的教學團隊', '2026-12-31 23:59:59', NULL, NOW()),
+(2, 1, NULL, NULL, 'INV-002-DEF456', 'TALENT_POOL', 'PENDING', 1, '歡迎加入 TimeLedger 人才庫', '2026-12-31 23:59:59', NULL, NOW());
+
+-- =====================================================
+-- 新增：老師技能 (Teacher Skills) - 方便測試技能媒合
+-- =====================================================
+INSERT INTO teacher_skills (id, teacher_id, category, skill_name, level, created_at, updated_at) VALUES
+(1, 1, '瑜伽', '哈達瑜伽', 'EXPERT', NOW(), NOW()),
+(2, 1, '瑜伽', '熱瑜伽', 'ADVANCED', NOW(), NOW()),
+(3, 2, '健身', '肌力訓練', 'EXPERT', NOW(), NOW()),
+(4, 3, '舞蹈', '芭蕾', 'EXPERT', NOW(), NOW());
+
+-- =====================================================
+-- 新增：老師證書 (Teacher Certificates)
+-- =====================================================
+INSERT INTO teacher_certificates (id, teacher_id, name, file_url, issued_at, is_verified, created_at, updated_at) VALUES
+(1, 1, 'RYT-500 瑜伽教練證書', 'https://example.com/cert/yoga-001', '2020-01-15', FALSE, NOW(), NOW()),
+(2, 1, '熱瑜伽師資認證', 'https://example.com/cert/hot-yoga-001', '2021-06-01', FALSE, NOW(), NOW()),
+(3, 2, 'NSCA-CPT 私人教練證書', 'https://example.com/cert/nsca-001', '2019-05-20', FALSE, NOW(), NOW()),
+(4, 3, '芭蕾舞師資證書', 'https://example.com/cert/ballet-001', '2018-09-10', FALSE, NOW(), NOW());
+
+-- =====================================================
+-- 新增：中心老師筆記 (Center Teacher Notes)
+-- =====================================================
+INSERT INTO center_teacher_notes (id, center_id, teacher_id, internal_note, rating, created_at, updated_at) VALUES
+(1, 1, 1, '李小美老師教學經驗豐富，課堂氣氛活躍', 5, NOW(), NOW()),
+(2, 1, 1, '擅長初學者教學', 4, NOW(), NOW()),
+(3, 1, 2, '陳大文老師專業認真，學員評價極高', 5, NOW(), NOW()),
+(4, 1, 3, '需要提醒準時上課', 3, NOW(), NOW());
+
+-- =====================================================
+-- 新增：課程時段筆記 (Session Notes)
+-- =====================================================
+INSERT INTO session_notes (id, teacher_id, rule_id, session_date, content, prep_note, updated_at) VALUES
+(1, 1, 1, '2026-01-06', '本課程適合初學者，請穿著舒適服裝', '請提前 15 分鐘到場', NOW()),
+(2, 1, 3, '2026-01-08', '熱瑜伽課程，請自備毛巾和水', '預熱教室至 38 度', NOW()),
+(3, 2, 4, '2026-01-10', '本課程包含肌力訓練和心肺訓練', '準備 TRX 懸吊訓練器材', NOW());
+
+-- =====================================================
+-- 完成！顯示摘要
+-- =====================================================
+
 
 -- =====================================================
 -- 測試帳號資訊

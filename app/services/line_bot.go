@@ -37,26 +37,28 @@ type LineBotService interface {
 
 // LineBotServiceImpl LINE Messaging API 服務實現
 type LineBotServiceImpl struct {
-	app            *app.App
-	channelSecret  string
-	channelToken   string
-	apiURL         string
-	profileURL     string
-	replyURL       string
-	multicastURL   string
-	client         *http.Client
+	app             *app.App
+	channelSecret   string
+	channelToken    string
+	apiURL          string
+	profileURL      string
+	replyURL        string
+	multicastURL    string
+	client          *http.Client
+	templateService LineBotTemplateService
 }
 
 // NewLineBotService 建立 LINE Bot Service
 func NewLineBotService(app *app.App) LineBotService {
 	return &LineBotServiceImpl{
-		app:           app,
-		channelSecret: app.Env.LineChannelSecret,
-		channelToken:  app.Env.LineChannelAccessToken,
-		apiURL:        "https://api.line.me/v2/bot/message/push",
-		profileURL:    "https://api.line.me/v2/bot/profile",
-		replyURL:      "https://api.line.me/v2/bot/message/reply",
-		multicastURL:  "https://api.line.me/v2/bot/message/multicast",
+		app:             app,
+		channelSecret:   app.Env.LineChannelSecret,
+		channelToken:    app.Env.LineChannelAccessToken,
+		apiURL:          "https://api.line.me/v2/bot/message/push",
+		profileURL:      "https://api.line.me/v2/bot/profile",
+		replyURL:        "https://api.line.me/v2/bot/message/reply",
+		multicastURL:    "https://api.line.me/v2/bot/message/multicast",
+		templateService: NewLineBotTemplateService(app.Env.FrontendBaseURL),
 		client: &http.Client{
 			Timeout: 30 * time.Second,
 		},
@@ -210,17 +212,32 @@ func (s *LineBotServiceImpl) generateSignature(body []byte) string {
 	return base64.StdEncoding.EncodeToString(hash.Sum(nil))
 }
 
-// SendWelcomeTeacher 發送老師歡迎訊息（空實現，由 NotificationQueueService 處理）
+// SendWelcomeTeacher 發送老師歡迎訊息
 func (s *LineBotServiceImpl) SendWelcomeTeacher(ctx context.Context, teacher *models.Teacher, centerName string) error {
-	return nil
+	if teacher.LineUserID == "" {
+		return nil // 沒有 LINE ID，無法發送
+	}
+
+	flexMessage := s.templateService.GetWelcomeTeacherTemplate(teacher, centerName)
+	return s.PushFlexMessage(ctx, teacher.LineUserID, "歡迎加入 TimeLedger！", flexMessage)
 }
 
-// SendWelcomeAdmin 發送管理員歡迎訊息（空實現，由 NotificationQueueService 處理）
+// SendWelcomeAdmin 發送管理員歡迎訊息
 func (s *LineBotServiceImpl) SendWelcomeAdmin(ctx context.Context, admin *models.AdminUser, centerName string) error {
-	return nil
+	if admin.LineUserID == "" {
+		return nil // 沒有 LINE ID，無法發送
+	}
+
+	flexMessage := s.templateService.GetWelcomeAdminTemplate(admin, centerName)
+	return s.PushFlexMessage(ctx, admin.LineUserID, "歡迎使用 TimeLedger！", flexMessage)
 }
 
-// SendExceptionNotification 發送例外通知（空實現，由 NotificationQueueService 處理）
+// SendExceptionNotification 發送例外申請通知給管理員
 func (s *LineBotServiceImpl) SendExceptionNotification(ctx context.Context, admin *models.AdminUser, exception *models.ScheduleException, teacherName string) error {
-	return nil
+	if admin.LineUserID == "" || !admin.LineNotifyEnabled {
+		return nil // 沒有綁定或通知已關閉
+	}
+
+	flexMessage := s.templateService.GetExceptionSubmitTemplate(exception, teacherName, "")
+	return s.PushFlexMessage(ctx, admin.LineUserID, "新的例外申請通知", flexMessage)
 }

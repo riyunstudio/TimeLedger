@@ -455,8 +455,9 @@
 </template>
 
 <script setup lang="ts">
- import type { ScheduleItem, WeekSchedule } from '~/types'
- import { alertError } from '~/composables/useAlert'
+import type { ScheduleItem, WeekSchedule } from '~/types'
+import { alertError } from '~/composables/useAlert'
+import { formatDateToString } from '~/composables/useTaiwanTime'
 
  definePageMeta({
    middleware: 'auth-teacher',
@@ -496,15 +497,14 @@
 
  const pendingExceptions = ref(0)
 
- // 計算今日課表統計
- const calculateTodayStats = () => {
-   if (!teacherStore.schedule) return
+// 計算今日課表統計
+const calculateTodayStats = () => {
+  if (!teacherStore.schedule) return
 
-   const today = new Date()
-   today.setHours(0, 0, 0, 0)
-   const todayStr = today.toISOString().split('T')[0]
+  const today = new Date()
+  const todayStr = formatDateToString(today)
 
-   const todayDay = teacherStore.schedule.days.find(d => d.date === todayStr)
+  const todayDay = teacherStore.schedule.days.find(d => d.date === todayStr)
    if (!todayDay) {
      todayStats.value = {
        totalSessions: 0,
@@ -662,7 +662,7 @@ const getScheduleItemsAt = (date: string, hour: number): ScheduleItem[] => {
       if (!event.start_at || !event.end_at) return false
       const eventDateObj = new Date(event.start_at)
       if (isNaN(eventDateObj.getTime())) return false
-      const eventDate = eventDateObj.toISOString().split('T')[0]
+      const eventDate = formatDateToString(eventDateObj)
       if (eventDate !== date) return false
       const localStartHour = eventDateObj.getHours()
       const localEndHour = new Date(event.end_at).getHours()

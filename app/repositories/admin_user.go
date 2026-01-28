@@ -52,6 +52,16 @@ func (rp *AdminUserRepository) GetByIDPtr(ctx context.Context, id uint) (*models
 	return &data, err
 }
 
+// GetByLineUserID 依 LINE User ID 取得管理員
+func (rp *AdminUserRepository) GetByLineUserID(ctx context.Context, lineUserID string) (*models.AdminUser, error) {
+	var data models.AdminUser
+	err := rp.app.MySQL.RDB.WithContext(ctx).Where("line_user_id = ?", lineUserID).First(&data).Error
+	if err != nil {
+		return nil, err
+	}
+	return &data, nil
+}
+
 func (rp *AdminUserRepository) Create(ctx context.Context, data models.AdminUser) (models.AdminUser, error) {
 	err := rp.app.MySQL.WDB.WithContext(ctx).Create(&data).Error
 	return data, err

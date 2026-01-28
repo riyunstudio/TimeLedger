@@ -1,5 +1,12 @@
 import { defineStore } from 'pinia'
 import type { CenterMembership, Center, WeekSchedule, ScheduleException, SessionNote, PersonalEvent, RecurrenceRule, TeacherSkill, TeacherCertificate, Teacher, Notification } from '~/types'
+import { formatDateToString } from '~/composables/useTaiwanTime'
+
+// 台灣時區 datetime 格式化（用於 API 傳送）
+const formatDateTimeForApi = (date: Date): string => {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}+08:00`
+}
 
 export interface TeacherScheduleItem {
   id: string
@@ -98,7 +105,7 @@ export const useTeacherStore = defineStore('teacher', () => {
     for (let i = 0; i < 7; i++) {
       const d = new Date(start)
       d.setDate(d.getDate() + i)
-      const dateStr = d.toISOString().split('T')[0]
+      const dateStr = formatDateToString(d)
       const dayOfWeek = d.getDay()
       days.push({
         date: dateStr,
@@ -108,8 +115,8 @@ export const useTeacherStore = defineStore('teacher', () => {
     }
 
     return {
-      week_start: start.toISOString().split('T')[0],
-      week_end: end.toISOString().split('T')[0],
+      week_start: formatDateToString(start),
+      week_end: formatDateToString(end),
       days
     } as WeekSchedule
   }
@@ -184,7 +191,7 @@ export const useTeacherStore = defineStore('teacher', () => {
   }
 
   const formatDate = (date: Date): string => {
-    return date.toISOString().split('T')[0]
+    return formatDateToString(date)
   }
 
   const personalEvents = ref<PersonalEvent[]>([])
@@ -224,10 +231,10 @@ export const useTeacherStore = defineStore('teacher', () => {
             const instanceEnd = new Date(currentDate.getTime() + duration)
             expandedEvents.push({
               ...event,
-              id: `${event.id}_${currentDate.toISOString().split('T')[0]}`,
+              id: `${event.id}_${formatDateToString(currentDate)}`,
               originalId: event.id, // 保留原始 ID 用於 API 調用
-              start_at: currentDate.toISOString(),
-              end_at: instanceEnd.toISOString(),
+              start_at: formatDateTimeForApi(currentDate),
+              end_at: formatDateTimeForApi(instanceEnd),
             })
           }
 
@@ -418,7 +425,7 @@ export const useTeacherStore = defineStore('teacher', () => {
       const notification = notifications.value.find(n => n.id === notificationId)
       if (notification) {
         notification.is_read = true
-        notification.read_at = new Date().toISOString()
+        notification.read_at = formatDateTimeForApi(new Date())
       }
     } catch (error) {
       console.error('Failed to mark notification as read:', error)

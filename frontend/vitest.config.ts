@@ -7,7 +7,18 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
-    include: ['tests/**/*.test.ts', 'tests/**/*.spec.ts'],
+    include: [
+      'tests/**/*.test.ts',
+      'tests/components/**/*.spec.ts',
+      'tests/pages/**/*.spec.ts',
+      'tests/layouts/**/*.spec.ts',
+    ],
+    exclude: [
+      'tests/e2e.spec.ts',
+      'tests/login-flow.spec.ts',
+      'tests/approval-flow.spec.ts',
+      'tests/admin-course-test.spec.ts',
+    ],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],

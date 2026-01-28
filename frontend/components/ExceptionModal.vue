@@ -130,6 +130,7 @@
 <script setup lang="ts">
 import type { ScheduleException } from '~/types'
 import { alertError } from '~/composables/useAlert'
+import { getTodayString, formatDateToString } from '~/composables/useTaiwanTime'
 
 interface ScheduleRuleData {
   id: number
@@ -175,7 +176,7 @@ const replaceTeacherMode = ref<'center' | 'manual'>('center')
 
 // 今天日期（用於日期選擇的最小值）
 const today = computed(() => {
-  return new Date().toISOString().split('T')[0]
+  return getTodayString()
 })
 
 // 監聽中心選擇變化，載入該中心的課程
@@ -247,9 +248,9 @@ const formatDate = (dateStr: string) => {
 const handleSubmit = async () => {
   loading.value = true
   try {
-    // 確保日期格式正確 (ISO 8601)
+    // 確保日期格式正確 (ISO 8601 台灣時區)
     const originalDate = form.original_date
-      ? new Date(form.original_date).toISOString()
+      ? formatDateToString(new Date(form.original_date))
       : ''
 
     const submitData: any = {
@@ -263,10 +264,10 @@ const handleSubmit = async () => {
     // 根據類型添加相應欄位
     if (form.type === 'RESCHEDULE') {
       if (form.new_start_at) {
-        submitData.new_start_at = new Date(form.new_start_at).toISOString()
+        submitData.new_start_at = formatDateToString(new Date(form.new_start_at))
       }
       if (form.new_end_at) {
-        submitData.new_end_at = new Date(form.new_end_at).toISOString()
+        submitData.new_end_at = formatDateToString(new Date(form.new_end_at))
       }
     } else if (form.type === 'REPLACE_TEACHER') {
       // 如果選擇手動輸入代課老師，才傳送名字

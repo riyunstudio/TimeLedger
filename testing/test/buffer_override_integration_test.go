@@ -38,6 +38,18 @@ func setupBufferOverrideTestApp() (*app.App, *gorm.DB, func()) {
 		panic(fmt.Sprintf("MySQL init error: %s", err.Error()))
 	}
 
+	// AutoMigrate required tables
+	if err := mysqlDB.AutoMigrate(
+		&models.Center{},
+		&models.Teacher{},
+		&models.Room{},
+		&models.Course{},
+		&models.Offering{},
+		&models.ScheduleRule{},
+	); err != nil {
+		panic(fmt.Sprintf("AutoMigrate error: %s", err.Error()))
+	}
+
 	rdb, mr, err := mockRedis.Initialize()
 	if err != nil {
 		panic(fmt.Sprintf("Redis init error: %s", err.Error()))

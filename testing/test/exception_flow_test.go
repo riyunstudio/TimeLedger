@@ -8,6 +8,7 @@ import (
 	"timeLedger/app"
 	"timeLedger/app/models"
 	"timeLedger/app/services"
+	"timeLedger/configs"
 	"timeLedger/database/mysql"
 	"timeLedger/database/redis"
 	"timeLedger/global/errInfos"
@@ -34,8 +35,19 @@ func setupExceptionTestApp() *app.App {
 	e := errInfos.Initialize(1)
 	tool := tools.Initialize("Asia/Taipei")
 
+	// 添加必要的 Env 配置，避免 nil pointer panic
+	env := &configs.Env{
+		JWTSecret:            "test-jwt-secret-key-for-testing-only",
+		AppEnv:               "test",
+		AppDebug:             true,
+		AppTimezone:          "Asia/Taipei",
+		LineChannelSecret:    "test-channel-secret",
+		LineChannelAccessToken: "test-channel-token",
+		FrontendBaseURL:      "http://localhost:3000",
+	}
+
 	appInstance := &app.App{
-		Env:   nil,
+		Env:   env,
 		Err:   e,
 		Tools: tool,
 		MySQL: &mysql.DB{WDB: mysqlDB, RDB: mysqlDB},

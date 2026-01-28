@@ -3,6 +3,8 @@ package services
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 	"timeLedger/app"
 	"timeLedger/app/models"
@@ -232,7 +234,28 @@ func (s *ScheduleValidationServiceImpl) getPreviousSessionEndTime(ctx context.Co
 		return time.Time{}, nil
 	}
 
-	endTime, _ := time.Parse("2006-01-02 15:04:05", beforeTime.Format("2006-01-02")+" "+rule.EndTime)
+	// 使用中央時區解析時間
+	// 注意：EndTime 格式是 "HH:mm"（沒有秒）
+	loc := app.GetTaiwanLocation()
+
+	// 解析 EndTime 並使用與 beforeTime 相同的日期
+	// 這樣才能正確計算緩衝時間
+	endTimeParts := strings.Split(rule.EndTime, ":")
+	if len(endTimeParts) >= 2 {
+		hour, _ := strconv.Atoi(endTimeParts[0])
+		minute, _ := strconv.Atoi(endTimeParts[1])
+
+		// 使用 beforeTime 的日期來構造 endTime，這樣才能正確比較
+		endTime := time.Date(
+			beforeTime.Year(), beforeTime.Month(), beforeTime.Day(),
+			hour, minute, 0, 0, loc,
+		)
+		return endTime, nil
+	}
+
+	// Fallback: 使用舊的解析方式
+	timeStr := "2000-01-01" + " " + rule.EndTime
+	endTime, _ := time.ParseInLocation("2006-01-02 15:04", timeStr, loc)
 	return endTime, nil
 }
 
@@ -256,6 +279,27 @@ func (s *ScheduleValidationServiceImpl) getPreviousSessionEndTimeByRoom(ctx cont
 		return time.Time{}, nil
 	}
 
-	endTime, _ := time.Parse("2006-01-02 15:04:05", beforeTime.Format("2006-01-02")+" "+rule.EndTime)
+	// 使用中央時區解析時間
+	// 注意：EndTime 格式是 "HH:mm"（沒有秒）
+	loc := app.GetTaiwanLocation()
+
+	// 解析 EndTime 並使用與 beforeTime 相同的日期
+	// 這樣才能正確計算緩衝時間
+	endTimeParts := strings.Split(rule.EndTime, ":")
+	if len(endTimeParts) >= 2 {
+		hour, _ := strconv.Atoi(endTimeParts[0])
+		minute, _ := strconv.Atoi(endTimeParts[1])
+
+		// 使用 beforeTime 的日期來構造 endTime，這樣才能正確比較
+		endTime := time.Date(
+			beforeTime.Year(), beforeTime.Month(), beforeTime.Day(),
+			hour, minute, 0, 0, loc,
+		)
+		return endTime, nil
+	}
+
+	// Fallback: 使用舊的解析方式
+	timeStr := "2000-01-01" + " " + rule.EndTime
+	endTime, _ := time.ParseInLocation("2006-01-02 15:04", timeStr, loc)
 	return endTime, nil
 }

@@ -227,6 +227,8 @@
 </template>
 
 <script setup lang="ts">
+import { formatDateToString } from '~/composables/useTaiwanTime'
+
 const emit = defineEmits<{
   'update:viewMode': [value: 'all' | 'teacher' | 'room']
   'update:selectedResourceId': [value: number | null]
@@ -508,7 +510,7 @@ const fetchSessions = async () => {
       sessionList.push({
         id: rule.id,
         rule_id: rule.id,
-        date: startDate.toISOString().split('T')[0],
+        date: formatDateToString(startDate),
         formatted_date: startDate.toLocaleDateString('zh-TW', {
           month: 'long',
           day: 'numeric',

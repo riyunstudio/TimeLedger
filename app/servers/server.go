@@ -46,9 +46,15 @@ func Initialize(app *app.App) *Server {
 	}
 	r.Use(cors.New(config))
 
-	return &Server{
+	// 建立 Server 實例
+	server := &Server{
 		app: app, engine: r,
 	}
+
+	// 註冊速率限制中介層（全局）
+	r.Use(server.RateLimitMiddleware())
+
+	return server
 }
 
 func (s *Server) Start() {

@@ -76,29 +76,18 @@ func TestSmartMatchingService_InviteTalent(t *testing.T) {
 
 		ctx := context.Background()
 
+		// 使用測試資料工廠確保唯一性
+		factory := NewTestDataFactory(db)
+
 		// 1. 建立測試資料
-		// 建立中心
-		center := models.Center{
-			Name:      "測試中心 - 人才庫邀請",
-			PlanLevel: "STARTER",
-			CreatedAt: time.Now(),
-		}
-		if err := db.WithContext(ctx).Create(&center).Error; err != nil {
+		center, err := factory.CreateTestCenter(ctx, "InviteSuccess")
+		if err != nil {
 			t.Fatalf("建立測試中心失敗: %v", err)
 		}
 
 		// 建立老師（開放徵才）
-		teacher := models.Teacher{
-			Name:              "測試老師 - 人才庫邀請",
-			Email:             "testteacher@talentinvite.com",
-			LineUserID:        "test-line-user-id-123",
-			IsOpenToHiring:    true,
-			City:              "台北市",
-			District:          "大安區",
-			CreatedAt:         time.Now(),
-			UpdatedAt:         time.Now(),
-		}
-		if err := db.WithContext(ctx).Create(&teacher).Error; err != nil {
+		teacher, err := factory.CreateTestTeacher(ctx, "InviteSuccess", WithTeacherOpenToHiring(true))
+		if err != nil {
 			t.Fatalf("建立測試老師失敗: %v", err)
 		}
 
@@ -161,25 +150,17 @@ func TestSmartMatchingService_InviteTalent(t *testing.T) {
 
 		ctx := context.Background()
 
+		// 使用測試資料工廠確保唯一性
+		factory := NewTestDataFactory(db)
+
 		// 1. 建立測試資料
-		center := models.Center{
-			Name:      "測試中心 - 重複邀請",
-			PlanLevel: "STARTER",
-			CreatedAt: time.Now(),
-		}
-		if err := db.WithContext(ctx).Create(&center).Error; err != nil {
+		center, err := factory.CreateTestCenter(ctx, "DuplicateInvite")
+		if err != nil {
 			t.Fatalf("建立測試中心失敗: %v", err)
 		}
 
-		teacher := models.Teacher{
-			Name:           "測試老師 - 重複邀請",
-			Email:          "testteacher2@talentinvite.com",
-			LineUserID:     "test-line-user-id-456",
-			IsOpenToHiring: true,
-			CreatedAt:      time.Now(),
-			UpdatedAt:      time.Now(),
-		}
-		if err := db.WithContext(ctx).Create(&teacher).Error; err != nil {
+		teacher, err := factory.CreateTestTeacher(ctx, "DuplicateInvite", WithTeacherOpenToHiring(true))
+		if err != nil {
 			t.Fatalf("建立測試老師失敗: %v", err)
 		}
 
@@ -188,7 +169,7 @@ func TestSmartMatchingService_InviteTalent(t *testing.T) {
 			CenterID:    center.ID,
 			TeacherID:   teacher.ID,
 			InvitedBy:   1,
-			Token:       "EXISTING-TOKEN-123",
+			Token:       factory.CreateUniqueToken(),
 			Status:      models.InvitationStatusPending,
 			InviteType:  models.InvitationTypeTalentPool,
 			ExpiresAt:   time.Now().Add(7 * 24 * time.Hour),
@@ -233,24 +214,17 @@ func TestSmartMatchingService_InviteTalent(t *testing.T) {
 
 		ctx := context.Background()
 
-		center := models.Center{
-			Name:      "測試中心 - 未開放徵才",
-			PlanLevel: "STARTER",
-			CreatedAt: time.Now(),
-		}
-		if err := db.WithContext(ctx).Create(&center).Error; err != nil {
+		// 使用測試資料工廠確保唯一性
+		factory := NewTestDataFactory(db)
+
+		center, err := factory.CreateTestCenter(ctx, "NotOpen")
+		if err != nil {
 			t.Fatalf("建立測試中心失敗: %v", err)
 		}
 
 		// 老師未開放徵才
-		teacher := models.Teacher{
-			Name:           "測試老師 - 未開放",
-			Email:          "testteacher3@talentinvite.com",
-			IsOpenToHiring: false,
-			CreatedAt:      time.Now(),
-			UpdatedAt:      time.Now(),
-		}
-		if err := db.WithContext(ctx).Create(&teacher).Error; err != nil {
+		teacher, err := factory.CreateTestTeacher(ctx, "NotOpen", WithTeacherOpenToHiring(false))
+		if err != nil {
 			t.Fatalf("建立測試老師失敗: %v", err)
 		}
 
@@ -282,33 +256,26 @@ func TestSmartMatchingService_InviteTalent(t *testing.T) {
 
 		ctx := context.Background()
 
-		center := models.Center{
-			Name:      "測試中心 - 批量邀請",
-			PlanLevel: "STARTER",
-			CreatedAt: time.Now(),
-		}
-		if err := db.WithContext(ctx).Create(&center).Error; err != nil {
+		// 使用測試資料工廠確保唯一性
+		factory := NewTestDataFactory(db)
+
+		center, err := factory.CreateTestCenter(ctx, "BatchInvite")
+		if err != nil {
 			t.Fatalf("建立測試中心失敗: %v", err)
 		}
 
 		// 建立多個老師
 		var teacherIDs []uint
 		for i := 0; i < 3; i++ {
-			teacher := models.Teacher{
-				Name:           fmt.Sprintf("測試老師 %d - 批量", i),
-				Email:          fmt.Sprintf("testteacher%d@batch.com", i),
-				IsOpenToHiring: true,
-				CreatedAt:      time.Now(),
-				UpdatedAt:      time.Now(),
-			}
-			if err := db.WithContext(ctx).Create(&teacher).Error; err != nil {
+			teacher, err := factory.CreateTestTeacher(ctx, fmt.Sprintf("Batch%d", i), WithTeacherOpenToHiring(true))
+			if err != nil {
 				t.Fatalf("建立測試老師 %d 失敗: %v", i, err)
 			}
 			teacherIDs = append(teacherIDs, teacher.ID)
 		}
 
 		defer func() {
-			db.WithContext(ctx).Where("email LIKE ?", "testteacher%d@batch.com").Delete(&models.Teacher{})
+			db.WithContext(ctx).Where("email LIKE ?", "%test.com").Delete(&models.Teacher{})
 			db.WithContext(ctx).Where("id = ?", center.ID).Delete(&models.Center{})
 			db.WithContext(ctx).Where("center_id = ?", center.ID).Delete(&models.CenterInvitation{})
 		}()
@@ -342,28 +309,21 @@ func TestSmartMatchingService_GetTalentStats(t *testing.T) {
 
 		ctx := context.Background()
 
+		// 使用測試資料工廠確保唯一性
+		factory := NewTestDataFactory(db)
+
 		// 1. 建立測試資料
-		center := models.Center{
-			Name:      "測試中心 - 統計",
-			PlanLevel: "STARTER",
-			CreatedAt: time.Now(),
-		}
-		if err := db.WithContext(ctx).Create(&center).Error; err != nil {
+		center, err := factory.CreateTestCenter(ctx, "Stats")
+		if err != nil {
 			t.Fatalf("建立測試中心失敗: %v", err)
 		}
 
 		// 建立老師（開放徵才）
-		teacher := models.Teacher{
-			Name:              "統計測試老師",
-			Email:             "statsteacher@test.com",
-			LineUserID:        "test-line-stats",
-			IsOpenToHiring:    true,
-			City:              "台北市",
-			District:          "信義區",
-			CreatedAt:         time.Now(),
-			UpdatedAt:         time.Now(),
-		}
-		if err := db.WithContext(ctx).Create(&teacher).Error; err != nil {
+		teacher, err := factory.CreateTestTeacher(ctx, "Stats",
+			WithTeacherOpenToHiring(true),
+			WithTeacherCity("台北市"),
+			WithTeacherDistrict("信義區"))
+		if err != nil {
 			t.Fatalf("建立測試老師失敗: %v", err)
 		}
 
@@ -372,7 +332,7 @@ func TestSmartMatchingService_GetTalentStats(t *testing.T) {
 			CenterID:    center.ID,
 			TeacherID:   teacher.ID,
 			InvitedBy:   1,
-			Token:       "STATS-TOKEN-123",
+			Token:       factory.CreateUniqueToken(),
 			Status:      models.InvitationStatusPending,
 			InviteType:  models.InvitationTypeTalentPool,
 			ExpiresAt:   time.Now().Add(7 * 24 * time.Hour),
@@ -436,47 +396,38 @@ func TestSmartMatchingService_FindMatches(t *testing.T) {
 
 		ctx := context.Background()
 
+		// 使用測試資料工廠確保唯一性並建立完整的關聯資料
+		factory := NewTestDataFactory(db)
+
 		// 1. 建立測試資料
-		center := models.Center{
-			Name:      "測試中心 - 智慧媒合",
-			PlanLevel: "STARTER",
-			CreatedAt: time.Now(),
-		}
-		if err := db.WithContext(ctx).Create(&center).Error; err != nil {
+		center, err := factory.CreateTestCenter(ctx, "SmartMatch")
+		if err != nil {
 			t.Fatalf("建立測試中心失敗: %v", err)
 		}
 
 		// 建立老師（開放徵才）
-		teacher := models.Teacher{
-			Name:              "智慧媒合測試老師",
-			Email:             "smartmatch@test.com",
-			LineUserID:        "test-line-smartmatch",
-			IsOpenToHiring:    true,
-			City:              "台北市",
-			District:          "大安區",
-			CreatedAt:         time.Now(),
-			UpdatedAt:         time.Now(),
-		}
-		if err := db.WithContext(ctx).Create(&teacher).Error; err != nil {
+		teacher, err := factory.CreateTestTeacher(ctx, "SmartMatch", WithTeacherOpenToHiring(true), WithTeacherCity("台北市"), WithTeacherDistrict("大安區"))
+		if err != nil {
 			t.Fatalf("建立測試老師失敗: %v", err)
 		}
 
-		// 建立排課規則
-		rule := models.ScheduleRule{
-			CenterID:       center.ID,
-			OfferingID:     1,
-			TeacherID:      &teacher.ID,
-			RoomID:         1,
-			Name:           "瑜伽課程",
-			Weekday:        1,
-			StartTime:      "09:00",
-			EndTime:        "10:00",
-			Duration:       60,
-			EffectiveRange: models.DateRange{StartDate: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC), EndDate: time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC)},
-			CreatedAt:      time.Now(),
-			UpdatedAt:      time.Now(),
+		// 建立方案和教室
+		course, err := factory.CreateTestCourse(ctx, center.ID, "SmartMatch")
+		if err != nil {
+			t.Fatalf("建立測試課程失敗: %v", err)
 		}
-		if err := db.WithContext(ctx).Create(&rule).Error; err != nil {
+		offering, err := factory.CreateTestOffering(ctx, center.ID, course.ID, "SmartMatch")
+		if err != nil {
+			t.Fatalf("建立測試方案失敗: %v", err)
+		}
+		room, err := factory.CreateTestRoom(ctx, center.ID, "SmartMatch")
+		if err != nil {
+			t.Fatalf("建立測試教室失敗: %v", err)
+		}
+
+		// 建立排課規則（使用正確的 offering_id 和 room_id）
+		_, err = factory.CreateTestScheduleRule(ctx, center.ID, offering.ID, room.ID, &teacher.ID, "SmartMatch")
+		if err != nil {
 			t.Fatalf("建立排課規則失敗: %v", err)
 		}
 
@@ -484,7 +435,7 @@ func TestSmartMatchingService_FindMatches(t *testing.T) {
 		defer func() {
 			db.WithContext(ctx).Where("id = ?", teacher.ID).Delete(&models.Teacher{})
 			db.WithContext(ctx).Where("id = ?", center.ID).Delete(&models.Center{})
-			db.WithContext(ctx).Where("id = ?", rule.ID).Delete(&models.ScheduleRule{})
+			db.WithContext(ctx).Where("center_id = ?", center.ID).Delete(&models.ScheduleRule{})
 		}()
 
 		// 2. 測試 FindMatches
@@ -525,78 +476,53 @@ func TestSmartMatchingService_FindMatches(t *testing.T) {
 
 		ctx := context.Background()
 
-		center := models.Center{
-			Name:      "測試中心 - 排除老師",
-			PlanLevel: "STARTER",
-			CreatedAt: time.Now(),
-		}
-		if err := db.WithContext(ctx).Create(&center).Error; err != nil {
+		// 使用測試資料工廠確保唯一性並建立完整的關聯資料
+		factory := NewTestDataFactory(db)
+
+		center, err := factory.CreateTestCenter(ctx, "Exclude")
+		if err != nil {
 			t.Fatalf("建立測試中心失敗: %v", err)
 		}
 
-		// 建立老師
-		teacher1 := models.Teacher{
-			Name:           "老師1 - 排除",
-			Email:          "teacher1@exclude.com",
-			IsOpenToHiring: true,
-			CreatedAt:      time.Now(),
-			UpdatedAt:      time.Now(),
+		// 建立方案和教室
+		course, err := factory.CreateTestCourse(ctx, center.ID, "Exclude")
+		if err != nil {
+			t.Fatalf("建立測試課程失敗: %v", err)
 		}
-		if err := db.WithContext(ctx).Create(&teacher1).Error; err != nil {
+		offering, err := factory.CreateTestOffering(ctx, center.ID, course.ID, "Exclude")
+		if err != nil {
+			t.Fatalf("建立測試方案失敗: %v", err)
+		}
+		room, err := factory.CreateTestRoom(ctx, center.ID, "Exclude")
+		if err != nil {
+			t.Fatalf("建立測試教室失敗: %v", err)
+		}
+
+		// 建立老師1
+		teacher1, err := factory.CreateTestTeacher(ctx, "Exclude1", WithTeacherOpenToHiring(true))
+		if err != nil {
 			t.Fatalf("建立老師1失敗: %v", err)
 		}
 
-		teacher2 := models.Teacher{
-			Name:           "老師2 - 保留",
-			Email:          "teacher2@keep.com",
-			IsOpenToHiring: true,
-			CreatedAt:      time.Now(),
-			UpdatedAt:      time.Now(),
-		}
-		if err := db.WithContext(ctx).Create(&teacher2).Error; err != nil {
+		// 建立老師2
+		teacher2, err := factory.CreateTestTeacher(ctx, "Exclude2", WithTeacherOpenToHiring(true))
+		if err != nil {
 			t.Fatalf("建立老師2失敗: %v", err)
 		}
 
 		// 建立排課規則
-		rule1 := models.ScheduleRule{
-			CenterID:       center.ID,
-			OfferingID:     1,
-			TeacherID:      &teacher1.ID,
-			RoomID:         1,
-			Name:           "課程1",
-			Weekday:        1,
-			StartTime:      "09:00",
-			EndTime:        "10:00",
-			Duration:       60,
-			EffectiveRange: models.DateRange{StartDate: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC), EndDate: time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC)},
-			CreatedAt:      time.Now(),
-			UpdatedAt:      time.Now(),
-		}
-		if err := db.WithContext(ctx).Create(&rule1).Error; err != nil {
+		_, err = factory.CreateTestScheduleRule(ctx, center.ID, offering.ID, room.ID, &teacher1.ID, "Exclude1")
+		if err != nil {
 			t.Fatalf("建立規則1失敗: %v", err)
 		}
 
-		rule2 := models.ScheduleRule{
-			CenterID:       center.ID,
-			OfferingID:     1,
-			TeacherID:      &teacher2.ID,
-			RoomID:         1,
-			Name:           "課程2",
-			Weekday:        1,
-			StartTime:      "09:00",
-			EndTime:        "10:00",
-			Duration:       60,
-			EffectiveRange: models.DateRange{StartDate: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC), EndDate: time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC)},
-			CreatedAt:      time.Now(),
-			UpdatedAt:      time.Now(),
-		}
-		if err := db.WithContext(ctx).Create(&rule2).Error; err != nil {
+		_, err = factory.CreateTestScheduleRule(ctx, center.ID, offering.ID, room.ID, &teacher2.ID, "Exclude2")
+		if err != nil {
 			t.Fatalf("建立規則2失敗: %v", err)
 		}
 
 		defer func() {
-			db.WithContext(ctx).Where("email LIKE ?", "@exclude.com").Delete(&models.Teacher{})
-			db.WithContext(ctx).Where("email LIKE ?", "@keep.com").Delete(&models.Teacher{})
+			db.WithContext(ctx).Where("email LIKE ?", "%test.com").Delete(&models.Teacher{})
 			db.WithContext(ctx).Where("id = ?", center.ID).Delete(&models.Center{})
 			db.WithContext(ctx).Where("center_id = ?", center.ID).Delete(&models.ScheduleRule{})
 		}()
@@ -626,47 +552,41 @@ func TestSmartMatchingService_FindMatches(t *testing.T) {
 
 		ctx := context.Background()
 
-		center := models.Center{
-			Name:      "測試中心 - 無開放徵才",
-			PlanLevel: "STARTER",
-			CreatedAt: time.Now(),
-		}
-		if err := db.WithContext(ctx).Create(&center).Error; err != nil {
+		// 使用測試資料工廠確保唯一性並建立完整的關聯資料
+		factory := NewTestDataFactory(db)
+
+		center, err := factory.CreateTestCenter(ctx, "NoOpen")
+		if err != nil {
 			t.Fatalf("建立測試中心失敗: %v", err)
 		}
 
-		// 建立未開放徵才的老師
-		teacher := models.Teacher{
-			Name:           "未開放老師",
-			Email:          "notopen@test.com",
-			IsOpenToHiring: false,
-			CreatedAt:      time.Now(),
-			UpdatedAt:      time.Now(),
+		// 建立方案和教室
+		course, err := factory.CreateTestCourse(ctx, center.ID, "NoOpen")
+		if err != nil {
+			t.Fatalf("建立測試課程失敗: %v", err)
 		}
-		if err := db.WithContext(ctx).Create(&teacher).Error; err != nil {
+		offering, err := factory.CreateTestOffering(ctx, center.ID, course.ID, "NoOpen")
+		if err != nil {
+			t.Fatalf("建立測試方案失敗: %v", err)
+		}
+		room, err := factory.CreateTestRoom(ctx, center.ID, "NoOpen")
+		if err != nil {
+			t.Fatalf("建立測試教室失敗: %v", err)
+		}
+
+		// 建立未開放徵才的老師
+		teacher, err := factory.CreateTestTeacher(ctx, "NoOpen", WithTeacherOpenToHiring(false))
+		if err != nil {
 			t.Fatalf("建立測試老師失敗: %v", err)
 		}
 
-		rule := models.ScheduleRule{
-			CenterID:       center.ID,
-			OfferingID:     1,
-			TeacherID:      &teacher.ID,
-			RoomID:         1,
-			Name:           "課程",
-			Weekday:        1,
-			StartTime:      "09:00",
-			EndTime:        "10:00",
-			Duration:       60,
-			EffectiveRange: models.DateRange{StartDate: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC), EndDate: time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC)},
-			CreatedAt:      time.Now(),
-			UpdatedAt:      time.Now(),
-		}
-		if err := db.WithContext(ctx).Create(&rule).Error; err != nil {
+		_, err = factory.CreateTestScheduleRule(ctx, center.ID, offering.ID, room.ID, &teacher.ID, "NoOpen")
+		if err != nil {
 			t.Fatalf("建立規則失敗: %v", err)
 		}
 
 		defer func() {
-			db.WithContext(ctx).Where("id = ?", teacher.ID).Delete(&models.Teacher{})
+			db.WithContext(ctx).Where("email LIKE ?", "%test.com").Delete(&models.Teacher{})
 			db.WithContext(ctx).Where("id = ?", center.ID).Delete(&models.Center{})
 			db.WithContext(ctx).Where("center_id = ?", center.ID).Delete(&models.ScheduleRule{})
 		}()
@@ -695,30 +615,24 @@ func TestSmartMatchingService_SearchTalent(t *testing.T) {
 
 		ctx := context.Background()
 
-		center := models.Center{
-			Name:      "測試中心 - 人才搜尋",
-			PlanLevel: "STARTER",
-			CreatedAt: time.Now(),
-		}
-		if err := db.WithContext(ctx).Create(&center).Error; err != nil {
+		// 使用測試資料工廠確保唯一性
+		factory := NewTestDataFactory(db)
+
+		center, err := factory.CreateTestCenter(ctx, "SearchTalent")
+		if err != nil {
 			t.Fatalf("建立測試中心失敗: %v", err)
 		}
 
-		teacher := models.Teacher{
-			Name:           "人才搜尋測試老師",
-			Email:          "searchtalent@test.com",
-			City:           "新北市",
-			District:       "板橋區",
-			IsOpenToHiring: true,
-			CreatedAt:      time.Now(),
-			UpdatedAt:      time.Now(),
-		}
-		if err := db.WithContext(ctx).Create(&teacher).Error; err != nil {
+		teacher, err := factory.CreateTestTeacher(ctx, "SearchTalent",
+			WithTeacherOpenToHiring(true),
+			WithTeacherCity("新北市"),
+			WithTeacherDistrict("板橋區"))
+		if err != nil {
 			t.Fatalf("建立測試老師失敗: %v", err)
 		}
 
 		defer func() {
-			db.WithContext(ctx).Where("id = ?", teacher.ID).Delete(&models.Teacher{})
+			db.WithContext(ctx).Where("email LIKE ?", "%test.com").Delete(&models.Teacher{})
 			db.WithContext(ctx).Where("id = ?", center.ID).Delete(&models.Center{})
 		}()
 
@@ -758,29 +672,25 @@ func TestSmartMatchingService_SearchTalent(t *testing.T) {
 
 		ctx := context.Background()
 
-		center := models.Center{
-			Name:      "測試中心 - 關鍵字搜尋",
-			PlanLevel: "STARTER",
-			CreatedAt: time.Now(),
-		}
-		if err := db.WithContext(ctx).Create(&center).Error; err != nil {
+		// 使用測試資料工廠確保唯一性
+		factory := NewTestDataFactory(db)
+
+		center, err := factory.CreateTestCenter(ctx, "Keyword")
+		if err != nil {
 			t.Fatalf("建立測試中心失敗: %v", err)
 		}
 
-		teacher := models.Teacher{
-			Name:           "關鍵字測試老師",
-			Email:          "keyword@test.com",
-			Bio:            "我是專業瑜珈教練",
-			IsOpenToHiring: true,
-			CreatedAt:      time.Now(),
-			UpdatedAt:      time.Now(),
-		}
-		if err := db.WithContext(ctx).Create(&teacher).Error; err != nil {
+		teacher, err := factory.CreateTestTeacher(ctx, "Keyword",
+			WithTeacherOpenToHiring(true),
+			WithTeacherBio("我是專業瑜珈教練"))
+		if err != nil {
 			t.Fatalf("建立測試老師失敗: %v", err)
 		}
 
 		defer func() {
-			db.WithContext(ctx).Where("id = ?", teacher.ID).Delete(&models.Teacher{})
+			if teacher != nil {
+				db.WithContext(ctx).Where("id = ?", teacher.ID).Delete(&models.Teacher{})
+			}
 			db.WithContext(ctx).Where("id = ?", center.ID).Delete(&models.Center{})
 		}()
 
@@ -858,28 +768,21 @@ func TestSmartMatchingService_GetAlternativeSlots(t *testing.T) {
 
 		ctx := context.Background()
 
-		center := models.Center{
-			Name:      "測試中心 - 替代時段",
-			PlanLevel: "STARTER",
-			CreatedAt: time.Now(),
-		}
-		if err := db.WithContext(ctx).Create(&center).Error; err != nil {
+		// 使用測試資料工廠確保唯一性
+		factory := NewTestDataFactory(db)
+
+		center, err := factory.CreateTestCenter(ctx, "AltSlot")
+		if err != nil {
 			t.Fatalf("建立測試中心失敗: %v", err)
 		}
 
-		teacher := models.Teacher{
-			Name:           "替代時段測試老師",
-			Email:          "alternativeslot@test.com",
-			IsOpenToHiring: true,
-			CreatedAt:      time.Now(),
-			UpdatedAt:      time.Now(),
-		}
-		if err := db.WithContext(ctx).Create(&teacher).Error; err != nil {
+		teacher, err := factory.CreateTestTeacher(ctx, "AltSlot", WithTeacherOpenToHiring(true))
+		if err != nil {
 			t.Fatalf("建立測試老師失敗: %v", err)
 		}
 
 		defer func() {
-			db.WithContext(ctx).Where("id = ?", teacher.ID).Delete(&models.Teacher{})
+			db.WithContext(ctx).Where("email LIKE ?", "%test.com").Delete(&models.Teacher{})
 			db.WithContext(ctx).Where("id = ?", center.ID).Delete(&models.Center{})
 		}()
 
@@ -922,47 +825,41 @@ func TestSmartMatchingService_GetTeacherSessions(t *testing.T) {
 
 		ctx := context.Background()
 
-		center := models.Center{
-			Name:      "測試中心 - 教師課表",
-			PlanLevel: "STARTER",
-			CreatedAt: time.Now(),
-		}
-		if err := db.WithContext(ctx).Create(&center).Error; err != nil {
+		// 使用測試資料工廠確保唯一性並建立完整的關聯資料
+		factory := NewTestDataFactory(db)
+
+		center, err := factory.CreateTestCenter(ctx, "TeacherSession")
+		if err != nil {
 			t.Fatalf("建立測試中心失敗: %v", err)
 		}
 
-		teacher := models.Teacher{
-			Name:           "課表測試老師",
-			Email:          "teachersession@test.com",
-			IsOpenToHiring: true,
-			CreatedAt:      time.Now(),
-			UpdatedAt:      time.Now(),
+		// 建立方案和教室
+		course, err := factory.CreateTestCourse(ctx, center.ID, "TeacherSession")
+		if err != nil {
+			t.Fatalf("建立測試課程失敗: %v", err)
 		}
-		if err := db.WithContext(ctx).Create(&teacher).Error; err != nil {
+		offering, err := factory.CreateTestOffering(ctx, center.ID, course.ID, "TeacherSession")
+		if err != nil {
+			t.Fatalf("建立測試方案失敗: %v", err)
+		}
+		room, err := factory.CreateTestRoom(ctx, center.ID, "TeacherSession")
+		if err != nil {
+			t.Fatalf("建立測試教室失敗: %v", err)
+		}
+
+		teacher, err := factory.CreateTestTeacher(ctx, "TeacherSession", WithTeacherOpenToHiring(true))
+		if err != nil {
 			t.Fatalf("建立測試老師失敗: %v", err)
 		}
 
 		// 建立排課規則
-		rule := models.ScheduleRule{
-			CenterID:       center.ID,
-			OfferingID:     1,
-			TeacherID:      &teacher.ID,
-			RoomID:         1,
-			Name:           "鋼琴課程",
-			Weekday:        2,
-			StartTime:      "14:00",
-			EndTime:        "15:00",
-			Duration:       60,
-			EffectiveRange: models.DateRange{StartDate: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC), EndDate: time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC)},
-			CreatedAt:      time.Now(),
-			UpdatedAt:      time.Now(),
-		}
-		if err := db.WithContext(ctx).Create(&rule).Error; err != nil {
+		_, err = factory.CreateTestScheduleRule(ctx, center.ID, offering.ID, room.ID, &teacher.ID, "TeacherSession")
+		if err != nil {
 			t.Fatalf("建立排課規則失敗: %v", err)
 		}
 
 		defer func() {
-			db.WithContext(ctx).Where("id = ?", teacher.ID).Delete(&models.Teacher{})
+			db.WithContext(ctx).Where("email LIKE ?", "%test.com").Delete(&models.Teacher{})
 			db.WithContext(ctx).Where("id = ?", center.ID).Delete(&models.Center{})
 			db.WithContext(ctx).Where("center_id = ?", center.ID).Delete(&models.ScheduleRule{})
 		}()
@@ -1009,28 +906,21 @@ func TestSmartMatchingService_GetTeacherSessions(t *testing.T) {
 
 		ctx := context.Background()
 
-		center := models.Center{
-			Name:      "測試中心 - 無課表",
-			PlanLevel: "STARTER",
-			CreatedAt: time.Now(),
-		}
-		if err := db.WithContext(ctx).Create(&center).Error; err != nil {
+		// 使用測試資料工廠確保唯一性
+		factory := NewTestDataFactory(db)
+
+		center, err := factory.CreateTestCenter(ctx, "NoSession")
+		if err != nil {
 			t.Fatalf("建立測試中心失敗: %v", err)
 		}
 
-		teacher := models.Teacher{
-			Name:           "無課表老師",
-			Email:          "nosession@test.com",
-			IsOpenToHiring: true,
-			CreatedAt:      time.Now(),
-			UpdatedAt:      time.Now(),
-		}
-		if err := db.WithContext(ctx).Create(&teacher).Error; err != nil {
+		teacher, err := factory.CreateTestTeacher(ctx, "NoSession", WithTeacherOpenToHiring(true))
+		if err != nil {
 			t.Fatalf("建立測試老師失敗: %v", err)
 		}
 
 		defer func() {
-			db.WithContext(ctx).Where("id = ?", teacher.ID).Delete(&models.Teacher{})
+			db.WithContext(ctx).Where("email LIKE ?", "%test.com").Delete(&models.Teacher{})
 			db.WithContext(ctx).Where("id = ?", center.ID).Delete(&models.Center{})
 		}()
 

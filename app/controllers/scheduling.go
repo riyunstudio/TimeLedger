@@ -27,6 +27,7 @@ type SchedulingController struct {
 	auditLogRepo      *repositories.AuditLogRepository
 	centerRepo        *repositories.CenterRepository
 	courseRepo        *repositories.CourseRepository
+	offeringRepo      *repositories.OfferingRepository
 }
 
 func NewSchedulingController(app *app.App) *SchedulingController {
@@ -38,6 +39,7 @@ func NewSchedulingController(app *app.App) *SchedulingController {
 		auditLogRepo:      repositories.NewAuditLogRepository(app),
 		centerRepo:        repositories.NewCenterRepository(app),
 		courseRepo:        repositories.NewCourseRepository(app),
+		offeringRepo:      repositories.NewOfferingRepository(app),
 	}
 }
 
@@ -689,13 +691,16 @@ func (ctl *SchedulingController) CreateRule(ctx *gin.Context) {
 	scheduleRuleRepo := repositories.NewScheduleRuleRepository(ctl.app)
 
 	// 計算檢查日期（從開始日期起的未來一週）
+	// 轉換為中央時區，確保 weekday 計算正確
+	loc := app.GetTaiwanLocation()
+	startDate = time.Date(startDate.Year(), startDate.Month(), startDate.Day(), 0, 0, 0, 0, loc)
 	checkDate := startDate
 
 	// 檢查每個 weekday 是否有衝突
 	var overlappingRules []models.ScheduleRule
 	var personalEventConflicts []models.PersonalEvent
 	for _, weekday := range req.Weekdays {
-		// 找到該 weekday 的日期
+		// 找到該 weekday 的日期（使用中央時區計算）
 		current := checkDate
 		weekdayDiff := weekday - int(current.Weekday())
 		if weekdayDiff <= 0 {
@@ -768,8 +773,17 @@ func (ctl *SchedulingController) CreateRule(ctx *gin.Context) {
 	// 【新增】Buffer 檢查
 	var bufferConflicts []map[string]interface{}
 	
-	// 取得課程設定（包含緩衝時間）- 驗證課程存在
-	_, err = ctl.courseRepo.GetByID(ctl.makeCtx(ctx), req.OfferingID)
+	// 取得課程設定（包含緩衝時間）- 先取得 offering 再取得 course
+	offering, err := ctl.offeringRepo.GetByID(ctl.makeCtx(ctx), req.OfferingID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
+			Code:    500,
+			Message: "Failed to get offering for buffer check: " + err.Error(),
+		})
+		return
+	}
+	
+	_, err = ctl.courseRepo.GetByID(ctl.makeCtx(ctx), offering.CourseID)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
 			Code:    500,
@@ -787,14 +801,20 @@ func (ctl *SchedulingController) CreateRule(ctx *gin.Context) {
 		}
 		targetDate := current.AddDate(0, 0, weekdayDiff)
 
-		// 產生新課程的時間
-		newStartTime, _ := time.Parse("2006-01-02 15:04", targetDate.Format("2006-01-02")+" "+req.StartTime)
+		// 產生新課程的時間（使用中央時區避免日期偏移）
+		loc := app.GetTaiwanLocation()
+		targetDateLocal := time.Date(
+			targetDate.Year(), targetDate.Month(), targetDate.Day(),
+			0, 0, 0, 0, loc,
+		)
+		newStartTime, _ := time.ParseInLocation("2006-01-02 15:04", targetDateLocal.Format("2006-01-02")+" "+req.StartTime, loc)
 
 		// 檢查 Teacher Buffer
 		if req.TeacherID > 0 {
-			prevEndTime, _ := ctl.getTeacherPreviousSessionEndTime(ctx, centerID, req.TeacherID, weekday, req.StartTime)
+			prevEndTime, _ := ctl.getTeacherPreviousSessionEndTime(ctx, centerID, req.TeacherID, weekday, req.StartTime, newStartTime)
+			
 			if !prevEndTime.IsZero() {
-				teacherBufferResult, err := ctl.validationService.CheckTeacherBuffer(ctx, centerID, req.TeacherID, prevEndTime, newStartTime, req.OfferingID)
+				teacherBufferResult, err := ctl.validationService.CheckTeacherBuffer(ctx, centerID, req.TeacherID, prevEndTime, newStartTime, offering.CourseID)
 				if err != nil {
 					ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
 						Code:    500,
@@ -824,9 +844,9 @@ func (ctl *SchedulingController) CreateRule(ctx *gin.Context) {
 
 		// 檢查 Room Buffer
 		if req.RoomID > 0 {
-			prevRoomEndTime, _ := ctl.getRoomPreviousSessionEndTime(ctx, centerID, req.RoomID, weekday, req.StartTime)
+			prevRoomEndTime, _ := ctl.getRoomPreviousSessionEndTime(ctx, centerID, req.RoomID, weekday, req.StartTime, newStartTime)
 			if !prevRoomEndTime.IsZero() {
-				roomBufferResult, err := ctl.validationService.CheckRoomBuffer(ctx, centerID, req.RoomID, prevRoomEndTime, newStartTime, req.OfferingID)
+				roomBufferResult, err := ctl.validationService.CheckRoomBuffer(ctx, centerID, req.RoomID, prevRoomEndTime, newStartTime, offering.CourseID)
 				if err != nil {
 					ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
 						Code:    500,
@@ -946,7 +966,8 @@ func (ctl *SchedulingController) GetRules(ctx *gin.Context) {
 }
 
 // getTeacherPreviousSessionEndTime 取得老師在指定 weekday 之前的最後一筆課程結束時間
-func (ctl *SchedulingController) getTeacherPreviousSessionEndTime(ctx context.Context, centerID, teacherID uint, weekday int, beforeTimeStr string) (time.Time, error) {
+// newStartTime 用於構造正確的日期，以便計算緩衝時間
+func (ctl *SchedulingController) getTeacherPreviousSessionEndTime(ctx context.Context, centerID, teacherID uint, weekday int, beforeTimeStr string, newStartTime time.Time) (time.Time, error) {
 	weekdayVal := weekday
 	if weekdayVal == 0 {
 		weekdayVal = 7
@@ -965,12 +986,34 @@ func (ctl *SchedulingController) getTeacherPreviousSessionEndTime(ctx context.Co
 		return time.Time{}, nil
 	}
 
-	endTime, _ := time.Parse("2006-01-02 15:04:05", "2000-01-01"+" "+rule.EndTime)
+	// 使用中央時區解析時間，確保與 newStartTime 的時區一致
+	// 注意：EndTime 格式是 "HH:mm"（沒有秒）
+	loc := app.GetTaiwanLocation()
+
+	// 解析 EndTime 並使用與 newStartTime 相同的日期
+	// 這樣才能正確計算緩衝時間
+	endTimeParts := strings.Split(rule.EndTime, ":")
+	if len(endTimeParts) >= 2 {
+		hour, _ := strconv.Atoi(endTimeParts[0])
+		minute, _ := strconv.Atoi(endTimeParts[1])
+
+		// 使用 newStartTime 的日期來構造 endTime，這樣才能正確比較
+		endTime := time.Date(
+			newStartTime.Year(), newStartTime.Month(), newStartTime.Day(),
+			hour, minute, 0, 0, loc,
+		)
+		return endTime, nil
+	}
+
+	// Fallback: 使用舊的解析方式
+	timeStr := "2000-01-01" + " " + rule.EndTime
+	endTime, _ := time.ParseInLocation("2006-01-02 15:04", timeStr, loc)
 	return endTime, nil
 }
 
 // getRoomPreviousSessionEndTime 取得教室在指定 weekday 之前的最後一筆課程結束時間
-func (ctl *SchedulingController) getRoomPreviousSessionEndTime(ctx context.Context, centerID, roomID uint, weekday int, beforeTimeStr string) (time.Time, error) {
+// newStartTime 用於構造正確的日期，以便計算緩衝時間
+func (ctl *SchedulingController) getRoomPreviousSessionEndTime(ctx context.Context, centerID, roomID uint, weekday int, beforeTimeStr string, newStartTime time.Time) (time.Time, error) {
 	weekdayVal := weekday
 	if weekdayVal == 0 {
 		weekdayVal = 7
@@ -989,7 +1032,28 @@ func (ctl *SchedulingController) getRoomPreviousSessionEndTime(ctx context.Conte
 		return time.Time{}, nil
 	}
 
-	endTime, _ := time.Parse("2006-01-02 15:04:05", "2000-01-01"+" "+rule.EndTime)
+	// 使用中央時區解析時間，確保與 newStartTime 的時區一致
+	// 注意：EndTime 格式是 "HH:mm"（沒有秒）
+	loc := app.GetTaiwanLocation()
+
+	// 解析 EndTime 並使用與 newStartTime 相同的日期
+	// 這樣才能正確計算緩衝時間
+	endTimeParts := strings.Split(rule.EndTime, ":")
+	if len(endTimeParts) >= 2 {
+		hour, _ := strconv.Atoi(endTimeParts[0])
+		minute, _ := strconv.Atoi(endTimeParts[1])
+
+		// 使用 newStartTime 的日期來構造 endTime，這樣才能正確比較
+		endTime := time.Date(
+			newStartTime.Year(), newStartTime.Month(), newStartTime.Day(),
+			hour, minute, 0, 0, loc,
+		)
+		return endTime, nil
+	}
+
+	// Fallback: 使用舊的解析方式
+	timeStr := "2000-01-01" + " " + rule.EndTime
+	endTime, _ := time.ParseInLocation("2006-01-02 15:04", timeStr, loc)
 	return endTime, nil
 }
 

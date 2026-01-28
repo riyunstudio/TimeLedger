@@ -117,6 +117,7 @@
 
 <script setup lang="ts">
 import { alertError, alertSuccess } from '~/composables/useAlert'
+import { getTodayString, formatDateToString } from '~/composables/useTaiwanTime'
 
 const props = defineProps<{
   editingEvent?: any
@@ -132,14 +133,15 @@ const loading = ref(false)
 
 const isEditing = computed(() => !!props.editingEvent)
 
-const now = new Date()
+// 使用台灣時區的今天日期
+const today = getTodayString()
 
 const form = ref({
   title: '',
-  start_date: now.toISOString().split('T')[0],
-  start_time: now.toTimeString().slice(0, 5),
-  end_date: now.toISOString().split('T')[0],
-  end_time: new Date(now.getTime() + 60 * 60 * 1000).toTimeString().slice(0, 5),
+  start_date: today,
+  start_time: '09:00',
+  end_date: today,
+  end_time: '10:00',
   recurrence: 'NONE' as 'NONE' | 'DAILY' | 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY',
   color_hex: '#6366F1',
 })
@@ -151,9 +153,9 @@ const initializeForm = () => {
     const endDate = new Date(props.editingEvent.end_at)
     form.value = {
       title: props.editingEvent.title || '',
-      start_date: startDate.toISOString().split('T')[0],
+      start_date: formatDateToString(startDate),
       start_time: startDate.toTimeString().slice(0, 5),
-      end_date: endDate.toISOString().split('T')[0],
+      end_date: formatDateToString(endDate),
       end_time: endDate.toTimeString().slice(0, 5),
       recurrence: props.editingEvent.recurrence_rule?.frequency || 'NONE',
       color_hex: props.editingEvent.color || '#6366F1',
@@ -161,10 +163,10 @@ const initializeForm = () => {
   } else {
     form.value = {
       title: '',
-      start_date: now.toISOString().split('T')[0],
-      start_time: now.toTimeString().slice(0, 5),
-      end_date: now.toISOString().split('T')[0],
-      end_time: new Date(now.getTime() + 60 * 60 * 1000).toTimeString().slice(0, 5),
+      start_date: today,
+      start_time: '09:00',
+      end_date: today,
+      end_time: '10:00',
       recurrence: 'NONE' as 'NONE' | 'DAILY' | 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY',
       color_hex: '#6366F1',
     }
@@ -185,7 +187,11 @@ const colors = [
 
 const formatDateTimeForApi = (date: string, time: string): string => {
   if (!date || !time) return ''
-  return new Date(`${date}T${time}:00`).toISOString()
+  // 使用台灣時區格式化 datetime 字串
+  const [year, month, day] = date.split('-').map(Number)
+  const [hours, minutes] = time.split(':').map(Number)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${year}-${pad(month)}-${pad(day)}T${pad(hours)}:${pad(minutes)}:00+08:00`
 }
 
 const handleSubmit = async () => {

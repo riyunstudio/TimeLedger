@@ -294,6 +294,8 @@
 </template>
 
 <script setup lang="ts">
+import { formatDateToString } from '~/composables/useTaiwanTime'
+
 // Props for create mode
 const props = defineProps<{
   editingRule?: any | null
@@ -336,7 +338,7 @@ const form = ref({
   end_time: '10:00',
   duration: 60,
   weekdays: [1] as number[],
-  start_date: new Date().toISOString().split('T')[0],
+  start_date: formatDateToString(new Date()),
   end_date: '',
 })
 
@@ -362,7 +364,7 @@ watch(() => props.editingRule, (rule) => {
       end_time: rule.end_time || '10:00',
       duration: rule.duration || 60,
       weekdays: [rule.weekday] || [1],
-      start_date: rule.effective_range?.start_date?.split('T')[0] || new Date().toISOString().split('T')[0],
+      start_date: rule.effective_range?.start_date?.split('T')[0] || formatDateToString(new Date()),
       end_date: rule.effective_range?.end_date?.split('T')[0] || '',
     }
   }

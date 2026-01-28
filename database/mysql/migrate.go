@@ -58,3 +58,33 @@ func dropTablesForReschema(db *DB) {
 
 	log.Println("Dropped schedule_rules and schedule_exceptions tables for reschema")
 }
+
+// MigrateScheduleExceptionsType 遷移 schedule_exceptions 表的 type 欄位
+// 將舊的 type 欄位遷移到新的 exception_type 欄位
+func (db *DB) MigrateScheduleExceptionsType() {
+	// 檢查是否存在舊的 type 欄位
+	var columnExists bool
+	db.WDB.Raw("SELECT COUNT(*) INTO @a FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'schedule_exceptions' AND COLUMN_NAME = 'type'").Scan(&columnExists)
+
+	// 檢查是否存在新的 exception_type 欄位
+	var newColumnExists bool
+	db.WDB.Raw("SELECT COUNT(*) INTO @a FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'schedule_exceptions' AND COLUMN_NAME = 'exception_type'").Scan(&newColumnExists)
+
+	if columnExists && !newColumnExists {
+		// 新增 exception_type 欄位
+		if err := db.WDB.Exec("ALTER TABLE schedule_exceptions ADD COLUMN exception_type VARCHAR(20) NOT NULL DEFAULT 'CANCEL' AFTER original_date").Error; err != nil {
+			log.Printf("Warning: Failed to add exception_type column: %v", err)
+		}
+
+		// 複製資料
+		if err := db.WDB.Exec("UPDATE schedule_exceptions SET exception_type = type WHERE type IS NOT NULL AND type != ''").Error; err != nil {
+			log.Printf("Warning: Failed to copy data from type to exception_type: %v", err)
+		}
+
+		log.Println("Migrated schedule_exceptions.type to exception_type")
+	} else if newColumnExists {
+		log.Println("schedule_exceptions.exception_type column already exists")
+	} else {
+		log.Println("No migration needed for schedule_exceptions type column")
+	}
+}

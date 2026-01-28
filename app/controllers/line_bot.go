@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 	"timeLedger/app"
+	"timeLedger/app/models"
 	"timeLedger/app/services"
 	"timeLedger/global"
 	"timeLedger/global/errInfos"
@@ -16,19 +17,21 @@ import (
 
 // LineBotController LINE Bot Webhook Controller
 type LineBotController struct {
-	app            *app.App
-	lineBotService services.LineBotService
-	qrCodeService  *services.QRCodeService
-	adminService   *services.AdminUserService
+	app             *app.App
+	lineBotService  services.LineBotService
+	qrCodeService   *services.QRCodeService
+	adminService    *services.AdminUserService
+	templateService services.LineBotTemplateService
 }
 
 // NewLineBotController 建立 LINE Bot Controller
 func NewLineBotController(app *app.App) *LineBotController {
 	return &LineBotController{
-		app:           app,
-		lineBotService: services.NewLineBotService(app),
-		qrCodeService: services.NewQRCodeService(),
-		adminService:  services.NewAdminUserService(app),
+		app:             app,
+		lineBotService:  services.NewLineBotService(app),
+		qrCodeService:   services.NewQRCodeService(),
+		adminService:    services.NewAdminUserService(app),
+		templateService: services.NewLineBotTemplateService(app.Env.FrontendBaseURL),
 	}
 }
 
@@ -148,14 +151,48 @@ func (c *LineBotController) handleFollowEvent(gctx *gin.Context, event *LINEWebh
 	userID := event.Source.UserID
 	fmt.Printf("[INFO] User followed: %s\n", userID)
 
+	// 嘗試判斷用戶類型並發送個人化歡迎訊息
+	ctx := gctx.Request.Context()
+
+	// 1. 檢查是否為已綁定的管理員
+	adminStatus, _, _ := c.adminService.GetLINEBindingStatusByLineUserID(ctx, userID)
+	if adminStatus != nil && adminStatus.IsBound {
+		// 已綁定的管理員
+		centerName := "TimeLedger"
+
+		welcomeFlex := c.templateService.GetWelcomeAdminTemplate(&models.AdminUser{
+			LineUserID: userID,
+			Role:       adminStatus.Role,
+		}, centerName)
+
+		err := c.lineBotService.ReplyFlexMessage(ctx, event.ReplyToken, "歡迎回來！", welcomeFlex)
+		if err == nil {
+			return // 成功發送 Flex Message
+		}
+		fmt.Printf("[WARN] Failed to send admin welcome flex, using text: %v\n", err)
+	}
+
+	// 2. 檢查是否為老師（通過 LINE User ID）
+	// 老師的歡迎訊息
+	welcomeFlex := c.templateService.GetWelcomeTeacherTemplate(&models.Teacher{
+		LineUserID: userID,
+	}, "TimeLedger")
+
+	err := c.lineBotService.ReplyFlexMessage(ctx, event.ReplyToken, "歡迎加入 TimeLedger！", welcomeFlex)
+	if err == nil {
+		return // 成功發送老師歡迎訊息
+	}
+
+	// 3. 如果 Flex Message 失敗，發送通用文字訊息
+	fmt.Printf("[ERROR] Failed to send welcome flex message: %v\n", err)
 	welcomeMessage := map[string]interface{}{
 		"type": "text",
 		"text": "👋 您好！歡迎加入 TimeLedger！\n\n" +
-			"如果您是管理員，請登入後台進行 LINE 綁定，即可收到即時例外通知。\n\n" +
-			"輸入「綁定」開始綁定流程。",
+			"TimeLedger 是教師中心化多據點排課平台，\n" +
+			"讓您可以輕鬆管理課表、提交例外申請。\n\n" +
+			"如需使用，請透過 LIFF 頁面登入。",
 	}
-
-	c.lineBotService.ReplyMessage(gctx.Request.Context(), event.ReplyToken, welcomeMessage)
+	c.lineBotService.ReplyMessage(ctx, event.ReplyToken, welcomeMessage)
 }
 
 // handleUnfollowEvent 處理封鎖/取消好友事件

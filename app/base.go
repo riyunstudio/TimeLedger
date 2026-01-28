@@ -28,7 +28,7 @@ func Initialize() *App {
 
 	e := errInfos.Initialize(env.AppID)
 
-	mysql := mysql.Initialize(env)
+	mysql := mysql.Initialize(env, env.AppTimezone)
 	mysql.AutoMigrate()
 	// mysql.Seeds(tools)
 

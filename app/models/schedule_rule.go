@@ -20,6 +20,7 @@ type ScheduleRule struct {
 	StartTime      string         `gorm:"type:varchar(10);not null;index:idx_center_weekday_time" json:"start_time"`
 	EndTime        string         `gorm:"type:varchar(10);not null" json:"end_time"`
 	Duration       int            `gorm:"default:60" json:"duration"`
+	IsCrossDay     bool           `gorm:"type:boolean;default:false;not null" json:"is_cross_day"` // 跨日課程標記（如 23:00-02:00）
 	EffectiveRange DateRange      `gorm:"type:json;not null" json:"effective_range"`
 	LockAt         *time.Time     `gorm:"type:datetime;index" json:"lock_at"`
 	CreatedAt      time.Time      `gorm:"type:datetime;not null" json:"created_at"`

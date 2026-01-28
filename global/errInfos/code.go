@@ -16,6 +16,7 @@ const (
 	FORMAT_RESOURCE_ERROR ErrCode = 10006
 	REQUEST_TIMEOUT       ErrCode = 10007
 	NOT_IMPLEMENTED       ErrCode = 10008
+	RATE_LIMIT_EXCEEDED   ErrCode = 10009
 )
 
 // 資料庫、快取相關 (2)

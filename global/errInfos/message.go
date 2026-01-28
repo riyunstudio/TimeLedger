@@ -10,6 +10,7 @@ var messagesMap = map[ErrCode]message{
 	FORMAT_RESOURCE_ERROR: {EN: "Format resource error.", TW: "資源格式錯誤", CN: "资源格式错误"},
 	REQUEST_TIMEOUT:       {EN: "Request timeout.", TW: "請求超時", CN: "请求超时"},
 	NOT_IMPLEMENTED:       {EN: "Feature not implemented", TW: "功能尚未實作", CN: "功能尚未实现"},
+	RATE_LIMIT_EXCEEDED:   {EN: "Rate limit exceeded", TW: "請求頻率過高，請稍後再試", CN: "请求频率过高，请稍后再试"},
 
 	// 資料庫、快取相關
 	SQL_ERROR: {EN: "Database operation failed", TW: "資料庫操作失敗", CN: "数据库操作失败"},

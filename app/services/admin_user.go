@@ -34,6 +34,9 @@ func NewAdminUserService(app *app.App) *AdminUserService {
 type LINEBindingStatus struct {
 	IsBound       bool       `json:"is_bound"`
 	LineUserID    string     `json:"line_user_id,omitempty"`
+	AdminID       uint       `json:"admin_id,omitempty"`
+	CenterID      uint       `json:"center_id,omitempty"`
+	Role          string     `json:"role,omitempty"`
 	BoundAt       *time.Time `json:"bound_at,omitempty"`
 	NotifyEnabled bool       `json:"notify_enabled"`
 	WelcomeSent   bool       `json:"welcome_sent"`
@@ -51,7 +54,7 @@ func GenerateBindingCode() string {
 	return string(b)
 }
 
-// GetLINEBindingStatus 取得管理員 LINE 綁定狀態
+// GetLINEBindingStatus 取得管理員 LINE 綁定狀態（依管理員 ID）
 func (s *AdminUserService) GetLINEBindingStatus(ctx context.Context, adminID uint) (*LINEBindingStatus, *errInfos.Res, error) {
 	admin, err := s.adminRepo.GetByID(ctx, adminID)
 	if err != nil {
@@ -60,6 +63,33 @@ func (s *AdminUserService) GetLINEBindingStatus(ctx context.Context, adminID uin
 
 	status := &LINEBindingStatus{
 		IsBound:       admin.LineUserID != "",
+		NotifyEnabled: admin.LineNotifyEnabled,
+		BoundAt:       admin.LineBoundAt,
+	}
+
+	if admin.LineUserID != "" {
+		if len(admin.LineUserID) > 8 {
+			status.LineUserID = "***" + admin.LineUserID[len(admin.LineUserID)-5:]
+		} else {
+			status.LineUserID = "***"
+		}
+	}
+
+	return status, nil, nil
+}
+
+// GetLINEBindingStatusByLineUserID 依 LINE User ID 取得管理員綁定狀態
+func (s *AdminUserService) GetLINEBindingStatusByLineUserID(ctx context.Context, lineUserID string) (*LINEBindingStatus, *errInfos.Res, error) {
+	admin, err := s.adminRepo.GetByLineUserID(ctx, lineUserID)
+	if err != nil {
+		return nil, nil, nil // 未找到，不視為錯誤
+	}
+
+	status := &LINEBindingStatus{
+		IsBound:       true,
+		AdminID:       admin.ID,
+		CenterID:      admin.CenterID,
+		Role:          admin.Role,
 		NotifyEnabled: admin.LineNotifyEnabled,
 		BoundAt:       admin.LineBoundAt,
 	}

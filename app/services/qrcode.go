@@ -18,10 +18,6 @@ func NewQRCodeService() *QRCodeService {
 }
 
 // GeneratePNG 生成 PNG 格式的 QR Code
-// @param content QR Code 內容（URL 或文字）
-// @param size QR Code 大小（像素）
-// @return []byte PNG 圖片資料
-// @return error 錯誤資訊
 func (s *QRCodeService) GeneratePNG(content string, size int) ([]byte, error) {
 	if size <= 0 {
 		size = 256 // 預設大小
@@ -46,9 +42,6 @@ func (s *QRCodeService) GeneratePNG(content string, size int) ([]byte, error) {
 
 // GenerateLINEBindingQR 生成 LINE 官方帳號加好友 QR Code
 // QR Code 內容為 LINE Deep Link，掃描後直接開啟官方帳號聊天視窗
-// @param lineOfficialAccountID LINE 官方帳號 ID（如 @timeledger）
-// @return []byte PNG 圖片資料
-// @return error 錯誤資訊
 func (s *QRCodeService) GenerateLINEBindingQR(lineOfficialAccountID string) ([]byte, error) {
 	// LINE Deep Link 格式：line://nv/addContacts/{LINE_ID}
 	// 這種方式可以讓用戶直接開啟 LINE 並跳轉到官方帳號的聊天視窗
@@ -59,9 +52,6 @@ func (s *QRCodeService) GenerateLINEBindingQR(lineOfficialAccountID string) ([]b
 
 // GenerateBindingURLQR 生成綁定 URL 的 QR Code
 // 產生一個包含綁定頁面 URL 的 QR Code，用戶掃描後可直接開啟綁定頁面
-// @param bindingURL 綁定頁面的完整 URL
-// @return []byte PNG 圖片資料
-// @return error 錯誤資訊
 func (s *QRCodeService) GenerateBindingURLQR(bindingURL string) ([]byte, error) {
 	return s.GeneratePNG(bindingURL, 256)
 }
@@ -69,10 +59,6 @@ func (s *QRCodeService) GenerateBindingURLQR(bindingURL string) ([]byte, error) 
 // GenerateVerificationCodeQR 生成包含驗證碼的 LINE 綁定 QR Code
 // 這種方式會產生一個 LINE Message API 的 URL，掃描後會開啟 LINE
 // 並自動帶入驗證碼文字，用戶可以直接傳送
-// @param lineOfficialAccountID LINE 官方帳號 ID
-// @param verificationCode 6 位數驗證碼
-// @return []byte PNG 圖片資料
-// @return error 錯誤資訊
 func (s *QRCodeService) GenerateVerificationCodeQR(lineOfficialAccountID, verificationCode string) ([]byte, error) {
 	// 使用 LINE Message API 的 URL 格式
 	// https://line.me/R/ti/p/{LINE_ID}?text={message}
@@ -87,7 +73,6 @@ func (s *QRCodeService) GenerateVerificationCodeQR(lineOfficialAccountID, verifi
 }
 
 // GetLineOfficialAccountID 取得環境變數中的 LINE 官方帳號 ID
-// @return string LINE 官方帳號 ID
 func (s *QRCodeService) GetLineOfficialAccountID() string {
 	lineID := os.Getenv("LINE_OFFICIAL_ACCOUNT_ID")
 	if lineID == "" {

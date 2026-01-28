@@ -3,6 +3,7 @@ package servers
 import (
 	"net/http"
 	"timeLedger/global/errInfos"
+	"timeLedger/app/services"
 
 	"github.com/gin-gonic/gin"
 )
@@ -32,6 +33,12 @@ func (s *Server) RecoverMiddleware() gin.HandlerFunc {
 		}()
 		c.Next()
 	}
+}
+
+// RateLimitMiddleware 速率限制中介層
+func (s *Server) RateLimitMiddleware() gin.HandlerFunc {
+	rateLimiter := services.NewRateLimiterService(s.app)
+	return services.RateLimitMiddleware(rateLimiter)
 }
 
 // 主要中介層

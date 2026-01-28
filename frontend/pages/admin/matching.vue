@@ -465,6 +465,7 @@
 
 <script setup lang="ts">
 import { SKILL_CATEGORIES } from '~/types'
+import { formatDateToString, getTodayString } from '~/composables/useTaiwanTime'
 import AdminRecentSearches from '~/components/Admin/RecentSearches.vue'
 import AdminRoomCardSelect from '~/components/Admin/RoomCardSelect.vue'
 import AdminSkillSelector from '~/components/Admin/SkillSelector.vue'
@@ -1010,7 +1011,7 @@ const exportContactInfo = () => {
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
   const link = document.createElement('a')
   link.href = URL.createObjectURL(blob)
-  link.download = `人才庫匯出_${new Date().toISOString().split('T')[0]}.csv`
+  link.download = `人才庫匯出_${getTodayString()}.csv`
   link.click()
   URL.revokeObjectURL(link.href)
   
@@ -1150,8 +1151,8 @@ const viewTeacherTimeline = async (teacher: MatchResult) => {
 
   try {
     const api = useApi()
-    const startDate = form.value.start_time ? new Date(form.value.start_time).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
-    const endDate = form.value.end_time ? new Date(form.value.end_time).toISOString().split('T')[0] : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    const startDate = form.value.start_time ? formatDateToString(new Date(form.value.start_time)) : getTodayString()
+    const endDate = form.value.end_time ? formatDateToString(new Date(form.value.end_time)) : formatDateToString(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000))
 
     const response = await api.get<{ code: number; datas: any }>(
       `/admin/teachers/${teacher.teacher_id}/sessions?start_date=${startDate}&end_date=${endDate}`
@@ -1196,8 +1197,8 @@ const fetchAlternativeSlots = async (teacher: MatchResult) => {
       '/admin/smart-matching/alternatives',
       {
         teacher_id: teacher.teacher_id,
-        original_start: new Date(form.value.start_time).toISOString(),
-        original_end: new Date(form.value.end_time).toISOString(),
+        original_start: formatDateToString(new Date(form.value.start_time)),
+        original_end: formatDateToString(new Date(form.value.end_time)),
         duration: 90
       }
     )
@@ -1289,8 +1290,8 @@ const findMatches = async () => {
         `/admin/smart-matching/matches`,
         {
           room_ids: form.value.room_ids.length > 0 ? form.value.room_ids : undefined,
-          start_time: new Date(form.value.start_time).toISOString(),
-          end_time: new Date(form.value.end_time).toISOString(),
+          start_time: formatDateToString(new Date(form.value.start_time)),
+          end_time: formatDateToString(new Date(form.value.end_time)),
           required_skills: selectedSkills.value.length > 0
             ? selectedSkills.value.map(s => s.name)
             : form.value.skills.split(',').map(s => s.trim()).filter(Boolean)
@@ -1304,8 +1305,8 @@ const findMatches = async () => {
     // 儲存到近期搜尋
     if (recentSearchesRef.value) {
       recentSearchesRef.value.addSearch({
-        start_time: new Date(form.value.start_time).toISOString(),
-        end_time: new Date(form.value.end_time).toISOString(),
+        start_time: formatDateToString(new Date(form.value.start_time)),
+        end_time: formatDateToString(new Date(form.value.end_time)),
         room_ids: [...form.value.room_ids],
         skills: [...selectedSkills.value]
       })

@@ -77,6 +77,7 @@
 
 <script setup lang="ts">
 import { alertError } from '~/composables/useAlert'
+import { formatDateToString } from '~/composables/useTaiwanTime'
 
 const emit = defineEmits<{
   close: []
@@ -96,7 +97,9 @@ const form = ref({
 
 const formatDateTimeForApi = (datetimeLocal: string): string => {
   if (!datetimeLocal) return ''
-  return new Date(datetimeLocal).toISOString()
+  // 使用台灣時區格式化
+  const date = new Date(datetimeLocal)
+  return formatDateToString(date)
 }
 
 const triggerFileInput = () => {

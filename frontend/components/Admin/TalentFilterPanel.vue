@@ -221,6 +221,72 @@
       </BaseBadge>
     </div>
   </div>
+
+  <!-- 預設管理 Modal -->
+  <Teleport to="body">
+    <div v-if="showPresetModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" @click.self="showPresetModal = false">
+      <div class="glass-card w-full max-w-md max-h-[80vh] overflow-y-auto">
+        <div class="flex items-center justify-between p-4 border-b border-white/10">
+          <h3 class="text-lg font-semibold text-white">儲存篩選預設</h3>
+          <button @click="showPresetModal = false" class="p-2 rounded-lg hover:bg-white/10">
+            <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div class="p-4 space-y-4">
+          <!-- 新增預設 -->
+          <div class="flex gap-2">
+            <input
+              v-model="newPresetName"
+              type="text"
+              placeholder="輸入預設名稱"
+              class="flex-1 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+              @keyup.enter="saveAsPreset"
+            />
+            <button
+              @click="saveAsPreset"
+              class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-colors"
+            >
+              儲存
+            </button>
+          </div>
+
+          <!-- 已儲存的預設列表 -->
+          <div v-if="presets.length > 0" class="space-y-2">
+            <h4 class="text-sm text-slate-400">已儲存的預設</h4>
+            <div class="space-y-2 max-h-60 overflow-y-auto">
+              <div
+                v-for="preset in presets"
+                :key="preset.id"
+                class="flex items-center justify-between p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors group"
+              >
+                <button
+                  @click="applyPreset(preset)"
+                  class="flex-1 text-left text-slate-300 hover:text-white transition-colors"
+                >
+                  {{ preset.name }}
+                </button>
+                <button
+                  @click="deletePreset(preset.id)"
+                  class="p-1 rounded hover:bg-red-500/20 text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div v-else class="text-center text-slate-500 py-4">
+            尚未儲存任何預設
+          </div>
+        </div>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
@@ -356,11 +422,69 @@ const removeFilter = (key: string, value: string) => {
   emit('apply', { ...filters.value })
 }
 
+// 篩選預設管理
+const presets = ref<Array<{ id: string; name: string; filters: typeof filters.value }>>([])
+const showPresetModal = ref(false)
+const newPresetName = ref('')
+
+// 從 localStorage 載入預設
+const loadPresets = () => {
+  try {
+    const saved = localStorage.getItem('talentFilterPresets')
+    if (saved) {
+      presets.value = JSON.parse(saved)
+    }
+  } catch (e) {
+    console.error('載入預設失敗:', e)
+  }
+}
+
+// 儲存預設到 localStorage
+const savePresets = () => {
+  try {
+    localStorage.setItem('talentFilterPresets', JSON.stringify(presets.value))
+  } catch (e) {
+    console.error('儲存預設失敗:', e)
+  }
+}
+
 // 儲存為常用篩選
 const saveAsPreset = () => {
-  // TODO: 實現儲存預設功能
-  console.log('Saving filter preset:', filters.value)
+  if (!newPresetName.value.trim()) {
+    alert('請輸入預設名稱')
+    return
+  }
+
+  const preset = {
+    id: Date.now().toString(),
+    name: newPresetName.value.trim(),
+    filters: { ...filters.value }
+  }
+
+  presets.value.push(preset)
+  savePresets()
+  newPresetName.value = ''
+  showPresetModal.value = false
+
+  // 提示成功
+  const notification = useNotification()
+  notification.success(`已儲存篩選預設「${preset.name}」`)
 }
+
+// 套用預設
+const applyPreset = (preset: typeof presets.value[0]) => {
+  filters.value = { ...preset.filters }
+  emit('apply', { ...filters.value })
+}
+
+// 刪除預設
+const deletePreset = (id: string) => {
+  presets.value = presets.value.filter(p => p.id !== id)
+  savePresets()
+}
+
+// 初始化
+loadPresets()
 
 // 暴露方法
 defineExpose({

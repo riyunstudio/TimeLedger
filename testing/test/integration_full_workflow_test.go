@@ -81,17 +81,29 @@ func setupIntegrationTestAppWithMigrations() (*app.App, *gorm.DB, func()) {
 	}
 
 	cleanup := func() {
-		mysqlDB.Exec("DELETE FROM schedule_exceptions")
-		mysqlDB.Exec("DELETE FROM schedule_rules")
-		mysqlDB.Exec("DELETE FROM center_holidays")
-		mysqlDB.Exec("DELETE FROM center_invitations")
-		mysqlDB.Exec("DELETE FROM offerings")
-		mysqlDB.Exec("DELETE FROM courses")
-		mysqlDB.Exec("DELETE FROM rooms")
-		mysqlDB.Exec("DELETE FROM personal_events")
-		mysqlDB.Exec("DELETE FROM admin_users")
-		mysqlDB.Exec("DELETE FROM teachers")
-		mysqlDB.Exec("DELETE FROM centers")
+		// Use TRUNCATE with disabled FK checks to avoid constraint violations
+		tables := []string{
+			"schedule_exceptions",
+			"schedule_rules",
+			"center_holidays",
+			"center_invitations",
+			"center_memberships",
+			"center_teacher_notes",
+			"offerings",
+			"courses",
+			"rooms",
+			"personal_events",
+			"admin_users",
+			"teacher_certificates",
+			"teacher_personal_hashtags",
+			"teachers",
+			"centers",
+		}
+		for _, table := range tables {
+			mysqlDB.Exec(fmt.Sprintf("SET FOREIGN_KEY_CHECKS=0"))
+			mysqlDB.Exec(fmt.Sprintf("TRUNCATE TABLE %s", table))
+			mysqlDB.Exec(fmt.Sprintf("SET FOREIGN_KEY_CHECKS=1"))
+		}
 		mr.Close()
 	}
 
@@ -546,10 +558,11 @@ func TestIntegration_ScheduleRuleCreation(t *testing.T) {
 		c.Set(global.CenterIDKey, createdCenter.ID)
 		c.Params = gin.Params{{Key: "id", Value: fmt.Sprintf("%d", createdCenter.ID)}}
 
+		// Use YYYY-MM-DD format as expected by the API
 		reqBody := map[string]interface{}{
 			"rule_ids":   []uint{createdOffering.ID},
-			"start_date": now.Format(time.RFC3339),
-			"end_date":   now.AddDate(0, 1, 0).Format(time.RFC3339),
+			"start_date": now.Format("2006-01-02"),
+			"end_date":   now.AddDate(0, 1, 0).Format("2006-01-02"),
 		}
 		body, _ := json.Marshal(reqBody)
 		c.Request = httptest.NewRequest("POST", "/api/v1/admin/centers/"+fmt.Sprintf("%d", createdCenter.ID)+"/expand-rules", bytes.NewBuffer(body))

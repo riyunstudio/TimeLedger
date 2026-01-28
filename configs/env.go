@@ -55,6 +55,12 @@ type Env struct {
 	// Frontend
 	FrontendBaseURL        string
 	LineOfficialAccountID  string
+
+	// Rate Limiting
+	RateLimitEnabled       bool
+	RateLimitRequests      int
+	RateLimitWindow        string
+	RateLimitBlockDuration string
 }
 
 func LoadEnv() *Env {
@@ -66,7 +72,7 @@ func LoadEnv() *Env {
 	return &Env{
 		AppEnv:      os.Getenv("APP_ENV"),
 		AppDebug:    getEnvAsBool("APP_DEBUG", false),
-		AppTimezone: os.Getenv("APP_TIMEZONE"),
+		AppTimezone: getEnvAsString("APP_TIMEZONE", "Asia/Taipei"),
 		AppID:       getEnvAsInt("APP_ID", -1),
 
 		ServerName: os.Getenv("SERVER_NAME"),
@@ -109,6 +115,12 @@ func LoadEnv() *Env {
 		// Frontend
 		FrontendBaseURL:       os.Getenv("FRONTEND_BASE_URL"),
 		LineOfficialAccountID: os.Getenv("LINE_OFFICIAL_ACCOUNT_ID"),
+
+		// Rate Limiting
+		RateLimitEnabled:       getEnvAsBool("RATE_LIMIT_ENABLED", true),
+		RateLimitRequests:      getEnvAsInt("RATE_LIMIT_REQUESTS", 100),
+		RateLimitWindow:        getEnvAsString("RATE_LIMIT_WINDOW", "1m"),
+		RateLimitBlockDuration: getEnvAsString("RATE_LIMIT_BLOCK_DURATION", "5m"),
 	}
 }
 
@@ -120,6 +132,14 @@ func getEnvAsBool(name string, defaultVal bool) bool {
 
 	valStr = strings.ToLower(valStr)
 	return valStr == "true" || valStr == "1"
+}
+
+func getEnvAsString(name string, defaultVal string) string {
+	valStr := os.Getenv(name)
+	if valStr == "" {
+		return defaultVal
+	}
+	return valStr
 }
 
 func getEnvAsInt(name string, defaultVal int) int {
