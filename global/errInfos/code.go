@@ -83,14 +83,17 @@ const (
 
 // LINE Bot 與通知類 (9)
 const (
-	LINE_ALREADY_BOUND      ErrCode = 90001
-	LINE_NOT_BOUND          ErrCode = 90002
+	LINE_ALREADY_BOUND        ErrCode = 90001
+	LINE_NOT_BOUND            ErrCode = 90002
 	LINE_BINDING_CODE_INVALID ErrCode = 90003
-	LINE_BINDING_EXPIRED    ErrCode = 90004
-	LINE_NOTIFY_FAILED      ErrCode = 90005
+	LINE_BINDING_EXPIRED      ErrCode = 90004
+	LINE_NOTIFY_FAILED        ErrCode = 90005
 )
 
 // 管理員類 (10)
 const (
-	ADMIN_NOT_FOUND ErrCode = 100001
+	ADMIN_NOT_FOUND           ErrCode = 100001
+	ADMIN_EMAIL_EXISTS        ErrCode = 100002
+	PASSWORD_NOT_MATCH        ErrCode = 100003
+	ADMIN_CANNOT_DISABLE_SELF ErrCode = 100004
 )

@@ -52,7 +52,6 @@ func (m *AuthMiddleware) Authenticate() gin.HandlerFunc {
 
 		// Support mock tokens for development/testing
 		if strings.HasPrefix(token, "mock-") {
-			// Mock token - set default values
 			c.Set(global.UserIDKey, uint(1))
 			c.Set(global.UserTypeKey, "ADMIN")
 			c.Set(global.CenterIDKey, uint(1))
@@ -92,7 +91,7 @@ func (m *AuthMiddleware) RequireAdmin() gin.HandlerFunc {
 			return
 		}
 
-		if userType != "ADMIN" {
+		if userType != "ADMIN" && userType != "OWNER" {
 			c.JSON(http.StatusForbidden, global.ApiResponse{
 				Code:    global.FORBIDDEN,
 				Message: "Admin access required",
@@ -142,7 +141,7 @@ func (m *AuthMiddleware) RequireCenterAdmin() gin.HandlerFunc {
 			return
 		}
 
-		if userType != "ADMIN" {
+		if userType != "ADMIN" && userType != "OWNER" {
 			c.JSON(http.StatusForbidden, global.ApiResponse{
 				Code:    global.FORBIDDEN,
 				Message: "Admin access required",

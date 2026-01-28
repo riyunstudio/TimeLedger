@@ -114,102 +114,20 @@
     </div>
   </div>
 
-  <!-- 快捷操作按鈕 -->
-  <div class="mb-6 flex flex-wrap gap-3" role="toolbar" aria-label="快捷操作">
-    <button
-      @click="showPersonalEventModal = true"
-      aria-label="新增個人行程"
-      class="px-4 py-2 rounded-lg bg-primary-500/20 text-primary-500 hover:bg-primary-500/30 transition-colors flex items-center gap-2 text-sm"
-    >
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-      </svg>
-      新增個人行程
-    </button>
-    <button
-      @click="goToExceptions"
-      aria-label="申請請假或調課"
-      class="px-4 py-2 rounded-lg bg-warning-500/20 text-warning-500 hover:bg-warning-500/30 transition-colors flex items-center gap-2 text-sm"
-    >
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-      </svg>
-      請假/調課
-    </button>
-    <button
-      @click="goToExport"
-      aria-label="匯出課表"
-      class="px-4 py-2 rounded-lg bg-secondary-500/20 text-secondary-500 hover:bg-secondary-500/30 transition-colors flex items-center gap-2 text-sm"
-    >
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-      </svg>
-      匯出課表
-    </button>
-  </div>
-
-  <!-- 視圖切換和課表顯示 -->
+  <!-- 教師課表週曆組件（使用內建導航列） -->
   <div class="mb-4">
-    <!-- 週次導航 -->
-    <div class="flex items-center justify-between mb-4">
-      <div class="flex items-center gap-4">
-        <div class="flex items-center gap-1">
-          <button
-            @click="changeWeek(-1)"
-            class="glass-btn p-2 rounded-lg hover:bg-white/10 transition-colors"
-            title="上一週"
-          >
-            <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-          <span class="text-sm font-medium text-slate-200 min-w-[140px] text-center">
-            {{ weekRangeLabel }}
-          </span>
-          <button
-            @click="changeWeek(1)"
-            class="glass-btn p-2 rounded-lg hover:bg-white/10 transition-colors"
-            title="下一週"
-          >
-            <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
-        </div>
-      </div>
-
-      <!-- 快捷操作按鈕 -->
-      <div class="flex items-center gap-2">
-        <button
-          @click="showPersonalEventModal = true"
-          class="px-4 py-2 rounded-lg bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 transition-colors flex items-center gap-2 text-sm"
-        >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-          </svg>
-          個人行程
-        </button>
-        <button
-          @click="goToExceptions"
-          class="px-4 py-2 rounded-lg bg-warning-500/20 text-warning-400 hover:bg-warning-500/30 transition-colors flex items-center gap-2 text-sm"
-        >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01" />
-          </svg>
-          請假/調課
-        </button>
-      </div>
-    </div>
-
-    <!-- 教師課表週曆組件 -->
     <TeacherScheduleGrid
       v-if="teacherStore.schedule"
       :schedules="transformedSchedules"
       :week-start="teacherStore.weekStart"
       @update:weekStart="handleWeekStartChange"
-      @select-schedule="handleScheduleSelect"
+      @select-schedule="handleScheduleNoteAction"
       @add-personal-event="showPersonalEventModal = true"
       @add-exception="goToExceptions"
+      @export="goToExport"
+      @edit-personal-event="handleEditPersonalEvent"
+      @delete-personal-event="handleDeletePersonalEvent"
+      @personal-event-note="handlePersonalEventNote"
     />
   </div>
 
@@ -282,104 +200,12 @@
     @saved="handleNoteModalSaved"
   />
 
-  <!-- 動作選擇對話框 -->
-  <Teleport to="body">
-    <div
-      v-if="showActionDialog"
-      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
-      @click.self="closeActionDialog"
-    >
-      <div class="glass-card w-full max-w-sm">
-        <div class="p-4 border-b border-white/10">
-          <h3 class="text-lg font-semibold text-white">選擇操作</h3>
-          <p v-if="actionDialogItem" class="text-sm text-slate-400 mt-1">
-            {{ actionDialogItem.title }}
-          </p>
-        </div>
-        <div class="p-4 space-y-3">
-          <!-- 中心課程選項 -->
-          <template v-if="actionDialogItem && (actionDialogItem.type === 'SCHEDULE_RULE' || actionDialogItem.type === 'CENTER_SESSION')">
-            <button
-              @click="handleActionSelect('exception')"
-              class="w-full p-4 rounded-lg bg-warning-500/20 border border-warning-500/30 hover:bg-warning-500/30 transition-colors text-left"
-            >
-              <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-lg bg-warning-500/30 flex items-center justify-center">
-                  <svg class="w-5 h-5 text-warning-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
-                </div>
-                <div>
-                  <div class="font-medium text-white">課程例外申請</div>
-                  <div class="text-xs text-slate-400">申請調課、請假或找代課</div>
-                </div>
-              </div>
-            </button>
-            <button
-              @click="handleActionSelect('note')"
-              class="w-full p-4 rounded-lg bg-primary-500/20 border border-primary-500/30 hover:bg-primary-500/30 transition-colors text-left"
-            >
-              <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-lg bg-primary-500/30 flex items-center justify-center">
-                  <svg class="w-5 h-5 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  </svg>
-                </div>
-                <div>
-                  <div class="font-medium text-white">課堂備註</div>
-                  <div class="text-xs text-slate-400">撰寫或查看課程筆記</div>
-                </div>
-              </div>
-            </button>
-          </template>
-
-          <!-- 個人行程選項 -->
-          <template v-else-if="actionDialogItem && actionDialogItem.type === 'PERSONAL_EVENT'">
-            <button
-              @click="handleActionSelect('edit')"
-              class="w-full p-4 rounded-lg bg-success-500/20 border border-success-500/30 hover:bg-success-500/30 transition-colors text-left"
-            >
-              <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-lg bg-success-500/30 flex items-center justify-center">
-                  <svg class="w-5 h-5 text-success-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  </svg>
-                </div>
-                <div>
-                  <div class="font-medium text-white">編輯行程</div>
-                  <div class="text-xs text-slate-400">修改行程時間或內容</div>
-                </div>
-              </div>
-            </button>
-            <button
-              @click="handleActionSelect('note')"
-              class="w-full p-4 rounded-lg bg-primary-500/20 border border-primary-500/30 hover:bg-primary-500/30 transition-colors text-left"
-            >
-              <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-lg bg-primary-500/30 flex items-center justify-center">
-                  <svg class="w-5 h-5 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                </div>
-                <div>
-                  <div class="font-medium text-white">新增備註</div>
-                  <div class="text-xs text-slate-400">為行程添加備註資訊</div>
-                </div>
-              </div>
-            </button>
-          </template>
-        </div>
-        <div class="p-4 border-t border-white/10">
-          <button
-            @click="closeActionDialog"
-            class="w-full px-4 py-2 rounded-lg bg-white/5 text-white hover:bg-white/10 transition-colors"
-          >
-            取消
-          </button>
-        </div>
-      </div>
-    </div>
-  </Teleport>
+  <PersonalEventNoteModal
+    :is-open="showPersonalEventNoteModal"
+    :event="selectedPersonalEvent"
+    @close="showPersonalEventNoteModal = false; selectedPersonalEvent = null"
+    @saved="handlePersonalEventNoteSaved"
+  />
 </template>
 
 <script setup lang="ts">
@@ -399,7 +225,7 @@ const router = useRouter()
 const showPersonalEventModal = ref(false)
 const editingEvent = ref<any>(null)
 
-// 課表資料轉換
+// 課表資料轉換（包含中心課程和個人行程）
 const transformedSchedules = computed(() => {
   if (!teacherStore.schedule) return []
 
@@ -409,6 +235,7 @@ const transformedSchedules = computed(() => {
     const date = new Date(day.date)
     const weekday = date.getDay() === 0 ? 7 : date.getDay()
 
+    // 處理中心課程
     day.items.forEach(item => {
       const [startHour, startMinute] = item.start_time.split(':').map(Number)
       const [endHour, endMinute] = item.end_time.split(':').map(Number)
@@ -430,6 +257,44 @@ const transformedSchedules = computed(() => {
         has_exception: (item.data as any)?.has_exception || false,
         exception_type: (item.data as any)?.exception_type || null,
         data: item.data,
+        is_personal_event: false,
+        type: item.type,
+        rule_id: item.rule_id, // 確保 rule_id 可用於課堂備註
+      })
+    })
+
+    // 處理個人行程
+    const dayEvents = teacherStore.personalEvents.filter(e => {
+      const eventDate = new Date(e.start_at).toISOString().split('T')[0]
+      return eventDate === day.date
+    })
+
+    dayEvents.forEach(event => {
+      const startDate = new Date(event.start_at)
+      const endDate = new Date(event.end_at)
+      const [startHour, startMinute] = [startDate.getHours(), startDate.getMinutes()]
+      const [endHour, endMinute] = [endDate.getHours(), endDate.getMinutes()]
+      const durationMinutes = (endDate.getTime() - startDate.getTime()) / (1000 * 60)
+
+      result.push({
+        id: event.id,
+        key: `personal_${event.id}-${weekday}-${startHour.toString().padStart(2, '0')}:${startMinute.toString().padStart(2, '0')}`,
+        offering_name: event.title,
+        center_name: '',
+        teacher_name: '',
+        weekday: weekday,
+        start_time: `${startHour.toString().padStart(2, '0')}:${startMinute.toString().padStart(2, '0')}`,
+        end_time: `${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`,
+        start_hour: startHour,
+        start_minute: startMinute,
+        duration_minutes: durationMinutes,
+        date: day.date,
+        has_exception: false,
+        exception_type: null,
+        data: event,
+        is_personal_event: true,
+        type: 'PERSONAL_EVENT',
+        color_hex: event.color_hex,
       })
     })
   })
@@ -454,9 +319,46 @@ const handleWeekStartChange = (newStart: Date) => {
   teacherStore.weekStart = newStart
 }
 
-const handleScheduleSelect = (schedule: any) => {
-  // 顯示動作選擇對話框
-  showActionChooser(schedule, schedule.start_hour, schedule.date)
+// 處理課表備註動作（來自 ScheduleGrid）
+const handleScheduleNoteAction = (schedule: any) => {
+  // 如果是課堂備註動作
+  if (schedule.action === 'note') {
+    const itemData = schedule.data || {}
+    selectedScheduleItem.value = {
+      id: schedule.id,
+      type: 'SCHEDULE_RULE' as const,
+      title: schedule.offering_name,
+      start_time: schedule.start_time,
+      end_time: schedule.end_time,
+      date: schedule.date,
+      room_id: itemData?.room_id || 0,
+      center_id: itemData?.center_id || 0,
+      center_name: itemData?.center_name || '',
+      status: 'APPROVED' as const,
+      data: itemData,
+    }
+    showSessionNoteModal.value = true
+  }
+}
+
+// 處理編輯個人行程
+const handleEditPersonalEvent = (event: any) => {
+  editingEvent.value = event
+  showPersonalEventModal.value = true
+}
+
+// 處理刪除個人行程
+const handleDeletePersonalEvent = async (event: any) => {
+  const confirmed = await alertConfirm(`確定要刪除行程「${event.title}」嗎？`)
+  if (confirmed) {
+    try {
+      await teacherStore.deletePersonalEvent(event.id)
+      await teacherStore.fetchSchedule()
+    } catch (error) {
+      console.error('Failed to delete personal event:', error)
+      await alertError('刪除失敗，請稍後再試')
+    }
+  }
 }
 
 // 今日課表摘要相關
@@ -568,71 +470,17 @@ const goToExport = () => {
 
 const showSessionNoteModal = ref(false)
 const selectedScheduleItem = ref<ScheduleItem | null>(null)
+const showPersonalEventNoteModal = ref(false)
+const selectedPersonalEvent = ref<any>(null)
 
-// 動作選擇對話框狀態
-const showActionDialog = ref(false)
-const actionDialogItem = ref<any>(null)
-const actionDialogTarget = ref<{ hour: number, date: string } | null>(null)
-
-// 顯示動作選擇對話框
-const showActionChooser = (item: any, hour?: number, date?: string) => {
-  actionDialogItem.value = item
-  actionDialogTarget.value = hour && date ? { hour, date } : null
-  showActionDialog.value = true
+// 處理個人行程備註
+const handlePersonalEventNote = (event: any) => {
+  selectedPersonalEvent.value = event
+  showPersonalEventNoteModal.value = true
 }
 
-// 處理動作選擇
-const handleActionSelect = async (action: 'exception' | 'note' | 'edit') => {
-  const item = actionDialogItem.value
-  if (!item) return
-
-  const itemData = item.data || {}
-  const title = itemData?.offering_name || item.offering_name || item.title
-  const itemDate = item.date
-  const time = `${item.start_time} - ${item.end_time}`
-
-  if (action === 'exception') {
-    // 導向例外申請頁面
-    router.push({
-      path: '/teacher/exceptions',
-      query: {
-        action: 'create',
-        rule_id: itemData?.id || item.id,
-        course_name: title,
-        original_date: itemDate,
-        original_time: time,
-        center_id: itemData?.center_id || item.center_id,
-      }
-    })
-  } else if (action === 'note') {
-    // 打開課堂備註
-    selectedScheduleItem.value = {
-      id: item.id,
-      type: 'SCHEDULE_RULE' as const,
-      title: item.offering_name || title,
-      start_time: item.start_time,
-      end_time: item.end_time,
-      date: itemDate,
-      room_id: itemData?.room_id || 0,
-      center_id: itemData?.center_id || 0,
-      center_name: itemData?.center_name || '',
-      status: 'APPROVED' as const,
-      data: itemData,
-    }
-    showSessionNoteModal.value = true
-  }
-
-  // 關閉對話框
-  showActionDialog.value = false
-  actionDialogItem.value = null
-  actionDialogTarget.value = null
-}
-
-// 關閉動作選擇對話框
-const closeActionDialog = () => {
-  showActionDialog.value = false
-  actionDialogItem.value = null
-  actionDialogTarget.value = null
+const handlePersonalEventNoteSaved = () => {
+  // 可以選擇性重新獲取資料或顯示提示
 }
 
 const handleNoteModalClose = () => {

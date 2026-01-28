@@ -119,19 +119,12 @@
       </div>
     </div>
 
-    <!-- 排課網格（支援週曆/矩陣視圖） -->
-    <div class="h-full flex flex-col lg:flex-row gap-6">
-      <ScheduleGrid
-        class="flex-1 min-w-0"
-        v-model:view-mode="viewMode"
-        v-model:selected-resource-id="selectedResourceId"
-      />
-      <ScheduleResourcePanel
-        class="lg:w-80 shrink-0"
-        :view-mode="resourcePanelViewMode"
-        @select-resource="handleSelectResource"
-      />
-    </div>
+    <!-- 排課網格（支援週曆視圖與老師/教室篩選） -->
+    <ScheduleGrid
+      class="flex-1 min-w-0"
+      mode="admin"
+      api-endpoint="/admin/expand-rules"
+    />
   </div>
 
   <NotificationDropdown
@@ -154,11 +147,6 @@ const router = useRouter()
 const navigateToApproval = () => {
   router.push('/admin/approval')
 }
-
-// 視圖模式：'calendar' | 'teacher_matrix' | 'room_matrix'
-const viewMode = ref<'calendar' | 'teacher_matrix' | 'room_matrix'>('calendar')
-// 選中的資源 ID
-const selectedResourceId = ref<number | null>(null)
 
 // 今日日期
 const today = computed(() => new Date())
@@ -286,27 +274,6 @@ const loadMockTodayStats = () => {
 const viewAllUpcoming = () => {
   // 跳轉到課表頁面，並顯示今日視圖
   router.push('/admin/schedules')
-}
-
-// 資源面板的視角模式
-const resourcePanelViewMode = computed(() => {
-  if (viewMode.value === 'teacher_matrix') return 'teacher'
-  if (viewMode.value === 'room_matrix') return 'room'
-  return 'offering'
-})
-
-const handleSelectResource = (resource: { type: 'teacher' | 'room', id: number } | null) => {
-  if (!resource) {
-    viewMode.value = 'calendar'
-    selectedResourceId.value = null
-  } else {
-    if (resource.type === 'teacher') {
-      viewMode.value = 'teacher_matrix'
-    } else {
-      viewMode.value = 'room_matrix'
-    }
-    selectedResourceId.value = resource.id
-  }
 }
 
 onMounted(async () => {

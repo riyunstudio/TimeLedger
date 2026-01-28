@@ -27,8 +27,8 @@
               </svg>
             </button>
 
-            <!-- 週導航說明 -->
             <HelpTooltip
+              v-if="effectiveShowHelpTooltip"
               placement="bottom"
               title="週期導航"
               description="查看不同週期的排課狀況，預設顯示本週。"
@@ -36,51 +36,52 @@
             />
           </div>
 
-          <!-- 視角切換器 -->
-          <div class="flex items-center gap-1 bg-slate-800/80 rounded-lg p-1">
-            <button
-              @click="viewModeModel = 'calendar'"
-              class="px-3 py-1.5 rounded-md text-sm font-medium transition-all"
-              :class="viewMode === 'calendar' ? 'bg-primary-500 text-white' : 'text-slate-400 hover:text-white'"
-            >
-              週曆
-            </button>
-            <button
-              @click="viewModeModel = 'teacher_matrix'"
-              class="px-3 py-1.5 rounded-md text-sm font-medium transition-all"
-              :class="viewMode === 'teacher_matrix' ? 'bg-primary-500 text-white' : 'text-slate-400 hover:text-white'"
-            >
-              老師矩陣
-            </button>
-            <button
-              @click="viewModeModel = 'room_matrix'"
-              class="px-3 py-1.5 rounded-md text-sm font-medium transition-all"
-              :class="viewMode === 'room_matrix' ? 'bg-primary-500 text-white' : 'text-slate-400 hover:text-white'"
-            >
-              教室矩陣
-            </button>
-          </div>
+          <!-- 資源篩選器（僅管理員模式） -->
+          <div v-if="mode === 'admin'" class="flex items-center gap-3">
+            <!-- 老師篩選 -->
+            <div class="flex items-center gap-2">
+              <select
+                v-model="selectedTeacherId"
+                class="px-3 py-1.5 rounded-lg text-sm bg-slate-800/80 border border-white/10 text-slate-300 focus:outline-none focus:border-primary-500 min-w-[120px]"
+              >
+                <option :value="null">所有老師</option>
+                <option v-for="teacher in teacherList" :key="'teacher-' + teacher.id" :value="teacher.id">
+                  {{ teacher.name }}
+                </option>
+              </select>
+              <HelpTooltip
+                v-if="effectiveShowHelpTooltip"
+                title="老師篩選"
+                description="選擇特定老師，過濾顯示該老師的課程。"
+                :usage="['選擇「所有老師」顯示所有課程', '選擇老師僅顯示該老師的課程']"
+              />
+            </div>
 
-          <!-- 矩陣視角選擇器 -->
-          <div v-if="viewMode !== 'calendar'" class="flex items-center gap-2">
-            <select
-              v-model="selectedResourceIdModel"
-              class="px-3 py-1.5 rounded-lg text-sm bg-slate-800/80 border border-white/10 text-slate-300 focus:outline-none focus:border-primary-500"
-            >
-              <option :value="null">選擇{{ viewMode === 'teacher_matrix' ? '老師' : '教室' }}...</option>
-              <option v-for="resource in resourceList" :key="resource.id" :value="resource.id">
-                {{ resource.name }}
-              </option>
-            </select>
-            <HelpTooltip
-              :title="viewMode === 'teacher_matrix' ? '選擇老師' : '選擇教室'"
-              :description="`從已加入中心的${viewMode === 'teacher_matrix' ? '老師' : '教室'}中選擇，查看該${viewMode === 'teacher_matrix' ? '老師' : '教室'}的專屬排課表。`"
-              :usage="['從下拉選單選擇特定人員', '選擇後畫面會顯示該人員的排課', '可點擊右上角 X 清除篩選']"
-            />
+            <!-- 教室篩選 -->
+            <div class="flex items-center gap-2">
+              <select
+                v-model="selectedRoomId"
+                class="px-3 py-1.5 rounded-lg text-sm bg-slate-800/80 border border-white/10 text-slate-300 focus:outline-none focus:border-primary-500 min-w-[120px]"
+              >
+                <option :value="null">所有教室</option>
+                <option v-for="room in roomList" :key="'room-' + room.id" :value="room.id">
+                  {{ room.name }}
+                </option>
+              </select>
+              <HelpTooltip
+                v-if="effectiveShowHelpTooltip"
+                title="教室篩選"
+                description="選擇特定教室，過濾顯示該教室的課程。"
+                :usage="['選擇「所有教室」顯示所有課程', '選擇教室僅顯示該教室的課程']"
+              />
+            </div>
           </div>
+        </div>
 
-          <!-- 新增排課按鈕 -->
-          <div class="flex items-center gap-2 ml-auto">
+        <!-- 右側按鈕區域 -->
+        <div class="flex items-center gap-2 ml-auto">
+          <!-- 新增排課按鈕（管理員） -->
+          <template v-if="effectiveShowCreateButton">
             <button
               @click="showCreateModal = true"
               class="btn-primary px-4 py-2 text-sm font-medium"
@@ -88,31 +89,83 @@
               + 新增排課規則
             </button>
             <HelpTooltip
+              v-if="effectiveShowHelpTooltip"
               title="新增排課規則"
               description="建立新的課程排課規則，設定課程、老師、教室、時間等資訊。"
               :usage="['點擊按鈕開啟新增表單', '選擇課程、老師、教室', '設定每週固定上課日與時段', '設定有效期限後儲存']"
               shortcut="Ctrl + N"
             />
-          </div>
+          </template>
+
+          <!-- 個人行程按鈕（老師端） -->
+          <template v-if="effectiveShowPersonalEventButton">
+            <button
+              @click="$emit('add-personal-event')"
+              class="px-4 py-2 rounded-lg bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 transition-colors flex items-center gap-2 text-sm"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
+              個人行程
+            </button>
+          </template>
+
+          <!-- 請假/調課按鈕（老師端） -->
+          <template v-if="effectiveShowExceptionButton">
+            <button
+              @click="$emit('add-exception')"
+              class="px-4 py-2 rounded-lg bg-warning-500/20 text-warning-400 hover:bg-warning-500/30 transition-colors flex items-center gap-2 text-sm"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01" />
+              </svg>
+              請假/調課
+            </button>
+          </template>
+
+          <!-- 匯出按鈕（老師端） -->
+          <template v-if="effectiveShowExportButton">
+            <button
+              @click="$emit('export')"
+              class="px-4 py-2 rounded-lg bg-secondary-500/20 text-secondary-500 hover:bg-secondary-500/30 transition-colors flex items-center gap-2 text-sm"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              匯出
+            </button>
+          </template>
         </div>
       </div>
 
-      <!-- 選中資源提示 -->
+      <!-- 篩選提示（僅管理員模式） -->
       <div
-        v-if="viewMode !== 'calendar' && selectedResourceName"
+        v-if="mode === 'admin' && (selectedTeacherId !== null || selectedRoomId !== null)"
         class="mt-3 flex items-center gap-2 px-3 py-2 bg-primary-500/10 border border-primary-500/30 rounded-lg"
       >
-        <span class="text-sm text-primary-400">
-          {{ viewMode === 'teacher_matrix' ? '老師' : '教室' }}矩陣：
+        <span class="text-sm text-primary-400">已篩選：</span>
+        <span v-if="selectedTeacherId !== null" class="inline-flex items-center gap-1 px-2 py-1 bg-primary-500/20 rounded text-sm">
+          <span class="text-white">{{ selectedTeacherName }}</span>
+          <button @click="clearTeacherFilter" class="hover:text-primary-300">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </span>
-        <span class="text-sm font-medium text-white">{{ selectedResourceName }}</span>
+        <span v-if="selectedRoomId !== null" class="inline-flex items-center gap-1 px-2 py-1 bg-primary-500/20 rounded text-sm">
+          <span class="text-white">{{ selectedRoomName }}</span>
+          <button @click="clearRoomFilter" class="hover:text-primary-300">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </span>
         <button
-          @click="clearViewMode"
-          class="ml-auto p-1 hover:bg-white/10 rounded transition-colors"
+          v-if="selectedTeacherId !== null || selectedRoomId !== null"
+          @click="clearAllFilters"
+          class="ml-auto text-xs text-slate-400 hover:text-white transition-colors"
         >
-          <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
+          清除全部
         </button>
       </div>
     </div>
@@ -123,7 +176,7 @@
       @drop="handleDrop"
     >
       <!-- 週曆視圖 -->
-      <div v-if="viewMode === 'calendar'" class="min-w-[600px] relative" ref="calendarContainerRef">
+      <div class="min-w-[600px] relative" ref="calendarContainerRef">
         <!-- 表頭 -->
         <div class="grid sticky top-0 z-10 bg-slate-900/95 backdrop-blur-sm" style="grid-template-columns: 80px repeat(7, 1fr);">
           <div class="p-2 border-b border-white/10 text-center">
@@ -140,33 +193,11 @@
 
         <!-- 時間列和網格區域 -->
         <div class="relative">
-          <!-- 課程卡片層 - 絕對定位 -->
-          <div class="absolute top-0 left-0 right-0 bottom-0 pointer-events-none">
-            <div
-              v-for="schedule in displaySchedules"
-              :key="schedule.key"
-              class="absolute rounded-lg p-2 text-xs cursor-pointer hover:opacity-90 transition-opacity pointer-events-auto"
-              :class="getScheduleCardClass(schedule)"
-              :style="getScheduleStyle(schedule)"
-              @click="selectSchedule(schedule)"
-            >
-              <div class="font-medium truncate">
-                {{ schedule.offering_name }}
-              </div>
-              <div class="text-slate-400 truncate">
-                {{ schedule.teacher_name }}
-              </div>
-              <div class="text-slate-500 text-[10px] mt-0.5">
-                {{ schedule.start_time }} - {{ schedule.end_time }}
-              </div>
-            </div>
-          </div>
-
-          <!-- 時間格子 -->
+          <!-- 時間格子 - 先渲染，在底部 -->
           <div
             v-for="time in timeSlots"
             :key="time"
-            class="grid relative"
+            class="grid relative z-0"
             style="grid-template-columns: 80px repeat(7, 1fr);"
           >
             <!-- 時間標籤 -->
@@ -178,95 +209,89 @@
             <div
               v-for="day in weekDays"
               :key="`${time}-${day.value}`"
-              class="p-0 min-h-[60px] border-b border-white/5 border-r relative"
+              class="p-0 min-h-[60px] border-b border-white/5 border-r relative z-0"
               :class="getCellClass(time, day.value)"
               @dragenter="handleDragEnter(time, day.value)"
               @dragleave="handleDragLeave"
               @dragover.prevent
             />
           </div>
-        </div>
-      </div>
 
-      <!-- 矩陣視圖（老師/教室） -->
-      <div v-else class="min-w-[800px] relative" ref="matrixContainerRef">
-        <div class="grid sticky top-0 z-10 bg-slate-800/90 backdrop-blur-sm" style="grid-template-columns: 200px repeat(7, 1fr);">
-          <div class="p-3 border-b border-white/10">
-            <span class="text-sm font-medium text-slate-400">
-              {{ viewMode === 'teacher_matrix' ? '老師' : '教室' }}
-            </span>
-          </div>
-          <div
-            v-for="day in weekDays"
-            :key="day.value"
-            class="p-3 border-b border-white/10 text-center"
-          >
-            <span class="text-sm font-medium text-slate-100">{{ day.name }}</span>
-          </div>
-        </div>
-
-        <!-- 資源列表 -->
-        <div
-          v-for="resource in matrixResources"
-          :key="resource.id"
-          class="grid relative"
-          style="grid-template-columns: 200px repeat(7, 1fr);"
-        >
-          <!-- 資源名稱 -->
-          <div class="p-3 border-b border-white/5 border-r flex items-center bg-slate-900/50 sticky left-0 z-10">
-            <div class="flex items-center gap-2">
+          <!-- 課程卡片層 - 絕對定位，z-index 較高確保在網格之上 -->
+          <div class="absolute top-0 left-0 right-0 bottom-0 pointer-events-none z-10">
+            <template v-for="schedule in filteredSchedules" :key="schedule.key">
+              <!-- 個人行程保持原樣顯示 -->
               <div
-                class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium"
-                :class="viewMode === 'teacher_matrix' ? 'bg-primary-500/20 text-primary-400' : 'bg-amber-500/20 text-amber-400'"
+                v-if="schedule.is_personal_event"
+                class="absolute rounded-lg p-2 text-xs cursor-pointer hover:opacity-90 transition-opacity pointer-events-auto"
+                :class="getScheduleCardClass(schedule)"
+                :style="[getScheduleStyle(schedule), { backgroundColor: schedule.color_hex + '40', borderColor: schedule.color_hex + '60' }]"
+                @click="selectSchedule(schedule)"
               >
-                {{ resource.name?.charAt(0) || '?' }}
+                <div class="font-medium truncate text-white">
+                  {{ schedule.offering_name }}
+                </div>
+                <div class="text-slate-400 truncate text-[10px]">
+                  {{ schedule.start_time }} - {{ schedule.end_time }}
+                </div>
               </div>
-              <span class="text-sm text-slate-300">{{ resource.name }}</span>
-            </div>
-          </div>
-
-          <!-- 每週的網格 -->
-          <div
-            v-for="day in weekDays"
-            :key="`${resource.id}-${day.value}`"
-            class="p-0 min-h-[80px] border-b border-white/5 border-r relative"
-          />
-
-          <!-- 矩陣課程卡片 -->
-          <div class="absolute top-0 left-[200px] right-0 bottom-0 pointer-events-none">
-            <div
-              v-for="schedule in getMatrixSchedulesForResource(resource.id)"
-              :key="schedule.key"
-              class="absolute rounded-lg p-2 text-xs cursor-pointer hover:opacity-90 transition-opacity pointer-events-auto"
-              :class="getScheduleCardClass(schedule)"
-              :style="getMatrixScheduleStyle(schedule, resource.id)"
-              @click="selectSchedule(schedule)"
-            >
-              <div class="font-medium truncate text-white">
-                {{ schedule.offering_name }}
-              </div>
-              <div class="text-slate-400 truncate text-[10px]">
-                {{ schedule.start_time }} - {{ schedule.end_time }}
-              </div>
-            </div>
+              <!-- 中心課程：檢查是否有重疊 -->
+              <template v-else>
+                <!-- 僅顯示第一個課程（帶重疊指示器） -->
+                <div
+                  v-if="getOverlapCount(schedule) === 1"
+                  class="absolute rounded-lg p-2 text-xs cursor-pointer hover:opacity-90 transition-opacity pointer-events-auto"
+                  :class="getScheduleCardClass(schedule)"
+                  :style="getScheduleStyle(schedule)"
+                  @click="selectSchedule(schedule)"
+                >
+                  <div class="font-medium truncate">
+                    {{ schedule.offering_name }}
+                  </div>
+                  <div v-if="effectiveCardInfoType === 'teacher'" class="text-slate-400 truncate">
+                    {{ schedule.teacher_name }}
+                  </div>
+                  <div v-else class="text-slate-400 truncate">
+                    {{ schedule.center_name }}
+                  </div>
+                  <div class="text-slate-500 text-[10px] mt-0.5">
+                    {{ schedule.start_time }} - {{ schedule.end_time }}
+                  </div>
+                </div>
+                <!-- 重疊指示器（顯示數量） -->
+                <div
+                  v-else-if="getOverlapCount(schedule) > 1 && isFirstInOverlap(schedule)"
+                  class="absolute rounded-lg bg-warning-500/20 border border-warning-500/50 p-2 text-xs cursor-pointer hover:bg-warning-500/30 transition-opacity pointer-events-auto"
+                  :style="getScheduleStyle(schedule)"
+                  @click="handleOverlapClick(schedule)"
+                >
+                  <div class="flex items-center justify-center h-full">
+                    <span class="text-warning-400 font-bold text-lg">
+                      {{ getOverlapCount(schedule) }}
+                    </span>
+                    <span class="text-warning-300 ml-1 text-xs">堂課程</span>
+                  </div>
+                </div>
+              </template>
+            </template>
           </div>
         </div>
 
-        <!-- 空狀態 -->
-        <div v-if="matrixResources.length === 0" class="text-center py-12">
-          <div class="text-slate-500 mb-2">暫無{{ viewMode === 'teacher_matrix' ? '老師' : '教室' }}資料</div>
-          <div class="text-xs text-slate-600">請先{{ viewMode === 'teacher_matrix' ? '新增老師' : '新增教室' }}</div>
-        </div>
+      <!-- 矩陣視圖（已停用） -->
+      <!--
+        矩陣視圖功能已停用，如有需要可重新啟用
+      -->
       </div>
     </div>
 
+    <!-- 管理員專屬彈窗 -->
     <Teleport to="body">
       <ScheduleDetailPanel
-        v-if="selectedCell"
-        :time="selectedCell.time"
-        :weekday="selectedCell.day"
+        v-if="selectedSchedule && mode === 'admin'"
+        :time="selectedSchedule.start_hour"
+        :weekday="selectedSchedule.weekday"
         :schedule="selectedSchedule"
-        @close="selectedCell = null"
+        @close="closeSchedulePanel"
         @edit="handleEdit"
         @delete="handleDelete"
       />
@@ -274,7 +299,7 @@
 
     <Teleport to="body">
       <UpdateModeModal
-        v-if="showUpdateModeModal"
+        v-if="showUpdateModeModal && mode === 'admin'"
         :show="showUpdateModeModal"
         :rule-name="editingRule?.offering_name"
         :rule-date="editingRule?.date ? new Date(editingRule.date).toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' }) : ''"
@@ -285,17 +310,185 @@
 
     <Teleport to="body">
       <ScheduleRuleModal
-        v-if="showCreateModal"
+        v-if="showCreateModal && mode === 'admin'"
         @close="showCreateModal = false"
         @created="handleRuleCreated"
       />
       <ScheduleRuleModal
-        v-if="showEditModal"
+        v-if="showEditModal && mode === 'admin'"
         :editing-rule="editingRule"
         :update-mode="pendingUpdateMode"
         @close="handleEditModalClose"
         @submit="handleRuleUpdated"
       />
+    </Teleport>
+
+    <!-- 老師端專屬彈窗 - 動作選擇對話框 -->
+    <Teleport to="body">
+      <div
+        v-if="showActionDialog && mode === 'teacher'"
+        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+        @click.self="closeActionDialog"
+      >
+        <div class="glass-card w-full max-w-sm">
+          <div class="p-4 border-b border-white/10">
+            <h3 class="text-lg font-semibold text-white">選擇操作</h3>
+            <p v-if="actionDialogItem" class="text-sm text-slate-400 mt-1">
+              {{ actionDialogItem.offering_name }}
+            </p>
+          </div>
+          <div class="p-4 space-y-3">
+            <!-- 個人行程選項 -->
+            <template v-if="actionDialogItem?.is_personal_event">
+              <button
+                @click="handleActionSelect('edit')"
+                class="w-full p-4 rounded-lg bg-success-500/20 border border-success-500/30 hover:bg-success-500/30 transition-colors text-left"
+              >
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-lg bg-success-500/30 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-success-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <div class="font-medium text-white">編輯行程</div>
+                    <div class="text-xs text-slate-400">修改行程時間或內容</div>
+                  </div>
+                </div>
+              </button>
+              <button
+                @click="handleActionSelect('note')"
+                class="w-full p-4 rounded-lg bg-primary-500/20 border border-primary-500/30 hover:bg-primary-500/30 transition-colors text-left"
+              >
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-lg bg-primary-500/30 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <div class="font-medium text-white">行程備註</div>
+                    <div class="text-xs text-slate-400">為行程添加備註資訊</div>
+                  </div>
+                </div>
+              </button>
+              <button
+                @click="handleActionSelect('delete')"
+                class="w-full p-4 rounded-lg bg-critical-500/20 border border-critical-500/30 hover:bg-critical-500/30 transition-colors text-left"
+              >
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-lg bg-critical-500/30 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-critical-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </div>
+                  <div>
+                    <div class="font-medium text-white">刪除行程</div>
+                    <div class="text-xs text-slate-400">移除此個人行程</div>
+                  </div>
+                </div>
+              </button>
+            </template>
+
+            <!-- 中心課程選項 -->
+            <template v-else>
+              <button
+                @click="handleActionSelect('exception')"
+                class="w-full p-4 rounded-lg bg-warning-500/20 border border-warning-500/30 hover:bg-warning-500/30 transition-colors text-left"
+              >
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-lg bg-warning-500/30 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-warning-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <div class="font-medium text-white">課程例外申請</div>
+                    <div class="text-xs text-slate-400">申請調課、請假或找代課</div>
+                  </div>
+                </div>
+              </button>
+              <button
+                @click="handleActionSelect('note')"
+                class="w-full p-4 rounded-lg bg-primary-500/20 border border-primary-500/30 hover:bg-primary-500/30 transition-colors text-left"
+              >
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-lg bg-primary-500/30 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <div class="font-medium text-white">課堂備註</div>
+                    <div class="text-xs text-slate-400">撰寫或查看課程筆記</div>
+                  </div>
+                </div>
+              </button>
+            </template>
+          </div>
+          <div class="p-4 border-t border-white/10">
+            <button
+              @click="closeActionDialog"
+              class="w-full px-4 py-2 rounded-lg bg-white/5 text-white hover:bg-white/10 transition-colors"
+            >
+              取消
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- 管理員端專屬彈窗 - 重疊課程選擇對話框 -->
+    <Teleport to="body">
+      <div
+        v-if="showOverlapDialog && mode === 'admin'"
+        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+        @click.self="closeOverlapDialog"
+      >
+        <div class="glass-card w-full max-w-sm">
+          <div class="p-4 border-b border-white/10">
+            <h3 class="text-lg font-semibold text-white">選擇課程</h3>
+            <p v-if="overlapTimeSlot" class="text-sm text-slate-400 mt-1">
+              {{ getWeekdayText(overlapTimeSlot.weekday) }}
+              {{ overlapTimeSlot.start_hour.toString().padStart(2, '0') }}:{{ overlapTimeSlot.start_minute.toString().padStart(2, '0') }}
+            </p>
+          </div>
+          <div class="max-h-96 overflow-y-auto">
+            <div
+              v-for="schedule in overlapSchedules"
+              :key="schedule.id"
+              class="p-4 border-b border-white/5 hover:bg-white/5 cursor-pointer transition-colors"
+              @click="selectFromOverlap(schedule)"
+            >
+              <div class="flex items-center justify-between">
+                <div>
+                  <div class="font-medium text-white">{{ schedule.offering_name }}</div>
+                  <div class="text-sm text-slate-400 mt-1">
+                    {{ schedule.start_time }} - {{ schedule.end_time }}
+                  </div>
+                  <div v-if="effectiveCardInfoType === 'teacher'" class="text-xs text-slate-500 mt-1">
+                    {{ schedule.teacher_name }}
+                  </div>
+                  <div v-else class="text-xs text-slate-500 mt-1">
+                    {{ schedule.center_name }}
+                  </div>
+                </div>
+                <div v-if="schedule.room_name" class="text-xs text-slate-500">
+                  {{ schedule.room_name }}
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="p-4 border-t border-white/10">
+            <button
+              @click="closeOverlapDialog"
+              class="w-full px-4 py-2 rounded-lg bg-white/5 text-white hover:bg-white/10 transition-colors"
+            >
+              取消
+            </button>
+          </div>
+        </div>
+      </div>
     </Teleport>
   </div>
 </template>
@@ -304,44 +497,87 @@
 import { formatDateToString } from '~/composables/useTaiwanTime'
 import { nextTick, ref, computed, watch, onMounted, onUnmounted } from 'vue'
 
+// ============================================
+// Props 定義
+// ============================================
+
+const props = defineProps<{
+  // 模式：'admin' 或 'teacher'
+  mode: 'admin' | 'teacher'
+  // 排課資料（可選，如果提供則使用此資料，否則自動獲取）
+  schedules?: any[]
+  // API 端點
+  apiEndpoint: string
+  // 卡片顯示類型：'teacher' 顯示老師名稱，'center' 顯示中心名稱
+  cardInfoType?: 'teacher' | 'center'
+  // 是否顯示矩陣視圖
+  showMatrixView?: boolean
+  // 是否顯示視圖切換器
+  showViewModeSelector?: boolean
+  // 是否顯示新增排課按鈕
+  showCreateButton?: boolean
+  // 是否顯示個人行程按鈕（老師端）
+  showPersonalEventButton?: boolean
+  // 是否顯示請假/調課按鈕（老師端）
+  showExceptionButton?: boolean
+  // 是否顯示匯出按鈕（老師端）
+  showExportButton?: boolean
+  // 是否顯示說明提示
+  showHelpTooltip?: boolean
+}>()
+
+// 為可選屬性提供計算後的預設值
+const effectiveApiEndpoint = computed(() => props.apiEndpoint || '/admin/expand-rules')
+const effectiveCardInfoType = computed(() => props.cardInfoType || 'teacher')
+const effectiveShowMatrixView = computed(() => props.showMatrixView ?? true)
+const effectiveShowViewModeSelector = computed(() => props.showViewModeSelector ?? true)
+const effectiveShowCreateButton = computed(() => props.showCreateButton ?? true)
+const effectiveShowPersonalEventButton = computed(() => props.showPersonalEventButton ?? false)
+const effectiveShowExceptionButton = computed(() => props.showExceptionButton ?? false)
+const effectiveShowExportButton = computed(() => props.showExportButton ?? false)
+const effectiveShowHelpTooltip = computed(() => props.showHelpTooltip ?? true)
+
+// ============================================
+// Emits 定義
+// ============================================
+
 const emit = defineEmits<{
   selectCell: { time: number, weekday: number }
-  'update:viewMode': [value: 'calendar' | 'teacher_matrix' | 'room_matrix']
-  'update:selectedResourceId': [value: number | null]
+  'update:weekStart': [value: Date]
+  'select-schedule': [schedule: any]
+  'add-personal-event': []
+  'add-exception': []
+  'export': []
+  'edit-personal-event': [event: any]
+  'delete-personal-event': [event: any]
+  'personal-event-note': [event: any]
 }>()
 
-// Alert composable
+// ============================================
+// Composables
+// ============================================
+
 const { confirm: confirmDialog, error: alertError } = useAlert()
-
-// Props
-const props = defineProps<{
-  viewMode: 'calendar' | 'teacher_matrix' | 'room_matrix'
-  selectedResourceId: number | null
-}>()
-
-// Computed with setter for v-model support
-const viewModeModel = computed({
-  get: () => props.viewMode,
-  set: (value) => emit('update:viewMode', value)
-})
-
-const selectedResourceIdModel = computed({
-  get: () => props.selectedResourceId,
-  set: (value) => emit('update:selectedResourceId', value)
-})
-
-// 使用共享的資源緩存
 const { resourceCache, fetchAllResources } = useResourceCache()
+const { getCenterId } = useCenterId()
 
+// ============================================
 // DOM 引用
+// ============================================
+
 const calendarContainerRef = ref<HTMLElement | null>(null)
-const matrixContainerRef = ref<HTMLElement | null>(null)
 const slotWidth = ref(100)
 
-// 格子尺寸常量
+// ============================================
+// 常量定義
+// ============================================
+
 const TIME_SLOT_HEIGHT = 60 // 每個時段格子的高度 (px)
-const RESOURCE_COLUMN_WIDTH = 200 // 資源列寬度 (px)
 const TIME_COLUMN_WIDTH = 80 // 時間列寬度 (px)
+
+// ============================================
+// 狀態管理
+// ============================================
 
 const showCreateModal = ref(false)
 const showEditModal = ref(false)
@@ -353,84 +589,16 @@ const selectedSchedule = ref<any>(null)
 const dragTarget = ref<{ time: number, day: number } | null>(null)
 const validationResults = ref<Record<string, any>>({})
 
-const handleEdit = () => {
-  if (selectedSchedule.value) {
-    editingRule.value = selectedSchedule.value
-    showUpdateModeModal.value = true
-  }
-}
+// 老師端動作選擇對話框狀態
+const showActionDialog = ref(false)
+const actionDialogItem = ref<any>(null)
 
-const handleUpdateModeClose = () => {
-  showUpdateModeModal.value = false
-  editingRule.value = null
-}
+// 管理員端重疊課程選擇對話框狀態
+const showOverlapDialog = ref(false)
+const overlapSchedules = ref<any[]>([])
+const overlapTimeSlot = ref<{ weekday: number, start_hour: number, start_minute: number } | null>(null)
 
-const handleUpdateModeConfirm = (mode: string) => {
-  pendingUpdateMode.value = mode
-  showUpdateModeModal.value = false
-  showEditModal.value = true
-}
-
-const handleEditModalClose = () => {
-  showEditModal.value = false
-  editingRule.value = null
-  pendingUpdateMode.value = ''
-}
-
-const handleDelete = async () => {
-  const confirmed = await confirmDialog('確定要刪除此排課規則？')
-  if (!confirmed || !selectedSchedule.value) return
-
-  try {
-    const api = useApi()
-    await api.delete(`/admin/rules/${selectedSchedule.value.id}`)
-    selectedCell.value = null
-    selectedSchedule.value = null
-    await fetchSchedules()
-  } catch (err) {
-    console.error('Failed to delete rule:', err)
-    await alertError('刪除失敗，請稍後再試')
-  }
-}
-
-const handleRuleUpdated = async (formData: any, updateMode: string) => {
-  try {
-    const api = useApi()
-    await api.put(`/admin/rules/${editingRule.value.id}`, {
-      ...formData,
-      update_mode: updateMode,
-    })
-    await fetchSchedules()
-    selectedCell.value = null
-    selectedSchedule.value = null
-    editingRule.value = null
-    pendingUpdateMode.value = ''
-  } catch (err) {
-    console.error('Failed to update rule:', err)
-    await alertError('更新失敗，請稍後再試')
-  }
-}
-
-// 資源列表
-const resourceList = computed(() => {
-  if (props.viewMode === 'teacher_matrix') {
-    return Array.from(resourceCache.value.teachers.values())
-  } else if (props.viewMode === 'room_matrix') {
-    return Array.from(resourceCache.value.rooms.values())
-  }
-  return []
-})
-
-// 矩陣視圖的資源列表
-const matrixResources = computed(() => {
-  if (props.viewMode === 'teacher_matrix') {
-    return Array.from(resourceCache.value.teachers.values())
-  } else if (props.viewMode === 'room_matrix') {
-    return Array.from(resourceCache.value.rooms.values())
-  }
-  return []
-})
-
+// 週起始日期
 const getWeekStart = (date: Date): Date => {
   const d = new Date(date)
   const day = d.getDay()
@@ -451,6 +619,69 @@ const weekLabel = computed(() => {
   return `${start} - ${end}`
 })
 
+// ============================================
+// 視圖模式管理
+// ============================================
+
+// 內部篩選狀態
+const selectedTeacherId = ref<number | null>(null)
+const selectedRoomId = ref<number | null>(null)
+
+// 老師列表
+const teacherList = computed(() => {
+  return Array.from(resourceCache.value.teachers.values())
+})
+
+// 教室列表
+const roomList = computed(() => {
+  return Array.from(resourceCache.value.rooms.values())
+})
+
+// 資源列表（向後相容）
+const resourceList = computed(() => {
+  return teacherList.value
+})
+
+// 矩陣視圖的資源列表（向後相容）
+const matrixResources = computed(() => {
+  return teacherList.value
+})
+
+// 選中老師名稱
+const selectedTeacherName = computed(() => {
+  const teacher = resourceCache.value.teachers.get(selectedTeacherId.value)
+  if (teacher) {
+    return teacher.name
+  }
+  return ''
+})
+
+// 選中教室名稱
+const selectedRoomName = computed(() => {
+  const room = resourceCache.value.rooms.get(selectedRoomId.value)
+  if (room) {
+    return room.name
+  }
+  return ''
+})
+
+const clearTeacherFilter = () => {
+  selectedTeacherId.value = null
+}
+
+const clearRoomFilter = () => {
+  selectedRoomId.value = null
+}
+
+const clearAllFilters = () => {
+  selectedTeacherId.value = null
+  selectedRoomId.value = null
+}
+
+// ============================================
+// 時間和日期配置
+// ============================================
+
 // 時間段 - 包含 00:00-03:00 和 22:00-23:00
 const timeSlots = [0, 1, 2, 3, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
 
@@ -464,50 +695,26 @@ const weekDays = [
   { value: 7, name: '週日' },
 ]
 
-const schedules = ref<any[]>([])
-const { getCenterId } = useCenterId()
+// ============================================
+// 排課資料
+// ============================================
 
-const selectedResourceName = computed(() => {
-  if (props.viewMode === 'teacher_matrix') {
-    return resourceCache.value.teachers.get(props.selectedResourceId)?.name || '未知老師'
-  } else if (props.viewMode === 'room_matrix') {
-    return resourceCache.value.rooms.get(props.selectedResourceId)?.name || '未知教室'
+const schedules = ref<any[]>([])
+
+// 週切換
+const changeWeek = (delta: number) => {
+  weekStart.value = getWeekStart(new Date(weekStart.value.getTime() + delta * 7 * 24 * 60 * 60 * 1000))
+  emit('update:weekStart', weekStart.value)
+}
+
+// 監聽週變化（僅在沒有傳入 schedules prop 時才獲取資料）
+watch(weekStart, async () => {
+  if (!props.schedules || props.schedules.length === 0) {
+    await fetchSchedules()
   }
-  return ''
 })
 
-const clearViewMode = () => {
-  viewModeModel.value = 'calendar'
-  selectedResourceIdModel.value = null
-}
-
-// 計算課程持續分鐘數
-const calculateDurationMinutes = (startTime: string, endTime: string): number => {
-  const [startHour, startMinute] = startTime.split(':').map(Number)
-  const [endHour, endMinute] = endTime.split(':').map(Number)
-
-  const startMinutes = startHour * 60 + startMinute
-  let endMinutes = endHour * 60 + endMinute
-
-  // 跨日處理
-  if (endMinutes <= startMinutes) {
-    endMinutes += 24 * 60
-  }
-
-  return endMinutes - startMinutes
-}
-
-// 計算格子寬度
-const calculateSlotWidth = () => {
-  if (props.viewMode === 'calendar' && calendarContainerRef.value) {
-    const containerWidth = calendarContainerRef.value.offsetWidth
-    slotWidth.value = Math.max(80, (containerWidth - TIME_COLUMN_WIDTH) / 7)
-  } else if (props.viewMode !== 'calendar' && matrixContainerRef.value) {
-    const containerWidth = matrixContainerRef.value.offsetWidth
-    slotWidth.value = Math.max(80, (containerWidth - RESOURCE_COLUMN_WIDTH) / 7)
-  }
-}
-
+// 取得排課資料
 const fetchSchedules = async () => {
   try {
     const api = useApi()
@@ -516,12 +723,22 @@ const fetchSchedules = async () => {
     const startDate = formatDateToString(weekStart.value)
     const endDate = formatDateToString(weekEnd.value)
 
-    // 使用 ExpandRules API，取得已展開並處理例外的排課
-    const response = await api.post<{ code: number; datas: any[] }>('/admin/expand-rules', {
-      rule_ids: [],
-      start_date: startDate,
-      end_date: endDate,
-    })
+    // 根據模式選擇 API
+    let response
+    if (props.mode === 'teacher') {
+      // 老師端使用 /teacher/schedules
+      response = await api.get<{ code: number; datas: any[] }>('/teacher/schedules', {
+        start_date: startDate,
+        end_date: endDate,
+      })
+    } else {
+      // 管理員使用 expand-rules API
+      response = await api.post<{ code: number; datas: any[] }>(effectiveApiEndpoint.value, {
+        rule_ids: [],
+        start_date: startDate,
+        end_date: endDate,
+      })
+    }
 
     const expandedSchedules = response.datas || []
 
@@ -535,11 +752,13 @@ const fetchSchedules = async () => {
       const durationMinutes = calculateDurationMinutes(startTime, endTime)
 
       return {
-        id: schedule.rule_id,
-        key: `${schedule.rule_id}-${weekday}-${startTime}-${schedule.date}`,
+        id: schedule.rule_id || schedule.id,
+        key: `${schedule.rule_id || schedule.id}-${weekday}-${startTime}-${schedule.date}`,
         offering_name: schedule.offering_name || '-',
         teacher_name: schedule.teacher_name || '-',
         teacher_id: schedule.teacher_id,
+        center_name: schedule.center_name || '-',
+        center_id: schedule.center_id,
         room_id: schedule.room_id,
         room_name: schedule.room_name || '-',
         weekday: weekday,
@@ -569,12 +788,16 @@ const fetchSchedules = async () => {
   }
 }
 
-// 去重後的排課
+// 去重後的排課（優先使用 prop 資料，否則使用內部資料）
 const displaySchedules = computed(() => {
+  const sourceSchedules = props.schedules && props.schedules.length > 0
+    ? props.schedules
+    : schedules.value
+
   const seen = new Set<string>()
   const result: any[] = []
 
-  for (const schedule of schedules.value) {
+  for (const schedule of sourceSchedules) {
     const key = `${schedule.id}-${schedule.weekday}-${schedule.start_time}`
     if (!seen.has(key)) {
       seen.add(key)
@@ -585,45 +808,98 @@ const displaySchedules = computed(() => {
   return result
 })
 
-// 根據視角模式過濾排課
+// 計算每個時段的重疊數量（基於過濾後的課程）
+const overlapCountMap = computed(() => {
+  const countMap: Record<string, number> = {}
+
+  for (const schedule of filteredSchedules.value) {
+    const key = `${schedule.weekday}-${schedule.start_hour}-${schedule.start_minute}`
+    countMap[key] = (countMap[key] || 0) + 1
+  }
+
+  return countMap
+})
+
+// 取得某個課程的重疊數量
+const getOverlapCount = (schedule: any) => {
+  const key = `${schedule.weekday}-${schedule.start_hour}-${schedule.start_minute}`
+  return overlapCountMap.value[key] || 1
+}
+
+// 判斷是否為重疊群組中的第一個（用於顯示指示器）
+const isFirstInOverlap = (schedule: any) => {
+  const key = `${schedule.weekday}-${schedule.start_hour}-${schedule.start_minute}`
+  const allAtSameTime = filteredSchedules.value.filter(s =>
+    `${s.weekday}-${s.start_hour}-${s.start_minute}` === key
+  )
+  // 按 id 排序，返回第一個
+  allAtSameTime.sort((a, b) => a.id - b.id)
+  return allAtSameTime[0]?.id === schedule.id
+}
+
+// 取得同一時段的所有課程
+const getSchedulesAtSameTime = (schedule: any) => {
+  return filteredSchedules.value.filter(s =>
+    s.weekday === schedule.weekday &&
+    s.start_hour === schedule.start_hour &&
+    s.start_minute === schedule.start_minute
+  )
+}
+
+// 週曆視圖顯示的課程（根據選中的老師和教室過濾）
 const filteredSchedules = computed(() => {
-  if (props.viewMode === 'calendar' || !props.selectedResourceId) {
+  // 如果都沒有選中，返回全部
+  if (!selectedTeacherId.value && !selectedRoomId.value) {
     return displaySchedules.value
   }
 
+  // 同時篩選老師和教室（AND 邏輯）
   return displaySchedules.value.filter(schedule => {
-    if (props.viewMode === 'teacher_matrix') {
-      return schedule.teacher_id === props.selectedResourceId
-    } else if (props.viewMode === 'room_matrix') {
-      return schedule.room_id === props.selectedResourceId
-    }
-    return false
+    // 檢查老師（如果選中了老師）
+    const teacherMatch = !selectedTeacherId.value || schedule.teacher_id === selectedTeacherId.value
+    // 檢查教室（如果選中了教室）
+    const roomMatch = !selectedRoomId.value || schedule.room_id === selectedRoomId.value
+    // 兩者都符合才返回
+    return teacherMatch && roomMatch
   })
 })
 
-// 矩陣視圖：取得特定資源的排課
-const getMatrixSchedulesForResource = (resourceId: number) => {
-  return filteredSchedules.value.filter(s => {
-    if (props.viewMode === 'teacher_matrix') {
-      return s.teacher_id === resourceId
-    } else if (props.viewMode === 'room_matrix') {
-      return s.room_id === resourceId
-    }
-    return false
-  })
+// ============================================
+// 卡片定位計算
+// ============================================
+
+// 計算格子寬度
+const calculateSlotWidth = () => {
+  if (calendarContainerRef.value) {
+    const containerWidth = calendarContainerRef.value.offsetWidth
+    slotWidth.value = Math.max(80, (containerWidth - TIME_COLUMN_WIDTH) / 7)
+  }
 }
 
-const changeWeek = (delta: number) => {
-  weekStart.value = getWeekStart(new Date(weekStart.value.getTime() + delta * 7 * 24 * 60 * 60 * 1000))
-}
+// 計算課程持續分鐘數
+const calculateDurationMinutes = (startTime: string, endTime: string): number => {
+  const [startHour, startMinute] = startTime.split(':').map(Number)
+  const [endHour, endMinute] = endTime.split(':').map(Number)
 
-// 監聽週變化
-watch(weekStart, async () => {
-  await fetchSchedules()
-})
+  const startMinutes = startHour * 60 + startMinute
+  let endMinutes = endHour * 60 + endMinute
+
+  // 跨日處理
+  if (endMinutes <= startMinutes) {
+    endMinutes += 24 * 60
+  }
+
+  return endMinutes - startMinutes
+}
 
 const formatTime = (hour: number): string => {
   return `${hour.toString().padStart(2, '0')}:00`
+}
+
+// 取得星期文字
+const getWeekdayText = (weekday: number): string => {
+  const days = ['週日', '週一', '週二', '週三', '週四', '週五', '週六']
+  return days[weekday - 1] || ''
 }
 
 // 週曆視圖：計算課程卡片樣式
@@ -631,14 +907,10 @@ const getScheduleStyle = (schedule: any) => {
   const { weekday, start_hour, start_minute, duration_minutes } = schedule
 
   // 計算水平位置 - 對齊到星期網格
-  // 網格結構：時間列(80px) + 7天網格
-  // 卡片容器 left-[80px] 是從時間列右邊開始
-  // 卡片需要額外加上 TIME_COLUMN_WIDTH 才能對齊到正確的星期列
   const dayIndex = weekday - 1 // 0-6
   const left = TIME_COLUMN_WIDTH + (dayIndex * slotWidth.value)
 
   // 計算垂直位置
-  // 計算 start_hour 前面有多少個時段格子
   let topSlotIndex = 0
   for (let t = 0; t < start_hour; t++) {
     if (t >= 0 && t <= 3) {
@@ -648,11 +920,8 @@ const getScheduleStyle = (schedule: any) => {
     }
   }
 
-  // 每個格子高度 60px
   const slotHeight = TIME_SLOT_HEIGHT
   const baseTop = topSlotIndex * slotHeight
-
-  // 加上分鐘偏移
   const minuteOffset = (start_minute / 60) * slotHeight
   const top = baseTop + minuteOffset
 
@@ -670,39 +939,9 @@ const getScheduleStyle = (schedule: any) => {
   }
 }
 
-// 矩陣視圖：計算課程卡片樣式
-const getMatrixScheduleStyle = (schedule: any, resourceId: number) => {
-  const { weekday, start_hour, start_minute, duration_minutes } = schedule
-
-  // 計算水平位置
-  const dayIndex = weekday - 1 // 0-6
-  const left = dayIndex * slotWidth.value
-
-  // 計算垂直位置
-  let topSlotIndex = 0
-  for (let t = 0; t < start_hour; t++) {
-    if (t >= 0 && t <= 3) {
-      topSlotIndex++
-    } else if (t >= 9) {
-      topSlotIndex++
-    }
-  }
-
-  const slotHeight = TIME_SLOT_HEIGHT
-  const baseTop = topSlotIndex * slotHeight
-  const minuteOffset = (start_minute / 60) * slotHeight
-  const top = baseTop + minuteOffset
-
-  const height = (duration_minutes / 60) * slotHeight
-  const width = slotWidth.value - 4
-
-  return {
-    left: `${left}px`,
-    top: `${top}px`,
-    width: `${width}px`,
-    height: `${height}px`,
-  }
-}
+// ============================================
+// 樣式相關
+// ============================================
 
 const getCellClass = (time: number, weekday: number): string => {
   const key = `${time}-${weekday}`
@@ -722,6 +961,12 @@ const getCellClass = (time: number, weekday: number): string => {
 const getScheduleCardClass = (schedule: any): string => {
   if (!schedule) return ''
 
+  // 個人行程使用不同的樣式
+  if (schedule.is_personal_event) {
+    const baseColor = schedule.color_hex || '#a855f7' // 紫色預設
+    return 'border border-white/20'
+  }
+
   if (schedule.has_exception) {
     switch (schedule.exception_type) {
       case 'CANCEL':
@@ -738,11 +983,170 @@ const getScheduleCardClass = (schedule: any): string => {
   return 'bg-slate-700/80 border border-white/10'
 }
 
+// ============================================
+// 互動處理
+// ============================================
+
 const selectSchedule = (schedule: any) => {
-  selectedCell.value = { time: schedule.start_hour, day: schedule.weekday }
-  selectedSchedule.value = schedule
-  emit('selectCell', { time: schedule.start_hour, weekday: schedule.weekday })
+  if (props.mode === 'teacher') {
+    // 老師端顯示動作選擇對話框
+    actionDialogItem.value = schedule
+    showActionDialog.value = true
+    emit('select-schedule', schedule)
+  } else {
+    // 管理員端顯示詳情面板
+    selectedSchedule.value = schedule
+    emit('selectCell', { time: schedule.start_hour, weekday: schedule.weekday })
+  }
 }
+
+// 關閉動作選擇對話框
+const closeActionDialog = () => {
+  showActionDialog.value = false
+  actionDialogItem.value = null
+}
+
+// 關閉管理員課程詳情面板
+const closeSchedulePanel = () => {
+  selectedSchedule.value = null
+  selectedCell.value = null
+}
+
+// 處理重疊指示器點擊（管理員端）
+const handleOverlapClick = (schedule: any) => {
+  const schedulesAtSameTime = getSchedulesAtSameTime(schedule)
+
+  if (schedulesAtSameTime.length === 1) {
+    // 只有一堂課，直接選擇
+    selectSchedule(schedule)
+  } else {
+    // 多堂課，顯示選擇對話框
+    overlapSchedules.value = schedulesAtSameTime
+    overlapTimeSlot.value = {
+      weekday: schedule.weekday,
+      start_hour: schedule.start_hour,
+      start_minute: schedule.start_minute
+    }
+    showOverlapDialog.value = true
+  }
+}
+
+// 關閉重疊選擇對話框
+const closeOverlapDialog = () => {
+  showOverlapDialog.value = false
+  overlapSchedules.value = []
+  overlapTimeSlot.value = null
+}
+
+// 選擇重疊課程中的某一堂
+const selectFromOverlap = (schedule: any) => {
+  selectSchedule(schedule)
+  closeOverlapDialog()
+}
+
+// 處理動作選擇
+const handleActionSelect = (action: 'exception' | 'note' | 'edit' | 'delete') => {
+  const item = actionDialogItem.value
+  if (!item) return
+
+  if (item.is_personal_event) {
+    // 個人行程處理
+    if (action === 'edit') {
+      emit('edit-personal-event', item)
+    } else if (action === 'delete') {
+      emit('delete-personal-event', item)
+    } else if (action === 'note') {
+      // 個人行程備註 - 延遲 emit 確保對話框已關閉
+      setTimeout(() => {
+        emit('personal-event-note', { ...item, action: 'note' })
+      }, 100)
+    }
+  } else {
+    // 中心課程處理
+    if (action === 'exception') {
+      emit('add-exception', item)
+    } else if (action === 'note') {
+      // 課堂備註功能 - 延遲 emit 確保對話框已關閉
+      setTimeout(() => {
+        emit('select-schedule', { ...item, action: 'note' })
+      }, 100)
+    }
+  }
+
+  closeActionDialog()
+}
+
+// 管理員端：編輯
+const handleEdit = () => {
+  if (selectedSchedule.value) {
+    editingRule.value = selectedSchedule.value
+    showUpdateModeModal.value = true
+  }
+}
+
+// 管理員端：更新模式確認
+const handleUpdateModeClose = () => {
+  showUpdateModeModal.value = false
+  editingRule.value = null
+}
+
+const handleUpdateModeConfirm = (mode: string) => {
+  pendingUpdateMode.value = mode
+  showUpdateModeModal.value = false
+  showEditModal.value = true
+}
+
+// 管理員端：編輯 modal 關閉
+const handleEditModalClose = () => {
+  showEditModal.value = false
+  editingRule.value = null
+  pendingUpdateMode.value = ''
+}
+
+// 管理員端：刪除
+const handleDelete = async () => {
+  const confirmed = await confirmDialog('確定要刪除此排課規則？')
+  if (!confirmed || !selectedSchedule.value) return
+
+  try {
+    const api = useApi()
+    await api.delete(`/admin/rules/${selectedSchedule.value.id}`)
+    selectedCell.value = null
+    selectedSchedule.value = null
+    await fetchSchedules()
+  } catch (err) {
+    console.error('Failed to delete rule:', err)
+    await alertError('刪除失敗，請稍後再試')
+  }
+}
+
+// 管理員端：更新排課規則
+const handleRuleUpdated = async (formData: any, updateMode: string) => {
+  try {
+    const api = useApi()
+    await api.put(`/admin/rules/${editingRule.value.id}`, {
+      ...formData,
+      update_mode: updateMode,
+    })
+    await fetchSchedules()
+    selectedCell.value = null
+    selectedSchedule.value = null
+    editingRule.value = null
+    pendingUpdateMode.value = ''
+  } catch (err) {
+    console.error('Failed to update rule:', err)
+    await alertError('更新失敗，請稍後再試')
+  }
+}
+
+// 新增排課規則後
+const handleRuleCreated = () => {
+  fetchSchedules()
+}
+
+// ============================================
+// 拖曳處理（僅管理員）
+// ============================================
 
 const handleDragOver = (event: DragEvent) => {
   if (dragTarget.value) {
@@ -785,8 +1189,8 @@ const handleDrop = async (event: DragEvent) => {
     const response = await api.post<any>('/admin/scheduling/check-overlap', {
       teacher_id: teacherId,
       room_id: roomId,
-      start_time: `${formatDate(weekStart.value)}T${formatTime(dragTarget.value.time)}:00`,
-      end_time: `${formatDate(weekStart.value)}T${formatTime(dragTarget.value.time + 1)}:00`,
+      start_time: `${formatDateToString(weekStart.value)}T${formatTime(dragTarget.value.time)}:00`,
+      end_time: `${formatDateToString(weekStart.value)}T${formatTime(dragTarget.value.time + 1)}:00`,
     })
 
     if (response.data.valid) {
@@ -802,38 +1206,41 @@ const handleDrop = async (event: DragEvent) => {
   dragTarget.value = null
 }
 
-const formatDate = (date: Date): string => {
-  return formatDateToString(date)
-}
+// ============================================
+// 生命週期
+// ============================================
 
-const handleRuleCreated = () => {
-  fetchSchedules()
-}
+// ResizeObserver 引用（用於清理）
+const resizeObserver = ref<ResizeObserver | null>(null)
 
 onMounted(async () => {
-  await fetchSchedules()
-  fetchAllResources()
+  // 只有當沒有傳入 schedules prop 時才獲取資料
+  if (!props.schedules || props.schedules.length === 0) {
+    await fetchSchedules()
+  }
+
+  // 管理員模式需要載入資源
+  if (props.mode === 'admin') {
+    fetchAllResources()
+  }
 
   // 等待 DOM 更新後計算槽寬度
   await nextTick()
   calculateSlotWidth()
 
   // 監控容器大小變化
-  if (calendarContainerRef.value || matrixContainerRef.value) {
-    const resizeObserver = new ResizeObserver(() => {
+  if (calendarContainerRef.value) {
+    resizeObserver.value = new ResizeObserver(() => {
       calculateSlotWidth()
     })
+    resizeObserver.value.observe(calendarContainerRef.value)
+  }
+})
 
-    if (calendarContainerRef.value) {
-      resizeObserver.observe(calendarContainerRef.value)
-    }
-    if (matrixContainerRef.value) {
-      resizeObserver.observe(matrixContainerRef.value)
-    }
-
-    onUnmounted(() => {
-      resizeObserver.disconnect()
-    })
+// 確保在組件卸載時正確清理
+onUnmounted(() => {
+  if (resizeObserver.value) {
+    resizeObserver.value.disconnect()
   }
 })
 </script>

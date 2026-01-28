@@ -5,11 +5,12 @@
       <span v-if="required" class="text-critical-500 ml-1">*</span>
     </label>
     <input
-      v-model="modelValue"
+      :value="modelValue"
       :type="type"
       :placeholder="placeholder"
       :disabled="disabled"
       :class="inputClasses"
+      @input="handleInput"
       @blur="$emit('blur', $event)"
       @focus="$emit('focus', $event)"
     />
@@ -39,11 +40,16 @@ const props = withDefaults(defineProps<Props>(), {
   size: 'md',
 })
 
-defineEmits<{
+const emit = defineEmits<{
   'update:modelValue': [value: string | number]
   blur: [event: Event]
   focus: [event: Event]
 }>()
+
+const handleInput = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  emit('update:modelValue', target.value)
+}
 
 const wrapperClasses = computed(() => {
   return props.disabled ? 'opacity-50 cursor-not-allowed' : ''

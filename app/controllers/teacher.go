@@ -530,7 +530,7 @@ func (ctl *TeacherController) GetSchedule(ctx *gin.Context) {
 				}
 
 				schedule = append(schedule, TeacherScheduleItem{
-					ID:             fmt.Sprintf("center_%d_rule_%d_%s_%s", m.CenterID, item.RuleID, item.Date.Format("20060102"), func() string {
+					ID: fmt.Sprintf("center_%d_rule_%d_%s_%s", m.CenterID, item.RuleID, item.Date.Format("20060102"), func() string {
 						if item.IsCrossDayPart {
 							if item.StartTime == "00:00" {
 								return "end"
@@ -871,19 +871,19 @@ func (ctl *TeacherController) GetExceptions(ctx *gin.Context) {
 }
 
 type TeacherScheduleItem struct {
-	ID            string `json:"id"`
-	Type          string `json:"type"`
-	Title         string `json:"title"`
-	Date          string `json:"date"`
-	StartTime     string `json:"start_time"`
-	EndTime       string `json:"end_time"`
-	RoomID        uint   `json:"room_id"`
-	TeacherID     *uint  `json:"teacher_id"`
-	CenterID      uint   `json:"center_id"`
-	CenterName    string `json:"center_name"`
-	Status        string `json:"status"`
-	RuleID        uint   `json:"rule_id"`                     // 用於關聯課堂筆記
-	IsCrossDayPart bool  `json:"is_cross_day_part,omitempty"` // 跨日課程的一部分
+	ID             string `json:"id"`
+	Type           string `json:"type"`
+	Title          string `json:"title"`
+	Date           string `json:"date"`
+	StartTime      string `json:"start_time"`
+	EndTime        string `json:"end_time"`
+	RoomID         uint   `json:"room_id"`
+	TeacherID      *uint  `json:"teacher_id"`
+	CenterID       uint   `json:"center_id"`
+	CenterName     string `json:"center_name"`
+	Status         string `json:"status"`
+	RuleID         uint   `json:"rule_id"`                     // 用於關聯課堂筆記
+	IsCrossDayPart bool   `json:"is_cross_day_part,omitempty"` // 跨日課程的一部分
 }
 
 type TeacherCreateExceptionRequest struct {
@@ -1492,7 +1492,7 @@ func (ctl *TeacherController) UploadCertificateFile(ctx *gin.Context) {
 		Code:    0,
 		Message: "File uploaded successfully",
 		Datas: UploadFileResponse{
-			FileURL: fileURL,
+			FileURL:  fileURL,
 			FileName: file.Filename,
 			FileSize: file.Size,
 		},
@@ -1830,6 +1830,14 @@ type UpdatePersonalEventRequest struct {
 type UpdatePersonalEventResponse struct {
 	UpdatedCount int64  `json:"updated_count"`
 	Message      string `json:"message"`
+}
+
+type UpdatePersonalEventNoteRequest struct {
+	Content string `json:"content" binding:"required"`
+}
+
+type PersonalEventNoteResponse struct {
+	Content string `json:"content"`
 }
 
 // UpdatePersonalEvent 更新老師個人行程
@@ -2489,5 +2497,129 @@ func (ctl *TeacherController) DeleteRecurringSchedule(ctx *gin.Context) {
 		Code:    0,
 		Message: "Schedule deleted successfully",
 		Datas:   result,
+	})
+}
+
+// GetPersonalEventNote 取得個人行程備註
+// @Summary 取得個人行程備註
+// @Tags Teacher
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path uint true "行程ID"
+// @Success 200 {object} global.ApiResponse{data=PersonalEventNoteResponse}
+// @Router /api/v1/teacher/me/personal-events/{id}/note [get]
+func (ctl *TeacherController) GetPersonalEventNote(ctx *gin.Context) {
+	teacherID := ctx.GetUint(global.UserIDKey)
+	if teacherID == 0 {
+		ctx.JSON(http.StatusUnauthorized, global.ApiResponse{
+			Code:    errInfos.UNAUTHORIZED,
+			Message: "Teacher ID not found",
+		})
+		return
+	}
+
+	var id uint
+	if _, err := fmt.Sscanf(ctx.Param("id"), "%d", &id); err != nil {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    errInfos.PARAMS_VALIDATE_ERROR,
+			Message: "Invalid personal event ID",
+		})
+		return
+	}
+
+	event, err := ctl.personalEventRepo.GetByID(ctx, id)
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, global.ApiResponse{
+			Code:    errInfos.NOT_FOUND,
+			Message: "Personal event not found",
+		})
+		return
+	}
+
+	if event.TeacherID != teacherID {
+		ctx.JSON(http.StatusForbidden, global.ApiResponse{
+			Code:    errInfos.FORBIDDEN,
+			Message: "Not authorized to view this personal event",
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, global.ApiResponse{
+		Code:    0,
+		Message: "Success",
+		Datas: PersonalEventNoteResponse{
+			Content: event.Note,
+		},
+	})
+}
+
+// UpdatePersonalEventNote 更新個人行程備註
+// @Summary 更新個人行程備註
+// @Tags Teacher
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path uint true "行程ID"
+// @Param request body UpdatePersonalEventNoteRequest true "備註內容"
+// @Success 200 {object} global.ApiResponse
+// @Router /api/v1/teacher/me/personal-events/{id}/note [put]
+func (ctl *TeacherController) UpdatePersonalEventNote(ctx *gin.Context) {
+	teacherID := ctx.GetUint(global.UserIDKey)
+	if teacherID == 0 {
+		ctx.JSON(http.StatusUnauthorized, global.ApiResponse{
+			Code:    errInfos.UNAUTHORIZED,
+			Message: "Teacher ID not found",
+		})
+		return
+	}
+
+	var id uint
+	if _, err := fmt.Sscanf(ctx.Param("id"), "%d", &id); err != nil {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    errInfos.PARAMS_VALIDATE_ERROR,
+			Message: "Invalid personal event ID",
+		})
+		return
+	}
+
+	event, err := ctl.personalEventRepo.GetByID(ctx, id)
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, global.ApiResponse{
+			Code:    errInfos.NOT_FOUND,
+			Message: "Personal event not found",
+		})
+		return
+	}
+
+	if event.TeacherID != teacherID {
+		ctx.JSON(http.StatusForbidden, global.ApiResponse{
+			Code:    errInfos.FORBIDDEN,
+			Message: "Not authorized to update this personal event",
+		})
+		return
+	}
+
+	var req UpdatePersonalEventNoteRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    errInfos.PARAMS_VALIDATE_ERROR,
+			Message: "Invalid request body: " + err.Error(),
+		})
+		return
+	}
+
+	// 更新備註
+	if err := ctl.personalEventRepo.UpdateNote(ctx, id, req.Content); err != nil {
+		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
+			Code:    errInfos.SQL_ERROR,
+			Message: "Failed to update note",
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, global.ApiResponse{
+		Code:    0,
+		Message: "Note updated successfully",
 	})
 }

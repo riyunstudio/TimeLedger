@@ -5,31 +5,32 @@ import (
 	"errors"
 	"fmt"
 
-	"golang.org/x/crypto/bcrypt"
 	"timeLedger/app"
 	"timeLedger/app/models"
 	"timeLedger/app/repositories"
 	jwt "timeLedger/libs/jwt"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 type authService struct {
 	BaseService
-	app                  *app.App
-	adminRepository      *repositories.AdminUserRepository
-	teacherRepository    *repositories.TeacherRepository
-	centerRepository     *repositories.CenterRepository
-	notificationService  NotificationQueueService
-	jwt                  *jwt.JWT
+	app                 *app.App
+	adminRepository     *repositories.AdminUserRepository
+	teacherRepository   *repositories.TeacherRepository
+	centerRepository    *repositories.CenterRepository
+	notificationService NotificationQueueService
+	jwt                 *jwt.JWT
 }
 
 func NewAuthService(app *app.App) *authService {
 	return &authService{
 		app:                 app,
 		adminRepository:     repositories.NewAdminUserRepository(app),
-		teacherRepository:    repositories.NewTeacherRepository(app),
+		teacherRepository:   repositories.NewTeacherRepository(app),
 		centerRepository:    repositories.NewCenterRepository(app),
 		notificationService: NewNotificationQueueService(app),
-		jwt:                  jwt.NewJWT(app.Env.JWTSecret),
+		jwt:                 jwt.NewJWT(app.Env.JWTSecret),
 	}
 }
 
@@ -53,7 +54,7 @@ func (s *authService) AdminLogin(ctx context.Context, email, password string) (L
 	}
 
 	claims := jwt.Claims{
-		UserType: "ADMIN",
+		UserType: admin.Role,
 		UserID:   admin.ID,
 		CenterID: admin.CenterID,
 	}
@@ -72,7 +73,7 @@ func (s *authService) AdminLogin(ctx context.Context, email, password string) (L
 		Token: token,
 		User: IdentInfo{
 			ID:       admin.ID,
-			UserType: "ADMIN",
+			UserType: admin.Role,
 			Name:     admin.Name,
 			Email:    admin.Email,
 			CenterID: admin.CenterID,
@@ -136,7 +137,7 @@ func (s *authService) RefreshToken(ctx context.Context, token string) (LoginResp
 		return LoginResponse{}, err
 	}
 
-	if claims.UserType == "ADMIN" {
+	if claims.UserType == "ADMIN" || claims.UserType == "OWNER" {
 		admin, err := s.adminRepository.GetByID(ctx, claims.UserID)
 		if err != nil {
 			return LoginResponse{}, err
@@ -145,7 +146,7 @@ func (s *authService) RefreshToken(ctx context.Context, token string) (LoginResp
 			Token: token,
 			User: IdentInfo{
 				ID:       admin.ID,
-				UserType: "ADMIN",
+				UserType: admin.Role,
 				Name:     admin.Name,
 				Email:    admin.Email,
 				CenterID: admin.CenterID,

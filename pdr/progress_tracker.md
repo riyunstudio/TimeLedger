@@ -1171,3 +1171,263 @@ type ValidationSummary struct {
 2. **去重機制**：防止同一堂課重複顯示
 3. **時間匹配修正**：非整點開始的課程顯示在正確位置
 4. **跨日課程支援**：分割後的跨日課程正確顯示
+
+## 21. 管理員儀表板簡化與雙重篩選功能 (Dashboard Simplification & Dual Filter) - 2026/01/28
+
+### 21.1 開發摘要 ✅
+
+本階段完成了管理員儀表板的簡化工作，移除了右側面板，新增了老師和教室的雙重篩選功能。
+
+### 21.2 完成項目 ✅
+
+#### 21.2.1 移除右側面板 ✅
+| 變更 | 說明 |
+|:---|:---|
+| 刪除 `ScheduleResourcePanel.vue` | 右側資源面板已移除 |
+| 簡化 `admin/dashboard.vue` | 僅保留今日課表摘要和 ScheduleGrid |
+| 簡化 `teacher/dashboard.vue` | 僅保留週課表顯示 |
+
+#### 21.2.2 雙重篩選功能 ✅
+| 功能 | 說明 |
+|:---|:---|
+| 老師篩選 | 獨立的的下拉選單，顯示所有老師列表 |
+| 教室篩選 | 獨立的的下拉選單，顯示所有教室列表 |
+| AND 邏輯 | 同時篩選時，只顯示符合兩者條件的課程 |
+| 篩選提示 | 顯示已選取的老師/教室名稱，可快速清除 |
+
+#### 21.2.3 程式碼清理 ✅
+| 項目 | 說明 |
+|:---|:---|
+| 移除矩陣視圖相關程式碼 | `viewModeModel`、`matrixContainerRef`、`getMatrixScheduleStyle` 等 |
+| 簡化 ScheduleGrid 內部邏輯 | 移除多餘的視圖模式切換 |
+| 清理未使用的變數和屬性 | 減少程式碼複雜度 |
+
+### 21.3 修復的 Bug ✅
+
+| Bug | 說明 | 修復方式 |
+|:---|:---|:---|
+| 模板標籤配對錯誤 | 多餘的 `</div>` 標籤 | 移除多餘的閉合標籤 |
+| computed 定義不完整 | `selectedTeacherIdModel` 缺少閉合 | 修正 computed 定義 |
+| 篩選邏輯無效 | 使用 props 而非內部 ref | 改用內部 `ref<number \| null>(null)` |
+
+### 21.4 檔案變更 ✅
+| 檔案 | 變更類型 | 說明 |
+|:---|:---:|:---|
+| `frontend/components/ScheduleResourcePanel.vue` | 刪除 | 右側資源面板 |
+| `frontend/pages/admin/dashboard.vue` | 修改 | 簡化佈局，移除右側面板 |
+| `frontend/pages/teacher/dashboard.vue` | 修改 | 簡化佈局 |
+| `frontend/components/ScheduleGrid.vue` | 修改 | 新增雙重篩選，移除矩陣視圖 |
+| `frontend/components/TeacherScheduleGrid.vue` | 修改 | 簡化程式碼 |
+| `frontend/composables/useResourceCache.ts` | 修改 | 資源快取優化 |
+
+### 21.5 變更統計 ✅
+```
+6 files changed
+- Deleted: 1 file
+- Modified: 5 files
+```
+
+### 21.6 總結 ✅
+本階段完成了管理員儀表板的簡化工作：
+1. **移除右側面板**：刪除 `ScheduleResourcePanel.vue`，簡化 dashboard 佈局
+2. **雙重篩選功能**：老師和教室各自獨立的下拉選單，支援 AND 邏輯
+3. **程式碼清理**：移除矩陣視圖相關程式碼，減少程式碼複雜度
+4. **Bug 修復**：修正模板標籤配對、computed 定義、篩選邏輯等問題
+
+## 22. 管理員帳號設定功能 (Admin Account Settings) - 2026/01/28
+
+### 22.1 開發摘要 ✅
+
+本階段新增了管理員帳號設定功能，包括修改密碼和個人資料顯示。
+
+### 22.2 完成項目 ✅
+
+#### 22.2.1 修改密碼功能 ✅
+| 功能 | 說明 |
+|:---|:---|
+| API 端點 | `POST /api/v1/admin/me/change-password` |
+| 驗證舊密碼 | 確認舊密碼正確後才允許修改 |
+| 密碼強度驗證 | 至少 6 個字元 |
+| 確認密碼 | 防止輸入錯誤 |
+
+#### 22.2.2 個人資料顯示 ✅
+| 欄位 | 說明 |
+|:---|:---|
+| 姓名 | 顯示管理員名稱 |
+| Email | 顯示管理員登入 Email |
+| 角色 | 顯示角色（擁有者/管理員/員工） |
+| 所屬中心 | 顯示管理員所屬中心名稱 |
+
+#### 22.2.3 LINE 綁定入口 ✅
+| 功能 | 說明 |
+|:---|:---|
+| 綁定狀態顯示 | 顯示是否已綁定 LINE |
+| 快速連結 | 提供連結到 LINE 綁定頁面 |
+
+### 22.3 檔案變更 ✅
+| 檔案 | 變更類型 | 說明 |
+|:---|:---:|:---|
+| `app/controllers/admin_user.go` | 修改 | 新增 ChangePassword、GetAdminProfile 方法 |
+| `app/services/admin_user.go` | 修改 | 新增 ChangePassword、GetAdminProfile 方法 |
+| `global/errInfos/code.go` | 修改 | 新增 PASSWORD_NOT_MATCH 錯誤碼 |
+| `global/errInfos/message.go` | 修改 | 新增錯誤碼對應訊息 |
+| `app/servers/route.go` | 修改 | 新增 /admin/me/profile 和 /admin/me/change-password 路由 |
+| `frontend/pages/admin/settings.vue` | 新增 | 管理員設定頁面 |
+| `frontend/components/AdminSidebar.vue` | 修改 | 更新 Settings 連結 |
+
+### 22.4 API 端點 ✅
+| 方法 | 路徑 | 功能 |
+|:---|:---|:---|
+| GET | `/api/v1/admin/me/profile` | 取得管理員個人資料 |
+| POST | `/api/v1/admin/me/change-password` | 修改管理員密碼 |
+
+### 22.5 變更統計 ✅
+```
+7 files changed
+- Added: 1 file
+- Modified: 6 files
+```
+
+### 22.6 總結 ✅
+本階段完成了管理員帳號設定功能：
+1. **修改密碼**：支援舊密碼驗證和新密碼設定
+2. **個人資料顯示**：姓名、Email、角色、所屬中心
+3. **LINE 綁定入口**：快速連結到 LINE 綁定頁面
+4. **登出功能**：安全的帳號登出
+
+## 23. 管理員管理功能 (Admin Management) - 2026/01/28
+
+### 23.1 開發摘要 ✅
+
+本階段新增了管理員管理功能，包括管理員列表、停用/啟用管理員、重設密碼。
+
+### 23.2 完成項目 ✅
+
+#### 23.2.1 管理員列表 ✅
+| 功能 | 說明 |
+|:---|:---|
+| 列表顯示 | 顯示所有中心管理員 |
+| 欄位資訊 | 姓名、Email、角色、狀態、LINE 綁定狀態 |
+| 權限標記 | 標記「本人」帳號 |
+
+#### 23.2.2 停用/啟用管理員 ✅
+| 功能 | 說明 |
+|:---|:---|
+| 狀態切換 | 可停用或啟用管理員帳號 |
+| 權限限制 | 僅 OWNER 可執行 |
+| 保護機制 | 不能停用 OWNER，不能停用自己 |
+
+#### 23.2.3 重設密碼 ✅
+| 功能 | 說明 |
+|:---|:---|
+| 密碼重設 | 可為其他管理員重設密碼 |
+| 權限限制 | 僅 OWNER 可執行 |
+| 密碼驗證 | 新密碼至少 6 個字元 |
+
+### 23.3 檔案變更 ✅
+| 檔案 | 變更類型 | 說明 |
+|:---|:---:|:---|
+| `app/controllers/admin_user.go` | 修改 | 新增 ListAdmins、ToggleAdminStatus、ResetAdminPassword 方法 |
+| `app/services/admin_user.go` | 修改 | 新增 ListAdmins、ToggleAdminStatus、ResetAdminPassword 方法 |
+| `global/errInfos/code.go` | 修改 | 新增 ADMIN_CANNOT_DISABLE_SELF 錯誤碼 |
+| `global/errInfos/message.go` | 修改 | 新增錯誤碼對應訊息 |
+| `app/servers/route.go` | 修改 | 新增管理員管理 API 路由 |
+| `frontend/pages/admin/admin-list.vue` | 新增 | 管理員管理頁面 |
+| `frontend/components/AdminSidebar.vue` | 修改 | 新增管理員連結 |
+
+### 23.4 API 端點 ✅
+| 方法 | 路徑 | 功能 | 權限 |
+|:---|:---|:---|:---|
+| GET | `/api/v1/admin/admins` | 取得管理員列表 | 登入 |
+| POST | `/api/v1/admin/admins/toggle-status` | 停用/啟用管理員 | OWNER |
+| POST | `/api/v1/admin/admins/reset-password` | 重設管理員密碼 | OWNER |
+
+### 23.5 變更統計 ✅
+```
+7 files changed
+- Added: 1 file
+- Modified: 6 files
+```
+
+### 23.6 總結 ✅
+本階段完成了管理員管理功能：
+1. **管理員列表**：顯示所有中心管理員及其狀態
+2. **停用/啟用**：可切換管理員帳號狀態
+3. **重設密碼**：可為其他管理員重設密碼
+4. **權限控制**：僅 OWNER 可執行管理操作
+
+## 24. 管理員管理功能強化 (Admin Management Enhanced) - 2026/01/28
+
+### 24.1 開發摘要 ✅
+
+本階段強化了管理員管理功能，包括篩選器和管理員角色變更。
+
+### 24.2 完成項目 ✅
+
+#### 24.2.1 管理員篩選器 ✅
+| 功能 | 說明 |
+|:---|:---|
+| 角色篩選 | 可依角色（擁有者/管理員/員工）篩選 |
+| 狀態篩選 | 可依狀態（啟用/停用）篩選 |
+| 清除篩選 | 一鍵清除所有篩選條件 |
+| 即時過篩 | 篩選結果即時更新 |
+
+#### 24.2.2 角色變更功能 ✅
+| 功能 | 說明 |
+|:---|:---|
+| 角色下拉選單 | OWNER 可直接修改其他管理員的角色 |
+| 角色選項 | 可變更為 ADMIN / STAFF / OWNER |
+| 變更確認 | 彈出確認對話框避免誤操作 |
+| 權限保護 | 不能修改 OWNER，不能修改自己 |
+
+### 24.3 檔案變更 ✅
+| 檔案 | 變更類型 | 說明 |
+|:---|:---:|:---|
+| `app/controllers/admin_user.go` | 修改 | 新增 ChangeAdminRole 方法 |
+| `app/services/admin_user.go` | 修改 | 新增 ChangeAdminRole 邏輯 |
+| `app/servers/route.go` | 修改 | 新增 `/admin/admins/change-role` 路由 |
+| `frontend/pages/admin/admin-list.vue` | 修改 | 新增篩選器和角色下拉選單 |
+
+### 24.4 API 端點 ✅
+| 方法 | 路徑 | 功能 | 權限 |
+|:---|:---|:---|:---|
+| POST | `/api/v1/admin/admins/change-role` | 變更管理員角色 | OWNER |
+
+### 24.5 變更統計 ✅
+```
+4 files changed
+- Modified: 4 files
+```
+
+### 24.6 總結 ✅
+本階段強化了管理員管理功能：
+1. **篩選器**：支援角色和狀態雙重篩選
+2. **角色變更**：OWNER 可授予其他管理員 OWNER 權限
+3. **操作安全**：角色變更需要確認，避免誤操作
+
+## 25. 管理員導航修復 (Admin Navigation Fix) - 2026/01/28
+
+### 25.1 問題說明 ✅
+
+管理員後台的側邊欄組件 `AdminSidebar.vue` 未被 `admin.vue` layout 使用，導致無法透過導航前往管理員列表、LINE 綁定等頁面。
+
+### 25.2 修復方案 ✅
+
+將缺少的導航連結添加到 `AdminHeader.vue` 頂部導航欄中：
+
+| 連結 | 路徑 | 說明 |
+|:---|:---|:---|
+| LINE | `/admin/line-bind` | LINE 通知設定 |
+| 管理員 | `/admin/admin-list` | 管理員列表管理 |
+| 設定 | `/admin/settings` | 個人帳號設定 |
+
+### 25.3 檔案變更 ✅
+| 檔案 | 變更類型 | 說明 |
+|:---|:---:|:---|
+| `frontend/components/AdminHeader.vue` | 修改 | 新增 LINE、管理員、設定導航連結（電腦版和手機版） |
+
+### 25.4 總結 ✅
+修復後，管理員可透過頂部導航欄存取：
+1. **LINE 通知**：綁定/解除綁定 LINE 帳號
+2. **管理員**：管理所有中心管理員
+3. **設定**：修改密碼、個人資料

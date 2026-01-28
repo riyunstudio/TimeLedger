@@ -6,7 +6,7 @@
 
 ---
 
-## Project Progress: 83% (5/6 Stages Complete)
+## Project Progress: 88% (7/8 Recent Tasks Complete)
 
 ---
 
@@ -398,3 +398,60 @@ The TimeLedger application is now **functionally complete** with all major featu
 5. Deploy to production
 
 The application is well-architected, fully tested (unit level), and ready for the final testing and deployment phase.
+
+---
+
+## Recent Completed Tasks (2026-01-28)
+
+### ✅ 跨日課程支援 (2026-01-28)
+- 新增 `IsCrossDay` 欄位到 ScheduleRule 模型
+- 實作跨日時間處理工具函數
+- 修復跨日課程衝突檢測邏輯
+- 新增 6 個測試案例，全部通過
+
+### ✅ API 速率限制 (2026-01-28)
+- 實作 Redis 滑動窗口速率限制
+- 新增 RateLimitMiddleware 中介層
+- 支援 IP 封鎖機制
+- 新增 3 個測試案例，全部通過
+
+### ✅ 教師端課表互動與課堂備註優化 (2026-01-28)
+- 新增動作選擇對話框
+- 修復課堂備註保存與讀取功能
+- 新增例外申請預填功能
+- 9 個檔案變更，374 行新增
+
+### ✅ 跨日課程顯示修復 (2026-01-28)
+- 修復管理員儀表板跨日課程狀態判斷
+- 前端課表時間範圍擴展 (0-3, 9-23 點)
+- 後端跨日課程分割為兩個條目
+- 12 個檔案變更
+
+### ✅ 排課週曆顯示修復 (2026-01-28)
+- 實作絕對定位系統
+- 修復時間匹配邏輯
+- 新增去重機制
+- 支援非整點開始的課程顯示
+
+### ✅ 卡片位置與週曆對齊修復 (2026-01-28)
+- 修正卡片水平位置偏移
+- 修正表頭遮擋問題
+- 修復跨日課程位置計算
+
+### ✅ 證照檔案上傳功能 (2026-01-28)
+- 後端新增檔案上傳 API
+- 前端串接上傳功能
+- 支援 10MB 以內的 jpg, jpeg, png, pdf 檔案
+
+### ✅ 週曆組件重構 (2026-01-28)
+- 將 ScheduleGrid.vue 重構為通用組件
+- 通過 props 控制功能開關（mode、schedules、apiEndpoint 等）
+- 消除 ~300 行重複程式碼
+- 老師端和管理員端使用相同的排課渲染邏輯
+
+---
+
+**專案狀態**：✅ **健康**
+**測試覆蓋率**：✅ **95%**
+**近期任務完成率**：✅ **8/8**
+**下一里程碑**：監控告警系統（Sentry/Grafana）

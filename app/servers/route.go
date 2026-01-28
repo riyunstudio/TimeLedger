@@ -74,6 +74,8 @@ func (s *Server) LoadRoutes() {
 		{http.MethodPost, "/api/v1/teacher/me/personal-events", s.action.teacher.CreatePersonalEvent, []gin.HandlerFunc{authMiddleware.Authenticate()}},
 		{http.MethodPatch, "/api/v1/teacher/me/personal-events/:id", s.action.teacher.UpdatePersonalEvent, []gin.HandlerFunc{authMiddleware.Authenticate()}},
 		{http.MethodDelete, "/api/v1/teacher/me/personal-events/:id", s.action.teacher.DeletePersonalEvent, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+		{http.MethodGet, "/api/v1/teacher/me/personal-events/:id/note", s.action.teacher.GetPersonalEventNote, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+		{http.MethodPut, "/api/v1/teacher/me/personal-events/:id/note", s.action.teacher.UpdatePersonalEventNote, []gin.HandlerFunc{authMiddleware.Authenticate()}},
 		{http.MethodGet, "/api/v1/teacher/me/schedule", s.action.teacher.GetSchedule, []gin.HandlerFunc{authMiddleware.Authenticate()}},
 		{http.MethodGet, "/api/v1/teacher/me/centers/:center_id/schedule-rules", s.action.teacher.GetCenterScheduleRules, []gin.HandlerFunc{authMiddleware.Authenticate()}},
 		{http.MethodGet, "/api/v1/teacher/sessions/note", s.action.teacher.GetSessionNote, []gin.HandlerFunc{authMiddleware.Authenticate()}},
@@ -118,6 +120,17 @@ func (s *Server) LoadRoutes() {
 		// Admin - LINE QR Code
 		{http.MethodGet, "/api/v1/admin/me/line/qrcode", s.action.lineBot.GenerateLINEBindingQR, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodGet, "/api/v1/admin/me/line/qrcode-with-code", s.action.lineBot.GenerateVerificationCodeQR, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+
+		// Admin - Profile
+		{http.MethodGet, "/api/v1/admin/me/profile", s.action.adminUser.GetAdminProfile, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodPost, "/api/v1/admin/me/change-password", s.action.adminUser.ChangePassword, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+
+		// Admin - Management (僅 OWNER 可執行)
+		{http.MethodGet, "/api/v1/admin/admins", s.action.adminUser.ListAdmins, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodPost, "/api/v1/admin/admins", s.action.adminUser.CreateAdmin, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodPost, "/api/v1/admin/admins/toggle-status", s.action.adminUser.ToggleAdminStatus, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodPost, "/api/v1/admin/admins/reset-password", s.action.adminUser.ResetAdminPassword, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodPost, "/api/v1/admin/admins/change-role", s.action.adminUser.ChangeAdminRole, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 
 		// Admin - Scheduling
 		{http.MethodPost, "/api/v1/admin/scheduling/check-overlap", s.action.scheduling.CheckOverlap, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},

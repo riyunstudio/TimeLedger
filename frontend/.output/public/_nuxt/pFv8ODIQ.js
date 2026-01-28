@@ -1,0 +1,1 @@
+import{k as r}from"./ZcPQy5tI.js";const s=()=>{const t=r();return{getCenterId:()=>{{const e=t.user;return e?.center_id?e.center_id.toString():localStorage.getItem("center_id")||"1"}}}};export{s as u};

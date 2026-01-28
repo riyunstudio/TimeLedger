@@ -296,7 +296,7 @@ const notifySettings = ref({
 const fetchBindingStatus = async () => {
   try {
     const token = localStorage.getItem('admin_token')
-    const response = await fetch(`${API_BASE}/api/v1/admin/me/line-binding`, {
+    const response = await fetch(`${API_BASE}/admin/me/line-binding`, {
       headers: {
         'Authorization': `Bearer ${token}`,
       },
@@ -322,7 +322,7 @@ const fetchQRCode = async (code: string) => {
   try {
     const token = localStorage.getItem('admin_token')
     // 使用含驗證碼的 QR Code API
-    const response = await fetch(`${API_BASE}/api/v1/admin/me/line/qrcode-with-code?code=${code}`, {
+    const response = await fetch(`${API_BASE}/admin/me/line/qrcode-with-code?code=${code}`, {
       headers: {
         'Authorization': `Bearer ${token}`,
       },
@@ -344,7 +344,7 @@ const initBinding = async () => {
   loading.value = true
   try {
     const token = localStorage.getItem('admin_token')
-    const response = await fetch(`${API_BASE}/api/v1/admin/me/line/bind`, {
+    const response = await fetch(`${API_BASE}/admin/me/line/bind`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -426,7 +426,7 @@ const cancelBinding = () => {
 const unbindLINE = async () => {
   try {
     const token = localStorage.getItem('admin_token')
-    const response = await fetch(`${API_BASE}/api/v1/admin/me/line/unbind`, {
+    const response = await fetch(`${API_BASE}/admin/me/line/unbind`, {
       method: 'DELETE',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -453,7 +453,7 @@ const toggleNotifySetting = async (setting: 'newException' | 'reviewResult') => 
 
   try {
     const token = localStorage.getItem('admin_token')
-    const response = await fetch(`${API_BASE}/api/v1/admin/me/line/notify-settings`, {
+    const response = await fetch(`${API_BASE}/admin/me/line/notify-settings`, {
       method: 'PATCH',
       headers: {
         'Authorization': `Bearer ${token}`,

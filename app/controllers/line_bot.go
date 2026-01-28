@@ -43,11 +43,11 @@ type LINEWebhookRequest struct {
 
 // LINEWebhookEvent LINE Webhook 事件
 type LINEWebhookEvent struct {
-	Type       string          `json:"type"`
-	Mode       string          `json:"mode"`
-	Timestamp  int64           `json:"timestamp"`
-	Source     LINEEventSource `json:"source"`
-	ReplyToken string          `json:"replyToken,omitempty"`
+	Type       string           `json:"type"`
+	Mode       string           `json:"mode"`
+	Timestamp  int64            `json:"timestamp"`
+	Source     LINEEventSource  `json:"source"`
+	ReplyToken string           `json:"replyToken,omitempty"`
 	Message    LINEEventMessage `json:"message,omitempty"`
 }
 
@@ -59,10 +59,10 @@ type LINEEventSource struct {
 
 // LINEEventMessage 事件訊息
 type LINEEventMessage struct {
-	Type        string `json:"type"`
-	ID          string `json:"id"`
-	Text        string `json:"text,omitempty"`
-	QuoteToken  string `json:"quoteToken,omitempty"`
+	Type       string `json:"type"`
+	ID         string `json:"id"`
+	Text       string `json:"text,omitempty"`
+	QuoteToken string `json:"quoteToken,omitempty"`
 }
 
 // HandleWebhook 處理 LINE Webhook
@@ -357,7 +357,7 @@ func (c *LineBotController) HealthCheck(ctx *gin.Context) {
 // @Router /api/v1/admin/me/line/qrcode [GET]
 func (c *LineBotController) GenerateLINEBindingQR(ctx *gin.Context) {
 	// 驗證管理員身份（從 JWT middleware 取得）
-	_, exists := ctx.Get(string(global.UserIDKey))
+	_, exists := ctx.Get(global.UserIDKey)
 	if !exists {
 		ctx.JSON(http.StatusUnauthorized, global.ApiResponse{
 			Code:    global.UNAUTHORIZED,
@@ -405,7 +405,7 @@ func (c *LineBotController) GenerateLINEBindingQR(ctx *gin.Context) {
 // @Router /api/v1/admin/me/line/qrcode-with-code [GET]
 func (c *LineBotController) GenerateVerificationCodeQR(ctx *gin.Context) {
 	// 驗證管理員身份（從 JWT middleware 取得）
-	_, exists := ctx.Get(string(global.UserIDKey))
+	_, exists := ctx.Get(global.UserIDKey)
 	if !exists {
 		ctx.JSON(http.StatusUnauthorized, global.ApiResponse{
 			Code:    global.UNAUTHORIZED,

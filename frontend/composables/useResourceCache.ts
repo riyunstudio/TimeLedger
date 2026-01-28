@@ -36,7 +36,7 @@ export function useResourceCache() {
 
         const [offeringsRes, teachersRes, roomsRes] = await Promise.all([
           api.get<{ code: number; datas: any }>(`/admin/offerings`),
-          api.get<{ code: number; datas: any[] }>('/teachers'),
+          api.get<{ code: number; datas: any[] }>('/admin/teachers'),
           api.get<{ code: number; datas: any[] }>(`/admin/rooms`)
         ])
 

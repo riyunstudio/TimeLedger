@@ -51,12 +51,18 @@
       <!-- 快速登入測試區域 -->
       <div class="mt-8 p-4 bg-slate-800/50 rounded-lg border border-slate-700">
         <p class="text-sm text-slate-400 mb-3 text-center">🧪 測試快速登入</p>
-        <div class="grid grid-cols-2 gap-2">
+        <div class="grid grid-cols-3 gap-2">
           <button
             @click="quickLogin('admin@timeledger.com', 'admin123')"
             class="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded transition-colors"
           >
-            超級管理員
+            擁有者
+          </button>
+          <button
+            @click="quickLogin('manager@timeledger.com', 'admin123')"
+            class="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded transition-colors"
+          >
+            管理員
           </button>
           <button
             @click="quickLogin('staff@timeledger.com', 'admin123')"

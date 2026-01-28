@@ -219,7 +219,7 @@ func TimesOverlapCrossDayWithNextDay(start1, end1 string, isCrossDay1 bool, star
 // shouldIncludeRecurringEvent checks if a recurring event should be included for the given weekday and date
 func shouldIncludeRecurringEvent(event models.PersonalEvent, weekday int, date time.Time) bool {
 	rule := event.RecurrenceRule
-	
+
 	// Check if the date is within the valid range
 	if rule.Until != nil {
 		untilDate, err := time.Parse("2006-01-02", *rule.Until)
@@ -238,18 +238,18 @@ func shouldIncludeRecurringEvent(event models.PersonalEvent, weekday int, date t
 	if eventWeekday == 0 {
 		eventWeekday = 7 // Convert Sunday from 0 to 7 for consistency
 	}
-	
+
 	for _, w := range rule.Weekdays {
 		if w == eventWeekday || (w == 0 && eventWeekday == 7) || (w == 7 && eventWeekday == 0) {
 			return true
 		}
 	}
-	
+
 	// Also check the original event's weekday
 	if eventWeekday == int(date.Weekday()) {
 		return true
 	}
-	
+
 	return false
 }
 
@@ -320,4 +320,12 @@ func (r *PersonalEventRepository) UpdateAllOccurrences(ctx context.Context, even
 		Updates(updates)
 
 	return result.RowsAffected, result.Error
+}
+
+// UpdateNote 更新個人行程備註
+func (r *PersonalEventRepository) UpdateNote(ctx context.Context, id uint, content string) error {
+	return r.app.MySQL.WDB.WithContext(ctx).
+		Model(&models.PersonalEvent{}).
+		Where("id = ?", id).
+		Update("note", content).Error
 }

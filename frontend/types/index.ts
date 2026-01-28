@@ -77,7 +77,8 @@ export interface Hashtag {
 }
 
 export interface AdminUser extends User {
-  role: 'ADMIN' | 'CENTER_ADMIN'
+  user_type: 'ADMIN' | 'OWNER' | 'STAFF'
+  role?: string
   center_id?: number
 }
 
@@ -217,8 +218,8 @@ export interface CenterMembership {
 
 export interface AuthResponse {
   token: string
-  refresh_token: string
-  user?: User
+  refresh_token?: string
+  user?: AdminUser
   teacher?: Teacher
 }
 

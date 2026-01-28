@@ -8,12 +8,25 @@ export const useAuthStore = defineStore('auth', () => {
   const isAuthenticated = computed(() => !!token.value)
   const isTeacher = computed(() => !!user.value && !isAdmin.value)
   const isAdmin = computed(() => {
-    if (!user.value) return false
+    if (!user.value) {
+      console.log('[DEBUG isAdmin] user.value is null, returning false')
+      return false
+    }
     const userData = user.value as any
-    return userData.role === 'ADMIN' || userData.user_type === 'ADMIN' || userData.role === 'OWNER'
+    // 同時支援 user_type（來自登入 API）和 role（來自 /admin/me/profile API）
+    const role = userData.user_type || userData.role
+    console.log('[DEBUG isAdmin] userData:', JSON.stringify(userData))
+    console.log('[DEBUG isAdmin] role:', role)
+    const result = role === 'ADMIN' || role === 'OWNER' || role === 'STAFF'
+    console.log('[DEBUG isAdmin] result:', result)
+    return result
   })
 
   const login = (authData: AuthResponse) => {
+    console.log('[DEBUG login] authData:', JSON.stringify(authData))
+    console.log('[DEBUG login] authData.token:', authData.token)
+    console.log('[DEBUG login] authData.user:', JSON.stringify(authData.user))
+
     token.value = authData.token
     refreshToken.value = authData.refresh_token
 
@@ -27,8 +40,10 @@ export const useAuthStore = defineStore('auth', () => {
       localStorage.removeItem('admin_user')
     } else if (authData.user) {
       user.value = authData.user as any
+      console.log('[DEBUG login] user.value after assignment:', JSON.stringify(user.value))
       localStorage.setItem('admin_user', JSON.stringify(authData.user))
       localStorage.setItem('admin_token', authData.token)
+      console.log('[DEBUG login] saved admin_token:', authData.token)
       localStorage.setItem('admin_refresh_token', authData.refresh_token || '')
       localStorage.removeItem('teacher_token')
       localStorage.removeItem('teacher_refresh_token')
