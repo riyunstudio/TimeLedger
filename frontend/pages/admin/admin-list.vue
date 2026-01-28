@@ -185,6 +185,18 @@
                       </svg>
                     </button>
 
+                    <!-- 解除 LINE 綁定按鈕 -->
+                    <button
+                      v-if="canManageAdmin(admin) && admin.line_user_id"
+                      @click="openUnbindLineModal(admin)"
+                      class="p-2 rounded-lg hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition-colors"
+                      title="解除 LINE 綁定"
+                    >
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                      </svg>
+                    </button>
+
                     <!-- 自己的帳號標記 -->
                     <span v-if="admin.id === currentAdminId" class="text-xs text-slate-500 ml-2">
                       (本人)
@@ -363,6 +375,47 @@
       </div>
     </Teleport>
 
+    <!-- 解除 LINE 綁定確認對話框 -->
+    <Teleport to="body">
+      <div
+        v-if="showUnbindLineModal"
+        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+        @click.self="closeUnbindLineModal"
+      >
+        <div class="glass-card w-full max-w-sm">
+          <div class="p-6 border-b border-white/10">
+            <h3 class="text-lg font-semibold text-white">解除 LINE 綁定</h3>
+            <p v-if="selectedAdmin" class="text-sm text-slate-400 mt-1">
+              確定要解除 {{ selectedAdmin.name }} 的 LINE 綁定嗎？<br/>
+              <span class="text-yellow-400">解除後將無法接收 LINE 通知</span>
+            </p>
+          </div>
+
+          <div class="p-6 border-t border-white/10 flex items-center gap-4">
+            <button
+              @click="closeUnbindLineModal"
+              class="flex-1 px-4 py-2 rounded-lg bg-white/5 text-white hover:bg-white/10 transition-colors"
+            >
+              取消
+            </button>
+            <button
+              @click="confirmUnbindLine"
+              :disabled="unbinding"
+              class="flex-1 px-4 py-2 rounded-lg bg-red-500/30 border border-red-500 text-red-400 hover:bg-red-500/40 transition-colors"
+            >
+              <span v-if="unbinding" class="flex items-center justify-center gap-2">
+                <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              </span>
+              <span v-else>確認解除</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
     <!-- 新增管理員對話框 -->
     <Teleport to="body">
       <div
@@ -505,6 +558,10 @@ const toggling = ref(false)
 const showRoleChangeModal = ref(false)
 const pendingRoleChange = ref<{ admin: any; newRole: string } | null>(null)
 const changingRole = ref(false)
+
+// 解除 LINE 綁定對話框
+const showUnbindLineModal = ref(false)
+const unbinding = ref(false)
 
 // 角色文字
 const roleText = (role: string) => {
@@ -733,6 +790,48 @@ const confirmRoleChange = async () => {
     await alertError('角色變更失敗，請稍後再試')
   } finally {
     changingRole.value = false
+  }
+}
+
+// 開啟解除 LINE 綁定對話框
+const openUnbindLineModal = (admin: any) => {
+  selectedAdmin.value = admin
+  showUnbindLineModal.value = true
+}
+
+// 關閉解除 LINE 綁定對話框
+const closeUnbindLineModal = () => {
+  showUnbindLineModal.value = false
+  selectedAdmin.value = null
+}
+
+// 確認解除 LINE 綁定
+const confirmUnbindLine = async () => {
+  if (!selectedAdmin.value) return
+
+  unbinding.value = true
+  try {
+    const token = localStorage.getItem('admin_token')
+    const response = await fetch(`${API_BASE}/admin/me/line/unbind`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    })
+
+    const data = await response.json()
+
+    if (response.ok) {
+      await alertSuccess(`${selectedAdmin.value.name} 的 LINE 綁定已解除`)
+      closeUnbindLineModal()
+      await fetchAdminList() // 重新載入列表
+    } else {
+      await alertError(data.message || '解除綁定失敗')
+    }
+  } catch (err) {
+    await alertError('解除綁定失敗，請稍後再試')
+  } finally {
+    unbinding.value = false
   }
 }
 
