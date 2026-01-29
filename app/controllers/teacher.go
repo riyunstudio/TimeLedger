@@ -2378,7 +2378,7 @@ func (ctl *TeacherController) InviteTeacher(ctx *gin.Context) {
 		Email:      req.Email,
 		Token:      token,
 		InviteType: models.InvitationTypeTeacher, // 老師邀請類型
-		Role:       req.Role,                      // 角色：TEACHER 或 SUBSTITUTE
+		Role:       req.Role,                     // 角色：TEACHER 或 SUBSTITUTE
 		Status:     "PENDING",
 		Message:    req.Message, // 邀請訊息
 		CreatedAt:  time.Now(),
@@ -3071,6 +3071,578 @@ func (ctl *TeacherController) GetPendingInvitationsCount(ctx *gin.Context) {
 		Message: "Success",
 		Datas: gin.H{
 			"count": len(invitations),
+		},
+	})
+}
+
+// ==================== 邀請連結管理 API ====================
+
+// GenerateInvitationLinkRequest 產生邀請連結請求
+type GenerateInvitationLinkRequest struct {
+	Email   string `json:"email" binding:"required,email"`
+	Role    string `json:"role" binding:"required,oneof=TEACHER SUBSTITUTE"`
+	Message string `json:"message"`
+}
+
+// GenerateInvitationLink 產生邀請連結
+// @Summary 產生邀請連結
+// @Tags Admin - Invitations
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "Center ID"
+// @Param request body GenerateInvitationLinkRequest true "邀請資訊"
+// @Success 200 {object} global.ApiResponse{data=InvitationLinkResponse}
+// @Router /api/v1/admin/centers/{id}/invitations/generate-link [post]
+func (ctl *TeacherController) GenerateInvitationLink(ctx *gin.Context) {
+	adminID := ctx.GetUint(global.UserIDKey)
+	if adminID == 0 {
+		ctx.JSON(http.StatusUnauthorized, global.ApiResponse{
+			Code:    global.UNAUTHORIZED,
+			Message: "Admin ID required",
+		})
+		return
+	}
+
+	centerIDStr := ctx.Param("id")
+	if centerIDStr == "" {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Center ID required",
+		})
+		return
+	}
+
+	var centerID uint
+	if _, err := fmt.Sscanf(centerIDStr, "%d", &centerID); err != nil {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Invalid center ID",
+		})
+		return
+	}
+
+	var req GenerateInvitationLinkRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Invalid request body: " + err.Error(),
+		})
+		return
+	}
+
+	// 產生邀請 token
+	token := generateInviteToken()
+	expiresAt := time.Now().Add(72 * time.Hour) // 72小時過期
+
+	// 建立邀請記錄
+	invitation := models.CenterInvitation{
+		CenterID:   centerID,
+		Email:      req.Email,
+		Token:      token,
+		InviteType: models.InvitationTypeTeacher,
+		Role:       req.Role,
+		Status:     models.InvitationStatusPending,
+		Message:    req.Message,
+		CreatedAt:  time.Now(),
+		ExpiresAt:  expiresAt,
+	}
+
+	if err := ctl.app.MySQL.WDB.WithContext(ctx).Create(&invitation).Error; err != nil {
+		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
+			Code:    500,
+			Message: "Failed to create invitation",
+		})
+		return
+	}
+
+	// 取得中心資訊
+	center, err := ctl.centerRepo.GetByID(ctx, centerID)
+	centerName := ""
+	if err == nil {
+		centerName = center.Name
+	}
+
+	// 產生邀請連結
+	baseURL := ctl.app.Env.FrontendBaseURL
+	if baseURL == "" {
+		baseURL = "https://timeledger.app"
+	}
+	inviteLink := fmt.Sprintf("%s/invite/%s", baseURL, token)
+
+	response := InvitationLinkResponse{
+		ID:         invitation.ID,
+		CenterID:   centerID,
+		CenterName: centerName,
+		Email:      req.Email,
+		Role:       req.Role,
+		Token:      token,
+		InviteLink: inviteLink,
+		Status:     string(invitation.Status),
+		Message:    req.Message,
+		CreatedAt:  invitation.CreatedAt,
+		ExpiresAt:  invitation.ExpiresAt,
+	}
+
+	// 審核日誌
+	ctl.auditLogRepo.Create(ctx, models.AuditLog{
+		CenterID:   centerID,
+		ActorType:  "ADMIN",
+		ActorID:    adminID,
+		Action:     "GENERATE_INVITATION_LINK",
+		TargetType: "CenterInvitation",
+		TargetID:   invitation.ID,
+		Payload: models.AuditPayload{
+			After: map[string]interface{}{
+				"email":       req.Email,
+				"role":        req.Role,
+				"status":      "PENDING",
+				"expires_at":  expiresAt,
+				"invite_link": inviteLink,
+			},
+		},
+	})
+
+	ctx.JSON(http.StatusOK, global.ApiResponse{
+		Code:    0,
+		Message: "Invitation link generated",
+		Datas:   response,
+	})
+}
+
+// InvitationLinkResponse 邀請連結回應結構
+type InvitationLinkResponse struct {
+	ID         uint      `json:"id"`
+	CenterID   uint      `json:"center_id"`
+	CenterName string    `json:"center_name"`
+	Email      string    `json:"email"`
+	Role       string    `json:"role"`
+	Token      string    `json:"token"`
+	InviteLink string    `json:"invite_link"`
+	Status     string    `json:"status"`
+	Message    string    `json:"message,omitempty"`
+	CreatedAt  time.Time `json:"created_at"`
+	ExpiresAt  time.Time `json:"expires_at"`
+}
+
+// GetInvitationLinks 取得邀請連結列表
+// @Summary 取得邀請連結列表
+// @Tags Admin - Invitations
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "Center ID"
+// @Success 200 {object} global.ApiResponse{data=[]InvitationLinkResponse}
+// @Router /api/v1/admin/centers/{id}/invitations/links [get]
+func (ctl *TeacherController) GetInvitationLinks(ctx *gin.Context) {
+	centerIDStr := ctx.Param("id")
+	if centerIDStr == "" {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Center ID required",
+		})
+		return
+	}
+
+	var centerID uint
+	if _, err := fmt.Sscanf(centerIDStr, "%d", &centerID); err != nil {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Invalid center ID",
+		})
+		return
+	}
+
+	// 取得該中心的所有待處理邀請
+	invitations, err := ctl.invitationRepo.GetPendingByCenter(ctx, centerID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
+			Code:    errInfos.SQL_ERROR,
+			Message: "Failed to get invitation links",
+		})
+		return
+	}
+
+	// 取得中心資訊
+	center, err := ctl.centerRepo.GetByID(ctx, centerID)
+	centerName := ""
+	if err == nil {
+		centerName = center.Name
+	}
+
+	// 產生邀請連結基礎 URL
+	baseURL := ctl.app.Env.FrontendBaseURL
+	if baseURL == "" {
+		baseURL = "https://timeledger.app"
+	}
+
+	// 轉換為回應格式
+	response := make([]InvitationLinkResponse, 0, len(invitations))
+	for _, inv := range invitations {
+		inviteLink := fmt.Sprintf("%s/invite/%s", baseURL, inv.Token)
+		response = append(response, InvitationLinkResponse{
+			ID:         inv.ID,
+			CenterID:   centerID,
+			CenterName: centerName,
+			Email:      inv.Email,
+			Role:       inv.Role,
+			Token:      inv.Token,
+			InviteLink: inviteLink,
+			Status:     string(inv.Status),
+			Message:    inv.Message,
+			CreatedAt:  inv.CreatedAt,
+			ExpiresAt:  inv.ExpiresAt,
+		})
+	}
+
+	ctx.JSON(http.StatusOK, global.ApiResponse{
+		Code:    0,
+		Message: "Success",
+		Datas:   response,
+	})
+}
+
+// RevokeInvitationLink 撤回邀請連結
+// @Summary 撤回邀請連結
+// @Tags Admin - Invitations
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "Invitation ID"
+// @Success 200 {object} global.ApiResponse
+// @Router /api/v1/admin/invitations/links/{id} [delete]
+func (ctl *TeacherController) RevokeInvitationLink(ctx *gin.Context) {
+	adminID := ctx.GetUint(global.UserIDKey)
+	if adminID == 0 {
+		ctx.JSON(http.StatusUnauthorized, global.ApiResponse{
+			Code:    global.UNAUTHORIZED,
+			Message: "Admin ID required",
+		})
+		return
+	}
+
+	invitationIDStr := ctx.Param("id")
+	if invitationIDStr == "" {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Invitation ID required",
+		})
+		return
+	}
+
+	var invitationID uint
+	if _, err := fmt.Sscanf(invitationIDStr, "%d", &invitationID); err != nil {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Invalid invitation ID",
+		})
+		return
+	}
+
+	// 取得邀請記錄
+	invitation, err := ctl.invitationRepo.GetByID(ctx, invitationID)
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, global.ApiResponse{
+			Code:    errInfos.NOT_FOUND,
+			Message: "Invitation not found",
+		})
+		return
+	}
+
+	// 檢查狀態是否為待處理
+	if invitation.Status != models.InvitationStatusPending {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    errInfos.INVALID_STATUS,
+			Message: "Only pending invitations can be revoked",
+		})
+		return
+	}
+
+	// 更新狀態為過期（等同撤回）
+	if err := ctl.invitationRepo.UpdateStatus(ctx, invitationID, models.InvitationStatusExpired); err != nil {
+		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
+			Code:    errInfos.SQL_ERROR,
+			Message: "Failed to revoke invitation",
+		})
+		return
+	}
+
+	// 審核日誌
+	ctl.auditLogRepo.Create(ctx, models.AuditLog{
+		CenterID:   invitation.CenterID,
+		ActorType:  "ADMIN",
+		ActorID:    adminID,
+		Action:     "REVOKE_INVITATION_LINK",
+		TargetType: "CenterInvitation",
+		TargetID:   invitationID,
+		Payload: models.AuditPayload{
+			Before: map[string]interface{}{
+				"status": string(invitation.Status),
+			},
+			After: map[string]interface{}{
+				"status": "EXPIRED",
+			},
+		},
+	})
+
+	ctx.JSON(http.StatusOK, global.ApiResponse{
+		Code:    0,
+		Message: "Invitation link revoked",
+	})
+}
+
+// ==================== 公開邀請 API（無需認證）===================
+
+// PublicInvitationInfo 公開邀請資訊
+type PublicInvitationInfo struct {
+	ID         uint      `json:"id"`
+	CenterID   uint      `json:"center_id"`
+	CenterName string    `json:"center_name"`
+	Role       string    `json:"role"`
+	Status     string    `json:"status"`
+	Message    string    `json:"message,omitempty"`
+	ExpiresAt  time.Time `json:"expires_at"`
+	InvitedBy  uint      `json:"-"`
+}
+
+// GetPublicInvitation 取得公開邀請資訊
+// @Summary 取得公開邀請資訊
+// @Tags Invitations
+// @Accept json
+// @Produce json
+// @Param token path string true "Invitation Token"
+// @Success 200 {object} global.ApiResponse{data=PublicInvitationInfo}
+// @Router /api/v1/invitations/{token} [get]
+func (ctl *TeacherController) GetPublicInvitation(ctx *gin.Context) {
+	token := ctx.Param("token")
+	if token == "" {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Token required",
+		})
+		return
+	}
+
+	// 透過 token 取得邀請記錄
+	invitation, err := ctl.invitationRepo.GetByToken(ctx, token)
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, global.ApiResponse{
+			Code:    errInfos.NOT_FOUND,
+			Message: "Invitation not found",
+		})
+		return
+	}
+
+	// 檢查是否過期
+	if time.Now().After(invitation.ExpiresAt) {
+		// 如果狀態還是 Pending，自動更新為過期
+		if invitation.Status == models.InvitationStatusPending {
+			ctl.invitationRepo.UpdateStatus(ctx, invitation.ID, models.InvitationStatusExpired)
+		}
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    errInfos.INVALID_STATUS,
+			Message: "Invitation has expired",
+		})
+		return
+	}
+
+	// 取得中心資訊
+	center, err := ctl.centerRepo.GetByID(ctx, invitation.CenterID)
+	centerName := ""
+	if err == nil {
+		centerName = center.Name
+	}
+
+	response := PublicInvitationInfo{
+		ID:         invitation.ID,
+		CenterID:   invitation.CenterID,
+		CenterName: centerName,
+		Role:       invitation.Role,
+		Status:     string(invitation.Status),
+		Message:    invitation.Message,
+		ExpiresAt:  invitation.ExpiresAt,
+		InvitedBy:  invitation.InvitedBy,
+	}
+
+	ctx.JSON(http.StatusOK, global.ApiResponse{
+		Code:    0,
+		Message: "Success",
+		Datas:   response,
+	})
+}
+
+// AcceptInvitationByLinkRequest 透過連結接受邀請請求
+type AcceptInvitationByLinkRequest struct {
+	LineUserID string `json:"line_user_id" binding:"required"`
+}
+
+// AcceptInvitationByLink 透過連結接受邀請
+// @Summary 透過連結接受邀請
+// @Tags Invitations
+// @Accept json
+// @Produce json
+// @Param token path string true "Invitation Token"
+// @Param request body AcceptInvitationByLinkRequest true "LINE ID Token"
+// @Success 200 {object} global.ApiResponse
+// @Router /api/v1/invitations/{token}/accept [post]
+func (ctl *TeacherController) AcceptInvitationByLink(ctx *gin.Context) {
+	token := ctx.Param("token")
+	if token == "" {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Token required",
+		})
+		return
+	}
+
+	var req AcceptInvitationByLinkRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Invalid request body: " + err.Error(),
+		})
+		return
+	}
+
+	// 透過 token 取得邀請記錄
+	invitation, err := ctl.invitationRepo.GetByToken(ctx, token)
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, global.ApiResponse{
+			Code:    errInfos.NOT_FOUND,
+			Message: "Invitation not found",
+		})
+		return
+	}
+
+	// 檢查狀態
+	if invitation.Status != models.InvitationStatusPending {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    errInfos.INVALID_STATUS,
+			Message: "Invitation has already been responded or expired",
+		})
+		return
+	}
+
+	// 檢查是否過期
+	if time.Now().After(invitation.ExpiresAt) {
+		ctl.invitationRepo.UpdateStatus(ctx, invitation.ID, models.InvitationStatusExpired)
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    errInfos.INVALID_STATUS,
+			Message: "Invitation has expired",
+		})
+		return
+	}
+
+	// 直接使用前端提供的 line_user_id（前端已完成 LINE 登入驗證）
+	lineUserID := req.LineUserID
+	if lineUserID == "" {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Line user ID is required",
+		})
+		return
+	}
+
+	// 取得老師資料
+	teacher, err := ctl.teacherRepository.GetByLineUserID(ctx, lineUserID)
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, global.ApiResponse{
+			Code:    errInfos.NOT_FOUND,
+			Message: "Teacher not found. Please make sure you have logged in with LINE first.",
+		})
+		return
+	}
+
+	// 驗證 Email 是否匹配（如果邀請有指定 Email）
+	if invitation.Email != "" && invitation.Email != teacher.Email {
+		ctx.JSON(http.StatusForbidden, global.ApiResponse{
+			Code:    errInfos.FORBIDDEN,
+			Message: "This invitation is for a different email address",
+		})
+		return
+	}
+
+	// 檢查是否已經是中心成員
+	_, err = ctl.membershipRepo.GetByCenterAndTeacher(ctx, invitation.CenterID, teacher.ID)
+	if err == nil {
+		// 已經是成員，更新狀態為已接受
+		ctl.invitationRepo.UpdateStatus(ctx, invitation.ID, models.InvitationStatusAccepted)
+		ctx.JSON(http.StatusOK, global.ApiResponse{
+			Code:    0,
+			Message: "You are already a member of this center",
+			Datas: gin.H{
+				"invitation_id": invitation.ID,
+				"status":        "ALREADY_MEMBER",
+			},
+		})
+		return
+	}
+
+	// 建立 CenterMembership
+	membership := models.CenterMembership{
+		CenterID:  invitation.CenterID,
+		TeacherID: teacher.ID,
+		Status:    invitation.Role,
+	}
+	_, err = ctl.membershipRepo.Create(ctx, membership)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
+			Code:    errInfos.SQL_ERROR,
+			Message: "Failed to create center membership",
+		})
+		return
+	}
+
+	// 更新邀請狀態為已接受
+	now := time.Now()
+	if err := ctl.app.MySQL.WDB.WithContext(ctx).Model(&models.CenterInvitation{}).
+		Where("id = ?", invitation.ID).
+		Updates(map[string]interface{}{
+			"status":       models.InvitationStatusAccepted,
+			"responded_at": &now,
+		}).Error; err != nil {
+		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
+			Code:    errInfos.SQL_ERROR,
+			Message: "Failed to update invitation status",
+		})
+		return
+	}
+
+	// 審核日誌
+	ctl.auditLogRepo.Create(ctx, models.AuditLog{
+		CenterID:   invitation.CenterID,
+		ActorType:  "TEACHER",
+		ActorID:    teacher.ID,
+		Action:     "JOIN_CENTER_VIA_LINK",
+		TargetType: "CenterInvitation",
+		TargetID:   invitation.ID,
+		Payload: models.AuditPayload{
+			After: map[string]interface{}{
+				"teacher_id":  teacher.ID,
+				"center_id":   invitation.CenterID,
+				"role":        invitation.Role,
+				"status":      "ACCEPTED",
+				"invite_type": "LINK",
+			},
+		},
+	})
+
+	// 取得中心資訊
+	center, err := ctl.centerRepo.GetByID(ctx, invitation.CenterID)
+	centerName := ""
+	if err == nil {
+		centerName = center.Name
+	}
+
+	ctx.JSON(http.StatusOK, global.ApiResponse{
+		Code:    0,
+		Message: "Successfully joined the center",
+		Datas: gin.H{
+			"invitation_id": invitation.ID,
+			"status":        "ACCEPTED",
+			"center_id":     invitation.CenterID,
+			"center_name":   centerName,
+			"role":          invitation.Role,
 		},
 	})
 }

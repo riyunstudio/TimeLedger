@@ -177,6 +177,13 @@ func (s *Server) LoadRoutes() {
 		// Admin - Invitations
 		{http.MethodGet, "/api/v1/admin/centers/:id/invitations", s.action.adminResource.GetInvitations, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodGet, "/api/v1/admin/centers/:id/invitations/stats", s.action.adminResource.GetInvitationStats, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		// Admin - Invitation Links
+		{http.MethodPost, "/api/v1/admin/centers/:id/invitations/generate-link", s.action.teacher.GenerateInvitationLink, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodGet, "/api/v1/admin/centers/:id/invitations/links", s.action.teacher.GetInvitationLinks, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodDelete, "/api/v1/admin/invitations/links/:id", s.action.teacher.RevokeInvitationLink, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		// Public Invitation APIs (no auth required)
+		{http.MethodGet, "/api/v1/invitations/:token", s.action.teacher.GetPublicInvitation, []gin.HandlerFunc{}},
+		{http.MethodPost, "/api/v1/invitations/:token/accept", s.action.teacher.AcceptInvitationByLink, []gin.HandlerFunc{}},
 
 		// Admin - Holidays
 		{http.MethodGet, "/api/v1/admin/centers/:id/holidays", s.action.adminResource.GetHolidays, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},

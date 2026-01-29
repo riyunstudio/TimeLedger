@@ -247,3 +247,13 @@ func (rp *CenterInvitationRepository) ListByCenterIDPaginated(ctx context.Contex
 
 	return data, total, err
 }
+
+// GetPendingByCenter 获取中心所有待处理的邀请
+func (rp *CenterInvitationRepository) GetPendingByCenter(ctx context.Context, centerID uint) ([]models.CenterInvitation, error) {
+	var data []models.CenterInvitation
+	err := rp.app.MySQL.RDB.WithContext(ctx).
+		Where("center_id = ? AND status = ?", centerID, models.InvitationStatusPending).
+		Order("created_at DESC").
+		Find(&data).Error
+	return data, err
+}

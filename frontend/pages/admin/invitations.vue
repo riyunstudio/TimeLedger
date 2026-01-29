@@ -1,12 +1,25 @@
 <template>
   <div class="p-4 md:p-6 max-w-7xl mx-auto">
     <div class="mb-6 md:mb-8">
-      <h1 class="text-2xl md:text-3xl font-bold text-slate-100 mb-2">
-        邀請紀錄
-      </h1>
-      <p class="text-slate-400 text-sm md:text-base">
-        查看邀請老師的歷史記錄與處理結果
-      </p>
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 class="text-2xl md:text-3xl font-bold text-slate-100 mb-2">
+            邀請紀錄
+          </h1>
+          <p class="text-slate-400 text-sm md:text-base">
+            查看邀請老師的歷史記錄與處理結果
+          </p>
+        </div>
+        <button
+          @click="showGenerateModal = true"
+          class="px-4 py-2 bg-primary-500 text-white rounded-xl hover:bg-primary-600 transition-colors flex items-center gap-2"
+        >
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+          </svg>
+          產生邀請連結
+        </button>
+      </div>
     </div>
 
     <!-- 統計卡片 -->
@@ -29,113 +42,286 @@
       </div>
     </div>
 
-    <!-- 篩選器 -->
-    <div class="flex flex-wrap gap-3 mb-6">
-      <select
-        v-model="filters.status"
-        class="px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-slate-300 focus:outline-none focus:border-primary-500"
-      >
-        <option value="">全部狀態</option>
-        <option value="PENDING">待處理</option>
-        <option value="ACCEPTED">已接受</option>
-        <option value="DECLINED">已婉拒</option>
-        <option value="EXPIRED">已過期</option>
-      </select>
-
-      <input
-        v-model="filters.search"
-        type="text"
-        placeholder="搜尋 Email 或姓名..."
-        class="px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-slate-300 focus:outline-none focus:border-primary-500 flex-1 min-w-[200px]"
-      />
-
-      <button
-        @click="refreshData"
-        class="px-4 py-2 bg-primary-500/20 border border-primary-500 text-primary-400 rounded-xl hover:bg-primary-500/30 transition-colors"
-      >
-        重新整理
-      </button>
+    <!-- 標籤頁 -->
+    <div class="mb-6">
+      <div class="flex gap-2 border-b border-white/10 pb-2">
+        <button
+          @click="activeTab = 'invitations'"
+          class="px-4 py-2 rounded-t-lg transition-colors"
+          :class="activeTab === 'invitations' ? 'bg-white/10 text-white' : 'text-slate-400 hover:text-white'"
+        >
+          邀請記錄
+        </button>
+        <button
+          @click="activeTab = 'links'"
+          class="px-4 py-2 rounded-t-lg transition-colors"
+          :class="activeTab === 'links' ? 'bg-white/10 text-white' : 'text-slate-400 hover:text-white'"
+        >
+          邀請連結
+          <span v-if="links.length > 0" class="ml-1 px-1.5 py-0.5 text-xs bg-primary-500/20 text-primary-400 rounded">
+            {{ links.length }}
+          </span>
+        </button>
+      </div>
     </div>
 
-    <!-- 邀請列表 -->
-    <div class="bg-white/5 rounded-xl border border-white/10 overflow-hidden">
-      <div v-if="loading" class="p-8 text-center">
-        <div class="inline-block w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
-        <p class="text-slate-400 mt-2">載入中...</p>
+    <!-- 邀請記錄標籤 -->
+    <div v-if="activeTab === 'invitations'">
+      <!-- 篩選器 -->
+      <div class="flex flex-wrap gap-3 mb-6">
+        <select
+          v-model="filters.status"
+          class="px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-slate-300 focus:outline-none focus:border-primary-500"
+        >
+          <option value="">全部狀態</option>
+          <option value="PENDING">待處理</option>
+          <option value="ACCEPTED">已接受</option>
+          <option value="DECLINED">已婉拒</option>
+          <option value="EXPIRED">已過期</option>
+        </select>
+
+        <input
+          v-model="filters.search"
+          type="text"
+          placeholder="搜尋 Email..."
+          class="px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-slate-300 focus:outline-none focus:border-primary-500 flex-1 min-w-[200px]"
+        />
+
+        <button
+          @click="refreshData"
+          class="px-4 py-2 bg-primary-500/20 border border-primary-500 text-primary-400 rounded-xl hover:bg-primary-500/30 transition-colors"
+        >
+          重新整理
+        </button>
       </div>
 
-      <div v-else-if="filteredInvitations.length === 0" class="p-8 text-center text-slate-400">
-        暫無邀請記錄
-      </div>
+      <!-- 邀請列表 -->
+      <div class="bg-white/5 rounded-xl border border-white/10 overflow-hidden">
+        <div v-if="loading" class="p-8 text-center">
+          <div class="inline-block w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
+          <p class="text-slate-400 mt-2">載入中...</p>
+        </div>
 
-      <table v-else class="w-full">
-        <thead class="bg-white/5">
-          <tr>
-            <th class="px-4 py-3 text-left text-sm font-medium text-slate-400">Email</th>
-            <th class="px-4 py-3 text-left text-sm font-medium text-slate-400">狀態</th>
-            <th class="px-4 py-3 text-left text-sm font-medium text-slate-400">邀請時間</th>
-            <th class="px-4 py-3 text-left text-sm font-medium text-slate-400">回應時間</th>
-            <th class="px-4 py-3 text-left text-sm font-medium text-slate-400">操作</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-white/5">
-          <tr v-for="invitation in filteredInvitations" :key="invitation.id" class="hover:bg-white/5">
-            <td class="px-4 py-3 text-slate-300">{{ invitation.email }}</td>
-            <td class="px-4 py-3">
-              <span
-                class="px-2 py-1 rounded-full text-xs font-medium"
-                :class="{
-                  'bg-warning-500/20 text-warning-500': invitation.status === 'PENDING',
-                  'bg-success-500/20 text-success-500': invitation.status === 'ACCEPTED',
-                  'bg-critical-500/20 text-critical-500': invitation.status === 'DECLINED',
-                  'bg-slate-500/20 text-slate-400': invitation.status === 'EXPIRED',
-                }"
-              >
-                {{ statusText(invitation.status) }}
-              </span>
-            </td>
-            <td class="px-4 py-3 text-slate-400 text-sm">
-              {{ formatDate(invitation.created_at) }}
-            </td>
-            <td class="px-4 py-3 text-slate-400 text-sm">
-              {{ invitation.responded_at ? formatDate(invitation.responded_at) : '-' }}
-            </td>
-            <td class="px-4 py-3">
-              <button
-                v-if="invitation.status === 'PENDING'"
-                @click="resendInvitation(invitation)"
-                class="text-primary-500 hover:text-primary-400 text-sm"
-              >
-                重新傳送
-              </button>
-              <span v-else class="text-slate-500 text-sm">-</span>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+        <div v-else-if="filteredInvitations.length === 0" class="p-8 text-center text-slate-400">
+          暫無邀請記錄
+        </div>
 
-      <!-- 分頁 -->
-      <div v-if="pagination.totalPages > 1" class="px-4 py-3 bg-white/5 border-t border-white/10 flex items-center justify-between">
-        <p class="text-slate-400 text-sm">
-          第 {{ pagination.page }} 頁，共 {{ pagination.totalPages }} 頁
-        </p>
-        <div class="flex gap-2">
-          <button
-            @click="changePage(pagination.page - 1)"
-            :disabled="pagination.page === 1"
-            class="px-3 py-1 rounded-lg bg-white/5 text-slate-300 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            上一頁
-          </button>
-          <button
-            @click="changePage(pagination.page + 1)"
-            :disabled="pagination.page === pagination.totalPages"
-            class="px-3 py-1 rounded-lg bg-white/5 text-slate-300 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            下一頁
-          </button>
+        <table v-else class="w-full">
+          <thead class="bg-white/5">
+            <tr>
+              <th class="px-4 py-3 text-left text-sm font-medium text-slate-400">Email</th>
+              <th class="px-4 py-3 text-left text-sm font-medium text-slate-400">狀態</th>
+              <th class="px-4 py-3 text-left text-sm font-medium text-slate-400">邀請時間</th>
+              <th class="px-4 py-3 text-left text-sm font-medium text-slate-400">回應時間</th>
+              <th class="px-4 py-3 text-left text-sm font-medium text-slate-400">操作</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-white/5">
+            <tr v-for="invitation in filteredInvitations" :key="invitation.id" class="hover:bg-white/5">
+              <td class="px-4 py-3 text-slate-300">{{ invitation.email }}</td>
+              <td class="px-4 py-3">
+                <span
+                  class="px-2 py-1 rounded-full text-xs font-medium"
+                  :class="{
+                    'bg-warning-500/20 text-warning-500': invitation.status === 'PENDING',
+                    'bg-success-500/20 text-success-500': invitation.status === 'ACCEPTED',
+                    'bg-critical-500/20 text-critical-500': invitation.status === 'DECLINED',
+                    'bg-slate-500/20 text-slate-400': invitation.status === 'EXPIRED',
+                  }"
+                >
+                  {{ statusText(invitation.status) }}
+                </span>
+              </td>
+              <td class="px-4 py-3 text-slate-400 text-sm">
+                {{ formatDate(invitation.created_at) }}
+              </td>
+              <td class="px-4 py-3 text-slate-400 text-sm">
+                {{ invitation.responded_at ? formatDate(invitation.responded_at) : '-' }}
+              </td>
+              <td class="px-4 py-3">
+                <span class="text-slate-500 text-sm">-</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- 分頁 -->
+        <div v-if="pagination.totalPages > 1" class="px-4 py-3 bg-white/5 border-t border-white/10 flex items-center justify-between">
+          <p class="text-slate-400 text-sm">
+            第 {{ pagination.page }} 頁，共 {{ pagination.totalPages }} 頁
+          </p>
+          <div class="flex gap-2">
+            <button
+              @click="changePage(pagination.page - 1)"
+              :disabled="pagination.page === 1"
+              class="px-3 py-1 rounded-lg bg-white/5 text-slate-300 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              上一頁
+            </button>
+            <button
+              @click="changePage(pagination.page + 1)"
+              :disabled="pagination.page === pagination.totalPages"
+              class="px-3 py-1 rounded-lg bg-white/5 text-slate-300 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              下一頁
+            </button>
+          </div>
         </div>
       </div>
+    </div>
+
+    <!-- 邀請連結標籤 -->
+    <div v-if="activeTab === 'links'">
+      <div class="bg-white/5 rounded-xl border border-white/10 overflow-hidden">
+        <div v-if="loadingLinks" class="p-8 text-center">
+          <div class="inline-block w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
+          <p class="text-slate-400 mt-2">載入中...</p>
+        </div>
+
+        <div v-else-if="links.length === 0" class="p-8 text-center text-slate-400">
+          暫無有效邀請連結
+        </div>
+
+        <table v-else class="w-full">
+          <thead class="bg-white/5">
+            <tr>
+              <th class="px-4 py-3 text-left text-sm font-medium text-slate-400">Email</th>
+              <th class="px-4 py-3 text-left text-sm font-medium text-slate-400">職位</th>
+              <th class="px-4 py-3 text-left text-sm font-medium text-slate-400">有效期限</th>
+              <th class="px-4 py-3 text-left text-sm font-medium text-slate-400">操作</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-white/5">
+            <tr v-for="link in links" :key="link.id" class="hover:bg-white/5">
+              <td class="px-4 py-3 text-slate-300">{{ link.email }}</td>
+              <td class="px-4 py-3">
+                <span class="px-2 py-1 rounded-full text-xs font-medium bg-primary-500/20 text-primary-400">
+                  {{ roleText(link.role) }}
+                </span>
+              </td>
+              <td class="px-4 py-3 text-slate-400 text-sm">
+                {{ formatDate(link.expires_at) }}
+              </td>
+              <td class="px-4 py-3">
+                <div class="flex gap-2">
+                  <button
+                    @click="copyLink(link)"
+                    class="text-primary-500 hover:text-primary-400 text-sm flex items-center gap-1"
+                  >
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-28 5av-1M2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                    </svg>
+                    複製
+                  </button>
+                  <button
+                    @click="revokeLink(link)"
+                    class="text-critical-500 hover:text-critical-400 text-sm flex items-center gap-1"
+                  >
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    撤回
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 產生邀請連結 Modal -->
+    <div v-if="showGenerateModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <div class="bg-slate-800 rounded-2xl p-6 w-full max-w-md border border-white/10">
+        <div class="flex items-center justify-between mb-6">
+          <h3 class="text-xl font-bold text-white">產生邀請連結</h3>
+          <button @click="closeGenerateModal" class="text-slate-400 hover:text-white">
+            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <form @submit.prevent="generateLink">
+          <div class="mb-4">
+            <label class="block text-slate-400 text-sm mb-2">Email 地址</label>
+            <input
+              v-model="generateForm.email"
+              type="email"
+              required
+              placeholder="輸入要邀請的 Email"
+              class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-primary-500"
+            />
+          </div>
+
+          <div class="mb-4">
+            <label class="block text-slate-400 text-sm mb-2">職位</label>
+            <select
+              v-model="generateForm.role"
+              required
+              class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-primary-500"
+            >
+              <option value="TEACHER">正式老師</option>
+              <option value="SUBSTITUTE">代課老師</option>
+            </select>
+          </div>
+
+          <div class="mb-6">
+            <label class="block text-slate-400 text-sm mb-2">邀請訊息（選填）</label>
+            <textarea
+              v-model="generateForm.message"
+              rows="3"
+              placeholder="輸入邀請訊息..."
+              class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-primary-500 resize-none"
+            ></textarea>
+          </div>
+
+          <div v-if="generatedLink" class="mb-6 p-4 bg-success-500/10 border border-success-500/30 rounded-xl">
+            <p class="text-success-500 text-sm font-medium mb-2">邀請連結已產生！</p>
+            <div class="flex gap-2">
+              <input
+                :value="generatedLink.invite_link"
+                readonly
+                class="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-slate-300 text-sm"
+              />
+              <button
+                @click="copyGeneratedLink"
+                type="button"
+                class="px-3 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors"
+              >
+                複製
+              </button>
+            </div>
+          </div>
+
+          <div class="flex gap-3">
+            <button
+              type="button"
+              @click="closeGenerateModal"
+              class="flex-1 py-3 bg-white/10 text-white rounded-xl hover:bg-white/20 transition-colors"
+            >
+              取消
+            </button>
+            <button
+              type="submit"
+              :disabled="generating"
+              class="flex-1 py-3 bg-primary-500 text-white rounded-xl hover:bg-primary-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              <span v-if="generating" class="inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+              {{ generating ? '產生中...' : '產生連結' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Toast 通知 -->
+    <div
+      v-if="toast.show"
+      class="fixed bottom-6 right-6 px-6 py-3 rounded-xl text-white shadow-lg z-50"
+      :class="toast.type === 'success' ? 'bg-success-500' : 'bg-critical-500'"
+    >
+      {{ toast.message }}
     </div>
   </div>
 </template>
@@ -154,6 +340,10 @@ const centerId = computed(() => {
   return authStore.user?.center_id || 1
 })
 
+// 標籤頁
+const activeTab = ref('invitations')
+
+// 介面
 interface Invitation {
   id: number
   email: string
@@ -163,8 +353,20 @@ interface Invitation {
   expires_at: string
 }
 
+interface InvitationLink {
+  id: number
+  email: string
+  role: string
+  invite_link: string
+  expires_at: string
+  created_at: string
+}
+
+// 狀態
 const loading = ref(true)
+const loadingLinks = ref(false)
 const invitations = ref<Invitation[]>([])
+const links = ref<InvitationLink[]>([])
 const stats = ref({
   pending: 0,
   accepted: 0,
@@ -184,6 +386,31 @@ const pagination = ref({
   totalPages: 0,
 })
 
+// 產生連結表單
+const showGenerateModal = ref(false)
+const generating = ref(false)
+const generatedLink = ref<InvitationLink | null>(null)
+const generateForm = ref({
+  email: '',
+  role: 'TEACHER',
+  message: '',
+})
+
+// Toast
+const toast = ref({
+  show: false,
+  message: '',
+  type: 'success',
+})
+
+const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+  toast.value = { show: true, message, type }
+  setTimeout(() => {
+    toast.value.show = false
+  }, 3000)
+}
+
+// 狀態文字
 const statusText = (status: string) => {
   const texts: Record<string, string> = {
     PENDING: '待處理',
@@ -194,8 +421,18 @@ const statusText = (status: string) => {
   return texts[status] || status
 }
 
+// 角色文字
+const roleText = (role: string) => {
+  const texts: Record<string, string> = {
+    TEACHER: '正式老師',
+    SUBSTITUTE: '代課老師',
+  }
+  return texts[role] || role
+}
+
+// 格式化日期
 const formatDate = (dateStr: string) => {
-  if (!dateStr) return ''
+  if (!dateStr) return '-'
   const date = new Date(dateStr)
   return date.toLocaleDateString('zh-TW', {
     year: 'numeric',
@@ -206,6 +443,7 @@ const formatDate = (dateStr: string) => {
   })
 }
 
+// 取得統計
 const fetchStats = async () => {
   try {
     const token = localStorage.getItem('admin_token')
@@ -228,6 +466,7 @@ const fetchStats = async () => {
   }
 }
 
+// 取得邀請列表
 const fetchInvitations = async () => {
   loading.value = true
   try {
@@ -247,12 +486,9 @@ const fetchInvitations = async () => {
     })
     if (response.ok) {
       const data = await response.json()
-      console.log('API Response:', data) // 除錯用
       invitations.value = data.datas?.data || []
       pagination.value.total = data.datas?.total || 0
       pagination.value.totalPages = Math.ceil(pagination.value.total / pagination.value.limit)
-    } else {
-      console.error('API Error:', response.status)
     }
   } catch (error) {
     console.error('Failed to fetch invitations:', error)
@@ -261,28 +497,147 @@ const fetchInvitations = async () => {
   }
 }
 
+// 取得邀請連結列表
+const fetchLinks = async () => {
+  loadingLinks.value = true
+  try {
+    const token = localStorage.getItem('admin_token')
+    const response = await fetch(`${config.public.apiBase}/admin/centers/${centerId.value}/invitations/links`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    })
+    if (response.ok) {
+      const data = await response.json()
+      links.value = data.datas || []
+    }
+  } catch (error) {
+    console.error('Failed to fetch links:', error)
+  } finally {
+    loadingLinks.value = false
+  }
+}
+
+// 重新整理資料
 const refreshData = () => {
   pagination.value.page = 1
   fetchStats()
   fetchInvitations()
+  if (activeTab.value === 'links') {
+    fetchLinks()
+  }
 }
 
+// 切換頁碼
 const changePage = (page: number) => {
   pagination.value.page = page
   fetchInvitations()
 }
 
-const resendInvitation = async (invitation: Invitation) => {
-  // TODO: 實作重新傳送邀請功能
-  alert('重新傳送功能待實作')
-}
-
+// 篩選後的邀請
 const filteredInvitations = computed(() => {
   if (!filters.value.search) return invitations.value
   const search = filters.value.search.toLowerCase()
   return invitations.value.filter(inv =>
     inv.email.toLowerCase().includes(search)
   )
+})
+
+// 產生邀請連結
+const generateLink = async () => {
+  if (!generateForm.value.email || !generateForm.value.role) return
+
+  generating.value = true
+  try {
+    const token = localStorage.getItem('admin_token')
+    const response = await fetch(`${config.public.apiBase}/admin/centers/${centerId.value}/invitations/generate-link`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(generateForm.value),
+    })
+
+    const data = await response.json()
+
+    if (!response.ok) {
+      throw new Error(data.message || '產生邀請連結失敗')
+    }
+
+    generatedLink.value = data.datas
+    fetchLinks()
+    showToast('邀請連結產生成功')
+  } catch (error: any) {
+    showToast(error.message || '產生邀請連結失敗', 'error')
+  } finally {
+    generating.value = false
+  }
+}
+
+// 複製連結
+const copyLink = async (link: InvitationLink) => {
+  try {
+    await navigator.clipboard.writeText(link.invite_link)
+    showToast('連結已複製到剪貼簿')
+  } catch (error) {
+    showToast('複製失敗，請手動複製', 'error')
+  }
+}
+
+// 複製產生的連結
+const copyGeneratedLink = async () => {
+  if (!generatedLink.value) return
+  try {
+    await navigator.clipboard.writeText(generatedLink.value.invite_link)
+    showToast('連結已複製到剪貼簿')
+  } catch (error) {
+    showToast('複製失敗，請手動複製', 'error')
+  }
+}
+
+// 撤回連結
+const revokeLink = async (link: InvitationLink) => {
+  if (!confirm(`確定要撤回「${link.email}」的邀請連結嗎？`)) return
+
+  try {
+    const token = localStorage.getItem('admin_token')
+    const response = await fetch(`${config.public.apiBase}/admin/invitations/links/${link.id}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    })
+
+    const data = await response.json()
+
+    if (!response.ok) {
+      throw new Error(data.message || '撤回邀請連結失敗')
+    }
+
+    fetchLinks()
+    showToast('邀請連結已撤回')
+  } catch (error: any) {
+    showToast(error.message || '撤回邀請連結失敗', 'error')
+  }
+}
+
+// 關閉產生 Modal
+const closeGenerateModal = () => {
+  showGenerateModal.value = false
+  generatedLink.value = null
+  generateForm.value = {
+    email: '',
+    role: 'TEACHER',
+    message: '',
+  }
+}
+
+// 監聽標籤頁切換
+watch(activeTab, (newTab) => {
+  if (newTab === 'links' && links.value.length === 0) {
+    fetchLinks()
+  }
 })
 
 // 監聽篩選器變化
