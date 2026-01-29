@@ -240,34 +240,9 @@ const fetchTodayStats = async () => {
       upcomingSessions.value = upcomingList
     }
   } catch (error) {
-    console.log('今日課表 API 尚未實作或無數據，使用模擬數據')
-    // 使用模擬數據
-    loadMockTodayStats()
+    console.error('Failed to fetch today stats:', error)
+    // API 失敗時保持空資料，由前端顯示空狀態
   }
-}
-
-// 模擬今日課表數據（展示用）
-const loadMockTodayStats = () => {
-  const now = new Date()
-  const currentHour = now.getHours()
-
-  todayStats.value = {
-    totalSessions: 8,
-    completedSessions: currentHour > 12 ? 5 : 2,
-    upcomingSessions: currentHour > 12 ? 3 : 6,
-    inProgressSessions: currentHour >= 10 && currentHour < 12 ? 1 : 0,
-    inProgressTeacherNames: currentHour >= 10 && currentHour < 12 ? ['林老師'] : [],
-    pendingExceptions: 3,
-    changesCount: 2,
-    hasScheduleChanges: true
-  }
-
-  // 模擬即將開始的課程
-  upcomingSessions.value = [
-    { id: 1, time: '14:00', courseName: '瑜珈基礎', teacherName: '林老師', roomName: 'A教室', minutesUntil: 30 },
-    { id: 2, time: '15:30', courseName: '鋼琴入門', teacherName: '陳老師', roomName: 'B教室', minutesUntil: 90 },
-    { id: 3, time: '16:00', courseName: '舞蹈課程', teacherName: '王老師', roomName: '多功能廳', minutesUntil: 120 }
-  ]
 }
 
 // 查看全部即將開始的課程

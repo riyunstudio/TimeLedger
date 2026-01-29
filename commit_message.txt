@@ -1,0 +1,18 @@
+feat(invitation): support inviting new teachers and improve notification system
+
+Invitation System:
+- Support inviting teachers not yet in the system (teacher_id = 0)
+- Auto-create CenterMembership when new teacher accepts invitation
+- Add Role field to CenterInvitation model (TEACHER/SUBSTITUTE)
+- Update RespondToInvitation to handle new teacher verification
+
+Notification System:
+- Fix notification dropdown duplicate rendering issue
+- Add debug logs for troubleshooting notification display
+- Create teacher notification history page (/teacher/notifications)
+- Add notification history link to teacher bottom navigation
+
+Frontend Fixes:
+- Add console.log for debugging API responses in invitations page
+- Remove duplicate NotificationDropdown from AdminHeader
+- Add "歷史" button in teacher bottom nav for notification history

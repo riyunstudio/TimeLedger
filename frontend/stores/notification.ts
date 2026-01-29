@@ -4,50 +4,12 @@ import type { Notification } from '~/types'
 export const useNotificationStore = defineStore('notification', () => {
   const notifications = ref<Notification[]>([])
   const unreadCount = ref<number>(0)
-  const isMock = ref(false)
   const lastFetchTime = ref<number>(0)
-
-  const loadMockNotifications = () => {
-    notifications.value = [
-      {
-        id: 1,
-        user_id: 1,
-        user_type: 'TEACHER' as const,
-        title: '課程已核准',
-        message: '您的「鋼琴基礎」課程已通過審核',
-        is_read: false,
-        created_at: new Date().toISOString(),
-        type: 'APPROVAL' as const,
-      },
-      {
-        id: 2,
-        user_id: 1,
-        user_type: 'TEACHER' as const,
-        title: '新課表提醒',
-        message: '本週課表已更新，請查看',
-        is_read: false,
-        created_at: new Date(Date.now() - 3600000).toISOString(),
-        type: 'SCHEDULE' as const,
-      },
-      {
-        id: 3,
-        user_id: 1,
-        user_type: 'TEACHER' as const,
-        title: '中心邀請',
-        message: '「藝術中心」邀請您加入',
-        is_read: true,
-        created_at: new Date(Date.now() - 86400000).toISOString(),
-        type: 'CENTER_INVITE' as const,
-      },
-    ]
-    unreadCount.value = 2
-    isMock.value = true
-  }
 
   const fetchNotifications = async (forceRefresh = false) => {
     // 如果最近 30 秒內已經 fetch 過，且不是強制刷新，則跳過
     const now = Date.now()
-    if (!forceRefresh && now - lastFetchTime.value < 30000 && notifications.value.length > 0 && !isMock.value) {
+    if (!forceRefresh && now - lastFetchTime.value < 30000 && notifications.value.length > 0) {
       return
     }
 
@@ -58,14 +20,9 @@ export const useNotificationStore = defineStore('notification', () => {
       )
       notifications.value = response.datas?.notifications || []
       unreadCount.value = response.datas?.unread_count || 0
-      isMock.value = false
       lastFetchTime.value = now
     } catch (error) {
       console.error('Failed to fetch notifications:', error)
-      // 如果 API 失敗且目前沒有資料，載入 mock 資料作為後備
-      if (notifications.value.length === 0) {
-        loadMockNotifications()
-      }
     }
   }
 
@@ -104,8 +61,6 @@ export const useNotificationStore = defineStore('notification', () => {
   return {
     notifications,
     unreadCount,
-    isMock,
-    loadMockNotifications,
     fetchNotifications,
     markAsRead,
     markAllAsRead,

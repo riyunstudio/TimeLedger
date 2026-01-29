@@ -73,13 +73,13 @@ type LineBotRequest struct {
 
 // LineBotReplyRequest LINE Bot Reply API 請求結構
 type LineBotReplyRequest struct {
-	ReplyToken string       `json:"replyToken"`
+	ReplyToken string        `json:"replyToken"`
 	Messages   []interface{} `json:"messages"`
 }
 
 // LineBotMulticastRequest LINE Bot Multicast API 請求結構
 type LineBotMulticastRequest struct {
-	To       []string     `json:"to"`
+	To       []string      `json:"to"`
 	Messages []interface{} `json:"messages"`
 }
 

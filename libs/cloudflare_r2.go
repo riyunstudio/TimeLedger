@@ -30,8 +30,8 @@ func NewR2StorageService(env *configs.Env) (*R2StorageService, error) {
 	}
 
 	// 驗證配置
-	if env.CloudflareR2AccountID == "" || env.CloudflareR2AccessKey == "" || 
-	   env.CloudflareR2SecretKey == "" || env.CloudflareR2BucketName == "" {
+	if env.CloudflareR2AccountID == "" || env.CloudflareR2AccessKey == "" ||
+		env.CloudflareR2SecretKey == "" || env.CloudflareR2BucketName == "" {
 		return nil, fmt.Errorf("Cloudflare R2 configuration is incomplete")
 	}
 
@@ -61,7 +61,7 @@ func (s *R2StorageService) UploadFile(ctx context.Context, file io.Reader, filen
 	}
 
 	// 建立 R2 API URL
-	r2URL := fmt.Sprintf("https://%s.r2.cloudflarestorage.com/%s/%s", 
+	r2URL := fmt.Sprintf("https://%s.r2.cloudflarestorage.com/%s/%s",
 		s.config.CloudflareR2AccountID,
 		s.config.CloudflareR2BucketName,
 		uniqueKey)
@@ -80,32 +80,32 @@ func (s *R2StorageService) UploadFile(ctx context.Context, file io.Reader, filen
 	date := time.Now().UTC()
 	amzDate := date.Format("20060102T150405Z")
 	shortDate := date.Format("20060102")
-	
+
 	service := "s3"
 	region := "auto"
 	credentialScope := fmt.Sprintf("%s/%s/%s/aws4_request", shortDate, region, service)
-	
+
 	// 產生簽名
 	signedHeaders := "content-type;host;x-amz-acl;x-amz-content-sha256;x-amz-date"
 	payloadHash := sha256Hex(fileContent)
-	
+
 	canonicalHeaders := fmt.Sprintf("content-type:%s\nhost:%s.r2.cloudflarestorage.com\nx-amz-acl:public-read\nx-amz-content-sha256:%s\nx-amz-date:%s\n",
 		contentType, s.config.CloudflareR2AccountID, payloadHash, amzDate)
-	
+
 	canonicalRequest := fmt.Sprintf("PUT\n/%s/%s\n\n%s\n%s\n%s",
 		s.config.CloudflareR2BucketName, uniqueKey, signedHeaders, canonicalHeaders, payloadHash)
-	
+
 	requestHash := sha256Hex([]byte(canonicalRequest))
-	
+
 	stringToSign := fmt.Sprintf("AWS4-HMAC-SHA256\n%s\n%s\n%s",
 		amzDate, credentialScope, requestHash)
-	
+
 	// 產生簽名金鑰
 	kDate := hmacSHA256([]byte("AWS4"+s.config.CloudflareR2SecretKey), []byte(shortDate))
 	kRegion := hmacSHA256(kDate, []byte(region))
 	kService := hmacSHA256(kRegion, []byte(service))
 	kSigning := hmacSHA256(kService, []byte("aws4_request"))
-	
+
 	signature := hmacSHA256Hex(kSigning, []byte(stringToSign))
 
 	// 設定 Authorization header
@@ -129,7 +129,7 @@ func (s *R2StorageService) UploadFile(ctx context.Context, file io.Reader, filen
 	if s.config.CloudflareR2PublicURL != "" {
 		return fmt.Sprintf("%s/%s", s.config.CloudflareR2PublicURL, uniqueKey), nil
 	}
-	return fmt.Sprintf("https://%s.r2.cloudflarestorage.com/%s/%s", 
+	return fmt.Sprintf("https://%s.r2.cloudflarestorage.com/%s/%s",
 		s.config.CloudflareR2AccountID, s.config.CloudflareR2BucketName, uniqueKey), nil
 }
 
@@ -164,7 +164,7 @@ func (s *R2StorageService) DeleteFile(ctx context.Context, fileURL string) error
 	}
 
 	// 建立 R2 API URL
-	r2URL := fmt.Sprintf("https://%s.r2.cloudflarestorage.com/%s/%s", 
+	r2URL := fmt.Sprintf("https://%s.r2.cloudflarestorage.com/%s/%s",
 		s.config.CloudflareR2AccountID, s.config.CloudflareR2BucketName, key)
 
 	// 建立請求
@@ -177,29 +177,29 @@ func (s *R2StorageService) DeleteFile(ctx context.Context, fileURL string) error
 	date := time.Now().UTC()
 	amzDate := date.Format("20060102T150405Z")
 	shortDate := date.Format("20060102")
-	
+
 	service := "s3"
 	region := "auto"
 	credentialScope := fmt.Sprintf("%s/%s/%s/aws4_request", shortDate, region, service)
-	
+
 	signedHeaders := "host;x-amz-date"
-	
+
 	canonicalHeaders := fmt.Sprintf("host:%s.r2.cloudflarestorage.com\nx-amz-date:%s\n",
 		s.config.CloudflareR2AccountID, amzDate)
-	
+
 	canonicalRequest := fmt.Sprintf("DELETE\n/%s/%s\n\n%s\n%s\nUNSIGNED-PAYLOAD",
 		s.config.CloudflareR2BucketName, key, signedHeaders, canonicalHeaders)
-	
+
 	requestHash := sha256Hex([]byte(canonicalRequest))
-	
+
 	stringToSign := fmt.Sprintf("AWS4-HMAC-SHA256\n%s\n%s\n%s",
 		amzDate, credentialScope, requestHash)
-	
+
 	kDate := hmacSHA256([]byte("AWS4"+s.config.CloudflareR2SecretKey), []byte(shortDate))
 	kRegion := hmacSHA256(kDate, []byte(region))
 	kService := hmacSHA256(kRegion, []byte(service))
 	kSigning := hmacSHA256(kService, []byte("aws4_request"))
-	
+
 	signature := hmacSHA256Hex(kSigning, []byte(stringToSign))
 
 	authHeader := fmt.Sprintf("AWS4-HMAC-SHA256 Credential=%s/%s, SignedHeaders=%s, Signature=%s",
@@ -280,13 +280,13 @@ func extractKeyFromURL(fileURL, publicURL, bucketName, accountID string) (string
 			return filepath.Base(u.Path), nil
 		}
 	}
-	
+
 	// 否則從標準 R2 URL 提取
 	u, err := url.Parse(fileURL)
 	if err != nil {
 		return "", err
 	}
-	
+
 	return filepath.Base(u.Path), nil
 }
 

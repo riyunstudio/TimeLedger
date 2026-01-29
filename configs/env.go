@@ -53,8 +53,8 @@ type Env struct {
 	LineChannelAccessToken string
 
 	// Frontend
-	FrontendBaseURL        string
-	LineOfficialAccountID  string
+	FrontendBaseURL       string
+	LineOfficialAccountID string
 
 	// Rate Limiting
 	RateLimitEnabled       bool
@@ -68,12 +68,12 @@ type Env struct {
 	UploadAllowedExts []string
 
 	// Cloudflare R2 Storage
-	CloudflareR2Enabled      bool
-	CloudflareR2AccountID    string
-	CloudflareR2AccessKey    string
-	CloudflareR2SecretKey    string
-	CloudflareR2BucketName   string
-	CloudflareR2PublicURL    string
+	CloudflareR2Enabled    bool
+	CloudflareR2AccountID  string
+	CloudflareR2AccessKey  string
+	CloudflareR2SecretKey  string
+	CloudflareR2BucketName string
+	CloudflareR2PublicURL  string
 }
 
 func LoadEnv() *Env {
@@ -141,12 +141,12 @@ func LoadEnv() *Env {
 		UploadAllowedExts: []string{".jpg", ".jpeg", ".png", ".pdf"},
 
 		// Cloudflare R2 Storage
-		CloudflareR2Enabled:      getEnvAsBool("CLOUDFLARE_R2_ENABLED", false),
-		CloudflareR2AccountID:    os.Getenv("CLOUDFLARE_R2_ACCOUNT_ID"),
-		CloudflareR2AccessKey:    os.Getenv("CLOUDFLARE_R2_ACCESS_KEY"),
-		CloudflareR2SecretKey:    os.Getenv("CLOUDFLARE_R2_SECRET_KEY"),
-		CloudflareR2BucketName:   os.Getenv("CLOUDFLARE_R2_BUCKET_NAME"),
-		CloudflareR2PublicURL:    os.Getenv("CLOUDFLARE_R2_PUBLIC_URL"),
+		CloudflareR2Enabled:    getEnvAsBool("CLOUDFLARE_R2_ENABLED", false),
+		CloudflareR2AccountID:  os.Getenv("CLOUDFLARE_R2_ACCOUNT_ID"),
+		CloudflareR2AccessKey:  os.Getenv("CLOUDFLARE_R2_ACCESS_KEY"),
+		CloudflareR2SecretKey:  os.Getenv("CLOUDFLARE_R2_SECRET_KEY"),
+		CloudflareR2BucketName: os.Getenv("CLOUDFLARE_R2_BUCKET_NAME"),
+		CloudflareR2PublicURL:  os.Getenv("CLOUDFLARE_R2_PUBLIC_URL"),
 	}
 }
 

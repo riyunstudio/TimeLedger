@@ -44,14 +44,14 @@ func (s *LineBotTemplateServiceImpl) GetWelcomeTeacherTemplate(teacher *models.T
 			"aspectRatio": "20:13",
 		},
 		"body": map[string]interface{}{
-			"type": "box",
+			"type":   "box",
 			"layout": "vertical",
 			"contents": []interface{}{
 				map[string]interface{}{
-					"type": "text",
-					"text": "👋 歡迎加入 TimeLedger！",
+					"type":   "text",
+					"text":   "👋 歡迎加入 TimeLedger！",
 					"weight": "bold",
-					"size": "lg",
+					"size":   "lg",
 				},
 				map[string]interface{}{
 					"type": "text",
@@ -59,9 +59,9 @@ func (s *LineBotTemplateServiceImpl) GetWelcomeTeacherTemplate(teacher *models.T
 					"size": "sm",
 				},
 				map[string]interface{}{
-					"type": "text",
-					"text": fmt.Sprintf("您的中心：%s", centerName),
-					"size": "md",
+					"type":  "text",
+					"text":  fmt.Sprintf("您的中心：%s", centerName),
+					"size":  "md",
 					"color": "#666666",
 				},
 				map[string]interface{}{
@@ -70,36 +70,36 @@ func (s *LineBotTemplateServiceImpl) GetWelcomeTeacherTemplate(teacher *models.T
 					"size": "sm",
 				},
 				map[string]interface{}{
-					"type": "text",
-					"text": "點擊下方按鈕完成綁定，即可使用：",
-					"size": "sm",
+					"type":  "text",
+					"text":  "點擊下方按鈕完成綁定，即可使用：",
+					"size":  "sm",
 					"color": "#999999",
 				},
 				map[string]interface{}{
-					"type": "text",
-					"text": "✅ 查看課表",
+					"type":   "text",
+					"text":   "✅ 查看課表",
 					"weight": "bold",
-					"color": "#4CAF50",
-					"size": "sm",
+					"color":  "#4CAF50",
+					"size":   "sm",
 				},
 				map[string]interface{}{
-					"type": "text",
-					"text": "✅ 提交例外申請",
+					"type":   "text",
+					"text":   "✅ 提交例外申請",
 					"weight": "bold",
-					"color": "#4CAF50",
-					"size": "sm",
+					"color":  "#4CAF50",
+					"size":   "sm",
 				},
 				map[string]interface{}{
-					"type": "text",
-					"text": "✅ 管理私人行程",
+					"type":   "text",
+					"text":   "✅ 管理私人行程",
 					"weight": "bold",
-					"color": "#4CAF50",
-					"size": "sm",
+					"color":  "#4CAF50",
+					"size":   "sm",
 				},
 			},
 		},
 		"footer": map[string]interface{}{
-			"type": "box",
+			"type":   "box",
 			"layout": "vertical",
 			"contents": []interface{}{
 				map[string]interface{}{
@@ -129,14 +129,14 @@ func (s *LineBotTemplateServiceImpl) GetWelcomeAdminTemplate(admin *models.Admin
 	return map[string]interface{}{
 		"type": "bubble",
 		"body": map[string]interface{}{
-			"type": "box",
+			"type":   "box",
 			"layout": "vertical",
 			"contents": []interface{}{
 				map[string]interface{}{
-					"type": "text",
-					"text": "🎉 歡迎使用 TimeLedger！",
+					"type":   "text",
+					"text":   "🎉 歡迎使用 TimeLedger！",
 					"weight": "bold",
-					"size": "lg",
+					"size":   "lg",
 				},
 				map[string]interface{}{
 					"type": "text",
@@ -144,43 +144,43 @@ func (s *LineBotTemplateServiceImpl) GetWelcomeAdminTemplate(admin *models.Admin
 					"size": "sm",
 				},
 				map[string]interface{}{
-					"type": "text",
-					"text": fmt.Sprintf("您的中心：%s", centerName),
-					"size": "md",
+					"type":  "text",
+					"text":  fmt.Sprintf("您的中心：%s", centerName),
+					"size":  "md",
 					"color": "#666666",
 				},
 				map[string]interface{}{
-					"type": "text",
-					"text": fmt.Sprintf("您的角色：%s", roleText),
-					"size": "md",
+					"type":  "text",
+					"text":  fmt.Sprintf("您的角色：%s", roleText),
+					"size":  "md",
 					"color": "#666666",
 				},
 				map[string]interface{}{
-					"type": "separator",
+					"type":   "separator",
 					"margin": "md",
 				},
 				map[string]interface{}{
-					"type": "text",
-					"text": "🔔 及時通知功能",
+					"type":   "text",
+					"text":   "🔔 及時通知功能",
 					"weight": "bold",
 					"margin": "md",
 				},
 				map[string]interface{}{
-					"type": "text",
-					"text": "綁定 LINE 帳號後，當老師提交例外申請時，\n您會立即收到通知！",
-					"size": "sm",
+					"type":  "text",
+					"text":  "綁定 LINE 帳號後，當老師提交例外申請時，\n您會立即收到通知！",
+					"size":  "sm",
 					"color": "#999999",
-					"wrap": true,
+					"wrap":  true,
 				},
 			},
 		},
 		"footer": map[string]interface{}{
-			"type": "box",
+			"type":   "box",
 			"layout": "horizontal",
 			"contents": []interface{}{
 				map[string]interface{}{
-					"type":   "button",
-					"style":  "primary",
+					"type":  "button",
+					"style": "primary",
 					"action": map[string]interface{}{
 						"type":  "uri",
 						"label": "立即綁定",
@@ -188,8 +188,8 @@ func (s *LineBotTemplateServiceImpl) GetWelcomeAdminTemplate(admin *models.Admin
 					},
 				},
 				map[string]interface{}{
-					"type":   "button",
-					"style":  "secondary",
+					"type":  "button",
+					"style": "secondary",
 					"action": map[string]interface{}{
 						"type":  "message",
 						"label": "稍後再說",
@@ -241,19 +241,19 @@ func (s *LineBotTemplateServiceImpl) GetExceptionSubmitTemplate(exception *model
 	return map[string]interface{}{
 		"type": "bubble",
 		"body": map[string]interface{}{
-			"type": "box",
+			"type":   "box",
 			"layout": "vertical",
 			"contents": []interface{}{
 				map[string]interface{}{
-					"type": "text",
-					"text": "🔔 新的" + typeTitle,
+					"type":   "text",
+					"text":   "🔔 新的" + typeTitle,
 					"weight": "bold",
-					"size": "lg",
+					"size":   "lg",
 				},
 				map[string]interface{}{
-					"type": "text",
-					"text": "━━━━━━━━━━━━━━",
-					"size": "xs",
+					"type":  "text",
+					"text":  "━━━━━━━━━━━━━━",
+					"size":  "xs",
 					"color": "#CCCCCC",
 				},
 				map[string]interface{}{
@@ -272,9 +272,9 @@ func (s *LineBotTemplateServiceImpl) GetExceptionSubmitTemplate(exception *model
 					"size": "md",
 				},
 				map[string]interface{}{
-					"type": "text",
-					"text": "━━━━━━━━━━━━━━",
-					"size": "xs",
+					"type":  "text",
+					"text":  "━━━━━━━━━━━━━━",
+					"size":  "xs",
 					"color": "#CCCCCC",
 				},
 				map[string]interface{}{
@@ -286,7 +286,7 @@ func (s *LineBotTemplateServiceImpl) GetExceptionSubmitTemplate(exception *model
 			},
 		},
 		"footer": map[string]interface{}{
-			"type": "box",
+			"type":   "box",
 			"layout": "horizontal",
 			"contents": []interface{}{
 				map[string]interface{}{
@@ -324,20 +324,20 @@ func (s *LineBotTemplateServiceImpl) GetExceptionApproveTemplate(exception *mode
 	return map[string]interface{}{
 		"type": "bubble",
 		"body": map[string]interface{}{
-			"type": "box",
+			"type":   "box",
 			"layout": "vertical",
 			"contents": []interface{}{
 				map[string]interface{}{
-					"type": "text",
-					"text": "✅ " + typeTitle + "已核准",
+					"type":   "text",
+					"text":   "✅ " + typeTitle + "已核准",
 					"weight": "bold",
-					"size": "lg",
-					"color": "#4CAF50",
+					"size":   "lg",
+					"color":  "#4CAF50",
 				},
 				map[string]interface{}{
-					"type": "text",
-					"text": "━━━━━━━━━━━━━━",
-					"size": "xs",
+					"type":  "text",
+					"text":  "━━━━━━━━━━━━━━",
+					"size":  "xs",
 					"color": "#CCCCCC",
 				},
 				map[string]interface{}{
@@ -353,7 +353,7 @@ func (s *LineBotTemplateServiceImpl) GetExceptionApproveTemplate(exception *mode
 			},
 		},
 		"footer": map[string]interface{}{
-			"type": "box",
+			"type":   "box",
 			"layout": "horizontal",
 			"contents": []interface{}{
 				map[string]interface{}{
@@ -396,20 +396,20 @@ func (s *LineBotTemplateServiceImpl) GetExceptionRejectTemplate(exception *model
 	return map[string]interface{}{
 		"type": "bubble",
 		"body": map[string]interface{}{
-			"type": "box",
+			"type":   "box",
 			"layout": "vertical",
 			"contents": []interface{}{
 				map[string]interface{}{
-					"type": "text",
-					"text": "❌ " + typeTitle + "已拒絕",
+					"type":   "text",
+					"text":   "❌ " + typeTitle + "已拒絕",
 					"weight": "bold",
-					"size": "lg",
-					"color": "#F44336",
+					"size":   "lg",
+					"color":  "#F44336",
 				},
 				map[string]interface{}{
-					"type": "text",
-					"text": "━━━━━━━━━━━━━━",
-					"size": "xs",
+					"type":  "text",
+					"text":  "━━━━━━━━━━━━━━",
+					"size":  "xs",
 					"color": "#CCCCCC",
 				},
 				map[string]interface{}{
@@ -423,9 +423,9 @@ func (s *LineBotTemplateServiceImpl) GetExceptionRejectTemplate(exception *model
 					"size": "md",
 				},
 				map[string]interface{}{
-					"type": "text",
-					"text": "━━━━━━━━━━━━━━",
-					"size": "xs",
+					"type":  "text",
+					"text":  "━━━━━━━━━━━━━━",
+					"size":  "xs",
 					"color": "#CCCCCC",
 				},
 				map[string]interface{}{
@@ -437,7 +437,7 @@ func (s *LineBotTemplateServiceImpl) GetExceptionRejectTemplate(exception *model
 			},
 		},
 		"footer": map[string]interface{}{
-			"type": "box",
+			"type":   "box",
 			"layout": "horizontal",
 			"contents": []interface{}{
 				map[string]interface{}{
@@ -471,26 +471,26 @@ func (s *LineBotTemplateServiceImpl) GetInvitationAcceptedTemplate(teacher *mode
 	return map[string]interface{}{
 		"type": "bubble",
 		"body": map[string]interface{}{
-			"type": "box",
+			"type":   "box",
 			"layout": "vertical",
 			"contents": []interface{}{
 				map[string]interface{}{
-					"type": "text",
-					"text": "🎉 新成員加入！",
+					"type":   "text",
+					"text":   "🎉 新成員加入！",
 					"weight": "bold",
-					"size": "lg",
-					"color": "#4CAF50",
+					"size":   "lg",
+					"color":  "#4CAF50",
 				},
 				map[string]interface{}{
-					"type": "text",
-					"text": "━━━━━━━━━━━━━━",
-					"size": "xs",
+					"type":  "text",
+					"text":  "━━━━━━━━━━━━━━",
+					"size":  "xs",
 					"color": "#CCCCCC",
 				},
 				map[string]interface{}{
-					"type": "text",
-					"text": fmt.Sprintf("👤 新成員：%s", teacher.Name),
-					"size": "md",
+					"type":   "text",
+					"text":   fmt.Sprintf("👤 新成員：%s", teacher.Name),
+					"size":   "md",
 					"weight": "bold",
 				},
 				map[string]interface{}{
@@ -504,21 +504,21 @@ func (s *LineBotTemplateServiceImpl) GetInvitationAcceptedTemplate(teacher *mode
 					"size": "md",
 				},
 				map[string]interface{}{
-					"type": "text",
-					"text": "━━━━━━━━━━━━━━",
-					"size": "xs",
+					"type":  "text",
+					"text":  "━━━━━━━━━━━━━━",
+					"size":  "xs",
 					"color": "#CCCCCC",
 				},
 				map[string]interface{}{
-					"type": "text",
-					"text": "✅ 歡迎新老師加入！",
-					"size": "sm",
+					"type":  "text",
+					"text":  "✅ 歡迎新老師加入！",
+					"size":  "sm",
 					"color": "#666666",
 				},
 			},
 		},
 		"footer": map[string]interface{}{
-			"type": "box",
+			"type":   "box",
 			"layout": "horizontal",
 			"contents": []interface{}{
 				map[string]interface{}{
