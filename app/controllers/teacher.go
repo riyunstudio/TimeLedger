@@ -23,25 +23,26 @@ import (
 
 type TeacherController struct {
 	BaseController
-	app               *app.App
-	teacherRepository *repositories.TeacherRepository
-	membershipRepo    *repositories.CenterMembershipRepository
-	centerRepo        *repositories.CenterRepository
-	scheduleRuleRepo  *repositories.ScheduleRuleRepository
-	exceptionRepo     *repositories.ScheduleExceptionRepository
-	exceptionService  services.ScheduleExceptionService
-	expansionService  services.ScheduleExpansionService
-	recurrenceService services.ScheduleRecurrenceService
-	auditLogRepo      *repositories.AuditLogRepository
-	skillRepo         *repositories.TeacherSkillRepository
-	certificateRepo   *repositories.TeacherCertificateRepository
-	personalEventRepo *repositories.PersonalEventRepository
-	sessionNoteRepo   *repositories.SessionNoteRepository
-	invitationRepo    *repositories.CenterInvitationRepository
-	adminUserRepo     *repositories.AdminUserRepository
-	lineBotService    services.LineBotService
-	r2Storage         *libs.R2StorageService
-	localStorage      *libs.LocalStorageService
+	app                  *app.App
+	teacherRepository    *repositories.TeacherRepository
+	membershipRepo       *repositories.CenterMembershipRepository
+	centerRepo           *repositories.CenterRepository
+	scheduleRuleRepo     *repositories.ScheduleRuleRepository
+	exceptionRepo        *repositories.ScheduleExceptionRepository
+	exceptionService     services.ScheduleExceptionService
+	expansionService     services.ScheduleExpansionService
+	recurrenceService    services.ScheduleRecurrenceService
+	scheduleQueryService services.ScheduleQueryService
+	auditLogRepo         *repositories.AuditLogRepository
+	skillRepo            *repositories.TeacherSkillRepository
+	certificateRepo      *repositories.TeacherCertificateRepository
+	personalEventRepo    *repositories.PersonalEventRepository
+	sessionNoteRepo      *repositories.SessionNoteRepository
+	invitationRepo       *repositories.CenterInvitationRepository
+	adminUserRepo        *repositories.AdminUserRepository
+	lineBotService       services.LineBotService
+	r2Storage            *libs.R2StorageService
+	localStorage         *libs.LocalStorageService
 }
 
 func NewTeacherController(app *app.App) *TeacherController {
@@ -54,25 +55,26 @@ func NewTeacherController(app *app.App) *TeacherController {
 	localStorage := libs.NewLocalStorageService("./uploads/certificates")
 
 	return &TeacherController{
-		app:               app,
-		teacherRepository: repositories.NewTeacherRepository(app),
-		membershipRepo:    repositories.NewCenterMembershipRepository(app),
-		centerRepo:        repositories.NewCenterRepository(app),
-		scheduleRuleRepo:  repositories.NewScheduleRuleRepository(app),
-		exceptionRepo:     repositories.NewScheduleExceptionRepository(app),
-		exceptionService:  services.NewScheduleExceptionService(app),
-		expansionService:  services.NewScheduleExpansionService(app),
-		recurrenceService: services.NewScheduleRecurrenceService(app),
-		auditLogRepo:      repositories.NewAuditLogRepository(app),
-		skillRepo:         repositories.NewTeacherSkillRepository(app),
-		certificateRepo:   repositories.NewTeacherCertificateRepository(app),
-		personalEventRepo: repositories.NewPersonalEventRepository(app),
-		sessionNoteRepo:   repositories.NewSessionNoteRepository(app),
-		invitationRepo:    repositories.NewCenterInvitationRepository(app),
-		adminUserRepo:     repositories.NewAdminUserRepository(app),
-		lineBotService:    lineBotService,
-		r2Storage:         r2Storage,
-		localStorage:      localStorage,
+		app:                  app,
+		teacherRepository:    repositories.NewTeacherRepository(app),
+		membershipRepo:       repositories.NewCenterMembershipRepository(app),
+		centerRepo:           repositories.NewCenterRepository(app),
+		scheduleRuleRepo:     repositories.NewScheduleRuleRepository(app),
+		exceptionRepo:        repositories.NewScheduleExceptionRepository(app),
+		exceptionService:     services.NewScheduleExceptionService(app),
+		expansionService:     services.NewScheduleExpansionService(app),
+		recurrenceService:    services.NewScheduleRecurrenceService(app),
+		scheduleQueryService: services.NewScheduleQueryService(app),
+		auditLogRepo:         repositories.NewAuditLogRepository(app),
+		skillRepo:            repositories.NewTeacherSkillRepository(app),
+		certificateRepo:      repositories.NewTeacherCertificateRepository(app),
+		personalEventRepo:    repositories.NewPersonalEventRepository(app),
+		sessionNoteRepo:      repositories.NewSessionNoteRepository(app),
+		invitationRepo:       repositories.NewCenterInvitationRepository(app),
+		adminUserRepo:        repositories.NewAdminUserRepository(app),
+		lineBotService:       lineBotService,
+		r2Storage:            r2Storage,
+		localStorage:         localStorage,
 	}
 }
 
@@ -305,10 +307,11 @@ func (ctl *TeacherController) UpdateProfile(ctx *gin.Context) {
 	// 更新個人標籤
 	if len(req.PersonalHashtags) > 0 {
 		// 刪除現有標籤
-		ctl.app.MySQL.WDB.WithContext(ctx).Where("teacher_id = ?", teacherID).Delete(&models.TeacherPersonalHashtag{})
+		ctl.teacherRepository.DeleteAllPersonalHashtags(ctx, teacherID)
 
 		// 新增新標籤
 		hashtagRepo := repositories.NewHashtagRepository(ctl.app)
+		sortOrder := 0
 		for _, tagName := range req.PersonalHashtags {
 			// 確保 # 符號存在
 			if !strings.HasPrefix(tagName, "#") {
@@ -327,11 +330,8 @@ func (ctl *TeacherController) UpdateProfile(ctx *gin.Context) {
 			}
 
 			// 創建關聯
-			ctl.app.MySQL.WDB.WithContext(ctx).Create(&models.TeacherPersonalHashtag{
-				TeacherID: teacherID,
-				HashtagID: hashtag.ID,
-				SortOrder: 0,
-			})
+			ctl.teacherRepository.CreatePersonalHashtag(ctx, teacherID, hashtag.ID, sortOrder)
+			sortOrder++
 		}
 	}
 
@@ -423,8 +423,7 @@ func (ctl *TeacherController) GetCenters(ctx *gin.Context) {
 
 	var centerResources []resources.CenterMembershipResource
 	for _, m := range memberships {
-		var center models.Center
-		ctl.app.MySQL.RDB.WithContext(ctx).First(&center, m.CenterID)
+		center, _ := ctl.centerRepo.GetByID(ctx, m.CenterID)
 		centerResources = append(centerResources, resources.CenterMembershipResource{
 			ID:         m.ID,
 			CenterID:   m.CenterID,
@@ -489,90 +488,13 @@ func (ctl *TeacherController) GetSchedule(ctx *gin.Context) {
 		return
 	}
 
-	memberships, err := ctl.membershipRepo.GetActiveByTeacherID(ctx, teacherID)
+	schedule, err := ctl.scheduleQueryService.GetTeacherSchedule(ctx, teacherID, fromDate, toDate)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
 			Code:    500,
-			Message: "Failed to get memberships",
+			Message: "Failed to get schedule",
 		})
 		return
-	}
-
-	var schedule []TeacherScheduleItem
-
-	for _, m := range memberships {
-		// Get center name
-		center, _ := ctl.centerRepo.GetByID(ctx, m.CenterID)
-		centerName := center.Name
-
-		rules, _ := ctl.scheduleRuleRepo.ListByTeacherID(ctx, teacherID, m.CenterID)
-
-		// Create a map of rule ID to rule for quick lookup
-		ruleMap := make(map[uint]*models.ScheduleRule)
-		for i := range rules {
-			ruleMap[rules[i].ID] = &rules[i]
-		}
-
-		expanded := ctl.expansionService.ExpandRules(ctx, rules, fromDate, toDate, m.CenterID)
-
-		for _, item := range expanded {
-			status := "NORMAL"
-			exceptions, _ := ctl.exceptionRepo.GetByRuleAndDate(ctx, item.RuleID, item.Date)
-			for _, exc := range exceptions {
-				if exc.Status == "PENDING" {
-					status = "PENDING_" + exc.ExceptionType
-				} else if exc.Status == "APPROVED" && exc.ExceptionType == "CANCEL" {
-					status = "CANCELLED"
-				} else if exc.Status == "APPROVED" && exc.ExceptionType == "RESCHEDULE" {
-					status = "RESCHEDULED"
-				}
-			}
-
-			if status != "CANCELLED" {
-				// Get offering name from the rule
-				offeringName := ""
-				if rule, exists := ruleMap[item.RuleID]; exists && rule.OfferingID != 0 {
-					offeringName = rule.Offering.Name
-				}
-
-				// Create title: "課程名稱 @ 中心名稱"
-				title := offeringName
-				if centerName != "" {
-					if title != "" {
-						title = fmt.Sprintf("%s @ %s", offeringName, centerName)
-					} else {
-						title = centerName
-					}
-				}
-				if title == "" {
-					title = "課程"
-				}
-
-				schedule = append(schedule, TeacherScheduleItem{
-					ID: fmt.Sprintf("center_%d_rule_%d_%s_%s", m.CenterID, item.RuleID, item.Date.Format("20060102"), func() string {
-						if item.IsCrossDayPart {
-							if item.StartTime == "00:00" {
-								return "end"
-							}
-							return "start"
-						}
-						return "normal"
-					}()),
-					Type:           "CENTER_SESSION",
-					Title:          title,
-					Date:           item.Date.Format("2006-01-02"),
-					StartTime:      item.StartTime,
-					EndTime:        item.EndTime,
-					RoomID:         item.RoomID,
-					TeacherID:      item.TeacherID,
-					CenterID:       m.CenterID,
-					CenterName:     centerName,
-					Status:         status,
-					RuleID:         item.RuleID,
-					IsCrossDayPart: item.IsCrossDayPart,
-				})
-			}
-		}
 	}
 
 	ctx.JSON(http.StatusOK, global.ApiResponse{
@@ -758,92 +680,14 @@ func (ctl *TeacherController) GetSchedules(ctx *gin.Context) {
 		return
 	}
 
-	// 呼叫原有的 GetSchedule 邏輯
-	ctl.getScheduleInternal(ctx, teacherID, fromDate, toDate)
-}
-
-// getScheduleInternal 內部方法：取得老師的綜合課表
-func (ctl *TeacherController) getScheduleInternal(ctx *gin.Context, teacherID uint, fromDate, toDate time.Time) {
-	memberships, err := ctl.membershipRepo.GetActiveByTeacherID(ctx, teacherID)
+	// 使用 ScheduleQueryService 取得課表
+	schedule, err := ctl.scheduleQueryService.GetTeacherSchedule(ctx, teacherID, fromDate, toDate)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
 			Code:    500,
-			Message: "Failed to get memberships",
+			Message: "Failed to get schedule",
 		})
 		return
-	}
-
-	var schedule []TeacherScheduleItem
-
-	for _, m := range memberships {
-		center, _ := ctl.centerRepo.GetByID(ctx, m.CenterID)
-		centerName := center.Name
-
-		rules, _ := ctl.scheduleRuleRepo.ListByTeacherID(ctx, teacherID, m.CenterID)
-
-		ruleMap := make(map[uint]*models.ScheduleRule)
-		for i := range rules {
-			ruleMap[rules[i].ID] = &rules[i]
-		}
-
-		expanded := ctl.expansionService.ExpandRules(ctx, rules, fromDate, toDate, m.CenterID)
-
-		for _, item := range expanded {
-			status := "NORMAL"
-			exceptions, _ := ctl.exceptionRepo.GetByRuleAndDate(ctx, item.RuleID, item.Date)
-			for _, exc := range exceptions {
-				if exc.Status == "PENDING" {
-					status = "PENDING_" + exc.ExceptionType
-				} else if exc.Status == "APPROVED" && exc.ExceptionType == "CANCEL" {
-					status = "CANCELLED"
-				} else if exc.Status == "APPROVED" && exc.ExceptionType == "RESCHEDULE" {
-					status = "RESCHEDULED"
-				}
-			}
-
-			if status != "CANCELLED" {
-				offeringName := ""
-				if rule, exists := ruleMap[item.RuleID]; exists && rule.OfferingID != 0 {
-					offeringName = rule.Offering.Name
-				}
-
-				title := offeringName
-				if centerName != "" {
-					if title != "" {
-						title = fmt.Sprintf("%s @ %s", offeringName, centerName)
-					} else {
-						title = centerName
-					}
-				}
-				if title == "" {
-					title = "課程"
-				}
-
-				schedule = append(schedule, TeacherScheduleItem{
-					ID: fmt.Sprintf("center_%d_rule_%d_%s_%s", m.CenterID, item.RuleID, item.Date.Format("20060102"), func() string {
-						if item.IsCrossDayPart {
-							if item.StartTime == "00:00" {
-								return "end"
-							}
-							return "start"
-						}
-						return "normal"
-					}()),
-					Type:           "CENTER_SESSION",
-					Title:          title,
-					Date:           item.Date.Format("2006-01-02"),
-					StartTime:      item.StartTime,
-					EndTime:        item.EndTime,
-					RoomID:         item.RoomID,
-					TeacherID:      item.TeacherID,
-					CenterID:       m.CenterID,
-					CenterName:     centerName,
-					Status:         status,
-					RuleID:         item.RuleID,
-					IsCrossDayPart: item.IsCrossDayPart,
-				})
-			}
-		}
 	}
 
 	ctx.JSON(http.StatusOK, global.ApiResponse{
@@ -1012,48 +856,23 @@ func (ctl *TeacherController) GetExceptions(ctx *gin.Context) {
 		centerIDs = append(centerIDs, m.CenterID)
 	}
 
-	var exceptions []models.ScheduleException
-	query := ctl.app.MySQL.RDB.WithContext(ctx).
-		Table("schedule_exceptions").
-		Select("schedule_exceptions.*").
-		Joins("JOIN center_memberships ON center_memberships.center_id = schedule_exceptions.center_id").
-		Where("center_memberships.teacher_id = ?", teacherID).
-		Where("center_memberships.status = ?", "ACTIVE")
+	// 從 Query 取得狀態篩選
+	status := ctx.Query("status")
 
-	if status := ctx.Query("status"); status != "" {
-		// 支援新旧两种状态值（向后兼容）
-		if status == "APPROVED" {
-			query = query.Where("schedule_exceptions.status IN ('APPROVED', 'APPROVE')")
-		} else if status == "REJECTED" {
-			query = query.Where("schedule_exceptions.status IN ('REJECTED', 'REJECT')")
-		} else {
-			query = query.Where("schedule_exceptions.status = ?", status)
-		}
+	exceptions, err := ctl.exceptionRepo.GetByTeacherID(ctx, teacherID, status)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
+			Code:    500,
+			Message: "Failed to get exceptions",
+		})
+		return
 	}
-
-	query.Order("schedule_exceptions.created_at DESC").Find(&exceptions)
 
 	ctx.JSON(http.StatusOK, global.ApiResponse{
 		Code:    0,
 		Message: "Success",
 		Datas:   exceptions,
 	})
-}
-
-type TeacherScheduleItem struct {
-	ID             string `json:"id"`
-	Type           string `json:"type"`
-	Title          string `json:"title"`
-	Date           string `json:"date"`
-	StartTime      string `json:"start_time"`
-	EndTime        string `json:"end_time"`
-	RoomID         uint   `json:"room_id"`
-	TeacherID      *uint  `json:"teacher_id"`
-	CenterID       uint   `json:"center_id"`
-	CenterName     string `json:"center_name"`
-	Status         string `json:"status"`
-	RuleID         uint   `json:"rule_id"`                     // 用於關聯課堂筆記
-	IsCrossDayPart bool   `json:"is_cross_day_part,omitempty"` // 跨日課程的一部分
 }
 
 type TeacherCreateExceptionRequest struct {
@@ -1310,22 +1129,12 @@ func (ctl *TeacherController) CreateSkill(ctx *gin.Context) {
 	// 建立技能標籤關聯
 	if len(req.HashtagIDs) > 0 {
 		for _, hashtagID := range req.HashtagIDs {
-			skillHashtag := models.TeacherSkillHashtag{
-				TeacherSkillID: skill.ID,
-				HashtagID:      hashtagID,
-			}
-			if err := ctl.app.MySQL.WDB.WithContext(ctx).Create(&skillHashtag).Error; err != nil {
+			if err := ctl.skillRepo.CreateHashtag(ctx, skill.ID, hashtagID); err != nil {
 				// 記錄錯誤但不影響主要流程
 				fmt.Printf("Failed to create skill hashtag: %v\n", err)
 			}
 		}
 	}
-
-	// 重新載入技能（含標籤）
-	skillHashtags := []models.TeacherSkillHashtag{}
-	ctl.app.MySQL.RDB.WithContext(ctx).
-		Where("teacher_skill_id = ?", skill.ID).
-		Find(&skillHashtags)
 
 	ctx.JSON(http.StatusOK, global.ApiResponse{
 		Code:    0,
@@ -1463,7 +1272,7 @@ func (ctl *TeacherController) UpdateSkill(ctx *gin.Context) {
 	// 更新技能標籤
 	if len(req.Hashtags) > 0 {
 		// 刪除現有標籤
-		ctl.app.MySQL.WDB.WithContext(ctx).Where("teacher_skill_id = ?", skill.ID).Delete(&models.TeacherSkillHashtag{})
+		ctl.skillRepo.DeleteAllHashtags(ctx, skill.ID)
 
 		hashtagRepo := repositories.NewHashtagRepository(ctl.app)
 		for _, tagName := range req.Hashtags {
@@ -1482,10 +1291,7 @@ func (ctl *TeacherController) UpdateSkill(ctx *gin.Context) {
 			}
 
 			// 創建關聯
-			ctl.app.MySQL.WDB.WithContext(ctx).Create(&models.TeacherSkillHashtag{
-				TeacherSkillID: skill.ID,
-				HashtagID:      hashtag.ID,
-			})
+			ctl.skillRepo.CreateHashtag(ctx, skill.ID, hashtag.ID)
 		}
 	}
 
@@ -2425,7 +2231,7 @@ func (ctl *TeacherController) InviteTeacher(ctx *gin.Context) {
 		ExpiresAt:  expiresAt,
 	}
 
-	if err := ctl.app.MySQL.WDB.WithContext(ctx).Create(&invitation).Error; err != nil {
+	if _, err := ctl.invitationRepo.Create(ctx, invitation); err != nil {
 		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
 			Code:    500,
 			Message: "Failed to create invitation",
@@ -3188,7 +2994,7 @@ func (ctl *TeacherController) GenerateInvitationLink(ctx *gin.Context) {
 		ExpiresAt:  expiresAt,
 	}
 
-	if err := ctl.app.MySQL.WDB.WithContext(ctx).Create(&invitation).Error; err != nil {
+	if _, err := ctl.invitationRepo.Create(ctx, invitation); err != nil {
 		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
 			Code:    500,
 			Message: "Failed to create invitation",
@@ -3635,12 +3441,10 @@ func (ctl *TeacherController) AcceptInvitationByLink(ctx *gin.Context) {
 
 	// 更新邀請狀態為已接受
 	now := time.Now()
-	if err := ctl.app.MySQL.WDB.WithContext(ctx).Model(&models.CenterInvitation{}).
-		Where("id = ?", invitation.ID).
-		Updates(map[string]interface{}{
-			"status":       models.InvitationStatusAccepted,
-			"responded_at": &now,
-		}).Error; err != nil {
+	if err := ctl.invitationRepo.UpdateWithFields(ctx, invitation.ID, map[string]interface{}{
+		"status":       models.InvitationStatusAccepted,
+		"responded_at": &now,
+	}); err != nil {
 		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
 			Code:    errInfos.SQL_ERROR,
 			Message: "Failed to update invitation status",

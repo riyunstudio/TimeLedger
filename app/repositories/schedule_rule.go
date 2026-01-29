@@ -400,3 +400,47 @@ func IsCrossDayTime(startTime, endTime string) bool {
 func timesOverlap(start1, end1, start2, end2 string) bool {
 	return start1 < end2 && end1 > start2
 }
+
+// GetLastSessionByTeacherAndWeekday 取得老師在指定星期幾的最後一堂課結束時間
+func (rp *ScheduleRuleRepository) GetLastSessionByTeacherAndWeekday(ctx context.Context, centerID, teacherID uint, weekday int, beforeTimeStr string) (*models.ScheduleRule, error) {
+	weekdayVal := weekday
+	if weekdayVal == 0 {
+		weekdayVal = 7
+	}
+
+	var rule models.ScheduleRule
+	err := rp.app.MySQL.RDB.WithContext(ctx).
+		Where("center_id = ?", centerID).
+		Where("teacher_id = ?", teacherID).
+		Where("weekday = ?", weekdayVal).
+		Where("end_time <= ?", beforeTimeStr).
+		Order("end_time DESC").
+		First(&rule).Error
+
+	if err != nil {
+		return nil, err
+	}
+	return &rule, nil
+}
+
+// GetLastSessionByRoomAndWeekday 取得教室在指定星期幾的最後一堂課結束時間
+func (rp *ScheduleRuleRepository) GetLastSessionByRoomAndWeekday(ctx context.Context, centerID, roomID uint, weekday int, beforeTimeStr string) (*models.ScheduleRule, error) {
+	weekdayVal := weekday
+	if weekdayVal == 0 {
+		weekdayVal = 7
+	}
+
+	var rule models.ScheduleRule
+	err := rp.app.MySQL.RDB.WithContext(ctx).
+		Where("center_id = ?", centerID).
+		Where("room_id = ?", roomID).
+		Where("weekday = ?", weekdayVal).
+		Where("end_time <= ?", beforeTimeStr).
+		Order("end_time DESC").
+		First(&rule).Error
+
+	if err != nil {
+		return nil, err
+	}
+	return &rule, nil
+}

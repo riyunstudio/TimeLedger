@@ -1,0 +1,1 @@
+import{r as e}from"./Blq0K2QU.js";const s=e(null);function i(){const n=(o,r,t)=>{if(s.value)s.value[o](r,t);else{const a=window.$alert;a&&a({message:r,title:t,type:o})}};return{toast:s,success:(o,r)=>n("success",o,r),error:(o,r)=>n("error",o,r),warning:(o,r)=>n("warning",o,r),info:(o,r)=>n("info",o,r)}}function c(n){s.value=n}export{c as r,i as u};

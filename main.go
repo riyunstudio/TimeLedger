@@ -10,8 +10,10 @@ import (
 
 	"timeLedger/app"
 	"timeLedger/app/console"
-	"timeLedger/app/services"
 	"timeLedger/app/servers"
+	"timeLedger/app/services"
+	"timeLedger/global/logger"
+
 	_ "timeLedger/docs"
 
 	_ "github.com/joho/godotenv/autoload"
@@ -25,10 +27,27 @@ func main() {
 	// recover 防止因服務 panic 直接關閉
 	defer func() {
 		if err := recover(); err != nil {
-			e := fmt.Sprintf("[Main panic] %v", err)
-			fmt.Println(e)
+			zapLog := logger.GetLogger()
+			zapLog.Errorw("Main panic recovered",
+				"error", err,
+				"stack", fmt.Sprintf("%v", err),
+			)
 		}
 	}()
+
+	// 初始化日誌器
+	logConfig := logger.DefaultConfig()
+	logConfig.Level = getLogLevel()
+	logConfig.Format = "json"
+	if _, err := logger.Initialize(logConfig); err != nil {
+		fmt.Printf("Failed to initialize logger: %v\n", err)
+		os.Exit(1)
+	}
+	zapLog := logger.GetLogger()
+	defer zapLog.Sync()
+
+	zapLog.Info("Starting TimeLedger application...")
+
 	ctx, cancel := context.WithCancel(context.Background())
 
 	// 初始化 App
@@ -40,9 +59,9 @@ func main() {
 
 	// 通知佇列 Worker（按環境變量開關，預設關閉以節省資源）
 	if os.Getenv("NOTIFICATION_WORKER_ENABLED") == "true" {
-		go startNotificationWorker(appInstance, ctx)
+		go startNotificationWorker(appInstance, ctx, zapLog)
 	} else {
-		fmt.Println("[INFO] Notification worker disabled (set NOTIFICATION_WORKER_ENABLED=true to enable)")
+		zapLog.Info("Notification worker disabled (set NOTIFICATION_WORKER_ENABLED=true to enable)")
 	}
 
 	// 啟動 API server（主要服務）
@@ -60,54 +79,69 @@ func main() {
 		cancel()
 		scheduler.Stop()
 		gin.Stop()
-		fmt.Println("Exit.")
+		zapLog.Info("Application shutting down gracefully")
 		exit <- struct{}{}
 	}()
 	<-ctx.Done()
 	<-exit
+	zapLog.Info("Application exited")
+}
+
+// getLogLevel 從環境變數取得日誌級別
+func getLogLevel() string {
+	level := os.Getenv("LOG_LEVEL")
+	if level == "" {
+		return "info"
+	}
+	return level
 }
 
 // startNotificationWorker 啟動通知佇列背景 worker
-func startNotificationWorker(appInstance *app.App, ctx context.Context) {
-	fmt.Println("[INFO] Starting notification queue worker...")
-	
+func startNotificationWorker(appInstance *app.App, ctx context.Context, zapLog *logger.Logger) {
+	zapLog.Info("Starting notification queue worker...")
+
 	queueService := services.NewNotificationQueueService(appInstance)
-	
+
 	// 檢查 Redis 連線
 	redisQueue := services.NewRedisQueueService(appInstance)
 	if !redisQueue.IsHealthy(context.Background()) {
-		fmt.Println("[WARN] Redis not connected, notification queue worker will not start")
+		zapLog.Warn("Redis not connected, notification queue worker will not start")
 		return
 	}
-	
-	fmt.Println("[INFO] Notification queue worker started, listening on Redis queue...")
+
+	zapLog.Info("Notification queue worker started, listening on Redis queue...")
 
 	// 定時打印統計
 	go func() {
 		ticker := time.NewTicker(60 * time.Second) // 每分鐘打印一次
 		defer ticker.Stop()
-		
+
 		for {
 			select {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
 				stats := queueService.GetQueueStats(context.Background())
-				fmt.Printf("[STATS] Notification Queue: pending=%s, retry=%s, total=%s, retried=%s, failed=%s\n",
-					stats["pending"], stats["retry"], stats["total"], stats["retried"], stats["failed"])
+				zapLog.Infow("Notification queue stats",
+					"pending", stats["pending"],
+					"retry", stats["retry"],
+					"total", stats["total"],
+					"retried", stats["retried"],
+					"failed", stats["failed"],
+				)
 			}
 		}
 	}()
-	
+
 	// 持續處理佇列
 	for {
 		select {
 		case <-ctx.Done():
-			fmt.Println("[INFO] Notification worker stopped")
+			zapLog.Info("Notification worker stopped")
 			return
 		default:
 			if err := queueService.ProcessQueue(ctx); err != nil {
-				fmt.Printf("[ERROR] Queue processing error: %v\n", err)
+				zapLog.Errorw("Queue processing error", "error", err)
 				time.Sleep(1 * time.Second) // 避免 busy loop
 			}
 		}

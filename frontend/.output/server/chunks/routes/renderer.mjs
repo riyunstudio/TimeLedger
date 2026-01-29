@@ -40,7 +40,7 @@ function createHead(options = {}) {
   return head;
 }
 
-const appHead = {"meta":[{"name":"viewport","content":"width=device-width, initial-scale=1"},{"charset":"utf-8"}],"link":[],"style":[],"script":[],"noscript":[]};
+const appHead = {"meta":[{"charset":"utf-8"},{"name":"description","content":"教師中心化多據點排課平台"},{"name":"theme-color","content":"#312e81"},{"name":"viewport","content":"width=device-width, initial-scale=1, maximum-scale=1"}],"link":[{"rel":"icon","type":"image/x-icon","href":"/favicon.ico"},{"rel":"apple-touch-icon","href":"/apple-touch-icon.png"}],"style":[],"script":[],"noscript":[],"title":"TimeLedger - 教師排課平台"};
 
 const appRootTag = "div";
 

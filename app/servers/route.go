@@ -221,6 +221,20 @@ func (s *Server) LoadRoutes() {
 		{http.MethodGet, "/api/v1/admin/centers/:id/export/teachers/csv", s.action.export.ExportTeachersCSV, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodGet, "/api/v1/admin/centers/:id/export/exceptions/csv", s.action.export.ExportExceptionsCSV, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 
+		// Teacher - ICS Calendar Export
+		{http.MethodGet, "/api/v1/teacher/me/schedule.ics", s.action.export.ExportScheduleToICS, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+		{http.MethodPost, "/api/v1/teacher/me/schedule/subscription", s.action.export.CreateCalendarSubscription, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+		{http.MethodDelete, "/api/v1/teacher/me/schedule/subscription", s.action.export.UnsubscribeCalendar, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+
+		// Teacher - Image Export
+		{http.MethodGet, "/api/v1/teacher/me/schedule/image", s.action.export.ExportScheduleToImage, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+		{http.MethodPost, "/api/v1/teacher/me/backgrounds", s.action.export.UploadBackgroundImage, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+		{http.MethodGet, "/api/v1/teacher/me/backgrounds", s.action.export.GetBackgroundImages, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+		{http.MethodDelete, "/api/v1/teacher/me/backgrounds", s.action.export.DeleteBackgroundImage, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+
+		// Public - Calendar Subscription (no auth required)
+		{http.MethodGet, "/api/v1/calendar/subscribe/:token.ics", s.action.export.SubscribeToCalendar, []gin.HandlerFunc{}},
+
 		// LINE Bot Webhook (不需要認證)
 		{http.MethodPost, "/api/v1/line/webhook", s.action.lineBot.HandleWebhook, []gin.HandlerFunc{}},
 		{http.MethodGet, "/api/v1/line/health", s.action.lineBot.HealthCheck, []gin.HandlerFunc{}},

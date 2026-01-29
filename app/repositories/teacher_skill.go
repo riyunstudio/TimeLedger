@@ -58,3 +58,19 @@ func (r *TeacherSkillRepository) BatchListByTeacherIDs(ctx context.Context, teac
 	}
 	return result, nil
 }
+
+// DeleteAllHashtags 刪除技能所有標籤關聯
+func (r *TeacherSkillRepository) DeleteAllHashtags(ctx context.Context, skillID uint) error {
+	return r.app.MySQL.WDB.WithContext(ctx).
+		Where("teacher_skill_id = ?", skillID).
+		Delete(&models.TeacherSkillHashtag{}).Error
+}
+
+// CreateHashtag 建立技能標籤關聯
+func (r *TeacherSkillRepository) CreateHashtag(ctx context.Context, skillID, hashtagID uint) error {
+	return r.app.MySQL.WDB.WithContext(ctx).
+		Create(&models.TeacherSkillHashtag{
+			TeacherSkillID: skillID,
+			HashtagID:      hashtagID,
+		}).Error
+}

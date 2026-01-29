@@ -1,0 +1,1 @@
+import{X as r,k as i,Y as a}from"./Blq0K2QU.js";const n=r((e,o)=>{const t=i();if(!(e.path==="/"||e.path.startsWith("/teacher/login"))){if(t.initFromStorage(),!t.isAuthenticated)return a("/teacher/login");if(!t.isTeacher)return a("/admin/dashboard")}});export{n as default};

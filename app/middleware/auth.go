@@ -50,16 +50,6 @@ func (m *AuthMiddleware) Authenticate() gin.HandlerFunc {
 
 		token := parts[1]
 
-		// Support mock tokens for development/testing
-		if strings.HasPrefix(token, "mock-") {
-			c.Set(global.UserIDKey, uint(1))
-			c.Set(global.UserTypeKey, "ADMIN")
-			c.Set(global.CenterIDKey, uint(1))
-			c.Set(global.LineUserIDKey, "")
-			c.Next()
-			return
-		}
-
 		claims, err := m.auth.ValidateToken(token)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, global.ApiResponse{

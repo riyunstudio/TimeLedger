@@ -7,6 +7,7 @@ require (
 	github.com/gin-contrib/cors v1.7.6
 	github.com/gin-gonic/gin v1.11.0
 	github.com/gorilla/websocket v1.5.3
+	github.com/hibiken/asynq v0.25.1
 	github.com/joho/godotenv v1.5.1
 	github.com/rabbitmq/amqp091-go v1.10.0
 	github.com/redis/go-redis/v9 v9.17.2
@@ -16,11 +17,18 @@ require (
 	gitlab.en.mcbwvx.com/frame/ezreal v1.0.2
 	gitlab.en.mcbwvx.com/frame/teemo v1.0.1
 	gitlab.en.mcbwvx.com/frame/zilean v1.0.9
+	go.uber.org/zap v1.27.1
 	golang.org/x/crypto v0.47.0
 	google.golang.org/grpc v1.78.0
 	google.golang.org/protobuf v1.36.11
 	gorm.io/driver/mysql v1.6.0
 	gorm.io/gorm v1.31.1
+)
+
+require (
+	github.com/spf13/cast v1.7.0 // indirect
+	go.uber.org/multierr v1.10.0 // indirect
+	golang.org/x/time v0.8.0 // indirect
 )
 
 require (
@@ -47,7 +55,7 @@ require (
 	github.com/goccy/go-json v0.10.5 // indirect
 	github.com/goccy/go-yaml v1.18.0 // indirect
 	github.com/golang-jwt/jwt/v5 v5.3.0
-	github.com/google/uuid v1.6.0 // indirect
+	github.com/google/uuid v1.6.0
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
@@ -64,8 +72,8 @@ require (
 	github.com/quic-go/quic-go v0.54.0 // indirect
 	github.com/shopspring/decimal v1.4.0 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
-	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e // indirect
-	github.com/swaggo/swag v1.8.12 // indirect
+	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
+	github.com/swaggo/swag v1.8.12
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.3.0 // indirect
 	github.com/xlzd/gotp v0.1.0 // indirect

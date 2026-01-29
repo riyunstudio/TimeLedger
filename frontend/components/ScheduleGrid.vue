@@ -217,63 +217,85 @@
             />
           </div>
 
-          <!-- 課程卡片層 - 絕對定位，z-index 較高確保在網格之上 -->
+          <!-- 課程卡片層 - 虛擬滾動優化，z-index 較高確保在網格之上 -->
           <div class="absolute top-0 left-0 right-0 bottom-0 pointer-events-none z-10">
-            <template v-for="schedule in filteredSchedules" :key="schedule.key">
-              <!-- 個人行程保持原樣顯示 -->
-              <div
-                v-if="schedule.is_personal_event"
-                class="absolute rounded-lg p-2 text-xs cursor-pointer hover:opacity-90 transition-opacity pointer-events-auto"
-                :class="getScheduleCardClass(schedule)"
-                :style="[getScheduleStyle(schedule), { backgroundColor: schedule.color_hex + '40', borderColor: schedule.color_hex + '60' }]"
-                @click="selectSchedule(schedule)"
-              >
-                <div class="font-medium truncate text-white">
-                  {{ schedule.offering_name }}
-                </div>
-                <div class="text-slate-400 truncate text-[10px]">
-                  {{ schedule.start_time }} - {{ schedule.end_time }}
-                </div>
-              </div>
-              <!-- 中心課程：檢查是否有重疊 -->
-              <template v-else>
-                <!-- 僅顯示第一個課程（帶重疊指示器） -->
-                <div
-                  v-if="getOverlapCount(schedule) === 1"
-                  class="absolute rounded-lg p-2 text-xs cursor-pointer hover:opacity-90 transition-opacity pointer-events-auto"
-                  :class="getScheduleCardClass(schedule)"
-                  :style="getScheduleStyle(schedule)"
-                  @click="selectSchedule(schedule)"
+            <DynamicScroller
+              :items="virtualizedSchedules"
+              :min-item-size="60"
+              class="h-full"
+              key-field="key"
+              v-if="filteredSchedules.length > 0"
+            >
+              <template #default="{ item, index, active }">
+                <DynamicScrollerItem
+                  :item="item"
+                  :active="active"
+                  :size-dependencies="[
+                    item.offering_name,
+                    item.start_time,
+                    item.end_time,
+                    item.teacher_name,
+                    item.has_exception
+                  ]"
+                  :data-index="index"
                 >
-                  <div class="font-medium truncate">
-                    {{ schedule.offering_name }}
-                  </div>
-                  <div v-if="effectiveCardInfoType === 'teacher'" class="text-slate-400 truncate">
-                    {{ schedule.teacher_name }}
-                  </div>
-                  <div v-else class="text-slate-400 truncate">
-                    {{ schedule.center_name }}
-                  </div>
-                  <div class="text-slate-500 text-[10px] mt-0.5">
-                    {{ schedule.start_time }} - {{ schedule.end_time }}
-                  </div>
-                </div>
-                <!-- 重疊指示器（顯示數量） -->
-                <div
-                  v-else-if="getOverlapCount(schedule) > 1 && isFirstInOverlap(schedule)"
-                  class="absolute rounded-lg bg-warning-500/20 border border-warning-500/50 p-2 text-xs cursor-pointer hover:bg-warning-500/30 transition-opacity pointer-events-auto"
-                  :style="getScheduleStyle(schedule)"
-                  @click="handleOverlapClick(schedule)"
-                >
-                  <div class="flex items-center justify-center h-full">
-                    <span class="text-warning-400 font-bold text-lg">
-                      {{ getOverlapCount(schedule) }}
-                    </span>
-                    <span class="text-warning-300 ml-1 text-xs">堂課程</span>
-                  </div>
-                </div>
+                  <template v-if="item.is_personal_event">
+                    <!-- 個人行程保持原樣顯示 -->
+                    <div
+                      class="absolute rounded-lg p-2 text-xs cursor-pointer hover:opacity-90 transition-opacity pointer-events-auto"
+                      :class="getScheduleCardClass(item)"
+                      :style="[getScheduleStyle(item), { backgroundColor: item.color_hex + '40', borderColor: item.color_hex + '60' }]"
+                      @click="selectSchedule(item)"
+                    >
+                      <div class="font-medium truncate text-white">
+                        {{ item.offering_name }}
+                      </div>
+                      <div class="text-slate-400 truncate text-[10px]">
+                        {{ item.start_time }} - {{ item.end_time }}
+                      </div>
+                    </div>
+                  </template>
+                  <template v-else>
+                    <!-- 中心課程：檢查是否有重疊 -->
+                    <!-- 僅顯示第一個課程（帶重疊指示器） -->
+                    <div
+                      v-if="getOverlapCount(item) === 1"
+                      class="absolute rounded-lg p-2 text-xs cursor-pointer hover:opacity-90 transition-opacity pointer-events-auto"
+                      :class="getScheduleCardClass(item)"
+                      :style="getScheduleStyle(item)"
+                      @click="selectSchedule(item)"
+                    >
+                      <div class="font-medium truncate">
+                        {{ item.offering_name }}
+                      </div>
+                      <div v-if="effectiveCardInfoType === 'teacher'" class="text-slate-400 truncate">
+                        {{ item.teacher_name }}
+                      </div>
+                      <div v-else class="text-slate-400 truncate">
+                        {{ item.center_name }}
+                      </div>
+                      <div class="text-slate-500 text-[10px] mt-0.5">
+                        {{ item.start_time }} - {{ item.end_time }}
+                      </div>
+                    </div>
+                    <!-- 重疊指示器（顯示數量） -->
+                    <div
+                      v-else-if="getOverlapCount(item) > 1 && isFirstInOverlap(item)"
+                      class="absolute rounded-lg bg-warning-500/20 border border-warning-500/50 p-2 text-xs cursor-pointer hover:bg-warning-500/30 transition-opacity pointer-events-auto"
+                      :style="getScheduleStyle(item)"
+                      @click="handleOverlapClick(item)"
+                    >
+                      <div class="flex items-center justify-center h-full">
+                        <span class="text-warning-400 font-bold text-lg">
+                          {{ getOverlapCount(item) }}
+                        </span>
+                        <span class="text-warning-300 ml-1 text-xs">堂課程</span>
+                      </div>
+                    </div>
+                  </template>
+                </DynamicScrollerItem>
               </template>
-            </template>
+            </DynamicScroller>
           </div>
         </div>
 
@@ -862,6 +884,18 @@ const filteredSchedules = computed(() => {
     // 兩者都符合才返回
     return teacherMatch && roomMatch
   })
+})
+
+// 虛擬滾動用的課程列表
+// 當課程數量超過閾值時啟用虛擬滾動
+const virtualizedSchedules = computed(() => {
+  const schedules = filteredSchedules.value
+  // 如果課程數量少於 50 筆，不需要虛擬滾動，直接返回原陣列
+  if (schedules.length < 50) {
+    return schedules
+  }
+  // 否則返回原陣列，DynamicScroller 會自動處理虛擬化
+  return schedules
 })
 
 // ============================================

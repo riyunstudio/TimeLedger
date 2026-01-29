@@ -49,6 +49,9 @@ func (db *DB) AutoMigrate() {
 
 	// 遷移 schedule_exceptions type 欄位
 	db.MigrateScheduleExceptionsType()
+
+	// 遷移 schedule_rules generated columns
+	db.MigrateScheduleRulesGeneratedColumns()
 }
 
 // dropTablesForReschema 刪除需要重建的資料表

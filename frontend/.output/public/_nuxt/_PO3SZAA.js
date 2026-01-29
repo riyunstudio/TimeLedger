@@ -1,1 +1,0 @@
-import{_ as s,c as t,o as c,a as n,J as r}from"./ZcPQy5tI.js";const a={},o={class:"min-h-screen bg-gradient-mesh"},i={class:"min-h-screen flex items-center justify-center p-4"};function _(e,d){return c(),t("div",o,[n("div",i,[r(e.$slots,"default")])])}const f=s(a,[["render",_]]);export{f as default};

@@ -15,6 +15,7 @@ import (
 	"timeLedger/database/mysql"
 	"timeLedger/database/redis"
 	"timeLedger/global/errInfos"
+	"timeLedger/global/logger"
 	mockRedis "timeLedger/testing/redis"
 
 	"golang.org/x/crypto/bcrypt"
@@ -60,6 +61,14 @@ func setupAuthTestApp() (*app.App, *gorm.DB, func()) {
 		AppTimezone:     "Asia/Taipei",
 		FrontendBaseURL: "http://localhost:3000",
 	}
+
+	// 初始化測試用的 logger（使用空配置，避免寫入檔案）
+	logConfig := &logger.Config{
+		Level:      "debug",
+		Format:     "console",
+		OutputPath: "",
+	}
+	_, _ = logger.Initialize(logConfig)
 
 	appInstance := &app.App{
 		Env:   env,

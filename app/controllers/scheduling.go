@@ -28,6 +28,7 @@ type SchedulingController struct {
 	centerRepo        *repositories.CenterRepository
 	courseRepo        *repositories.CourseRepository
 	offeringRepo      *repositories.OfferingRepository
+	scheduleRuleRepo  *repositories.ScheduleRuleRepository
 }
 
 func NewSchedulingController(app *app.App) *SchedulingController {
@@ -40,6 +41,7 @@ func NewSchedulingController(app *app.App) *SchedulingController {
 		centerRepo:        repositories.NewCenterRepository(app),
 		courseRepo:        repositories.NewCourseRepository(app),
 		offeringRepo:      repositories.NewOfferingRepository(app),
+		scheduleRuleRepo:  repositories.NewScheduleRuleRepository(app),
 	}
 }
 
@@ -968,21 +970,12 @@ func (ctl *SchedulingController) GetRules(ctx *gin.Context) {
 // getTeacherPreviousSessionEndTime 取得老師在指定 weekday 之前的最後一筆課程結束時間
 // newStartTime 用於構造正確的日期，以便計算緩衝時間
 func (ctl *SchedulingController) getTeacherPreviousSessionEndTime(ctx context.Context, centerID, teacherID uint, weekday int, beforeTimeStr string, newStartTime time.Time) (time.Time, error) {
-	weekdayVal := weekday
-	if weekdayVal == 0 {
-		weekdayVal = 7
+	rule, err := ctl.scheduleRuleRepo.GetLastSessionByTeacherAndWeekday(ctx, centerID, teacherID, weekday, beforeTimeStr)
+	if err != nil {
+		return time.Time{}, nil
 	}
 
-	var rule models.ScheduleRule
-	err := ctl.app.MySQL.RDB.WithContext(ctx).
-		Where("center_id = ?", centerID).
-		Where("teacher_id = ?", teacherID).
-		Where("weekday = ?", weekdayVal).
-		Where("end_time <= ?", beforeTimeStr).
-		Order("end_time DESC").
-		First(&rule).Error
-
-	if err != nil {
+	if rule == nil {
 		return time.Time{}, nil
 	}
 
@@ -1005,30 +998,18 @@ func (ctl *SchedulingController) getTeacherPreviousSessionEndTime(ctx context.Co
 		return endTime, nil
 	}
 
-	// Fallback: 使用舊的解析方式
-	timeStr := "2000-01-01" + " " + rule.EndTime
-	endTime, _ := time.ParseInLocation("2006-01-02 15:04", timeStr, loc)
-	return endTime, nil
+	return time.Time{}, nil
 }
 
 // getRoomPreviousSessionEndTime 取得教室在指定 weekday 之前的最後一筆課程結束時間
 // newStartTime 用於構造正確的日期，以便計算緩衝時間
 func (ctl *SchedulingController) getRoomPreviousSessionEndTime(ctx context.Context, centerID, roomID uint, weekday int, beforeTimeStr string, newStartTime time.Time) (time.Time, error) {
-	weekdayVal := weekday
-	if weekdayVal == 0 {
-		weekdayVal = 7
+	rule, err := ctl.scheduleRuleRepo.GetLastSessionByRoomAndWeekday(ctx, centerID, roomID, weekday, beforeTimeStr)
+	if err != nil {
+		return time.Time{}, nil
 	}
 
-	var rule models.ScheduleRule
-	err := ctl.app.MySQL.RDB.WithContext(ctx).
-		Where("center_id = ?", centerID).
-		Where("room_id = ?", roomID).
-		Where("weekday = ?", weekdayVal).
-		Where("end_time <= ?", beforeTimeStr).
-		Order("end_time DESC").
-		First(&rule).Error
-
-	if err != nil {
+	if rule == nil {
 		return time.Time{}, nil
 	}
 

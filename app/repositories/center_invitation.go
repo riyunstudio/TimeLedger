@@ -257,3 +257,11 @@ func (rp *CenterInvitationRepository) GetPendingByCenter(ctx context.Context, ce
 		Find(&data).Error
 	return data, err
 }
+
+// UpdateWithFields 更新邀請記錄的指定欄位
+func (rp *CenterInvitationRepository) UpdateWithFields(ctx context.Context, id uint, fields map[string]interface{}) error {
+	return rp.app.MySQL.WDB.WithContext(ctx).
+		Model(&models.CenterInvitation{}).
+		Where("id = ?", id).
+		Updates(fields).Error
+}

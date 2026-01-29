@@ -1,0 +1,1 @@
+import{g as s,c as a,J as o,o as t}from"./Blq0K2QU.js";const r={class:"glass-card"},l=s({__name:"BaseGlassCard",props:{padding:{default:"p-6"},margin:{default:"m-0"}},setup(n){return(e,c)=>(t(),a("div",r,[o(e.$slots,"default")]))}});export{l as _};

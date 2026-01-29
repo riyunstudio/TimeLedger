@@ -100,3 +100,29 @@ func (rp *ScheduleExceptionRepository) BatchGetByRuleIDs(ctx context.Context, ru
 	}
 	return result, nil
 }
+
+// GetByTeacherID 取得老師的所有例外申請（依據會員關係）
+func (rp *ScheduleExceptionRepository) GetByTeacherID(ctx context.Context, teacherID uint, status string) ([]models.ScheduleException, error) {
+	var exceptions []models.ScheduleException
+
+	query := rp.app.MySQL.RDB.WithContext(ctx).
+		Table("schedule_exceptions").
+		Select("schedule_exceptions.*").
+		Joins("JOIN center_memberships ON center_memberships.center_id = schedule_exceptions.center_id").
+		Where("center_memberships.teacher_id = ?", teacherID).
+		Where("center_memberships.status = ?", "ACTIVE")
+
+	if status != "" {
+		// 支援新旧两种状态值（向后兼容）
+		if status == "APPROVED" {
+			query = query.Where("schedule_exceptions.status IN ('APPROVED', 'APPROVE')")
+		} else if status == "REJECTED" {
+			query = query.Where("schedule_exceptions.status IN ('REJECTED', 'REJECT')")
+		} else {
+			query = query.Where("schedule_exceptions.status = ?", status)
+		}
+	}
+
+	err := query.Order("schedule_exceptions.created_at DESC").Find(&exceptions).Error
+	return exceptions, err
+}

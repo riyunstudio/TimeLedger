@@ -89,29 +89,29 @@ type ScheduleExceptionService interface {
 }
 
 type ExpandedSchedule struct {
-	RuleID         uint               `json:"rule_id"`
-	Date           time.Time          `json:"date"`
-	StartTime      string             `json:"start_time"`
-	EndTime        string             `json:"end_time"`
-	RoomID         uint               `json:"room_id"`
-	TeacherID      *uint              `json:"teacher_id"`
-	IsHoliday      bool               `json:"is_holiday"`
-	HasException   bool               `json:"has_exception"`
-	ExceptionInfo  *ExpandedException `json:"exception_info,omitempty"`
+	RuleID        uint               `json:"rule_id"`
+	Date          time.Time          `json:"date"`
+	StartTime     string             `json:"start_time"`
+	EndTime       string             `json:"end_time"`
+	RoomID        uint               `json:"room_id"`
+	TeacherID     *uint              `json:"teacher_id"`
+	IsHoliday     bool               `json:"is_holiday"`
+	HasException  bool               `json:"has_exception"`
+	ExceptionInfo *ExpandedException `json:"exception_info,omitempty"`
 	// 關聯資料
-	OfferingName   string             `json:"offering_name,omitempty"`
-	TeacherName    string             `json:"teacher_name,omitempty"`
-	RoomName       string             `json:"room_name,omitempty"`
-	OfferingID     uint               `json:"offering_id,omitempty"`
-	EffectiveRange *models.DateRange   `json:"effective_range,omitempty"`
-	IsCrossDayPart bool               `json:"is_cross_day_part,omitempty"` // 跨日課程的一部分
+	OfferingName   string            `json:"offering_name,omitempty"`
+	TeacherName    string            `json:"teacher_name,omitempty"`
+	RoomName       string            `json:"room_name,omitempty"`
+	OfferingID     uint              `json:"offering_id,omitempty"`
+	EffectiveRange *models.DateRange `json:"effective_range,omitempty"`
+	IsCrossDayPart bool              `json:"is_cross_day_part,omitempty"` // 跨日課程的一部分
 }
 
 type ExpandedException struct {
-	ID           uint      `json:"id"`
-	Type         string    `json:"type"`          // CANCEL, RESCHEDULE, REPLACE_TEACHER
-	Status       string    `json:"status"`        // PENDING, APPROVED, REJECTED, REVOKED
-	NewTeacherID *uint     `json:"new_teacher_id,omitempty"`
+	ID           uint       `json:"id"`
+	Type         string     `json:"type"`   // CANCEL, RESCHEDULE, REPLACE_TEACHER
+	Status       string     `json:"status"` // PENDING, APPROVED, REJECTED, REVOKED
+	NewTeacherID *uint      `json:"new_teacher_id,omitempty"`
 	NewStartAt   *time.Time `json:"new_start_at,omitempty"`
 	NewEndAt     *time.Time `json:"new_end_at,omitempty"`
 }
@@ -184,4 +184,26 @@ type ScheduleRecurrenceService interface {
 	// FUTURE: 產生 CANCEL 例外單，並創建新規則（空規則或調整有效範圍）
 	// ALL: 軟刪除規則
 	DeleteRecurringSchedule(ctx context.Context, centerID uint, teacherID uint, ruleID uint, editDate time.Time, mode RecurrenceEditMode, reason string) (RecurrenceEditResult, error)
+}
+
+// TeacherScheduleItem 老師課表項目
+type TeacherScheduleItem struct {
+	ID             string `json:"id"`
+	Type           string `json:"type"`
+	Title          string `json:"title"`
+	Date           string `json:"date"`
+	StartTime      string `json:"start_time"`
+	EndTime        string `json:"end_time"`
+	RoomID         uint   `json:"room_id"`
+	TeacherID      *uint  `json:"teacher_id"`
+	CenterID       uint   `json:"center_id"`
+	CenterName     string `json:"center_name"`
+	Status         string `json:"status"`
+	RuleID         uint   `json:"rule_id"`
+	IsCrossDayPart bool   `json:"is_cross_day_part,omitempty"`
+}
+
+type ScheduleQueryService interface {
+	// GetTeacherSchedule 取得老師的綜合課表
+	GetTeacherSchedule(ctx context.Context, teacherID uint, fromDate, toDate time.Time) ([]TeacherScheduleItem, error)
 }

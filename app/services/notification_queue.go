@@ -8,6 +8,7 @@ import (
 	"timeLedger/app"
 	"timeLedger/app/models"
 	"timeLedger/app/repositories"
+	"timeLedger/global/logger"
 )
 
 // NotificationQueueService 通知佇列服務
@@ -39,10 +40,20 @@ type NotificationQueueServiceImpl struct {
 	lineBotService  LineBotService
 	templateService LineBotTemplateService
 	redisQueue      *RedisQueueService
+	log             *logger.Logger
 }
 
 // NewNotificationQueueService 建立通知佇列服務
 func NewNotificationQueueService(app *app.App) NotificationQueueService {
+	// 嘗試取得 logger，如果未初始化則使用 nil
+	var log *logger.Logger
+	defer func() {
+		if r := recover(); r != nil {
+			// logger 未初始化，繼續使用 nil
+		}
+	}()
+	log = logger.GetLogger()
+
 	return &NotificationQueueServiceImpl{
 		app:             app,
 		adminRepo:       repositories.NewAdminUserRepository(app),
@@ -50,6 +61,28 @@ func NewNotificationQueueService(app *app.App) NotificationQueueService {
 		lineBotService:  NewLineBotService(app),
 		templateService: NewLineBotTemplateService(app.Env.FrontendBaseURL),
 		redisQueue:      NewRedisQueueService(app),
+		log:             log,
+	}
+}
+
+// logInfo 安全記錄 Info 級別日誌
+func (s *NotificationQueueServiceImpl) logInfo(msg string, keysAndValues ...interface{}) {
+	if s.log != nil {
+		s.log.Infow(msg, keysAndValues...)
+	}
+}
+
+// logWarn 安全記錄 Warn 級別日誌
+func (s *NotificationQueueServiceImpl) logWarn(msg string, keysAndValues ...interface{}) {
+	if s.log != nil {
+		s.log.Warnw(msg, keysAndValues...)
+	}
+}
+
+// logError 安全記錄 Error 級別日誌
+func (s *NotificationQueueServiceImpl) logError(msg string, keysAndValues ...interface{}) {
+	if s.log != nil {
+		s.log.Errorw(msg, keysAndValues...)
 	}
 }
 
@@ -80,11 +113,11 @@ func (s *NotificationQueueServiceImpl) ProcessQueue(ctx context.Context) error {
 		default:
 			item, err := s.redisQueue.PopNotification(ctx)
 			if err != nil {
-				fmt.Printf("[ERROR] Failed to pop notification: %v\n", err)
+				s.logError("Failed to pop notification", "error", err)
 				time.Sleep(1 * time.Second) // 避免 busy loop
 				continue
 			}
-			
+
 			if item == nil {
 				// 佇列為空，結束這輪處理
 				return nil
@@ -92,12 +125,18 @@ func (s *NotificationQueueServiceImpl) ProcessQueue(ctx context.Context) error {
 
 			// 處理通知
 			if err := s.processRedisNotification(ctx, item); err != nil {
-				fmt.Printf("[ERROR] Failed to process notification %d: %v\n", item.ID, err)
+				s.logError("Failed to process notification",
+					"notification_id", item.ID,
+					"type", item.Type,
+					"error", err,
+				)
 				// 加入重試佇列
 				s.redisQueue.PushToRetry(ctx, item)
 			} else {
-				fmt.Printf("[INFO] Notification sent successfully: type=%s, recipient=%d\n", 
-					item.Type, item.RecipientID)
+				s.logInfo("Notification sent successfully",
+					"type", item.Type,
+					"recipient_id", item.RecipientID,
+				)
 			}
 		}
 	}
@@ -113,7 +152,7 @@ func (s *NotificationQueueServiceImpl) processRedisNotification(ctx context.Cont
 
 	// 取得用戶的 LINE User ID
 	var lineUserID string
-	
+
 	if item.RecipientType == "ADMIN" {
 		admin, err := s.adminRepo.GetByIDPtr(ctx, item.RecipientID)
 		if err != nil {
@@ -175,7 +214,10 @@ func (s *NotificationQueueServiceImpl) NotifyExceptionSubmitted(ctx context.Cont
 		}
 
 		if err := s.PushNotification(ctx, queueItem); err != nil {
-			fmt.Printf("[ERROR] Failed to queue notification for admin %d: %v\n", admin.ID, err)
+			s.logError("Failed to queue notification for admin",
+				"admin_id", admin.ID,
+				"error", err,
+			)
 		}
 	}
 
@@ -318,6 +360,6 @@ func (s *NotificationQueueServiceImpl) NotifyWelcomeAdmin(ctx context.Context, a
 func (s *NotificationQueueServiceImpl) ProcessQueueHandler() {
 	ctx := context.Background()
 	if err := s.ProcessQueue(ctx); err != nil {
-		fmt.Printf("[ERROR] Failed to process notification queue: %v\n", err)
+		s.logError("Failed to process notification queue", "error", err)
 	}
 }
