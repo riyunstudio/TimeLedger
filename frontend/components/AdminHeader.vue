@@ -220,12 +220,6 @@
       </div>
     </div>
   </header>
-
-  <!-- Notification dropdown -->
-  <NotificationDropdown
-    v-if="notificationUI.show.value"
-    @close="notificationUI.close()"
-  />
 </template>
 
 <script setup lang="ts">

@@ -2374,12 +2374,15 @@ func (ctl *TeacherController) InviteTeacher(ctx *gin.Context) {
 	expiresAt := time.Now().Add(72 * time.Hour)
 
 	invitation := models.CenterInvitation{
-		CenterID:  centerID,
-		Email:     req.Email,
-		Token:     token,
-		Status:    "PENDING",
-		CreatedAt: time.Now(),
-		ExpiresAt: expiresAt,
+		CenterID:   centerID,
+		Email:      req.Email,
+		Token:      token,
+		InviteType: models.InvitationTypeTeacher, // 老師邀請類型
+		Role:       req.Role,                      // 角色：TEACHER 或 SUBSTITUTE
+		Status:     "PENDING",
+		Message:    req.Message, // 邀請訊息
+		CreatedAt:  time.Now(),
+		ExpiresAt:  expiresAt,
 	}
 
 	if err := ctl.app.MySQL.WDB.WithContext(ctx).Create(&invitation).Error; err != nil {
@@ -2898,12 +2901,19 @@ func (ctl *TeacherController) RespondToInvitation(ctx *gin.Context) {
 	}
 
 	// 驗證是否為該老師的邀請
-	if invitation.TeacherID != teacherID {
-		ctx.JSON(http.StatusForbidden, global.ApiResponse{
-			Code:    errInfos.FORBIDDEN,
-			Message: "Not authorized to respond to this invitation",
-		})
-		return
+	// 支援兩種情況：
+	// 1. teacher_id > 0：已存在的老師（驗證 teacherID 是否匹配）
+	// 2. teacher_id = 0：新老師，允許透過 Email 比對
+	if invitation.TeacherID != 0 && invitation.TeacherID != teacherID {
+		// 檢查是否是新老師的邀請（teacher_id = 0），透過 Email 比對
+		teacher, err := ctl.teacherRepository.GetByID(ctx, teacherID)
+		if err != nil || teacher.Email != invitation.Email {
+			ctx.JSON(http.StatusForbidden, global.ApiResponse{
+				Code:    errInfos.FORBIDDEN,
+				Message: "Not authorized to respond to this invitation",
+			})
+			return
+		}
 	}
 
 	// 檢查邀請狀態
@@ -2930,6 +2940,44 @@ func (ctl *TeacherController) RespondToInvitation(ctx *gin.Context) {
 	var newStatus models.InvitationStatus
 	if req.Response == "ACCEPT" {
 		newStatus = models.InvitationStatusAccepted
+
+		// 如果是老師邀請（不是人才庫），建立 CenterMembership
+		if invitation.InviteType == models.InvitationTypeTeacher {
+			// 檢查是否已經是中心成員
+			_, err := ctl.membershipRepo.GetByCenterAndTeacher(ctx, invitation.CenterID, teacherID)
+			if err != nil {
+				// 不存在，建立新的 membership
+				membership := models.CenterMembership{
+					CenterID:  invitation.CenterID,
+					TeacherID: teacherID,
+					Status:    invitation.Role, // 使用邀請時指定的角色
+				}
+				_, err := ctl.membershipRepo.Create(ctx, membership)
+				if err != nil {
+					ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
+						Code:    errInfos.SQL_ERROR,
+						Message: "Failed to create center membership",
+					})
+					return
+				}
+
+				// 審核日誌
+				ctl.auditLogRepo.Create(ctx, models.AuditLog{
+					CenterID:   invitation.CenterID,
+					ActorType:  "TEACHER",
+					ActorID:    teacherID,
+					Action:     "JOIN_CENTER",
+					TargetType: "CenterMembership",
+					Payload: models.AuditPayload{
+						After: map[string]interface{}{
+							"teacher_id": teacherID,
+							"center_id":  invitation.CenterID,
+							"role":       invitation.Role,
+						},
+					},
+				})
+			}
+		}
 
 		// 如果是人才庫邀請，更新老師的 is_open_to_hiring 為 true
 		if invitation.InviteType == models.InvitationTypeTalentPool {

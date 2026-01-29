@@ -33,6 +33,7 @@ type CenterInvitation struct {
 	Email       string            `gorm:"type:varchar(255)" json:"email"`
 	Token       string            `gorm:"type:varchar(255);uniqueIndex;not null" json:"token"`
 	InviteType  InvitationType    `gorm:"type:varchar(20);default:'TALENT_POOL';not null" json:"invite_type"`
+	Role        string            `gorm:"type:varchar(20);default:'TEACHER'" json:"role"` // 角色：TEACHER 或 SUBSTITUTE
 	Status      InvitationStatus  `gorm:"type:varchar(20);default:'PENDING';not null;index" json:"status"`
 	Message     string            `gorm:"type:text" json:"message"` // 邀請訊息
 	RespondedAt *time.Time        `gorm:"type:datetime" json:"responded_at"`

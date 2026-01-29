@@ -247,9 +247,12 @@ const fetchInvitations = async () => {
     })
     if (response.ok) {
       const data = await response.json()
+      console.log('API Response:', data) // 除錯用
       invitations.value = data.datas?.data || []
       pagination.value.total = data.datas?.total || 0
       pagination.value.totalPages = Math.ceil(pagination.value.total / pagination.value.limit)
+    } else {
+      console.error('API Error:', response.status)
     }
   } catch (error) {
     console.error('Failed to fetch invitations:', error)
