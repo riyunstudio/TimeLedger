@@ -33,6 +33,7 @@ type LineBotService interface {
 	SendWelcomeTeacher(ctx context.Context, teacher *models.Teacher, centerName string) error
 	SendWelcomeAdmin(ctx context.Context, admin *models.AdminUser, centerName string) error
 	SendExceptionNotification(ctx context.Context, admin *models.AdminUser, exception *models.ScheduleException, teacherName string) error
+	SendInvitationAcceptedNotification(ctx context.Context, admins []*models.AdminUser, teacher *models.Teacher, centerName string, role string) error
 }
 
 // LineBotServiceImpl LINE Messaging API 服務實現
@@ -240,4 +241,28 @@ func (s *LineBotServiceImpl) SendExceptionNotification(ctx context.Context, admi
 
 	flexMessage := s.templateService.GetExceptionSubmitTemplate(exception, teacherName, "")
 	return s.PushFlexMessage(ctx, admin.LineUserID, "新的例外申請通知", flexMessage)
+}
+
+// SendInvitationAcceptedNotification 發送邀請接受通知給管理員
+func (s *LineBotServiceImpl) SendInvitationAcceptedNotification(ctx context.Context, admins []*models.AdminUser, teacher *models.Teacher, centerName string, role string) error {
+	if len(admins) == 0 {
+		return nil // 沒有管理員可通知
+	}
+
+	flexMessage := s.templateService.GetInvitationAcceptedTemplate(teacher, centerName, role)
+
+	// 收集所有已綁定 LINE 的管理員
+	var lineUserIDs []string
+	for _, admin := range admins {
+		if admin.LineUserID != "" && admin.LineNotifyEnabled {
+			lineUserIDs = append(lineUserIDs, admin.LineUserID)
+		}
+	}
+
+	if len(lineUserIDs) == 0 {
+		return nil // 沒有已綁定的管理員
+	}
+
+	// 群發通知給所有已綁定的管理員
+	return s.Multicast(ctx, lineUserIDs, flexMessage)
 }

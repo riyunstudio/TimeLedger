@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"context"
 	"crypto/rand"
 	"fmt"
 	"net/http"
@@ -37,9 +38,12 @@ type TeacherController struct {
 	personalEventRepo *repositories.PersonalEventRepository
 	sessionNoteRepo   *repositories.SessionNoteRepository
 	invitationRepo    *repositories.CenterInvitationRepository
+	adminUserRepo     *repositories.AdminUserRepository
+	lineBotService    services.LineBotService
 }
 
 func NewTeacherController(app *app.App) *TeacherController {
+	lineBotService := services.NewLineBotService(app)
 	return &TeacherController{
 		app:               app,
 		teacherRepository: repositories.NewTeacherRepository(app),
@@ -56,6 +60,8 @@ func NewTeacherController(app *app.App) *TeacherController {
 		personalEventRepo: repositories.NewPersonalEventRepository(app),
 		sessionNoteRepo:   repositories.NewSessionNoteRepository(app),
 		invitationRepo:    repositories.NewCenterInvitationRepository(app),
+		adminUserRepo:     repositories.NewAdminUserRepository(app),
+		lineBotService:    lineBotService,
 	}
 }
 
@@ -3633,6 +3639,20 @@ func (ctl *TeacherController) AcceptInvitationByLink(ctx *gin.Context) {
 	if err == nil {
 		centerName = center.Name
 	}
+
+	// 發送 LINE 通知給中心管理員（異步處理，不影響主要流程）
+	go func() {
+		// 取得中心所有管理員
+		admins, err := ctl.adminUserRepo.GetByCenterID(ctx, invitation.CenterID)
+		if err != nil || len(admins) == 0 {
+			return
+		}
+
+		// 發送通知
+		notifyCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		_ = ctl.lineBotService.SendInvitationAcceptedNotification(notifyCtx, admins, &teacher, centerName, invitation.Role)
+	}()
 
 	ctx.JSON(http.StatusOK, global.ApiResponse{
 		Code:    0,

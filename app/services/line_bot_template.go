@@ -15,6 +15,9 @@ type LineBotTemplateService interface {
 	GetExceptionSubmitTemplate(exception *models.ScheduleException, teacherName string, centerName string) interface{}
 	GetExceptionApproveTemplate(exception *models.ScheduleException, teacherName string) interface{}
 	GetExceptionRejectTemplate(exception *models.ScheduleException, teacherName string, reason string) interface{}
+
+	// 取得邀請通知範本
+	GetInvitationAcceptedTemplate(teacher *models.Teacher, centerName string, role string) interface{}
 }
 
 // LineBotTemplateServiceImpl Flex Message 範本服務實現
@@ -445,6 +448,87 @@ func (s *LineBotTemplateServiceImpl) GetExceptionRejectTemplate(exception *model
 						"type":  "uri",
 						"label": "查看詳情",
 						"uri":   teacherURL,
+					},
+				},
+			},
+		},
+	}
+}
+
+// GetInvitationAcceptedTemplate 邀請接受通知範本（發給管理員）
+func (s *LineBotTemplateServiceImpl) GetInvitationAcceptedTemplate(teacher *models.Teacher, centerName string, role string) interface{} {
+	adminURL := fmt.Sprintf("%s/admin/teachers", s.baseURL)
+
+	// 角色顯示文字
+	roleText := "老師"
+	switch role {
+	case "SUBSTITUTE":
+		roleText = "代課老師"
+	case "TEACHER":
+		roleText = "正職老師"
+	}
+
+	return map[string]interface{}{
+		"type": "bubble",
+		"body": map[string]interface{}{
+			"type": "box",
+			"layout": "vertical",
+			"contents": []interface{}{
+				map[string]interface{}{
+					"type": "text",
+					"text": "🎉 新成員加入！",
+					"weight": "bold",
+					"size": "lg",
+					"color": "#4CAF50",
+				},
+				map[string]interface{}{
+					"type": "text",
+					"text": "━━━━━━━━━━━━━━",
+					"size": "xs",
+					"color": "#CCCCCC",
+				},
+				map[string]interface{}{
+					"type": "text",
+					"text": fmt.Sprintf("👤 新成員：%s", teacher.Name),
+					"size": "md",
+					"weight": "bold",
+				},
+				map[string]interface{}{
+					"type": "text",
+					"text": fmt.Sprintf("🏢 中心：%s", centerName),
+					"size": "md",
+				},
+				map[string]interface{}{
+					"type": "text",
+					"text": fmt.Sprintf("📋 角色：%s", roleText),
+					"size": "md",
+				},
+				map[string]interface{}{
+					"type": "text",
+					"text": "━━━━━━━━━━━━━━",
+					"size": "xs",
+					"color": "#CCCCCC",
+				},
+				map[string]interface{}{
+					"type": "text",
+					"text": "✅ 歡迎新老師加入！",
+					"size": "sm",
+					"color": "#666666",
+				},
+			},
+		},
+		"footer": map[string]interface{}{
+			"type": "box",
+			"layout": "horizontal",
+			"contents": []interface{}{
+				map[string]interface{}{
+					"type":   "button",
+					"style":  "primary",
+					"height": "sm",
+					"action": map[string]interface{}{
+						"type":  "uri",
+						"label": "查看成員",
+						"uri":   adminURL,
 					},
 				},
 			},
