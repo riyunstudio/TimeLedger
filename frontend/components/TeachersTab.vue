@@ -103,8 +103,11 @@
             </span>
           </div>
 
-          <div v-if="teacher.certificates" class="text-sm text-slate-400">
-            {{ Array.isArray(teacher.certificates) ? teacher.certificates.length : teacher.certificates }} 個證照
+          <div v-if="teacher.certificates && teacher.certificates.length > 0" class="flex items-center gap-2 text-sm text-slate-400">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+            </svg>
+            {{ teacher.certificates.length }} 張證照
           </div>
 
           <div class="flex items-center gap-2">

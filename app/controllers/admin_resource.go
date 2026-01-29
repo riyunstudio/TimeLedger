@@ -26,6 +26,8 @@ type AdminResourceController struct {
 	centerTeacherNoteRepo *repositories.CenterTeacherNoteRepository
 	membershipRepo       *repositories.CenterMembershipRepository
 	teacherRepository    *repositories.TeacherRepository
+	skillRepository      *repositories.TeacherSkillRepository
+	certificateRepo      *repositories.TeacherCertificateRepository
 }
 
 func NewAdminResourceController(app *app.App) *AdminResourceController {
@@ -41,6 +43,8 @@ func NewAdminResourceController(app *app.App) *AdminResourceController {
 		centerTeacherNoteRepo: repositories.NewCenterTeacherNoteRepository(app),
 		membershipRepo:       repositories.NewCenterMembershipRepository(app),
 		teacherRepository:    repositories.NewTeacherRepository(app),
+		skillRepository:      repositories.NewTeacherSkillRepository(app),
+		certificateRepo:      repositories.NewTeacherCertificateRepository(app),
 	}
 }
 
@@ -1573,14 +1577,42 @@ func (ctl *AdminResourceController) GetTeachers(ctx *gin.Context) {
 			continue
 		}
 
+		// 取得技能
+		skills, _ := ctl.skillRepository.ListByTeacherID(ctx, teacherID)
+		var skillResponses []TeacherSkillResponse
+		for _, skill := range skills {
+			skillResponses = append(skillResponses, TeacherSkillResponse{
+				ID:        skill.ID,
+				SkillName: skill.SkillName,
+				Category:  skill.Category,
+				Level:     skill.Level,
+			})
+		}
+
+		// 取得證照
+		certificates, _ := ctl.certificateRepo.ListByTeacherID(ctx, teacherID)
+		var certResponses []CertificateResponse
+		for _, cert := range certificates {
+			certResponses = append(certResponses, CertificateResponse{
+				ID:        cert.ID,
+				Name:      cert.Name,
+				FileURL:   cert.FileURL,
+				IssuedAt:  cert.IssuedAt,
+				CreatedAt: cert.CreatedAt,
+			})
+		}
+
 		teachers = append(teachers, TeacherResponse{
-			ID:        teacher.ID,
-			Name:      teacher.Name,
-			Email:     teacher.Email,
-			City:      teacher.City,
-			District:  teacher.District,
-			Bio:       teacher.Bio,
-			CreatedAt: teacher.CreatedAt,
+			ID:           teacher.ID,
+			Name:         teacher.Name,
+			Email:        teacher.Email,
+			City:         teacher.City,
+			District:     teacher.District,
+			Bio:          teacher.Bio,
+			IsActive:     teacher.IsOpenToHiring, // 使用 IsOpenToHiring 作為活躍狀態
+			CreatedAt:    teacher.CreatedAt,
+			Skills:       skillResponses,
+			Certificates: certResponses,
 		})
 	}
 
@@ -1592,11 +1624,30 @@ func (ctl *AdminResourceController) GetTeachers(ctx *gin.Context) {
 }
 
 type TeacherResponse struct {
+	ID           uint                    `json:"id"`
+	Name         string                  `json:"name"`
+	Email        string                  `json:"email"`
+	Phone        string                  `json:"phone,omitempty"`
+	City         string                  `json:"city,omitempty"`
+	District     string                  `json:"district,omitempty"`
+	Bio          string                  `json:"bio,omitempty"`
+	IsActive     bool                    `json:"is_active"`
+	CreatedAt    time.Time               `json:"created_at"`
+	Skills       []TeacherSkillResponse  `json:"skills,omitempty"`
+	Certificates []CertificateResponse   `json:"certificates,omitempty"`
+}
+
+type TeacherSkillResponse struct {
+	ID         uint   `json:"id"`
+	SkillName  string `json:"skill_name"`
+	Category   string `json:"category,omitempty"`
+	Level      string `json:"level,omitempty"`
+}
+
+type CertificateResponse struct {
 	ID        uint      `json:"id"`
 	Name      string    `json:"name"`
-	Email     string    `json:"email"`
-	City      string    `json:"city"`
-	District  string    `json:"district"`
-	Bio       string    `json:"bio"`
+	FileURL   string    `json:"file_url,omitempty"`
+	IssuedAt  time.Time `json:"issued_at"`
 	CreatedAt time.Time `json:"created_at"`
 }

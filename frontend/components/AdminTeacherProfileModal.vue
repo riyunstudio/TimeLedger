@@ -1,6 +1,6 @@
 <template>
   <div class="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" @click.self="emit('close')">
-    <div class="glass-card w-full max-w-md max-h-[90vh] overflow-y-auto animate-spring" @click.stop>
+    <div class="glass-card w-full max-w-lg max-h-[90vh] overflow-y-auto animate-spring" @click.stop>
       <div class="flex items-center justify-between p-4 border-b border-white/10">
         <h3 class="text-lg font-semibold text-slate-100">
           老師檔案
@@ -68,15 +68,56 @@
           </div>
         </div>
 
-        <!-- 證照數量 -->
-        <div class="flex items-center justify-between p-3 rounded-lg bg-white/5">
-          <div class="flex items-center gap-2">
-            <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
-            </svg>
-            <span class="text-slate-300">持有證照</span>
+        <!-- 證照列表 -->
+        <div v-if="teacher?.certificates?.length > 0">
+          <h5 class="text-sm font-medium text-slate-400 mb-2">持有證照 ({{ teacher.certificates.length }} 張)</h5>
+          <div class="space-y-2">
+            <div
+              v-for="cert in teacher.certificates"
+              :key="cert.id"
+              class="flex items-center gap-3 p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
+            >
+              <!-- 證照圖示 -->
+              <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-amber-500/20 flex items-center justify-center">
+                <svg v-if="getCertIcon(cert.name) === 'pdf'" class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+                <svg v-else class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
+              
+              <!-- 證照資訊 -->
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-slate-200 truncate">{{ cert.name }}</p>
+                <p class="text-xs text-slate-500">
+                  發照日期：{{ formatDate(cert.issued_at) }}
+                </p>
+              </div>
+              
+              <!-- 查看按鈕 -->
+              <a
+                v-if="cert.file_url"
+                :href="cert.file_url"
+                target="_blank"
+                class="flex-shrink-0 p-2 rounded-lg bg-primary-500/20 text-primary-500 hover:bg-primary-500/30 transition-colors"
+                title="查看證照"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+              </a>
+            </div>
           </div>
-          <span class="text-lg font-semibold text-slate-100">{{ teacher?.certificates?.length || 0 }} 張</span>
+        </div>
+
+        <!-- 無證照提示 -->
+        <div v-else class="flex items-center gap-3 p-3 rounded-lg bg-white/5">
+          <svg class="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+          </svg>
+          <span class="text-slate-400">尚未上傳任何證照</span>
         </div>
       </div>
 
@@ -96,7 +137,16 @@
 interface TeacherSkill {
   id: number
   skill_name: string
-  level: string
+  category?: string
+  level?: string
+}
+
+interface Certificate {
+  id: number
+  name: string
+  file_url?: string
+  issued_at: string
+  created_at: string
 }
 
 interface TeacherProfile {
@@ -108,7 +158,7 @@ interface TeacherProfile {
   district?: string
   is_active: boolean
   skills?: TeacherSkill[]
-  certificates?: any[]
+  certificates?: Certificate[]
 }
 
 const props = defineProps<{
@@ -118,4 +168,22 @@ const props = defineProps<{
 const emit = defineEmits<{
   close: []
 }>()
+
+// 取得證照圖示類型
+const getCertIcon = (name: string): string => {
+  const lowerName = name.toLowerCase()
+  if (lowerName.includes('pdf')) return 'pdf'
+  return 'image'
+}
+
+// 格式化日期
+const formatDate = (dateStr: string): string => {
+  if (!dateStr) return '未設定'
+  const date = new Date(dateStr)
+  return date.toLocaleDateString('zh-TW', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  })
+}
 </script>
