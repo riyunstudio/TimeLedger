@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"fmt"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -17,6 +16,7 @@ import (
 	"timeLedger/app/services"
 	"timeLedger/global"
 	"timeLedger/global/errInfos"
+	"timeLedger/libs"
 
 	"github.com/gin-gonic/gin"
 )
@@ -40,10 +40,19 @@ type TeacherController struct {
 	invitationRepo    *repositories.CenterInvitationRepository
 	adminUserRepo     *repositories.AdminUserRepository
 	lineBotService    services.LineBotService
+	r2Storage         *libs.R2StorageService
+	localStorage      *libs.LocalStorageService
 }
 
 func NewTeacherController(app *app.App) *TeacherController {
 	lineBotService := services.NewLineBotService(app)
+
+	// 初始化 R2 儲存服務
+	r2Storage, _ := libs.NewR2StorageService(app.Env)
+
+	// 初始化本地儲存服務（回退方案）
+	localStorage := libs.NewLocalStorageService("./uploads/certificates")
+
 	return &TeacherController{
 		app:               app,
 		teacherRepository: repositories.NewTeacherRepository(app),
@@ -62,6 +71,8 @@ func NewTeacherController(app *app.App) *TeacherController {
 		invitationRepo:    repositories.NewCenterInvitationRepository(app),
 		adminUserRepo:     repositories.NewAdminUserRepository(app),
 		lineBotService:    lineBotService,
+		r2Storage:         r2Storage,
+		localStorage:      localStorage,
 	}
 }
 
@@ -1621,39 +1632,51 @@ func (ctl *TeacherController) UploadCertificateFile(ctx *gin.Context) {
 		return
 	}
 
-	// 確保上傳目錄存在
-	uploadPath := "./uploads/certificates"
-	if err := os.MkdirAll(uploadPath, 0755); err != nil {
+	// 開啟檔案
+	src, err := file.Open()
+	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
 			Code:    500,
-			Message: "Failed to create upload directory: " + err.Error(),
+			Message: "Failed to open file: " + err.Error(),
 		})
 		return
 	}
+	defer src.Close()
 
-	// 生成唯一的檔案名稱
-	timestamp := time.Now().Format("20060102_150405")
-	uniqueFilename := fmt.Sprintf("cert_%d_%s%s", teacherID, timestamp, ext)
-	filePath := filepath.Join(uploadPath, uniqueFilename)
+	// 取得 Content-Type
+	contentType := libs.GetContentType(file.Filename)
 
-	// 儲存檔案
-	if err := ctx.SaveUploadedFile(file, filePath); err != nil {
-		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-			Code:    500,
-			Message: "Failed to save file: " + err.Error(),
-		})
-		return
+	// 上傳到 R2 或本地儲存
+	var fileURL string
+	if ctl.r2Storage != nil && ctl.r2Storage.IsEnabled() {
+		// 使用 R2 儲存
+		fileURL, err = ctl.r2Storage.UploadFile(ctx, src, file.Filename, contentType)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
+				Code:    500,
+				Message: "Failed to upload to R2: " + err.Error(),
+			})
+			return
+		}
+	} else {
+		// 回退到本地儲存
+		fileURL, err = ctl.localStorage.UploadFile(ctx, src, file.Filename, contentType)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
+				Code:    500,
+				Message: "Failed to save file locally: " + err.Error(),
+			})
+			return
+		}
 	}
 
 	// 返回檔案 URL
-	fileURL := fmt.Sprintf("/uploads/certificates/%s", uniqueFilename)
 	ctx.JSON(http.StatusOK, global.ApiResponse{
 		Code:    0,
 		Message: "File uploaded successfully",
 		Datas: UploadFileResponse{
 			FileURL:  fileURL,
 			FileName: file.Filename,
-			FileSize: file.Size,
 		},
 	})
 }
@@ -1715,6 +1738,17 @@ func (ctl *TeacherController) DeleteCertificate(ctx *gin.Context) {
 			Message: err.Error(),
 		})
 		return
+	}
+
+	// 刪除 R2 或本地檔案
+	if certificate.FileURL != "" {
+		if ctl.r2Storage != nil && ctl.r2Storage.IsEnabled() {
+			// 刪除 R2 檔案
+			_ = ctl.r2Storage.DeleteFile(ctx, certificate.FileURL)
+		} else {
+			// 刪除本地檔案
+			_ = ctl.localStorage.DeleteFile(ctx, certificate.FileURL)
+		}
 	}
 
 	ctx.JSON(http.StatusOK, global.ApiResponse{
