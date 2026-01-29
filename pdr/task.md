@@ -23,3 +23,15 @@
 ## Phase 6: Code Consistency (DRY)
 - [ ] **Generic Repository**: Implement `UsingGenericRepo[T]` for standard CRUD <!-- id: 11 -->
 - [ ] **Frontend API Refactor**: Centralize header/token logic in `useApi.ts` <!-- id: 12 -->
+
+## Phase 7: Architectural Refinement
+- [ ] **Rich Domain Models**: Move business rules (validation, status checks) from Services to Model structs <!-- id: 13 -->
+- [ ] **DTO Implementation**: Introduce Request/Resource structs to decouple API from DB Schema <!-- id: 14 -->
+- [ ] **Unified Error Handling**: Implement `AppError` and central Middleware for JSON error responses <!-- id: 15 -->
+- [ ] **Interface-based DI**: Refactor Controllers to depend on Service Interfaces instead of concrete types <!-- id: 16 -->
+
+## Phase 8: Performance & Scalability
+- [ ] **N+1 Query Resolution**: Refactor `ExpandRules` to use batch fetching and in-memory mapping <!-- id: 17 -->
+- [ ] **Redis Schedule Cache**: Implement caching for computed teacher schedules with smart invalidation <!-- id: 18 -->
+- [ ] **Event-Driven Bus**: Implement internal event dispatcher for decoupling notifications/audits <!-- id: 19 -->
+- [ ] **Fat Controller Splitting**: Decompose `TeacherController` into domain-specific sub-controllers <!-- id: 20 -->

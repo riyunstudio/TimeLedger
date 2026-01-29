@@ -1,0 +1,97 @@
+---
+description: Instinct-based learning system that observes sessions via hooks, creates atomic instincts with confidence scoring, and evolves them into skills/commands/agents.
+globs: **/*
+---
+# continuous-learning-v2
+
+# Continuous Learning v2 - Instinct-Based Architecture
+
+An advanced learning system that turns your Claude Code sessions into reusable knowledge through atomic "instincts" - small learned behaviors with confidence scoring.
+
+## What's New in v2
+
+| Feature | v1 | v2 |
+|---------|----|----|
+| Observation | Stop hook (session end) | PreToolUse/PostToolUse (100% reliable) |
+| Analysis | Main context | Background agent (Haiku) |
+| Granularity | Full skills | Atomic "instincts" |
+| Confidence | None | 0.3-0.9 weighted |
+| Evolution | Direct to skill | Instincts → cluster → skill/command/agent |
+| Sharing | None | Export/import instincts |
+
+## The Instinct Model
+
+An instinct is a small learned behavior:
+
+```yaml
+---
+id: prefer-functional-style
+trigger: "when writing new functions"
+confidence: 0.7
+domain: "code-style"
+source: "session-observation"
+---
+
+# Prefer Functional Style
+
+## Action
+Use functional patterns over classes when appropriate.
+
+## Evidence
+- Observed 5 instances of functional pattern preference
+- User corrected class-based approach to functional on 2025-01-15
+```
+
+**Properties:**
+- **Atomic** — one trigger, one action
+- **Confidence-weighted** — 0.3 = tentative, 0.9 = near certain
+- **Domain-tagged** — code-style, testing, git, debugging, workflow, etc.
+- **Evidence-backed** — tracks what observations created it
+
+## Quick Start for Cursor
+
+### 1. Initialize Instincts
+
+Run this command in your terminal to view the status (this will also create the necessary directories in `.cursor/homunculus`):
+
+```bash
+python .cursor/scripts/instinct-cli.py status
+```
+
+### 2. Available Commands
+
+You can use the `instinct-cli.py` script to manage your instincts directly:
+
+- **Check Status**:
+  ```bash
+  python .cursor/scripts/instinct-cli.py status
+  ```
+
+- **Import Instincts**:
+  ```bash
+  python .cursor/scripts/instinct-cli.py import <file_or_url>
+  ```
+
+- **Export Instincts**:
+  ```bash
+  python .cursor/scripts/instinct-cli.py export --output my-instincts.yaml
+  ```
+
+- **Evolve (Analyze Patterns)**:
+  ```bash
+  python .cursor/scripts/instinct-cli.py evolve
+  ```
+
+## Note on Automation
+
+In Cursor, the extensive "background observation" hooks from Claude Code are not natively supported out of the box. However, you can manually run these commands or ask Cursor to "check my instincts" to retrieve relevant patterns.
+
+## Related
+
+- [Skill Creator](https://skill-creator.app) - Generate instincts from repo history
+- [Homunculus](https://github.com/humanplane/homunculus) - Inspiration for v2 architecture
+- [The Longform Guide](https://x.com/affaanmustafa/status/2014040193557471352) - Continuous learning section
+
+---
+
+*Instinct-based learning: teaching Claude your patterns, one observation at a time.*
