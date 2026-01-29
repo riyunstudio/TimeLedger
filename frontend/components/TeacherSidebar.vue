@@ -78,6 +78,24 @@
           <span>匯出課表</span>
         </NuxtLink>
 
+        <NuxtLink
+          to="/teacher/invitations"
+          class="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors relative"
+          :class="{ 'bg-primary-500/20 text-primary-500': route.path === '/teacher/invitations' }"
+          @click="sidebarStore.close()"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+          </svg>
+          <span>邀請通知</span>
+          <span
+            v-if="pendingInvitations > 0"
+            class="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-primary-500 text-white text-xs flex items-center justify-center"
+          >
+            {{ pendingInvitations > 9 ? '9+' : pendingInvitations }}
+          </span>
+        </NuxtLink>
+
         <button
           @click="handleLogout"
           class="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-critical-500/10 text-critical-500 transition-colors"
@@ -103,15 +121,40 @@
 <script setup lang="ts">
 import { alertConfirm } from '~/composables/useAlert'
 
+const config = useRuntimeConfig()
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 const teacherStore = useTeacherStore()
 const sidebarStore = useSidebar()
+const pendingInvitations = ref(0)
 
 // 待審核申請數
 const pendingExceptions = computed(() => {
   return teacherStore.exceptions.filter(e => e.status === 'PENDING').length
+})
+
+// 取得待處理邀請數量
+const fetchPendingInvitations = async () => {
+  try {
+    const token = localStorage.getItem('teacher_token')
+    const response = await fetch(`${config.public.apiBase}/teacher/me/invitations/pending-count`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    })
+    if (response.ok) {
+      const data = await response.json()
+      pendingInvitations.value = data.datas?.count || 0
+    }
+  } catch (err) {
+    console.error('取得待處理邀請數量失敗:', err)
+  }
+}
+
+// 頁面載入時取得資料
+onMounted(() => {
+  fetchPendingInvitations()
 })
 
 const handleLogout = async () => {

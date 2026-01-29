@@ -68,6 +68,11 @@ func (rp *TeacherRepository) Update(ctx context.Context, data models.Teacher) er
 	return rp.app.MySQL.WDB.WithContext(ctx).Save(&data).Error
 }
 
+// UpdateFields 更新指定欄位
+func (rp *TeacherRepository) UpdateFields(ctx context.Context, id uint, fields map[string]interface{}) error {
+	return rp.app.MySQL.WDB.WithContext(ctx).Model(&models.Teacher{}).Where("id = ?", id).Updates(fields).Error
+}
+
 func (rp *TeacherRepository) DeleteByID(ctx context.Context, id uint) error {
 	return rp.app.MySQL.WDB.WithContext(ctx).Where("id = ?", id).Delete(&models.Teacher{}).Error
 }
@@ -87,10 +92,10 @@ func (rp *TeacherRepository) ListPersonalHashtags(ctx context.Context, teacherID
 	var hashtags []resources.PersonalHashtag
 	err := rp.app.MySQL.RDB.WithContext(ctx).
 		Table("teacher_personal_hashtags").
-		Select("teacher_personal_hashtags.id, teacher_personal_hashtags.hashtag_id, hashtags.name").
+		Select("teacher_personal_hashtags.hashtag_id, hashtags.name, teacher_personal_hashtags.sort_order").
 		Joins("INNER JOIN hashtags ON teacher_personal_hashtags.hashtag_id = hashtags.id").
 		Where("teacher_personal_hashtags.teacher_id = ?", teacherID).
-		Order("teacher_personal_hashtags.id ASC").
+		Order("teacher_personal_hashtags.sort_order ASC").
 		Find(&hashtags).Error
 	return hashtags, err
 }

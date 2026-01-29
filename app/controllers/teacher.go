@@ -36,6 +36,7 @@ type TeacherController struct {
 	certificateRepo   *repositories.TeacherCertificateRepository
 	personalEventRepo *repositories.PersonalEventRepository
 	sessionNoteRepo   *repositories.SessionNoteRepository
+	invitationRepo    *repositories.CenterInvitationRepository
 }
 
 func NewTeacherController(app *app.App) *TeacherController {
@@ -54,6 +55,7 @@ func NewTeacherController(app *app.App) *TeacherController {
 		certificateRepo:   repositories.NewTeacherCertificateRepository(app),
 		personalEventRepo: repositories.NewPersonalEventRepository(app),
 		sessionNoteRepo:   repositories.NewSessionNoteRepository(app),
+		invitationRepo:    repositories.NewCenterInvitationRepository(app),
 	}
 }
 
@@ -89,9 +91,9 @@ func (ctl *TeacherController) GetProfile(ctx *gin.Context) {
 	var hashtagResources []resources.PersonalHashtag
 	for _, h := range personalHashtags {
 		hashtagResources = append(hashtagResources, resources.PersonalHashtag{
-			ID:        h.ID,
 			HashtagID: h.HashtagID,
 			Name:      h.Name,
+			SortOrder: h.SortOrder,
 		})
 	}
 
@@ -680,6 +682,157 @@ func (ctl *TeacherController) GetCenterScheduleRules(ctx *gin.Context) {
 		Code:    0,
 		Message: "Success",
 		Datas:   teacherRules,
+	})
+}
+
+// GetSchedules 取得老師的課表（支援 start_date/end_date 參數）
+// @Summary 取得老師的課表
+// @Tags Teacher
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param start_date query string true "開始日期 (YYYY-MM-DD)"
+// @Param end_date query string true "結束日期 (YYYY-MM-DD)"
+// @Success 200 {object} global.ApiResponse{data=[]TeacherScheduleItem}
+// @Router /api/v1/teacher/schedules [get]
+func (ctl *TeacherController) GetSchedules(ctx *gin.Context) {
+	teacherID := ctx.GetUint(global.UserIDKey)
+	if teacherID == 0 {
+		ctx.JSON(http.StatusUnauthorized, global.ApiResponse{
+			Code:    global.UNAUTHORIZED,
+			Message: "Teacher ID required",
+		})
+		return
+	}
+
+	// 支援兩種參數名稱
+	fromStr := ctx.Query("start_date")
+	if fromStr == "" {
+		fromStr = ctx.Query("from")
+	}
+	toStr := ctx.Query("end_date")
+	if toStr == "" {
+		toStr = ctx.Query("to")
+	}
+
+	if fromStr == "" || toStr == "" {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "start_date and end_date are required",
+		})
+		return
+	}
+
+	fromDate, err := time.Parse("2006-01-02", fromStr)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Invalid start_date format",
+		})
+		return
+	}
+
+	toDate, err := time.Parse("2006-01-02", toStr)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    global.BAD_REQUEST,
+			Message: "Invalid end_date format",
+		})
+		return
+	}
+
+	// 呼叫原有的 GetSchedule 邏輯
+	ctl.getScheduleInternal(ctx, teacherID, fromDate, toDate)
+}
+
+// getScheduleInternal 內部方法：取得老師的綜合課表
+func (ctl *TeacherController) getScheduleInternal(ctx *gin.Context, teacherID uint, fromDate, toDate time.Time) {
+	memberships, err := ctl.membershipRepo.GetActiveByTeacherID(ctx, teacherID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
+			Code:    500,
+			Message: "Failed to get memberships",
+		})
+		return
+	}
+
+	var schedule []TeacherScheduleItem
+
+	for _, m := range memberships {
+		center, _ := ctl.centerRepo.GetByID(ctx, m.CenterID)
+		centerName := center.Name
+
+		rules, _ := ctl.scheduleRuleRepo.ListByTeacherID(ctx, teacherID, m.CenterID)
+
+		ruleMap := make(map[uint]*models.ScheduleRule)
+		for i := range rules {
+			ruleMap[rules[i].ID] = &rules[i]
+		}
+
+		expanded := ctl.expansionService.ExpandRules(ctx, rules, fromDate, toDate, m.CenterID)
+
+		for _, item := range expanded {
+			status := "NORMAL"
+			exceptions, _ := ctl.exceptionRepo.GetByRuleAndDate(ctx, item.RuleID, item.Date)
+			for _, exc := range exceptions {
+				if exc.Status == "PENDING" {
+					status = "PENDING_" + exc.ExceptionType
+				} else if exc.Status == "APPROVED" && exc.ExceptionType == "CANCEL" {
+					status = "CANCELLED"
+				} else if exc.Status == "APPROVED" && exc.ExceptionType == "RESCHEDULE" {
+					status = "RESCHEDULED"
+				}
+			}
+
+			if status != "CANCELLED" {
+				offeringName := ""
+				if rule, exists := ruleMap[item.RuleID]; exists && rule.OfferingID != 0 {
+					offeringName = rule.Offering.Name
+				}
+
+				title := offeringName
+				if centerName != "" {
+					if title != "" {
+						title = fmt.Sprintf("%s @ %s", offeringName, centerName)
+					} else {
+						title = centerName
+					}
+				}
+				if title == "" {
+					title = "課程"
+				}
+
+				schedule = append(schedule, TeacherScheduleItem{
+					ID: fmt.Sprintf("center_%d_rule_%d_%s_%s", m.CenterID, item.RuleID, item.Date.Format("20060102"), func() string {
+						if item.IsCrossDayPart {
+							if item.StartTime == "00:00" {
+								return "end"
+							}
+							return "start"
+						}
+						return "normal"
+					}()),
+					Type:           "CENTER_SESSION",
+					Title:          title,
+					Date:           item.Date.Format("2006-01-02"),
+					StartTime:      item.StartTime,
+					EndTime:        item.EndTime,
+					RoomID:         item.RoomID,
+					TeacherID:      item.TeacherID,
+					CenterID:       m.CenterID,
+					CenterName:     centerName,
+					Status:         status,
+					RuleID:         item.RuleID,
+					IsCrossDayPart: item.IsCrossDayPart,
+				})
+			}
+		}
+	}
+
+	ctx.JSON(http.StatusOK, global.ApiResponse{
+		Code:    0,
+		Message: "Success",
+		Datas:   schedule,
 	})
 }
 
@@ -2621,5 +2774,255 @@ func (ctl *TeacherController) UpdatePersonalEventNote(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, global.ApiResponse{
 		Code:    0,
 		Message: "Note updated successfully",
+	})
+}
+
+// ==================== 邀請相關 API ====================
+
+// InvitationResponse 邀請回應結構
+type InvitationResponse struct {
+	ID          uint       `json:"id"`
+	CenterID    uint       `json:"center_id"`
+	CenterName  string     `json:"center_name"`
+	InviteType  string     `json:"invite_type"`
+	Status      string     `json:"status"`
+	Message     string     `json:"message,omitempty"`
+	CreatedAt   time.Time  `json:"created_at"`
+	ExpiresAt   time.Time  `json:"expires_at"`
+	RespondedAt *time.Time `json:"responded_at,omitempty"`
+}
+
+// GetTeacherInvitations 取得老師的邀請列表
+// @Summary 取得老師的邀請列表
+// @Tags Teacher - Invitations
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param status query string false "篩選狀態 (PENDING/ACCEPTED/DECLINED/EXPIRED)"
+// @Success 200 {object} global.ApiResponse{data=[]InvitationResponse}
+// @Router /api/v1/teacher/me/invitations [get]
+func (ctl *TeacherController) GetTeacherInvitations(ctx *gin.Context) {
+	teacherID := ctx.GetUint(global.UserIDKey)
+	if teacherID == 0 {
+		ctx.JSON(http.StatusUnauthorized, global.ApiResponse{
+			Code:    errInfos.UNAUTHORIZED,
+			Message: "Teacher ID not found",
+		})
+		return
+	}
+
+	// 取得篩選狀態
+	status := ctx.Query("status")
+
+	// 取得邀請列表
+	invitations, err := ctl.invitationRepo.ListByTeacher(ctx, teacherID, status)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
+			Code:    errInfos.SQL_ERROR,
+			Message: "Failed to get invitations",
+		})
+		return
+	}
+
+	// 取得中心名稱並轉換為回應格式
+	response := make([]InvitationResponse, 0, len(invitations))
+	for _, inv := range invitations {
+		centerName := ""
+		center, err := ctl.centerRepo.GetByID(ctx, inv.CenterID)
+		if err == nil {
+			centerName = center.Name
+		}
+
+		response = append(response, InvitationResponse{
+			ID:          inv.ID,
+			CenterID:    inv.CenterID,
+			CenterName:  centerName,
+			InviteType:  string(inv.InviteType),
+			Status:      string(inv.Status),
+			Message:     inv.Message,
+			CreatedAt:   inv.CreatedAt,
+			ExpiresAt:   inv.ExpiresAt,
+			RespondedAt: inv.RespondedAt,
+		})
+	}
+
+	ctx.JSON(http.StatusOK, global.ApiResponse{
+		Code:    0,
+		Message: "Success",
+		Datas:   response,
+	})
+}
+
+// RespondToInvitationRequest 回應邀請請求
+type RespondToInvitationRequest struct {
+	InvitationID uint   `json:"invitation_id" binding:"required"`
+	Response     string `json:"response" binding:"required,oneof=ACCEPT DECLINE"`
+}
+
+// RespondToInvitation 老師回應邀請
+// @Summary 老師回應邀請
+// @Tags Teacher - Invitations
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param request body RespondToInvitationRequest true "回應請求"
+// @Success 200 {object} global.ApiResponse
+// @Router /api/v1/teacher/me/invitations/respond [post]
+func (ctl *TeacherController) RespondToInvitation(ctx *gin.Context) {
+	teacherID := ctx.GetUint(global.UserIDKey)
+	if teacherID == 0 {
+		ctx.JSON(http.StatusUnauthorized, global.ApiResponse{
+			Code:    errInfos.UNAUTHORIZED,
+			Message: "Teacher ID not found",
+		})
+		return
+	}
+
+	var req RespondToInvitationRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    errInfos.PARAMS_VALIDATE_ERROR,
+			Message: "Invalid request parameters: " + err.Error(),
+		})
+		return
+	}
+
+	// 取得邀請記錄
+	invitation, err := ctl.invitationRepo.GetByID(ctx, req.InvitationID)
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, global.ApiResponse{
+			Code:    errInfos.NOT_FOUND,
+			Message: "Invitation not found",
+		})
+		return
+	}
+
+	// 驗證是否為該老師的邀請
+	if invitation.TeacherID != teacherID {
+		ctx.JSON(http.StatusForbidden, global.ApiResponse{
+			Code:    errInfos.FORBIDDEN,
+			Message: "Not authorized to respond to this invitation",
+		})
+		return
+	}
+
+	// 檢查邀請狀態
+	if invitation.Status != models.InvitationStatusPending {
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    errInfos.INVALID_STATUS,
+			Message: "Invitation has already been responded or expired",
+		})
+		return
+	}
+
+	// 檢查是否過期
+	if time.Now().After(invitation.ExpiresAt) {
+		// 自動標記為過期
+		ctl.invitationRepo.UpdateStatus(ctx, req.InvitationID, models.InvitationStatusExpired)
+		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    errInfos.INVALID_STATUS,
+			Message: "Invitation has expired",
+		})
+		return
+	}
+
+	// 根據回應更新狀態
+	var newStatus models.InvitationStatus
+	if req.Response == "ACCEPT" {
+		newStatus = models.InvitationStatusAccepted
+
+		// 如果是人才庫邀請，更新老師的 is_open_to_hiring 為 true
+		if invitation.InviteType == models.InvitationTypeTalentPool {
+			teacher, _ := ctl.teacherRepository.GetByID(ctx, teacherID)
+			if !teacher.IsOpenToHiring {
+				ctl.teacherRepository.UpdateFields(ctx, teacherID, map[string]interface{}{
+					"is_open_to_hiring": true,
+				})
+			}
+		}
+	} else {
+		newStatus = models.InvitationStatusDeclined
+	}
+
+	// 更新邀請狀態
+	if err := ctl.invitationRepo.UpdateStatus(ctx, req.InvitationID, newStatus); err != nil {
+		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
+			Code:    errInfos.SQL_ERROR,
+			Message: "Failed to update invitation status",
+		})
+		return
+	}
+
+	// 記錄審計日誌
+	ctl.auditLogRepo.Create(ctx, models.AuditLog{
+		CenterID:   invitation.CenterID,
+		ActorType:  "TEACHER",
+		ActorID:    teacherID,
+		Action:     "INVITATION_" + req.Response,
+		TargetType: "CenterInvitation",
+		TargetID:   invitation.ID,
+		Payload: models.AuditPayload{
+			Before: map[string]interface{}{
+				"status": string(invitation.Status),
+			},
+			After: map[string]interface{}{
+				"status": string(newStatus),
+			},
+		},
+	})
+
+	// 如果接受邀請，通知管理員
+	if newStatus == models.InvitationStatusAccepted {
+		// 這裡可以發送通知給管理員
+	}
+
+	message := "已接受邀請"
+	if newStatus == models.InvitationStatusDeclined {
+		message = "已婉拒邀請"
+	}
+
+	ctx.JSON(http.StatusOK, global.ApiResponse{
+		Code:    0,
+		Message: message,
+		Datas: gin.H{
+			"invitation_id": req.InvitationID,
+			"status":        string(newStatus),
+		},
+	})
+}
+
+// GetPendingInvitationsCount 取得待處理邀請數量
+// @Summary 取得待處理邀請數量
+// @Tags Teacher - Invitations
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} global.ApiResponse{data=map[string]int}
+// @Router /api/v1/teacher/me/invitations/pending-count [get]
+func (ctl *TeacherController) GetPendingInvitationsCount(ctx *gin.Context) {
+	teacherID := ctx.GetUint(global.UserIDKey)
+	if teacherID == 0 {
+		ctx.JSON(http.StatusUnauthorized, global.ApiResponse{
+			Code:    errInfos.UNAUTHORIZED,
+			Message: "Teacher ID not found",
+		})
+		return
+	}
+
+	invitations, err := ctl.invitationRepo.GetPendingByTeacher(ctx, teacherID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
+			Code:    errInfos.SQL_ERROR,
+			Message: "Failed to get pending invitations",
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, global.ApiResponse{
+		Code:    0,
+		Message: "Success",
+		Datas: gin.H{
+			"count": len(invitations),
+		},
 	})
 }

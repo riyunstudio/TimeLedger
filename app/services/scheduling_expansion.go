@@ -70,6 +70,12 @@ func (s *ScheduleExpansionServiceImpl) ExpandRules(ctx context.Context, rules []
 					dateStr := date.Format("2006-01-02")
 					isHoliday := holidaySet[dateStr]
 
+					// 如果是假日，跳過此 session（無感停課）
+					if isHoliday {
+						date = date.AddDate(0, 0, 1)
+						continue
+					}
+
 					// 使用日期字串進行比較，避免 time.Time 與 date 類型的不一致問題
 					exceptions, _ := s.exceptionRepo.GetByRuleIDAndDateStr(ctx, rule.ID, dateStr)
 
@@ -131,14 +137,14 @@ func (s *ScheduleExpansionServiceImpl) ExpandRules(ctx context.Context, rules []
 					// 創建課表項目
 					createScheduleEntry := func(scheduleDate time.Time, sTime, eTime string) {
 						schedule := ExpandedSchedule{
-							RuleID:         rule.ID,
-							Date:           scheduleDate,
-							StartTime:      sTime,
-							EndTime:        eTime,
-							RoomID:         rule.RoomID,
-							TeacherID:      rule.TeacherID,
-							IsHoliday:      isHoliday,
-							HasException:   pendingException != nil || approvedException != nil,
+							RuleID:       rule.ID,
+							Date:         scheduleDate,
+							StartTime:    sTime,
+							EndTime:      eTime,
+							RoomID:       rule.RoomID,
+							TeacherID:    rule.TeacherID,
+							IsHoliday:    isHoliday,
+							HasException: pendingException != nil || approvedException != nil,
 							// 關聯資料
 							OfferingName:   rule.Offering.Name,
 							TeacherName:    rule.Teacher.Name,
@@ -308,15 +314,15 @@ func ptrEqual(a, b *uint) bool {
 
 type ScheduleExceptionServiceImpl struct {
 	BaseService
-	app                *app.App
-	exceptionRepo      *repositories.ScheduleExceptionRepository
-	ruleRepo           *repositories.ScheduleRuleRepository
-	auditLogRepo       *repositories.AuditLogRepository
-	centerRepo         *repositories.CenterRepository
-	teacherRepo        *repositories.TeacherRepository
-	validationService  ScheduleValidationService
-	notificationSvc    NotificationService
-	notificationQueue  NotificationQueueService
+	app               *app.App
+	exceptionRepo     *repositories.ScheduleExceptionRepository
+	ruleRepo          *repositories.ScheduleRuleRepository
+	auditLogRepo      *repositories.AuditLogRepository
+	centerRepo        *repositories.CenterRepository
+	teacherRepo       *repositories.TeacherRepository
+	validationService ScheduleValidationService
+	notificationSvc   NotificationService
+	notificationQueue NotificationQueueService
 }
 
 func NewScheduleExceptionService(app *app.App) ScheduleExceptionService {
@@ -374,15 +380,15 @@ func (s *ScheduleExceptionServiceImpl) CreateException(ctx context.Context, cent
 	}
 
 	exception := models.ScheduleException{
-		CenterID:       centerID,
-		RuleID:         ruleID,
-		OriginalDate:   originalDate,
-		ExceptionType:  exceptionType,
-		Status:         "PENDING",
-		NewStartAt:     newStartAt,
-		NewEndAt:       newEndAt,
-		NewTeacherID:   newTeacherID,
-		Reason:         reason,
+		CenterID:      centerID,
+		RuleID:        ruleID,
+		OriginalDate:  originalDate,
+		ExceptionType: exceptionType,
+		Status:        "PENDING",
+		NewStartAt:    newStartAt,
+		NewEndAt:      newEndAt,
+		NewTeacherID:  newTeacherID,
+		Reason:        reason,
 	}
 
 	// 如果有代課老師名字，添加到 Reason 中（因為資料庫沒有這個欄位）
@@ -839,12 +845,12 @@ func (s *ScheduleRecurrenceServiceImpl) EditRecurringSchedule(ctx context.Contex
 
 func (s *ScheduleRecurrenceServiceImpl) editSingle(ctx context.Context, centerID uint, teacherID uint, rule models.ScheduleRule, req RecurrenceEditRequest) (models.ScheduleException, models.ScheduleException, error) {
 	cancelExc := models.ScheduleException{
-		CenterID:       centerID,
-		RuleID:         req.RuleID,
-		OriginalDate:   req.EditDate,
-		ExceptionType:  "CANCEL",
-		Status:         "PENDING",
-		Reason:         req.Reason,
+		CenterID:      centerID,
+		RuleID:        req.RuleID,
+		OriginalDate:  req.EditDate,
+		ExceptionType: "CANCEL",
+		Status:        "PENDING",
+		Reason:        req.Reason,
 	}
 	createdCancel, err := s.exceptionRepo.Create(ctx, cancelExc)
 	if err != nil {
@@ -866,16 +872,16 @@ func (s *ScheduleRecurrenceServiceImpl) editSingle(ctx context.Context, centerID
 	}
 
 	addExc := models.ScheduleException{
-		CenterID:       centerID,
-		RuleID:         req.RuleID,
-		OriginalDate:   req.EditDate,
-		ExceptionType:  "ADD",
-		Status:         "PENDING",
-		NewStartAt:     &newStartAt,
-		NewEndAt:       &newEndAt,
-		NewTeacherID:   req.NewTeacherID,
-		NewRoomID:      req.NewRoomID,
-		Reason:         req.Reason,
+		CenterID:      centerID,
+		RuleID:        req.RuleID,
+		OriginalDate:  req.EditDate,
+		ExceptionType: "ADD",
+		Status:        "PENDING",
+		NewStartAt:    &newStartAt,
+		NewEndAt:      &newEndAt,
+		NewTeacherID:  req.NewTeacherID,
+		NewRoomID:     req.NewRoomID,
+		Reason:        req.Reason,
 	}
 	createdAdd, err := s.exceptionRepo.Create(ctx, addExc)
 	if err != nil {
@@ -906,12 +912,12 @@ func (s *ScheduleRecurrenceServiceImpl) editFuture(ctx context.Context, centerID
 
 	for _, date := range preview.AffectedDates {
 		cancelExc := models.ScheduleException{
-			CenterID:       centerID,
-			RuleID:         req.RuleID,
-			OriginalDate:   date,
-			ExceptionType:  "CANCEL",
-			Status:         "PENDING",
-			Reason:         req.Reason,
+			CenterID:      centerID,
+			RuleID:        req.RuleID,
+			OriginalDate:  date,
+			ExceptionType: "CANCEL",
+			Status:        "PENDING",
+			Reason:        req.Reason,
 		}
 		createdCancel, err := s.exceptionRepo.Create(ctx, cancelExc)
 		if err != nil {
@@ -949,16 +955,16 @@ func (s *ScheduleRecurrenceServiceImpl) editFuture(ctx context.Context, centerID
 		}
 
 		addExc := models.ScheduleException{
-			CenterID:       centerID,
-			RuleID:         req.RuleID,
-			OriginalDate:   date,
-			ExceptionType:  "ADD",
-			Status:         "PENDING",
-			NewStartAt:     &newStartAt,
-			NewEndAt:       &newEndAt,
-			NewTeacherID:   newTeacherID,
-			NewRoomID:      newRoomID,
-			Reason:         req.Reason,
+			CenterID:      centerID,
+			RuleID:        req.RuleID,
+			OriginalDate:  date,
+			ExceptionType: "ADD",
+			Status:        "PENDING",
+			NewStartAt:    &newStartAt,
+			NewEndAt:      &newEndAt,
+			NewTeacherID:  newTeacherID,
+			NewRoomID:     newRoomID,
+			Reason:        req.Reason,
 		}
 		createdAdd, err := s.exceptionRepo.Create(ctx, addExc)
 		if err != nil {
@@ -1051,12 +1057,12 @@ func (s *ScheduleRecurrenceServiceImpl) DeleteRecurringSchedule(ctx context.Cont
 	switch mode {
 	case RecurrenceEditSingle:
 		cancelExc := models.ScheduleException{
-			CenterID:       centerID,
-			RuleID:         ruleID,
-			OriginalDate:   editDate,
-			ExceptionType:  "CANCEL",
-			Status:         "PENDING",
-			Reason:         reason,
+			CenterID:      centerID,
+			RuleID:        ruleID,
+			OriginalDate:  editDate,
+			ExceptionType: "CANCEL",
+			Status:        "PENDING",
+			Reason:        reason,
 		}
 		created, err := s.exceptionRepo.Create(ctx, cancelExc)
 		if err != nil {
@@ -1069,12 +1075,12 @@ func (s *ScheduleRecurrenceServiceImpl) DeleteRecurringSchedule(ctx context.Cont
 		preview, _ := s.PreviewAffectedSessions(ctx, ruleID, editDate, RecurrenceEditFuture)
 		for _, date := range preview.AffectedDates {
 			cancelExc := models.ScheduleException{
-				CenterID:       centerID,
-				RuleID:         ruleID,
-				OriginalDate:   date,
-				ExceptionType:  "CANCEL",
-				Status:         "PENDING",
-				Reason:         reason,
+				CenterID:      centerID,
+				RuleID:        ruleID,
+				OriginalDate:  date,
+				ExceptionType: "CANCEL",
+				Status:        "PENDING",
+				Reason:        reason,
 			}
 			created, err := s.exceptionRepo.Create(ctx, cancelExc)
 			if err != nil {

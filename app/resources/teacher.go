@@ -24,9 +24,9 @@ type TeacherPersonalHashtagResource struct {
 }
 
 type PersonalHashtag struct {
-	ID        uint   `json:"id"`
 	HashtagID uint   `json:"hashtag_id"`
 	Name      string `json:"name"`
+	SortOrder int    `json:"sort_order"`
 }
 
 type TeacherCertificateResource struct {

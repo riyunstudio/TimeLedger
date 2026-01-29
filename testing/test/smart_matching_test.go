@@ -46,10 +46,10 @@ func setupSmartMatchingTestApp() (*app.App, *gorm.DB, func()) {
 	tool := tools.Initialize("Asia/Taipei")
 
 	env := &configs.Env{
-		JWTSecret:      "test-jwt-secret-key-for-testing-only",
-		AppEnv:         "test",
-		AppDebug:       true,
-		AppTimezone:    "Asia/Taipei",
+		JWTSecret:   "test-jwt-secret-key-for-testing-only",
+		AppEnv:      "test",
+		AppDebug:    true,
+		AppTimezone: "Asia/Taipei",
 	}
 
 	appInstance := &app.App{
@@ -166,14 +166,14 @@ func TestSmartMatchingService_InviteTalent(t *testing.T) {
 
 		// 建立既有的待處理邀請
 		existingInvitation := models.CenterInvitation{
-			CenterID:    center.ID,
-			TeacherID:   teacher.ID,
-			InvitedBy:   1,
-			Token:       factory.CreateUniqueToken(),
-			Status:      models.InvitationStatusPending,
-			InviteType:  models.InvitationTypeTalentPool,
-			ExpiresAt:   time.Now().Add(7 * 24 * time.Hour),
-			CreatedAt:   time.Now(),
+			CenterID:   center.ID,
+			TeacherID:  teacher.ID,
+			InvitedBy:  1,
+			Token:      factory.CreateUniqueToken(),
+			Status:     models.InvitationStatusPending,
+			InviteType: models.InvitationTypeTalentPool,
+			ExpiresAt:  time.Now().Add(7 * 24 * time.Hour),
+			CreatedAt:  time.Now(),
 		}
 		if err := db.WithContext(ctx).Create(&existingInvitation).Error; err != nil {
 			t.Fatalf("建立既有邀請失敗: %v", err)
@@ -329,14 +329,14 @@ func TestSmartMatchingService_GetTalentStats(t *testing.T) {
 
 		// 建立邀請記錄
 		invitation := models.CenterInvitation{
-			CenterID:    center.ID,
-			TeacherID:   teacher.ID,
-			InvitedBy:   1,
-			Token:       factory.CreateUniqueToken(),
-			Status:      models.InvitationStatusPending,
-			InviteType:  models.InvitationTypeTalentPool,
-			ExpiresAt:   time.Now().Add(7 * 24 * time.Hour),
-			CreatedAt:   time.Now(),
+			CenterID:   center.ID,
+			TeacherID:  teacher.ID,
+			InvitedBy:  1,
+			Token:      factory.CreateUniqueToken(),
+			Status:     models.InvitationStatusPending,
+			InviteType: models.InvitationTypeTalentPool,
+			ExpiresAt:  time.Now().Add(7 * 24 * time.Hour),
+			CreatedAt:  time.Now(),
 		}
 		if err := db.WithContext(ctx).Create(&invitation).Error; err != nil {
 			t.Fatalf("建立邀請記錄失敗: %v", err)
@@ -649,20 +649,26 @@ func TestSmartMatchingService_SearchTalent(t *testing.T) {
 			t.Fatalf("SearchTalent 失敗: %v", err)
 		}
 
-		// 驗證結果
+		// 驗證結果不為空（開發資料庫可能有其他既有資料）
 		if len(results) == 0 {
 			t.Error("預期找到至少一個人才結果")
 		}
 
-		if len(results) > 0 {
-			result := results[0]
-			if result.TeacherID != teacher.ID {
-				t.Errorf("預期老師 ID 為 %d，實際為 %d", teacher.ID, result.TeacherID)
+		// 驗證結果中包含測試資料（使用 email 來唯一識別）
+		found := false
+		for _, result := range results {
+			if result.TeacherID == teacher.ID {
+				found = true
+				// 驗證資料正確性
+				if result.Name != teacher.Name {
+					t.Errorf("老師名稱不符: 預期 %s，實際 %s", teacher.Name, result.Name)
+				}
+				break
 			}
+		}
 
-			if result.Name != teacher.Name {
-				t.Errorf("預期老師名稱為 %s，實際為 %s", teacher.Name, result.Name)
-			}
+		if !found {
+			t.Errorf("結果中未找到測試老師 (ID: %d, Email: %s)", teacher.ID, teacher.Email)
 		}
 	})
 

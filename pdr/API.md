@@ -470,6 +470,108 @@
 }
 ```
 
+### `GET /admin/centers/{id}/invitations/stats`
+- **描述**: 取得中心邀請統計數據（用於人才庫管理頁面）。
+- **Response**:
+```json
+{
+  "code": "SUCCESS",
+  "data": {
+    "total": 156,
+    "pending": 23,
+    "accepted": 45,
+    "declined": 8,
+    "expired": 12,
+    "recent_pending": 5
+  }
+}
+```
+
+---
+
+## 13. 老師邀請功能 (Teacher Invitations)
+
+### `GET /teacher/me/invitations`
+- **描述**: 取得老師收到的所有人才庫邀請列表。
+- **Query**: `status=PENDING|ACCEPTED|DECLINED|EXPIRED`（選填，不傳則回傳全部）
+- **Response**:
+```json
+{
+  "code": "SUCCESS",
+  "data": [
+    {
+      "id": 1,
+      "center_id": 10,
+      "center_name": "莫札特音樂教室",
+      "invite_type": "TALENT_POOL",
+      "message": "誠摯邀請您加入我們的人才庫！",
+      "status": "PENDING",
+      "created_at": "2026-01-20T10:00:00",
+      "expires_at": "2026-01-27T10:00:00",
+      "responded_at": null
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 5,
+    "total_pages": 1,
+    "has_next": false,
+    "has_prev": false
+  }
+}
+```
+
+### `POST /teacher/me/invitations/respond`
+- **描述**: 老師回應人才庫邀請（接受或婉拒）。
+- **Body**:
+```json
+{
+  "invitation_id": 1,
+  "response": "ACCEPT" // 或 "DECLINE"
+}
+```
+- **Response（接受）**:
+```json
+{
+  "code": "SUCCESS",
+  "message": "Invitation accepted successfully",
+  "data": {
+    "id": 1,
+    "status": "ACCEPTED",
+    "responded_at": "2026-01-22T10:00:00Z",
+    "center_name": "莫札特音樂教室"
+  }
+}
+```
+- **Response（婉拒）**:
+```json
+{
+  "code": "SUCCESS",
+  "message": "Invitation declined successfully",
+  "data": {
+    "id": 1,
+    "status": "DECLINED",
+    "responded_at": "2026-01-22T10:00:00Z"
+  }
+}
+```
+- **Error Responses**:
+  - `E_FORBIDDEN`: 無權限回應此邀請
+  - `E_INVALID_STATUS`: 邀請已過期或已處理
+
+### `GET /teacher/me/invitations/pending-count`
+- **描述**: 取得待處理邀請數量（用於側邊欄 Badge 顯示）。
+- **Response**:
+```json
+{
+  "code": "SUCCESS",
+  "data": {
+    "count": 3
+  }
+}
+```
+
 ### `GET /admin/centers/{id}/rooms`
 - **描述**: 教室列表。
 - **Response**: `[{ "id": 1, "name": "Room A", "capacity": 10, "is_active": true }]`

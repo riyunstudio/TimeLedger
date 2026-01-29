@@ -43,6 +43,12 @@ func (db *DB) AutoMigrate() {
 		panic(fmt.Errorf("MySQL autoMigrate failed: %v", err))
 	}
 	log.Println("AutoMigrate done")
+
+	// 執行額外欄位遷移
+	db.MigrateAdditionalColumns()
+
+	// 遷移 schedule_exceptions type 欄位
+	db.MigrateScheduleExceptionsType()
 }
 
 // dropTablesForReschema 刪除需要重建的資料表

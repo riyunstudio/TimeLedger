@@ -160,6 +160,56 @@ func (rp *CenterInvitationRepository) CountByDateRange(ctx context.Context, cent
 	return count, err
 }
 
+// ListByTeacherPaginated 分頁取得老師的邀請列表
+func (rp *CenterInvitationRepository) ListByTeacherPaginated(ctx context.Context, teacherID uint, page, limit int64, status string) ([]models.CenterInvitation, int64, error) {
+	var total int64
+	var data []models.CenterInvitation
+
+	query := rp.app.MySQL.RDB.WithContext(ctx).
+		Model(&models.CenterInvitation{}).
+		Where("teacher_id = ?", teacherID)
+
+	if status != "" {
+		query = query.Where("status = ?", status)
+	}
+
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	offset := (int(page) - 1) * int(limit)
+
+	findQuery := rp.app.MySQL.RDB.WithContext(ctx).
+		Where("teacher_id = ?", teacherID)
+
+	if status != "" {
+		findQuery = findQuery.Where("status = ?", status)
+	}
+
+	err := findQuery.
+		Order("created_at DESC").
+		Limit(int(limit)).
+		Offset(offset).
+		Find(&data).Error
+
+	return data, total, err
+}
+
+// ListByTeacherWithoutPagination 取得老師的所有邀請（不分頁）
+func (rp *CenterInvitationRepository) ListByTeacher(ctx context.Context, teacherID uint, status string) ([]models.CenterInvitation, error) {
+	var data []models.CenterInvitation
+
+	query := rp.app.MySQL.RDB.WithContext(ctx).
+		Where("teacher_id = ?", teacherID)
+
+	if status != "" {
+		query = query.Where("status = ?", status)
+	}
+
+	err := query.Order("created_at DESC").Find(&data).Error
+	return data, err
+}
+
 // ListByCenterIDPaginated 分頁取得中心的邀請列表
 func (rp *CenterInvitationRepository) ListByCenterIDPaginated(ctx context.Context, centerID uint, page, limit int64, status string) ([]models.CenterInvitation, int64, error) {
 	var total int64

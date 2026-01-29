@@ -77,6 +77,7 @@ func (s *Server) LoadRoutes() {
 		{http.MethodGet, "/api/v1/teacher/me/personal-events/:id/note", s.action.teacher.GetPersonalEventNote, []gin.HandlerFunc{authMiddleware.Authenticate()}},
 		{http.MethodPut, "/api/v1/teacher/me/personal-events/:id/note", s.action.teacher.UpdatePersonalEventNote, []gin.HandlerFunc{authMiddleware.Authenticate()}},
 		{http.MethodGet, "/api/v1/teacher/me/schedule", s.action.teacher.GetSchedule, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+		{http.MethodGet, "/api/v1/teacher/schedules", s.action.teacher.GetSchedules, []gin.HandlerFunc{authMiddleware.Authenticate()}},
 		{http.MethodGet, "/api/v1/teacher/me/centers/:center_id/schedule-rules", s.action.teacher.GetCenterScheduleRules, []gin.HandlerFunc{authMiddleware.Authenticate()}},
 		{http.MethodGet, "/api/v1/teacher/sessions/note", s.action.teacher.GetSessionNote, []gin.HandlerFunc{authMiddleware.Authenticate()}},
 		{http.MethodPut, "/api/v1/teacher/sessions/note", s.action.teacher.UpsertSessionNote, []gin.HandlerFunc{authMiddleware.Authenticate()}},
@@ -87,6 +88,11 @@ func (s *Server) LoadRoutes() {
 		{http.MethodPost, "/api/v1/teacher/scheduling/preview-recurrence-edit", s.action.teacher.PreviewRecurrenceEdit, []gin.HandlerFunc{authMiddleware.Authenticate()}},
 		{http.MethodPost, "/api/v1/teacher/scheduling/edit-recurring", s.action.teacher.EditRecurringSchedule, []gin.HandlerFunc{authMiddleware.Authenticate()}},
 		{http.MethodPost, "/api/v1/teacher/scheduling/delete-recurring", s.action.teacher.DeleteRecurringSchedule, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+
+		// Teacher - Invitations
+		{http.MethodGet, "/api/v1/teacher/me/invitations", s.action.teacher.GetTeacherInvitations, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+		{http.MethodPost, "/api/v1/teacher/me/invitations/respond", s.action.teacher.RespondToInvitation, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+		{http.MethodGet, "/api/v1/teacher/me/invitations/pending-count", s.action.teacher.GetPendingInvitationsCount, []gin.HandlerFunc{authMiddleware.Authenticate()}},
 
 		// Teacher - Admin
 		{http.MethodGet, "/api/v1/teachers", s.action.teacher.ListTeachers, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireAdmin()}},
