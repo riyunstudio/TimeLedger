@@ -163,15 +163,19 @@ func (ctl *SmartMatchingController) SearchTalent(ctx *gin.Context) {
 	}
 
 	searchParams := services.TalentSearchParams{
-		CenterID: centerID,
-		City:     uriReq.City,
-		District: uriReq.District,
-		Keyword:  uriReq.Keyword,
-		Skills:   skills,
-		Hashtags: hashtags,
+		CenterID:   centerID,
+		City:       uriReq.City,
+		District:   uriReq.District,
+		Keyword:    uriReq.Keyword,
+		Skills:     skills,
+		Hashtags:   hashtags,
+		Page:       uriReq.Page,
+		Limit:      uriReq.Limit,
+		SortBy:     uriReq.SortBy,
+		SortOrder:  uriReq.SortOrder,
 	}
 
-	results, err := ctl.smartMatchingSvc.SearchTalent(ctx, searchParams)
+	result, err := ctl.smartMatchingSvc.SearchTalent(ctx, searchParams)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
 			Code:    500,
@@ -195,7 +199,12 @@ func (ctl *SmartMatchingController) SearchTalent(ctx *gin.Context) {
 				"keyword":       uriReq.Keyword,
 				"skills":        uriReq.Skills,
 				"hashtags":      uriReq.Hashtags,
-				"results_count": len(results),
+				"page":          uriReq.Page,
+				"limit":         uriReq.Limit,
+				"sort_by":       uriReq.SortBy,
+				"sort_order":    uriReq.SortOrder,
+				"results_count": len(result.Talents),
+				"total_count":   result.Pagination.Total,
 			},
 		},
 	})
@@ -203,7 +212,7 @@ func (ctl *SmartMatchingController) SearchTalent(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, global.ApiResponse{
 		Code:    0,
 		Message: "OK",
-		Datas:   results,
+		Datas:   result,
 	})
 }
 

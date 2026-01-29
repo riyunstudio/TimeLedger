@@ -382,23 +382,30 @@
         @clear-all="clearQuickFilters"
       />
 
-      <!-- 搜尋結果數量 -->
-      <div v-if="talentResults.length > 0" class="mt-4 flex items-center justify-between">
+      <!-- 搜尋結果數量與分頁 -->
+      <div v-if="talentResults.length > 0" class="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <span class="text-sm text-slate-400">
-          找到 <span class="text-white font-medium">{{ filteredResults.length }}</span> 位人才
+          找到 <span class="text-white font-medium">{{ totalItems }}</span> 位人才
+          <span class="text-slate-500 ml-2">(第 {{ currentPage }}/{{ totalPages }} 頁)</span>
         </span>
+
         <div class="flex items-center gap-2">
+          <!-- 排序選單 -->
           <select
             v-model="talentSortBy"
+            @change="searchTalent(undefined, 1)"
             class="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white text-sm"
           >
-            <option value="relevance">相關程度</option>
-            <option value="skills">技能最多</option>
-            <option value="name">姓名順序</option>
+            <option value="name">姓名</option>
+            <option value="skills">技能數</option>
+            <option value="rating">評分</option>
+            <option value="city">地區</option>
           </select>
+
           <button
-            @click="talentSortOrder = talentSortOrder === 'asc' ? 'desc' : 'asc'"
+            @click="talentSortOrder = talentSortOrder === 'asc' ? 'desc' : 'asc'; searchTalent(undefined, 1)"
             class="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+            title="切換排序順序"
           >
             <svg v-if="talentSortOrder === 'asc'" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
@@ -408,6 +415,52 @@
             </svg>
           </button>
         </div>
+      </div>
+
+      <!-- 分頁控制項 -->
+      <div v-if="totalPages > 1" class="mt-4 flex items-center justify-center gap-2">
+        <button
+          @click="goToPage(currentPage - 1)"
+          :disabled="currentPage <= 1"
+          class="px-3 py-1.5 rounded-lg bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-sm"
+        >
+          上一頁
+        </button>
+
+        <div class="flex items-center gap-1">
+          <button
+            v-for="page in visiblePages"
+            :key="page"
+            @click="goToPage(page)"
+            class="w-8 h-8 rounded-lg text-sm transition-colors"
+            :class="page === currentPage
+              ? 'bg-primary-500 text-white'
+              : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white'"
+          >
+            {{ page }}
+          </button>
+        </div>
+
+        <button
+          @click="goToPage(currentPage + 1)"
+          :disabled="currentPage >= totalPages"
+          class="px-3 py-1.5 rounded-lg bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-sm"
+        >
+          下一頁
+        </button>
+
+        <span class="text-xs text-slate-500 ml-2">
+          跳至第
+          <input
+            type="number"
+            min="1"
+            :max="totalPages"
+            v-model.number="currentPage"
+            @keyup.enter="goToPage(currentPage)"
+            class="w-12 px-2 py-1 mx-1 rounded bg-white/5 border border-white/10 text-white text-center text-sm"
+          />
+          頁
+        </span>
       </div>
 
       <!-- 搜尋結果 -->
@@ -544,6 +597,7 @@ interface TalentResult {
   personal_hashtags?: string[]
   is_open_to_hiring: boolean
   is_member: boolean
+  internal_rating: number
   public_contact_info?: string
 }
 
@@ -671,11 +725,17 @@ const bulkProgress = ref(0)
 const hasSearchedTalent = ref(false)
 const showStats = ref(false)
 
-// 篩選與排序狀態
-const talentSortBy = ref('relevance')
-const talentSortOrder = ref<'asc' | 'desc'>('desc')
+// 分頁與排序狀態
+const talentSortBy = ref('name')
+const talentSortOrder = ref<'asc' | 'desc'>('asc')
 const activeSkillFilters = ref<string[]>([])
 const activeTagFilters = ref<string[]>([])
+
+// 分頁狀態
+const currentPage = ref(1)
+const itemsPerPage = ref(20)
+const totalItems = ref(0)
+const totalPages = ref(0)
 
 // 統計資料 - 從 API 載入
 const talentStats = ref({
@@ -750,43 +810,37 @@ const fetchTalentStats = async () => {
   }
 }
 
-// 篩選後的結果
+// 篩選後的結果（用於顯示，實際分頁由後端處理）
 const filteredResults = computed(() => {
-  let result = [...talentResults.value]
-  
-  // 技能篩選
-  if (activeSkillFilters.value.length > 0) {
-    result = result.filter(t => 
-      t.skills?.some(s => activeSkillFilters.value.includes(s.name))
-    )
-  }
-  
-  // 標籤篩選
-  if (activeTagFilters.value.length > 0) {
-    result = result.filter(t =>
-      t.personal_hashtags?.some(tag => activeTagFilters.value.includes(tag))
-    )
-  }
-  
-  // 排序
-  result.sort((a, b) => {
-    let comparison = 0
-    switch (talentSortBy.value) {
-      case 'name':
-        comparison = a.name.localeCompare(b.name)
-        break
-      case 'skills':
-        const skillsA = a.skills?.length || 0
-        const skillsB = b.skills?.length || 0
-        comparison = skillsA - skillsB
-        break
-      default:
-        comparison = 0
+  return talentResults.value
+})
+
+// 計算可見的頁碼
+const visiblePages = computed(() => {
+  const pages: number[] = []
+  const maxVisible = 5 // 最多顯示 5 個頁碼
+
+  if (totalPages.value <= maxVisible) {
+    // 如果總頁數少於最大顯示數，顯示所有頁碼
+    for (let i = 1; i <= totalPages.value; i++) {
+      pages.push(i)
     }
-    return talentSortOrder.value === 'desc' ? -comparison : comparison
-  })
-  
-  return result
+  } else {
+    // 計算顯示範圍
+    let start = Math.max(1, currentPage.value - Math.floor(maxVisible / 2))
+    let end = start + maxVisible - 1
+
+    if (end > totalPages.value) {
+      end = totalPages.value
+      start = Math.max(1, end - maxVisible + 1)
+    }
+
+    for (let i = start; i <= end; i++) {
+      pages.push(i)
+    }
+  }
+
+  return pages
 })
 
 // 技能類別相關函數
@@ -1019,38 +1073,71 @@ const exportContactInfo = () => {
 }
 
 // 人才庫搜尋（整合新功能）
-const searchTalent = async (query?: string) => {
+const searchTalent = async (query?: string, page: number = 1) => {
   talentSearching.value = true
   hasSearchedTalent.value = true
-  
+
   try {
     const api = useApi()
     const params = new URLSearchParams()
-    
+
     if (query || talentSearch.value.query) {
       params.append('keyword', query || talentSearch.value.query)
     }
     if (talentSearch.value.city) params.append('city', talentSearch.value.city)
     if (talentSearch.value.skills) params.append('skills', talentSearch.value.skills)
     if (talentSearch.value.hashtags) params.append('hashtags', talentSearch.value.hashtags)
-    
-    const response = await api.get<{ code: number; datas: TalentResult[] }>(
+
+    // 分頁參數
+    params.append('page', page.toString())
+    params.append('limit', itemsPerPage.value.toString())
+
+    // 排序參數
+    params.append('sort_by', talentSortBy.value)
+    params.append('sort_order', talentSortOrder.value)
+
+    const response = await api.get<{ code: number; datas: any }>(
       `/admin/smart-matching/talent/search?${params.toString()}`
     )
-    
-    // 如果沒有結果，顯示空狀態
-    talentResults.value = response.datas || []
+
+    if (response.code === 0 && response.datas) {
+      const data = response.datas
+      talentResults.value = data.talents || []
+
+      // 更新分頁資訊
+      if (data.pagination) {
+        currentPage.value = data.pagination.page
+        itemsPerPage.value = data.pagination.limit
+        totalItems.value = data.pagination.total
+        totalPages.value = data.pagination.total_pages
+      }
+    } else {
+      talentResults.value = []
+      totalItems.value = 0
+      totalPages.value = 0
+    }
 
     // 顯示統計面板
     showStats.value = true
   } catch (error) {
     console.error('Failed to search talent:', error)
-    // 發生錯誤時顯示空結果
     talentResults.value = []
+    totalItems.value = 0
+    totalPages.value = 0
     showStats.value = true
     await alertError('搜尋人才失敗，請稍後再試')
   } finally {
     talentSearching.value = false
+  }
+}
+
+// 切換分頁
+const goToPage = (page: number) => {
+  if (page >= 1 && page <= totalPages.value) {
+    currentPage.value = page
+    searchTalent(undefined, page)
+    // 捲動到頂部
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 }
 

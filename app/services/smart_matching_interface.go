@@ -7,7 +7,7 @@ import (
 
 type SmartMatchingService interface {
 	FindMatches(ctx context.Context, centerID uint, teacherID *uint, roomID uint, startTime, endTime time.Time, requiredSkills []string, excludeTeacherIDs []uint) ([]MatchScore, error)
-	SearchTalent(ctx context.Context, searchParams TalentSearchParams) ([]TalentResult, error)
+	SearchTalent(ctx context.Context, searchParams TalentSearchParams) (*TalentSearchResult, error)
 	GetTalentStats(ctx context.Context, centerID uint) (*TalentStats, error)
 	InviteTalent(ctx context.Context, centerID uint, adminID uint, teacherIDs []uint, message string) (*InviteResult, error)
 	GetSearchSuggestions(ctx context.Context, query string) (*SearchSuggestions, error)
@@ -15,13 +15,38 @@ type SmartMatchingService interface {
 	GetTeacherSessions(ctx context.Context, centerID uint, teacherID uint, startDate, endDate string) (*TeacherSessions, error)
 }
 
+// TalentSearchParams - 人才庫搜尋參數
 type TalentSearchParams struct {
-	CenterID uint     `json:"center_id"`
-	City     string   `json:"city,omitempty"`
-	District string   `json:"district,omitempty"`
-	Keyword  string   `json:"keyword,omitempty"`
-	Skills   []string `json:"skills,omitempty"`
-	Hashtags []string `json:"hashtags,omitempty"`
+	CenterID   uint     `json:"center_id"`
+	City       string   `json:"city,omitempty"`
+	District   string   `json:"district,omitempty"`
+	Keyword    string   `json:"keyword,omitempty"`
+	Skills     []string `json:"skills,omitempty"`
+	Hashtags   []string `json:"hashtags,omitempty"`
+
+	// 分頁參數
+	Page  int `json:"page"`
+	Limit int `json:"limit"`
+
+	// 排序參數
+	SortBy    string `json:"sort_by"`
+	SortOrder string `json:"sort_order"`
+}
+
+// TalentSearchResult - 人才庫搜尋結果
+type TalentSearchResult struct {
+	Talents    []TalentResult `json:"talents"`
+	Pagination Pagination     `json:"pagination"`
+}
+
+// Pagination - 分頁資訊
+type Pagination struct {
+	Page       int  `json:"page"`
+	Limit      int  `json:"limit"`
+	Total      int  `json:"total"`
+	TotalPages int  `json:"total_pages"`
+	HasNext    bool `json:"has_next"`
+	HasPrev    bool `json:"has_prev"`
 }
 
 // TalentStats - 人才庫統計

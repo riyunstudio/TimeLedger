@@ -152,9 +152,22 @@ func (s *SmartMatchingServiceImpl) FindMatches(ctx context.Context, centerID uin
 	return matches, nil
 }
 
-// SearchTalent searches for teachers based on criteria
-func (s *SmartMatchingServiceImpl) SearchTalent(ctx context.Context, searchParams TalentSearchParams) ([]TalentResult, error) {
-	var results []TalentResult
+// NewPagination - 建立分頁資訊
+func NewPagination(page, limit, total int) Pagination {
+	totalPages := (total + limit - 1) / limit
+	return Pagination{
+		Page:       page,
+		Limit:      limit,
+		Total:      total,
+		TotalPages: totalPages,
+		HasNext:    page < totalPages,
+		HasPrev:    page > 1,
+	}
+}
+
+// SearchTalent searches for teachers based on criteria with pagination and sorting
+func (s *SmartMatchingServiceImpl) SearchTalent(ctx context.Context, searchParams TalentSearchParams) (*TalentSearchResult, error) {
+	var allResults []TalentResult
 
 	teachers, err := s.teacherRepository.List(ctx)
 	if err != nil {
@@ -180,7 +193,9 @@ func (s *SmartMatchingServiceImpl) SearchTalent(ctx context.Context, searchParam
 		}
 
 		if searchParams.Keyword != "" {
-			if !strings.Contains(teacher.Name, searchParams.Keyword) && !strings.Contains(teacher.Bio, searchParams.Keyword) {
+			keywordLower := strings.ToLower(searchParams.Keyword)
+			if !strings.Contains(strings.ToLower(teacher.Name), keywordLower) &&
+				!strings.Contains(strings.ToLower(teacher.Bio), keywordLower) {
 				continue
 			}
 		}
@@ -211,7 +226,6 @@ func (s *SmartMatchingServiceImpl) SearchTalent(ctx context.Context, searchParam
 			hasMatchingHashtag := false
 
 			for _, requiredTag := range searchParams.Hashtags {
-				// 移除 # 符號進行比對
 				normalizedTag := strings.TrimPrefix(requiredTag, "#")
 				for _, personalTag := range personalHashtags {
 					personalTagNormalized := strings.TrimPrefix(personalTag, "#")
@@ -268,6 +282,9 @@ func (s *SmartMatchingServiceImpl) SearchTalent(ctx context.Context, searchParam
 			})
 		}
 
+		// 取得中心備註（用於判斷是否為成員及評分）
+		centerNote, _ := s.centerTeacherNoteRepo.GetByCenterAndTeacher(ctx, searchParams.CenterID, teacher.ID)
+
 		result := TalentResult{
 			TeacherID:         teacher.ID,
 			Name:              teacher.Name,
@@ -279,12 +296,79 @@ func (s *SmartMatchingServiceImpl) SearchTalent(ctx context.Context, searchParam
 			IsOpenToHiring:    teacher.IsOpenToHiring,
 			Certificates:      certificatesList,
 			PublicContactInfo: teacher.PublicContactInfo,
+			IsMember:          centerNote.ID != 0,
+			InternalRating:    centerNote.Rating,
 		}
 
-		results = append(results, result)
+		allResults = append(allResults, result)
 	}
 
-	return results, nil
+	// 排序
+	sortedResults := s.sortTalentResults(allResults, searchParams.SortBy, searchParams.SortOrder)
+
+	// 分頁
+	total := len(sortedResults)
+	offset := (searchParams.Page - 1) * searchParams.Limit
+	paginatedResults := sortedResults
+	if offset < total {
+		end := offset + searchParams.Limit
+		if end > total {
+			end = total
+		}
+		paginatedResults = sortedResults[offset:end]
+	}
+
+	pagination := NewPagination(searchParams.Page, searchParams.Limit, total)
+
+	return &TalentSearchResult{
+		Talents:    paginatedResults,
+		Pagination: pagination,
+	}, nil
+}
+
+// sortTalentResults - 排序人才結果
+func (s *SmartMatchingServiceImpl) sortTalentResults(results []TalentResult, sortBy, sortOrder string) []TalentResult {
+	sorted := make([]TalentResult, len(results))
+	copy(sorted, results)
+
+	// 複製 slice 以避免修改原始資料
+	for i := range sorted {
+		sorted[i] = results[i]
+	}
+
+	sortFunc := func(i, j int) bool {
+		a, b := sorted[i], sorted[j]
+		var comparison int
+
+		switch sortBy {
+		case "name":
+			comparison = strings.Compare(a.Name, b.Name)
+		case "skills":
+			comparison = len(a.Skills) - len(b.Skills)
+		case "rating":
+			comparison = a.InternalRating - b.InternalRating
+		case "city":
+			comparison = strings.Compare(a.City, b.City)
+		default:
+			comparison = strings.Compare(a.Name, b.Name)
+		}
+
+		if sortOrder == "desc" {
+			return comparison > 0
+		}
+		return comparison < 0
+	}
+
+	// 使用氣泡排序（資料量小時簡單有效）
+	for i := 0; i < len(sorted); i++ {
+		for j := 0; j < len(sorted)-i-1; j++ {
+			if sortFunc(j, j+1) {
+				sorted[j], sorted[j+1] = sorted[j+1], sorted[j]
+			}
+		}
+	}
+
+	return sorted
 }
 
 func calculateSkillMatchScore(teacherSkills []models.TeacherSkill, requiredSkills []string) int {
@@ -883,6 +967,8 @@ type TalentResult struct {
 	IsOpenToHiring    bool          `json:"is_open_to_hiring"`
 	Certificates      []Certificate `json:"certificates,omitempty"`
 	PublicContactInfo string        `json:"public_contact_info,omitempty"`
+	IsMember          bool          `json:"is_member"`        // 是否為中心成員
+	InternalRating    int           `json:"internal_rating"`  // 中心內部評分
 }
 
 type Skill struct {
@@ -899,7 +985,7 @@ type Certificate struct {
 
 type MatchService interface {
 	FindMatches(ctx context.Context, centerID uint, teacherID *uint, roomID uint, startTime, endTime time.Time, requiredSkills []string, excludeTeacherIDs []uint) ([]MatchScore, error)
-	SearchTalent(ctx context.Context, searchParams TalentSearchParams) ([]TalentResult, error)
+	SearchTalent(ctx context.Context, searchParams TalentSearchParams) (*TalentSearchResult, error)
 }
 
 var _ MatchService = (*SmartMatchingServiceImpl)(nil)
