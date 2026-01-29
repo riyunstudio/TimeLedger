@@ -8,75 +8,29 @@ import (
 )
 
 type TeacherRepository struct {
-	BaseRepository
-	app   *app.App
-	model *models.Teacher
+	GenericRepository[models.Teacher]
+	app *app.App
 }
 
 func NewTeacherRepository(app *app.App) *TeacherRepository {
 	return &TeacherRepository{
-		app: app,
+		GenericRepository: NewGenericRepository[models.Teacher](app.MySQL.RDB, app.MySQL.WDB),
+		app:               app,
 	}
 }
 
-func (rp *TeacherRepository) GetByID(ctx context.Context, id uint) (models.Teacher, error) {
-	var data models.Teacher
-	err := rp.app.MySQL.RDB.WithContext(ctx).Where("id = ?", id).First(&data).Error
-	return data, err
-}
-
+// GetByLineUserID retrieves a teacher by their LINE user ID.
+// This is the primary authentication method for teachers.
 func (rp *TeacherRepository) GetByLineUserID(ctx context.Context, lineUserID string) (models.Teacher, error) {
 	var data models.Teacher
-
-	println("[DEBUG] GetByLineUserID searching for:", lineUserID)
-	println("[DEBUG] String length:", len(lineUserID))
-
-	// 嘗試不同的查詢方式
-	// 1. 先用 ID 測試（繞過 line_user_id）
-	var byID models.Teacher
-	idErr := rp.app.MySQL.RDB.WithContext(ctx).Where("id = ?", 21).First(&byID).Debug().Error
-	println("[DEBUG] Query by ID 21, err:", idErr, "teacher name:", byID.Name)
-
-	// 2. 用 line_user_id 查詢
-	err := rp.app.MySQL.RDB.WithContext(ctx).Unscoped().Where("line_user_id = ?", lineUserID).First(&data).Debug().Error
-	println("[DEBUG] Query by line_user_id, err:", err)
-
-	// 3. 嘗試用原始 SQL
-	var rawResult struct {
-		ID         uint
-		LineUserID string
-		Name       string
-	}
-	rawErr := rp.app.MySQL.RDB.Raw("SELECT id, line_user_id, name FROM teachers WHERE line_user_id = ?", lineUserID).Scan(&rawResult).Debug().Error
-	println("[DEBUG] Raw SQL query, err:", rawErr, "result:", rawResult.ID, rawResult.Name)
-
+	err := rp.app.MySQL.RDB.WithContext(ctx).
+		Unscoped().
+		Where("line_user_id = ?", lineUserID).
+		First(&data).Error
 	return data, err
 }
 
-func (rp *TeacherRepository) List(ctx context.Context) ([]models.Teacher, error) {
-	var data []models.Teacher
-	err := rp.app.MySQL.RDB.WithContext(ctx).Find(&data).Error
-	return data, err
-}
-
-func (rp *TeacherRepository) Create(ctx context.Context, data models.Teacher) (models.Teacher, error) {
-	err := rp.app.MySQL.WDB.WithContext(ctx).Create(&data).Error
-	return data, err
-}
-
-func (rp *TeacherRepository) Update(ctx context.Context, data models.Teacher) error {
-	return rp.app.MySQL.WDB.WithContext(ctx).Save(&data).Error
-}
-
-// UpdateFields 更新指定欄位
-func (rp *TeacherRepository) UpdateFields(ctx context.Context, id uint, fields map[string]interface{}) error {
-	return rp.app.MySQL.WDB.WithContext(ctx).Model(&models.Teacher{}).Where("id = ?", id).Updates(fields).Error
-}
-
-func (rp *TeacherRepository) DeleteByID(ctx context.Context, id uint) error {
-	return rp.app.MySQL.WDB.WithContext(ctx).Where("id = ?", id).Delete(&models.Teacher{}).Error
-}
-
+// GetCenterID retrieves the center ID for a teacher with ACTIVE membership.
 func (rp *TeacherRepository) GetCenterID(ctx context.Context, teacherID uint) (uint, error) {
 	var membership models.CenterMembership
 	err := rp.app.MySQL.WDB.WithContext(ctx).
@@ -88,19 +42,22 @@ func (rp *TeacherRepository) GetCenterID(ctx context.Context, teacherID uint) (u
 	return membership.CenterID, nil
 }
 
-// BatchGetByIDs 批量取得多個教師資料（效能優化：減少 N+1 查詢）
+// BatchGetByIDs efficiently retrieves multiple teacher records by their IDs.
+// This reduces N+1 query problems when loading multiple teachers.
 func (rp *TeacherRepository) BatchGetByIDs(ctx context.Context, ids []uint) (map[uint]models.Teacher, error) {
 	if len(ids) == 0 {
 		return make(map[uint]models.Teacher), nil
 	}
 
 	var teachers []models.Teacher
-	err := rp.app.MySQL.RDB.WithContext(ctx).Where("id IN ?", ids).Find(&teachers).Error
+	err := rp.app.MySQL.RDB.WithContext(ctx).
+		Where("id IN ?", ids).
+		Find(&teachers).Error
 	if err != nil {
 		return nil, err
 	}
 
-	// 轉換為 Map 以便快速查找
+	// Convert to map for O(1) lookup
 	result := make(map[uint]models.Teacher, len(teachers))
 	for _, teacher := range teachers {
 		result[teacher.ID] = teacher
@@ -108,6 +65,7 @@ func (rp *TeacherRepository) BatchGetByIDs(ctx context.Context, ids []uint) (map
 	return result, nil
 }
 
+// ListPersonalHashtags retrieves personal hashtags for a teacher.
 func (rp *TeacherRepository) ListPersonalHashtags(ctx context.Context, teacherID uint) ([]resources.PersonalHashtag, error) {
 	var hashtags []resources.PersonalHashtag
 	err := rp.app.MySQL.RDB.WithContext(ctx).
@@ -118,4 +76,50 @@ func (rp *TeacherRepository) ListPersonalHashtags(ctx context.Context, teacherID
 		Order("teacher_personal_hashtags.sort_order ASC").
 		Find(&hashtags).Error
 	return hashtags, err
+}
+
+// DeleteAllPersonalHashtags removes all personal hashtag associations for a teacher.
+func (rp *TeacherRepository) DeleteAllPersonalHashtags(ctx context.Context, teacherID uint) error {
+	return rp.app.MySQL.WDB.WithContext(ctx).
+		Where("teacher_id = ?", teacherID).
+		Delete(&models.TeacherPersonalHashtag{}).Error
+}
+
+// CreatePersonalHashtag creates a personal hashtag association for a teacher.
+func (rp *TeacherRepository) CreatePersonalHashtag(ctx context.Context, teacherID, hashtagID uint, sortOrder int) error {
+	return rp.app.MySQL.WDB.WithContext(ctx).
+		Create(&models.TeacherPersonalHashtag{
+			TeacherID: teacherID,
+			HashtagID: hashtagID,
+			SortOrder: sortOrder,
+		}).Error
+}
+
+// List retrieves all teachers (deprecated, use Find instead).
+// Kept for backwards compatibility with existing code.
+func (rp *TeacherRepository) List(ctx context.Context) ([]models.Teacher, error) {
+	return rp.Find(ctx)
+}
+
+// ListByCenter retrieves all teachers belonging to a specific center.
+func (rp *TeacherRepository) ListByCenter(ctx context.Context, centerID uint) ([]models.Teacher, error) {
+	var teachers []models.Teacher
+	err := rp.app.MySQL.RDB.WithContext(ctx).
+		Table("teachers").
+		Joins("INNER JOIN center_memberships ON center_memberships.teacher_id = teachers.id AND center_memberships.center_id = ? AND center_memberships.status = ?", centerID, "ACTIVE").
+		Find(&teachers).Error
+	return teachers, err
+}
+
+// SearchByName searches for teachers by name (partial match, case-insensitive).
+func (rp *TeacherRepository) SearchByName(ctx context.Context, name string, limit int) ([]models.Teacher, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+	var teachers []models.Teacher
+	err := rp.app.MySQL.RDB.WithContext(ctx).
+		Where("name LIKE ?", "%"+name+"%").
+		Limit(limit).
+		Find(&teachers).Error
+	return teachers, err
 }
