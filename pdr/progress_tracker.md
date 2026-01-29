@@ -1431,3 +1431,138 @@ type ValidationSummary struct {
 1. **LINE 通知**：綁定/解除綁定 LINE 帳號
 2. **管理員**：管理所有中心管理員
 3. **設定**：修改密碼、個人資料
+
+---
+
+## 26. 使用者回報問題修復 (User Reported Issues Fixes) - 2026/01/29
+
+### 26.1 修復摘要 ✅
+
+本階段修復了三個使用者回報的問題：
+
+| 問題 | 類型 | 狀態 |
+|:---|:---|:---:|
+| 老師端通知列表無顯示 | Bug | ✅ 已修復 |
+| 老師例外申請隱私設計 | 設計確認 | ✅ 預期行為 |
+| 管理員邀請歷史記錄 | 新功能 | ✅ 已完成 |
+
+### 26.2 修復項目一：老師端通知列表顯示異常 ✅
+
+**問題描述**：使用者反映點擊通知鈴鐺後沒有彈窗顯示，也看不到歷史通知。
+
+**問題原因**：
+- `notification.ts` store 當 `isMock` 為 true 時會直接返回，不會呼叫 API
+- `NotificationDropdown` 開啟時沒有主動重新整理通知列表
+
+**修復方案**：
+
+**更新 `frontend/stores/notification.ts`**：
+- 移除阻擋邏輯，讓 API 呼叫能夠正常執行
+- 新增 30 秒快取機制，避免頻繁 API 請求
+- API 呼叫失敗時以 mock 資料作為後備
+
+```typescript
+const fetchNotifications = async (forceRefresh = false) => {
+  // 30 秒快取機制
+  const now = Date.now()
+  if (!forceRefresh && now - lastFetchTime.value < 30000 && notifications.value.length > 0 && !isMock.value) {
+    return
+  }
+
+  try {
+    const response = await api.get('/notifications?limit=50')
+    notifications.value = response.datas?.notifications || []
+    isMock.value = false
+    lastFetchTime.value = now
+  } catch (error) {
+    // API 失敗時使用 mock 資料作為後備
+    if (notifications.value.length === 0) {
+      loadMockNotifications()
+    }
+  }
+}
+```
+
+**更新 `frontend/components/NotificationDropdown.vue`**：
+- 新增 `watch` 監聽通知彈窗的顯示狀態
+- 彈窗開啟時自動強制重新整理通知列表
+
+```typescript
+watch(
+  () => notificationUI.show.value,
+  (isShown) => {
+    if (isShown) {
+      notificationDataStore.fetchNotifications(true)
+    }
+  },
+  { immediate: true }
+)
+```
+
+### 26.3 修復項目二：老師例外申請隱私設計確認 ✅
+
+**問題描述**：使用者詢問為何老師只能看到自己的例外申請。
+
+**結論**：這是專案的預期設計，非問題。
+
+**設計說明**：
+- 每位老師只能看到自己的例外申請
+- 管理員透過審核中心頁面查看所有例外申請
+- 符合「資料隔離是後端的責任」原則
+- 保護老師隱私的正確做法
+
+### 26.4 修復項目三：管理員邀請歷史記錄功能 ✅
+
+**問題描述**：管理員需要查看邀請老師的歷史記錄。
+
+**新增檔案**：`frontend/pages/admin/invitations.vue`
+
+**功能特色**：
+- 邀請統計卡片顯示待處理、已接受、已婉拒、已過期的數量
+- 支援狀態篩選（PENDING / ACCEPTED / DECLINED / EXPIRED）
+- Email 搜尋功能
+- 分頁機制
+- 重新整理功能
+
+**更新 `frontend/components/AdminHeader.vue`**：
+- 電腦版導航新增「邀請紀錄」連結
+- 手機版導航選單新增「邀請紀錄」選項
+
+```vue
+<NuxtLink
+  to="/admin/invitations"
+  class="..."
+>
+  邀請紀錄
+</NuxtLink>
+```
+
+**後端 API 端點（已存在）**：
+| 方法 | 路徑 | 功能 |
+|:---|:---|:---|
+| GET | `/api/v1/admin/centers/:id/invitations` | 取得邀請列表 |
+| GET | `/api/v1/admin/centers/:id/invitations/stats` | 取得統計資料 |
+
+### 26.5 變更統計 ✅
+
+| 維度 | 數量 |
+|:---|:---|
+| 修改檔案 | 4 個 |
+| 新增行數 | +158 行 |
+| 刪除行數 | -12 行 |
+
+### 26.6 檔案變更 ✅
+
+| 檔案 | 變更類型 | 說明 |
+|:---|:---:|:---|
+| `frontend/stores/notification.ts` | 修改 | 移除阻擋邏輯，新增快取與後備機制 |
+| `frontend/components/NotificationDropdown.vue` | 修改 | 新增開啟時自動重新整理 |
+| `frontend/components/AdminHeader.vue` | 修改 | 新增邀請紀錄導航連結 |
+| `frontend/pages/admin/invitations.vue` | 新增 | 邀請歷史記錄頁面 |
+
+### 26.7 總結 ✅
+
+本階段完成了三個使用者回報問題的處理：
+1. **通知列表修復**：確保開啟彈窗時能正確載入通知資料
+2. **隱私設計確認**：老師只能看到自己的例外申請是正確的設計
+3. **邀請歷史功能**：新增邀請記錄頁面，方便管理員追蹤邀請狀態

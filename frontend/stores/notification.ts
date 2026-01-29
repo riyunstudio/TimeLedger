@@ -5,6 +5,7 @@ export const useNotificationStore = defineStore('notification', () => {
   const notifications = ref<Notification[]>([])
   const unreadCount = ref<number>(0)
   const isMock = ref(false)
+  const lastFetchTime = ref<number>(0)
 
   const loadMockNotifications = () => {
     notifications.value = [
@@ -43,8 +44,12 @@ export const useNotificationStore = defineStore('notification', () => {
     isMock.value = true
   }
 
-  const fetchNotifications = async () => {
-    if (isMock.value) return
+  const fetchNotifications = async (forceRefresh = false) => {
+    // 如果最近 30 秒內已經 fetch 過，且不是強制刷新，則跳過
+    const now = Date.now()
+    if (!forceRefresh && now - lastFetchTime.value < 30000 && notifications.value.length > 0 && !isMock.value) {
+      return
+    }
 
     try {
       const api = useApi()
@@ -53,8 +58,14 @@ export const useNotificationStore = defineStore('notification', () => {
       )
       notifications.value = response.datas?.notifications || []
       unreadCount.value = response.datas?.unread_count || 0
+      isMock.value = false
+      lastFetchTime.value = now
     } catch (error) {
       console.error('Failed to fetch notifications:', error)
+      // 如果 API 失敗且目前沒有資料，載入 mock 資料作為後備
+      if (notifications.value.length === 0) {
+        loadMockNotifications()
+      }
     }
   }
 

@@ -63,6 +63,17 @@ const notificationDataStore = useNotificationStore()
 const notificationUI = useNotification()
 const router = useRouter()
 
+// 監聽通知彈窗顯示狀態，開啟時重新整理
+watch(
+  () => notificationUI.show.value,
+  (isShown) => {
+    if (isShown) {
+      notificationDataStore.fetchNotifications(true)
+    }
+  },
+  { immediate: true }
+)
+
 const handleNotificationClick = async (notification: any) => {
   if (!notification.is_read) {
     await notificationDataStore.markAsRead(notification.id)

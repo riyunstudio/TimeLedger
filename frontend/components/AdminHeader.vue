@@ -57,6 +57,13 @@
           例假日
         </NuxtLink>
         <NuxtLink
+          to="/admin/invitations"
+          class="text-slate-300 hover:text-primary-400 transition-colors font-medium"
+          active-class="text-primary-500"
+        >
+          邀請紀錄
+        </NuxtLink>
+        <NuxtLink
           to="/admin/teacher-ratings"
           class="text-slate-300 hover:text-primary-400 transition-colors font-medium"
           active-class="text-primary-500"
@@ -137,6 +144,14 @@
             @click="mobileMenuOpen = false"
           >
             例假日
+          </NuxtLink>
+          <NuxtLink
+            to="/admin/invitations"
+            class="block px-4 py-2 rounded-lg text-slate-300 hover:text-primary-400 hover:bg-white/10 transition-colors font-medium"
+            active-class="text-primary-500 bg-primary-500/10"
+            @click="mobileMenuOpen = false"
+          >
+            邀請紀錄
           </NuxtLink>
           <NuxtLink
             to="/admin/teacher-ratings"
