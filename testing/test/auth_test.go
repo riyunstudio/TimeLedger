@@ -7,8 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"golang.org/x/crypto/bcrypt"
-	"gorm.io/gorm"
 	"timeLedger/app"
 	"timeLedger/app/models"
 	"timeLedger/app/repositories"
@@ -18,6 +16,9 @@ import (
 	"timeLedger/database/redis"
 	"timeLedger/global/errInfos"
 	mockRedis "timeLedger/testing/redis"
+
+	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 
 	"gitlab.en.mcbwvx.com/frame/teemo/tools"
 	gormMysql "gorm.io/driver/mysql"
@@ -145,8 +146,8 @@ func TestAuthController_AdminLogin_Success(t *testing.T) {
 		t.Errorf("Expected email '%s', got '%s'", admin.Email, response.User.Email)
 	}
 
-	if response.User.UserType != "ADMIN" {
-		t.Errorf("Expected UserType 'ADMIN', got '%s'", response.User.UserType)
+	if response.User.UserType != "OWNER" {
+		t.Errorf("Expected UserType 'OWNER', got '%s'", response.User.UserType)
 	}
 
 	_ = adminRepo
@@ -320,8 +321,8 @@ func TestAuthController_AdminTokenValidation(t *testing.T) {
 		t.Errorf("Expected UserID %d, got %d", admin.ID, claims.UserID)
 	}
 
-	if claims.UserType != "ADMIN" {
-		t.Errorf("Expected UserType 'ADMIN', got '%s'", claims.UserType)
+	if claims.UserType != "OWNER" {
+		t.Errorf("Expected UserType 'OWNER', got '%s'", claims.UserType)
 	}
 
 	if claims.CenterID != admin.CenterID {

@@ -77,3 +77,26 @@ func (rp *ScheduleExceptionRepository) Delete(ctx context.Context, id uint) erro
 func (rp *ScheduleExceptionRepository) DeleteByIDAndCenterID(ctx context.Context, id uint, centerID uint) error {
 	return rp.app.MySQL.WDB.WithContext(ctx).Where("id = ? AND center_id = ?", id, centerID).Delete(&models.ScheduleException{}).Error
 }
+
+// BatchGetByRuleIDs 批量取得多個規則的例外記錄（效能優化：減少 N+1 查詢）
+func (rp *ScheduleExceptionRepository) BatchGetByRuleIDs(ctx context.Context, ruleIDs []uint, date time.Time) (map[uint][]models.ScheduleException, error) {
+	if len(ruleIDs) == 0 {
+		return make(map[uint][]models.ScheduleException), nil
+	}
+
+	// 將 date 轉換為日期字串進行比較
+	dateStr := date.Format("2006-01-02")
+
+	var exceptions []models.ScheduleException
+	err := rp.app.MySQL.RDB.WithContext(ctx).Where("rule_id IN ? AND DATE(original_date) = ?", ruleIDs, dateStr).Find(&exceptions).Error
+	if err != nil {
+		return nil, err
+	}
+
+	// 按規則 ID 分組
+	result := make(map[uint][]models.ScheduleException, len(ruleIDs))
+	for _, exc := range exceptions {
+		result[exc.RuleID] = append(result[exc.RuleID], exc)
+	}
+	return result, nil
+}

@@ -50,12 +50,58 @@ func NewSmartMatchingService(app *app.App) SmartMatchingService {
 
 // FindMatches searches for available teachers matching the criteria
 func (s *SmartMatchingServiceImpl) FindMatches(ctx context.Context, centerID uint, teacherID *uint, roomID uint, startTime, endTime time.Time, requiredSkills []string, excludeTeacherIDs []uint) ([]MatchScore, error) {
-	var matches []MatchScore
-
 	rules, err := s.scheduleRuleRepo.ListByCenterID(ctx, centerID)
 	if err != nil {
 		return nil, err
 	}
+
+	if len(rules) == 0 {
+		return []MatchScore{}, nil
+	}
+
+	// 建立排除教師 ID 的 Map（O(1) 查找）
+	excludeMap := make(map[uint]bool)
+	for _, id := range excludeTeacherIDs {
+		excludeMap[id] = true
+	}
+
+	// 收集所有唯一的教師 ID
+	teacherIDs := make([]uint, 0, len(rules))
+	for _, rule := range rules {
+		if rule.TeacherID != nil {
+			teacherIDs = append(teacherIDs, *rule.TeacherID)
+		}
+	}
+
+	// 批量查詢所有教師數據（解決 N+1 問題）
+	teachersMap, err := s.teacherRepository.BatchGetByIDs(ctx, teacherIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	// 批量查詢所有技能數據
+	skillsMap, err := s.teacherSkillRepo.BatchListByTeacherIDs(ctx, teacherIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	// 批量查詢所有中心教師備註
+	centerNotesMap, err := s.centerTeacherNoteRepo.BatchGetByCenterAndTeachers(ctx, centerID, teacherIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	// 批量查詢例外記錄
+	ruleIDs := make([]uint, 0, len(rules))
+	for _, rule := range rules {
+		ruleIDs = append(ruleIDs, rule.ID)
+	}
+	exceptionsMap, err := s.scheduleExceptionRepo.BatchGetByRuleIDs(ctx, ruleIDs, startTime)
+	if err != nil {
+		return nil, err
+	}
+
+	var matches []MatchScore
 
 	for _, rule := range rules {
 		if rule.TeacherID == nil {
@@ -64,33 +110,22 @@ func (s *SmartMatchingServiceImpl) FindMatches(ctx context.Context, centerID uin
 
 		currentTeacherID := *rule.TeacherID
 
-		isExcluded := false
-		for _, excludedID := range excludeTeacherIDs {
-			if currentTeacherID == excludedID {
-				isExcluded = true
-				break
-			}
-		}
-
-		if isExcluded {
+		// 使用 Map 進行 O(1) 排除檢查
+		if excludeMap[currentTeacherID] {
 			continue
 		}
 
-		exceptions, _ := s.scheduleExceptionRepo.GetByRuleAndDate(ctx, rule.ID, startTime)
-		hasCancel := false
-		for _, exc := range exceptions {
-			if exc.ExceptionType == "CANCEL" && exc.Status == "APPROVED" {
-				hasCancel = true
-				break
+		// 檢查是否有已核准的取消例外
+		if exceptions, ok := exceptionsMap[rule.ID]; ok {
+			for _, exc := range exceptions {
+				if exc.ExceptionType == "CANCEL" && exc.Status == "APPROVED" {
+					continue
+				}
 			}
 		}
 
-		if hasCancel {
-			continue
-		}
-
-		teacher, err := s.teacherRepository.GetByID(ctx, currentTeacherID)
-		if err != nil {
+		teacher, ok := teachersMap[currentTeacherID]
+		if !ok {
 			continue
 		}
 
@@ -98,12 +133,8 @@ func (s *SmartMatchingServiceImpl) FindMatches(ctx context.Context, centerID uin
 			continue
 		}
 
-		skills, err := s.teacherSkillRepo.ListByTeacherID(ctx, currentTeacherID)
-		if err != nil {
-			continue
-		}
-
-		centerNote, _ := s.centerTeacherNoteRepo.GetByCenterAndTeacher(ctx, centerID, currentTeacherID)
+		skills := skillsMap[currentTeacherID]
+		centerNote := centerNotesMap[currentTeacherID]
 
 		availability := MatchAvailable
 		if teacherID != nil && currentTeacherID == *teacherID && roomID == rule.RoomID {
@@ -154,7 +185,10 @@ func (s *SmartMatchingServiceImpl) FindMatches(ctx context.Context, centerID uin
 
 // NewPagination - 建立分頁資訊
 func NewPagination(page, limit, total int) Pagination {
-	totalPages := (total + limit - 1) / limit
+	totalPages := 0
+	if limit > 0 {
+		totalPages = (total + limit - 1) / limit
+	}
 	return Pagination{
 		Page:       page,
 		Limit:      limit,
@@ -201,7 +235,8 @@ func (s *SmartMatchingServiceImpl) SearchTalent(ctx context.Context, searchParam
 		}
 
 		skillsList, err := s.teacherSkillRepo.ListByTeacherID(ctx, teacher.ID)
-		if err != nil {
+		if err != nil && len(searchParams.Skills) > 0 {
+			// 只有在有技能篩選條件且取得失敗時才跳過
 			continue
 		}
 
@@ -307,11 +342,19 @@ func (s *SmartMatchingServiceImpl) SearchTalent(ctx context.Context, searchParam
 	sortedResults := s.sortTalentResults(allResults, searchParams.SortBy, searchParams.SortOrder)
 
 	// 分頁
+	limit := searchParams.Limit
+	if limit <= 0 {
+		limit = 20 // 預設每頁 20 筆
+	}
+	page := searchParams.Page
+	if page <= 0 {
+		page = 1 // 預設第 1 頁
+	}
 	total := len(sortedResults)
-	offset := (searchParams.Page - 1) * searchParams.Limit
+	offset := (page - 1) * limit
 	paginatedResults := sortedResults
 	if offset < total {
-		end := offset + searchParams.Limit
+		end := offset + limit
 		if end > total {
 			end = total
 		}
@@ -967,8 +1010,8 @@ type TalentResult struct {
 	IsOpenToHiring    bool          `json:"is_open_to_hiring"`
 	Certificates      []Certificate `json:"certificates,omitempty"`
 	PublicContactInfo string        `json:"public_contact_info,omitempty"`
-	IsMember          bool          `json:"is_member"`        // 是否為中心成員
-	InternalRating    int           `json:"internal_rating"`  // 中心內部評分
+	IsMember          bool          `json:"is_member"`       // 是否為中心成員
+	InternalRating    int           `json:"internal_rating"` // 中心內部評分
 }
 
 type Skill struct {

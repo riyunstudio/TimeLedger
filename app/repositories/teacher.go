@@ -88,6 +88,26 @@ func (rp *TeacherRepository) GetCenterID(ctx context.Context, teacherID uint) (u
 	return membership.CenterID, nil
 }
 
+// BatchGetByIDs 批量取得多個教師資料（效能優化：減少 N+1 查詢）
+func (rp *TeacherRepository) BatchGetByIDs(ctx context.Context, ids []uint) (map[uint]models.Teacher, error) {
+	if len(ids) == 0 {
+		return make(map[uint]models.Teacher), nil
+	}
+
+	var teachers []models.Teacher
+	err := rp.app.MySQL.RDB.WithContext(ctx).Where("id IN ?", ids).Find(&teachers).Error
+	if err != nil {
+		return nil, err
+	}
+
+	// 轉換為 Map 以便快速查找
+	result := make(map[uint]models.Teacher, len(teachers))
+	for _, teacher := range teachers {
+		result[teacher.ID] = teacher
+	}
+	return result, nil
+}
+
 func (rp *TeacherRepository) ListPersonalHashtags(ctx context.Context, teacherID uint) ([]resources.PersonalHashtag, error) {
 	var hashtags []resources.PersonalHashtag
 	err := rp.app.MySQL.RDB.WithContext(ctx).

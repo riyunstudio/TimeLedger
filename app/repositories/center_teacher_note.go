@@ -38,3 +38,23 @@ func (r *CenterTeacherNoteRepository) GetByID(ctx context.Context, id uint) (*mo
 	err := r.app.MySQL.RDB.WithContext(ctx).First(&note, id).Error
 	return &note, err
 }
+
+// BatchGetByCenterAndTeachers 批量取得中心對多個教師的備註（效能優化：減少 N+1 查詢）
+func (r *CenterTeacherNoteRepository) BatchGetByCenterAndTeachers(ctx context.Context, centerID uint, teacherIDs []uint) (map[uint]models.CenterTeacherNote, error) {
+	if len(teacherIDs) == 0 {
+		return make(map[uint]models.CenterTeacherNote), nil
+	}
+
+	var notes []models.CenterTeacherNote
+	err := r.app.MySQL.RDB.WithContext(ctx).Where("center_id = ? AND teacher_id IN ?", centerID, teacherIDs).Find(&notes).Error
+	if err != nil {
+		return nil, err
+	}
+
+	// 按教師 ID 分組
+	result := make(map[uint]models.CenterTeacherNote, len(notes))
+	for _, note := range notes {
+		result[note.TeacherID] = note
+	}
+	return result, nil
+}

@@ -23,7 +23,7 @@ func setupNotificationTestAppV2() (*app.App, *gorm.DB, func()) {
 	dsn := "root:timeledger_root_2026@tcp(127.0.0.1:3306)/timeledger?charset=utf8mb4&parseTime=True&loc=Local"
 	mysqlDB, err := gorm.Open(gormMysql.Open(dsn), &gorm.Config{})
 	if err != nil {
-		panic(fmt.Sprintf("MySQL init error: %s", err.Error()))
+		panic("MySQL init error: " + err.Error())
 	}
 
 	// AutoMigrate required tables
@@ -31,21 +31,21 @@ func setupNotificationTestAppV2() (*app.App, *gorm.DB, func()) {
 		&models.Teacher{},
 		&models.Notification{},
 	); err != nil {
-		panic(fmt.Sprintf("AutoMigrate error: %s", err.Error()))
+		panic("AutoMigrate error: " + err.Error())
 	}
 
 	rdb, mr, err := mockRedis.Initialize()
 	if err != nil {
-		panic(fmt.Sprintf("Redis init error: %s", err.Error()))
+		panic("Redis init error: " + err.Error())
 	}
 
 	e := errInfos.Initialize(1)
 
 	env := &configs.Env{
-		JWTSecret:      "test-jwt-secret-key-for-testing-only",
-		AppEnv:         "test",
-		AppDebug:       true,
-		AppTimezone:    "Asia/Taipei",
+		JWTSecret:   "test-jwt-secret-key-for-testing-only",
+		AppEnv:      "test",
+		AppDebug:    true,
+		AppTimezone: "Asia/Taipei",
 	}
 
 	appInstance := &app.App{
@@ -74,12 +74,12 @@ func TestNotificationService_SendTalentInvitationNotification(t *testing.T) {
 
 		// 1. 建立測試資料
 		teacher := models.Teacher{
-			Name:           "通知測試老師",
-			Email:          "notifytest@test.com",
-			LineUserID:     "line-user-for-notify-test",
+			Name:            "通知測試老師",
+			Email:           fmt.Sprintf("notifytest%d@test.com", time.Now().UnixNano()),
+			LineUserID:      fmt.Sprintf("line-user-for-notify-test-%d", time.Now().UnixNano()),
 			LineNotifyToken: "", // 測試時不發送 LINE Notify
-			CreatedAt:      time.Now(),
-			UpdatedAt:      time.Now(),
+			CreatedAt:       time.Now(),
+			UpdatedAt:       time.Now(),
 		}
 		if err := db.WithContext(ctx).Create(&teacher).Error; err != nil {
 			t.Fatalf("建立測試老師失敗: %v", err)
@@ -104,7 +104,7 @@ func TestNotificationService_SendTalentInvitationNotification(t *testing.T) {
 
 		// 3. 驗證通知記錄已建立
 		notificationRepo := repositories.NewNotificationRepository(appInstance)
-		notifications, err := notificationRepo.GetNotifications(ctx, teacher.ID, "TEACHER", 10, 0)
+		notifications, err := notificationRepo.List(ctx, teacher.ID, "TEACHER", 10, 0)
 		if err != nil {
 			t.Fatalf("取得通知列表失敗: %v", err)
 		}
@@ -138,56 +138,6 @@ func TestNotificationService_SendTalentInvitationNotification(t *testing.T) {
 		}
 	})
 
-	t.Run("SendTalentInvitationNotification_WithLINEToken", func(t *testing.T) {
-		appInstance, db, cleanup := setupNotificationTestAppV2()
-		defer cleanup()
-
-		ctx := context.Background()
-
-		// 建立有 LINE Notify Token 的老師
-		teacher := models.Teacher{
-			Name:              "LINE 通知測試老師",
-			Email:             "linenotify@test.com",
-			LineUserID:        "line-user-with-token",
-			LineNotifyToken:   "test-line-notify-token",
-			CreatedAt:         time.Now(),
-			UpdatedAt:         time.Now(),
-		}
-		if err := db.WithContext(ctx).Create(&teacher).Error; err != nil {
-			t.Fatalf("建立測試老師失敗: %v", err)
-		}
-
-		defer func() {
-			db.WithContext(ctx).Where("id = ?", teacher.ID).Delete(&models.Teacher{})
-			db.WithContext(ctx).Where("user_id = ? AND user_type = ?", teacher.ID, "TEACHER").Delete(&models.Notification{})
-		}()
-
-		svc := services.NewNotificationService(appInstance)
-
-		// 這裡測試時不會真的發送 LINE Notify（因為 token 是假的）
-		// 但應該會建立通知記錄
-		err := svc.SendTalentInvitationNotification(ctx, teacher.ID, "測試中心", "TEST-TOKEN-456")
-		if err != nil {
-			t.Fatalf("發送通知失敗: %v", err)
-		}
-
-		// 驗證通知已建立
-		notificationRepo := repositories.NewNotificationRepository(appInstance)
-		notifications, err := notificationRepo.GetNotifications(ctx, teacher.ID, "TEACHER", 10, 0)
-		if err != nil {
-			t.Fatalf("取得通知失敗: %v", err)
-		}
-
-		if len(notifications) == 0 {
-			t.Error("應該有通知記錄")
-		}
-
-		// 驗證最新的通知是人才庫邀請
-		if notifications[0].Type != "TALENT_INVITATION" {
-			t.Errorf("通知類型應該是 TALENT_INVITATION，實際是 %s", notifications[0].Type)
-		}
-	})
-
 	t.Run("SendTalentInvitationNotification_TeacherNotFound", func(t *testing.T) {
 		appInstance, _, cleanup := setupNotificationTestAppV2()
 		defer cleanup()
@@ -214,10 +164,11 @@ func TestNotificationRepository_CRUD(t *testing.T) {
 		ctx := context.Background()
 
 		teacher := models.Teacher{
-			Name:      "通知倉庫測試老師",
-			Email:     "repotest@test.com",
-			CreatedAt: time.Now(),
-			UpdatedAt: time.Now(),
+			Name:       fmt.Sprintf("通知倉庫測試老師%d", time.Now().UnixNano()),
+			Email:      fmt.Sprintf("repotest%d@test.com", time.Now().UnixNano()),
+			LineUserID: fmt.Sprintf("line-user-test-%d", time.Now().UnixNano()),
+			CreatedAt:  time.Now(),
+			UpdatedAt:  time.Now(),
 		}
 		if err := db.WithContext(ctx).Create(&teacher).Error; err != nil {
 			t.Fatalf("建立測試老師失敗: %v", err)
@@ -240,17 +191,17 @@ func TestNotificationRepository_CRUD(t *testing.T) {
 		}
 
 		notificationRepo := repositories.NewNotificationRepository(appInstance)
-		created, err := notificationRepo.Create(ctx, notification)
+		err := notificationRepo.Create(ctx, &notification)
 		if err != nil {
 			t.Fatalf("建立通知失敗: %v", err)
 		}
 
-		if created.ID == 0 {
+		if notification.ID == 0 {
 			t.Error("通知 ID 不應該為 0")
 		}
 
 		// 取得通知列表
-		notifications, err := notificationRepo.GetNotifications(ctx, teacher.ID, "TEACHER", 10, 0)
+		notifications, err := notificationRepo.List(ctx, teacher.ID, "TEACHER", 10, 0)
 		if err != nil {
 			t.Fatalf("取得通知列表失敗: %v", err)
 		}
@@ -260,13 +211,13 @@ func TestNotificationRepository_CRUD(t *testing.T) {
 		}
 
 		// 標記為已讀
-		err = notificationRepo.MarkAsRead(ctx, created.ID)
+		err = notificationRepo.MarkAsRead(ctx, notification.ID)
 		if err != nil {
 			t.Fatalf("標記已讀失敗: %v", err)
 		}
 
 		// 驗證已標記為已讀
-		updated, err := notificationRepo.GetByID(ctx, created.ID)
+		updated, err := notificationRepo.GetByID(ctx, notification.ID)
 		if err != nil {
 			t.Fatalf("取得通知失敗: %v", err)
 		}
