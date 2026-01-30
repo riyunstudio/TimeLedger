@@ -158,6 +158,27 @@
 ---
 
 
+### 指令 16：Asynq Worker 入口整合 (Asynq Worker Integration)
+> **CONTEXT: @main.go @app/services/asynq_notification.go**
+> 
+> 請完成 Asynq 的最後一哩路：
+> 1. 在 `main.go` 中新增 `startAsynqWorker` 函數，調用 `asynqService.StartWorker(ctx)`。
+> 2. 獲取環境變數 `ASYNQ_WORKER_ENABLED` 並在啟動時執行。
+> 3. 確保 `main.go` 的優雅退出邏輯中包含 Asynq Server 的 Stop。
+
+---
+
+### 指令 17：Service 單元測試實作 (Robust Logic Testing)
+> **CONTEXT: @app/services/scheduling_validation.go @app/services/scheduling_validation_test.go**
+> 
+> 請為核心邏輯撰寫單元測試：
+> 1. 使用 `Testify` 建立 `scheduling_validation_test.go`。
+> 2. 模擬 (Mock) `CourseRepository` 與 `ScheduleRuleRepository`。
+> 3. 測試各種衝突場景：硬性重疊 (Overlap)、老師緩衝衝突 (Teacher Buffer)、教室緩衝衝突 (Room Buffer)。
+> 4. 確保測試覆蓋 100% 的邊界情況（如跨日課程、剛好銜接的課程）。
+
+---
+
 ### 💡 如何高效協作？
 1. **先 Service 後 Controller**：要求 AI 先產生 Service，再修改 Controller。
 2. **小步快跑**：一次只執行一個「指令」，完成後驗證通過再進行下一個。

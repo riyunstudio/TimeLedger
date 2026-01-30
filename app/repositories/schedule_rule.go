@@ -73,29 +73,6 @@ func (rp *ScheduleRuleRepository) ListByRoomID(ctx context.Context, roomID uint,
 	return rp.FindWithCenterScope(ctx, centerID, "room_id = ?", roomID)
 }
 
-// Create inserts a new record using the repository's dbWrite connection.
-// This method supports transaction usage when called from within a Transaction closure.
-func (rp *ScheduleRuleRepository) Create(ctx context.Context, data models.ScheduleRule) (models.ScheduleRule, error) {
-	err := rp.dbWrite.WithContext(ctx).Create(&data).Error
-	return data, err
-}
-
-// Update saves an existing record using the repository's dbWrite connection.
-// This method supports transaction usage when called from within a Transaction closure.
-func (rp *ScheduleRuleRepository) Update(ctx context.Context, data models.ScheduleRule) error {
-	return rp.dbWrite.WithContext(ctx).Save(&data).Error
-}
-
-// BulkCreate inserts multiple records in a single operation using the repository's dbWrite connection.
-// This method supports transaction usage when called from within a Transaction closure.
-func (rp *ScheduleRuleRepository) BulkCreate(ctx context.Context, data []models.ScheduleRule) ([]models.ScheduleRule, error) {
-	if len(data) == 0 {
-		return data, nil
-	}
-	err := rp.dbWrite.WithContext(ctx).Create(&data).Error
-	return data, err
-}
-
 func (rp *ScheduleRuleRepository) ListByOfferingID(ctx context.Context, offeringID uint) ([]models.ScheduleRule, error) {
 	return rp.Find(ctx, "offering_id = ?", offeringID)
 }

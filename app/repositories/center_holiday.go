@@ -37,6 +37,14 @@ func (r *CenterHolidayRepository) GetByCenterAndDate(ctx context.Context, center
 	return r.First(ctx, "center_id = ? AND date = ?", centerID, date.Format("2006-01-02"))
 }
 
+func (r *CenterHolidayRepository) Delete(ctx context.Context, id uint) error {
+	return r.DeleteByID(ctx, id)
+}
+
+func (r *CenterHolidayRepository) ListByCenterID(ctx context.Context, centerID uint) ([]models.CenterHoliday, error) {
+	return r.FindWithCenterScope(ctx, centerID)
+}
+
 func (r *CenterHolidayRepository) ListByDateRange(ctx context.Context, centerID uint, start, end time.Time) ([]models.CenterHoliday, error) {
 	return r.Find(ctx, "center_id = ? AND date >= ? AND date <= ?", centerID, start.Format("2006-01-02"), end.Format("2006-01-02"))
 }
@@ -81,21 +89,11 @@ func (r *CenterHolidayRepository) BulkCreateWithSkipDuplicate(ctx context.Contex
 	return createdHolidays, created, err
 }
 
-func (r *CenterHolidayRepository) Delete(ctx context.Context, id uint) error {
-	return r.GenericRepository.DeleteByID(ctx, id)
-}
-
-func (r *CenterHolidayRepository) ListByCenterID(ctx context.Context, centerID uint) ([]models.CenterHoliday, error) {
-	return r.FindWithCenterScope(ctx, centerID)
-}
-
 type CenterHolidayRepositoryInterface interface {
 	Create(ctx context.Context, holiday models.CenterHoliday) (models.CenterHoliday, error)
-	GetByID(ctx context.Context, id uint) (models.CenterHoliday, error)
 	GetByCenterAndDate(ctx context.Context, centerID uint, date time.Time) (models.CenterHoliday, error)
 	ListByCenterID(ctx context.Context, centerID uint) ([]models.CenterHoliday, error)
 	ListByDateRange(ctx context.Context, centerID uint, start, end time.Time) ([]models.CenterHoliday, error)
-	Delete(ctx context.Context, id uint) error
 	ExistsByCenterAndDate(ctx context.Context, centerID uint, date time.Time) (bool, error)
 	BulkCreate(ctx context.Context, holidays []models.CenterHoliday) ([]models.CenterHoliday, error)
 	BulkCreateWithSkipDuplicate(ctx context.Context, holidays []models.CenterHoliday) ([]models.CenterHoliday, int64, error)

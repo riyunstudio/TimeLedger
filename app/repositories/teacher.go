@@ -112,12 +112,6 @@ func (rp *TeacherRepository) CreatePersonalHashtag(ctx context.Context, teacherI
 		}).Error
 }
 
-// List retrieves all teachers (deprecated, use Find instead).
-// Kept for backwards compatibility with existing code.
-func (rp *TeacherRepository) List(ctx context.Context) ([]models.Teacher, error) {
-	return rp.Find(ctx)
-}
-
 // ListByCenter retrieves all teachers belonging to a specific center.
 func (rp *TeacherRepository) ListByCenter(ctx context.Context, centerID uint) ([]models.Teacher, error) {
 	var teachers []models.Teacher
@@ -139,4 +133,9 @@ func (rp *TeacherRepository) SearchByName(ctx context.Context, name string, limi
 		Limit(limit).
 		Find(&teachers).Error
 	return teachers, err
+}
+
+// List retrieves all teachers (use with caution, prefer ListByCenter for specific use cases).
+func (rp *TeacherRepository) List(ctx context.Context) ([]models.Teacher, error) {
+	return rp.FindAll(ctx)
 }

@@ -42,14 +42,6 @@ func (r *AuditLogRepository) CreateWithTxDB(ctx context.Context, txDB *gorm.DB, 
 	return log, nil
 }
 
-func (r *AuditLogRepository) GetByID(ctx context.Context, id uint) (models.AuditLog, error) {
-	return r.GenericRepository.GetByID(ctx, id)
-}
-
-func (r *AuditLogRepository) Delete(ctx context.Context, id uint) error {
-	return r.GenericRepository.DeleteByID(ctx, id)
-}
-
 func (r *AuditLogRepository) ListByDateRange(ctx context.Context, centerID uint, start, end time.Time) ([]models.AuditLog, error) {
 	return r.Find(ctx, "center_id = ? AND timestamp >= ? AND timestamp <= ?", centerID, start, end)
 }
@@ -84,8 +76,6 @@ func (r *AuditLogRepository) ListByActor(ctx context.Context, actorType string, 
 type AuditLogRepositoryInterface interface {
 	Create(ctx context.Context, log models.AuditLog) (models.AuditLog, error)
 	CreateWithTxDB(ctx context.Context, txDB *gorm.DB, log models.AuditLog) (models.AuditLog, error)
-	GetByID(ctx context.Context, id uint) (models.AuditLog, error)
-	Delete(ctx context.Context, id uint) error
 	ListByCenterID(ctx context.Context, centerID uint, limit, offset int) ([]models.AuditLog, error)
 	ListByActor(ctx context.Context, actorType string, actorID uint, limit int) ([]models.AuditLog, error)
 	ListByDateRange(ctx context.Context, centerID uint, start, end time.Time) ([]models.AuditLog, error)

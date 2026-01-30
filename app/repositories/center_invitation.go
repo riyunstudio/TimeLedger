@@ -83,16 +83,12 @@ func (rp *CenterInvitationRepository) UpdateStatus(ctx context.Context, id uint,
 	return rp.UpdateFields(ctx, id, fields)
 }
 
-func (rp *CenterInvitationRepository) UpdateWithFields(ctx context.Context, id uint, fields map[string]interface{}) error {
-	return rp.UpdateFields(ctx, id, fields)
+func (rp *CenterInvitationRepository) CountByStatus(ctx context.Context, centerID uint, status models.InvitationStatus) (int64, error) {
+	return rp.Count(ctx, "center_id = ? AND status = ?", centerID, status)
 }
 
 func (rp *CenterInvitationRepository) CountByCenterID(ctx context.Context, centerID uint) (int64, error) {
 	return rp.Count(ctx, "center_id = ?", centerID)
-}
-
-func (rp *CenterInvitationRepository) CountByStatus(ctx context.Context, centerID uint, status models.InvitationStatus) (int64, error) {
-	return rp.Count(ctx, "center_id = ? AND status = ?", centerID, status)
 }
 
 func (rp *CenterInvitationRepository) CountByDateRange(ctx context.Context, centerID uint, startDate, endDate time.Time) (int64, error) {

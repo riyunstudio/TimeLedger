@@ -52,12 +52,12 @@ func (rp *CourseRepository) Transaction(ctx context.Context, fn func(txRepo *Cou
 	})
 }
 
-func (rp *CourseRepository) ListByCenterID(ctx context.Context, centerID uint) ([]models.Course, error) {
-	return rp.FindWithCenterScope(ctx, centerID)
-}
-
 func (rp *CourseRepository) ListActiveByCenterID(ctx context.Context, centerID uint) ([]models.Course, error) {
 	return rp.FindWithCenterScope(ctx, centerID, "is_active = ?", true)
+}
+
+func (rp *CourseRepository) ListByCenterID(ctx context.Context, centerID uint) ([]models.Course, error) {
+	return rp.FindWithCenterScope(ctx, centerID)
 }
 
 func (rp *CourseRepository) ToggleActive(ctx context.Context, id uint, centerID uint, isActive bool) error {

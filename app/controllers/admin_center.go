@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"timeLedger/app"
+	"timeLedger/app/resources"
 	"timeLedger/app/services"
 
 	"github.com/gin-gonic/gin"
@@ -9,15 +10,17 @@ import (
 
 // AdminCenterController 中心管理相關 API
 type AdminCenterController struct {
-	app          *app.App
+	app           *app.App
 	centerService *services.CenterService
+	centerResource *resources.CenterResource
 }
 
 // NewAdminCenterController 建立 AdminCenterController 實例
 func NewAdminCenterController(appInstance *app.App) *AdminCenterController {
 	return &AdminCenterController{
-		app:          appInstance,
-		centerService: services.NewCenterService(appInstance),
+		app:            appInstance,
+		centerService:  services.NewCenterService(appInstance),
+		centerResource: resources.NewCenterResource(appInstance),
 	}
 }
 
@@ -27,7 +30,7 @@ func NewAdminCenterController(appInstance *app.App) *AdminCenterController {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Success 200 {object} global.ApiResponse{data=[]models.Center}
+// @Success 200 {object} global.ApiResponse{data=[]resources.CenterResponse}
 // @Router /api/v1/admin/centers [get]
 func (ctl *AdminCenterController) GetCenters(ctx *gin.Context) {
 	helper := NewContextHelper(ctx)
@@ -38,7 +41,8 @@ func (ctl *AdminCenterController) GetCenters(ctx *gin.Context) {
 		return
 	}
 
-	helper.Success(centers)
+	responses := ctl.centerResource.ToCenterResponses(centers)
+	helper.Success(responses)
 }
 
 // CreateCenterRequest 新增中心的請求結構
@@ -55,7 +59,7 @@ type CreateCenterRequest struct {
 // @Produce json
 // @Security BearerAuth
 // @Param request body CreateCenterRequest true "中心資訊"
-// @Success 200 {object} global.ApiResponse{data=models.Center}
+// @Success 200 {object} global.ApiResponse{data=resources.CenterResponse}
 // @Router /api/v1/admin/centers [post]
 func (ctl *AdminCenterController) CreateCenter(ctx *gin.Context) {
 	helper := NewContextHelper(ctx)
@@ -82,5 +86,6 @@ func (ctl *AdminCenterController) CreateCenter(ctx *gin.Context) {
 		return
 	}
 
-	helper.Created(center)
+	response := ctl.centerResource.ToCenterResponse(*center)
+	helper.Created(response)
 }

@@ -439,7 +439,7 @@ func (s *TeacherService) AcceptInvitationByLink(ctx context.Context, req *Accept
 
 	// 更新邀請狀態
 	now := time.Now()
-	if err := s.invitationRepo.UpdateWithFields(ctx, invitation.ID, map[string]interface{}{
+	if err := s.invitationRepo.UpdateFields(ctx, invitation.ID, map[string]interface{}{
 		"status":       models.InvitationStatusAccepted,
 		"responded_at": &now,
 	}); err != nil {

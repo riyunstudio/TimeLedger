@@ -63,7 +63,6 @@ type CenterMembershipRepositoryInterface interface {
 	Delete(ctx context.Context, id uint) error
 	GetByID(ctx context.Context, id uint) (models.CenterMembership, error)
 	GetByCenterAndTeacher(ctx context.Context, centerID, teacherID uint) (models.CenterMembership, error)
-	ListByCenterID(ctx context.Context, centerID uint) ([]models.CenterMembership, error)
 	ListByTeacherID(ctx context.Context, teacherID uint) ([]models.CenterMembership, error)
 	ListActiveByCenterID(ctx context.Context, centerID uint) ([]models.CenterMembership, error)
 	GetActiveByTeacherID(ctx context.Context, teacherID uint) ([]models.CenterMembership, error)

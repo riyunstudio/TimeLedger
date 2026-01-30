@@ -27,17 +27,6 @@ func NewCourseService(app *app.App) *CourseService {
 	}
 }
 
-type CourseResponse struct {
-	ID               uint      `json:"id"`
-	Name             string    `json:"name"`
-	DefaultDuration  int       `json:"default_duration"`
-	ColorHex         string    `json:"color_hex"`
-	RoomBufferMin    int       `json:"room_buffer_min"`
-	TeacherBufferMin int       `json:"teacher_buffer_min"`
-	IsActive         bool      `json:"is_active"`
-	CreatedAt        time.Time `json:"created_at"`
-}
-
 type CreateCourseRequest struct {
 	Name             string `json:"name" binding:"required"`
 	Duration         int    `json:"duration" binding:"required"`
@@ -318,25 +307,4 @@ func (s *CourseService) ToggleCourseActive(ctx context.Context, centerID, adminI
 	_ = s.cacheService.InvalidateCourseList(ctx, centerID)
 
 	return nil, nil
-}
-
-func (s *CourseService) ToCourseResponse(course models.Course) CourseResponse {
-	return CourseResponse{
-		ID:               course.ID,
-		Name:             course.Name,
-		DefaultDuration:  course.DefaultDuration,
-		ColorHex:         course.ColorHex,
-		RoomBufferMin:    course.RoomBufferMin,
-		TeacherBufferMin: course.TeacherBufferMin,
-		IsActive:         course.IsActive,
-		CreatedAt:        course.CreatedAt,
-	}
-}
-
-func (s *CourseService) ToCourseResponses(courses []models.Course) []CourseResponse {
-	responses := make([]CourseResponse, 0, len(courses))
-	for _, c := range courses {
-		responses = append(responses, s.ToCourseResponse(c))
-	}
-	return responses
 }

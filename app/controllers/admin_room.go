@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"timeLedger/app"
+	"timeLedger/app/resources"
 	"timeLedger/app/services"
 
 	"github.com/gin-gonic/gin"
@@ -9,14 +10,16 @@ import (
 
 type AdminRoomController struct {
 	BaseController
-	app         *app.App
-	roomService *services.RoomService
+	app          *app.App
+	roomService  *services.RoomService
+	roomResource *resources.RoomResource
 }
 
 func NewAdminRoomController(app *app.App) *AdminRoomController {
 	return &AdminRoomController{
-		app:         app,
-		roomService: services.NewRoomService(app),
+		app:          app,
+		roomService:  services.NewRoomService(app),
+		roomResource: resources.NewRoomResource(app),
 	}
 }
 
@@ -26,7 +29,7 @@ func NewAdminRoomController(app *app.App) *AdminRoomController {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Success 200 {object} global.ApiResponse{data=[]services.RoomResponse}
+// @Success 200 {object} global.ApiResponse{data=[]resources.RoomResponse}
 // @Router /api/v1/admin/rooms [get]
 func (ctl *AdminRoomController) GetRooms(ctx *gin.Context) {
 	helper := NewContextHelper(ctx)
@@ -42,7 +45,7 @@ func (ctl *AdminRoomController) GetRooms(ctx *gin.Context) {
 		return
 	}
 
-	responses := ctl.roomService.ToRoomResponses(rooms)
+	responses := ctl.roomResource.ToRoomResponses(rooms)
 	helper.Success(responses)
 }
 
@@ -53,7 +56,7 @@ func (ctl *AdminRoomController) GetRooms(ctx *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param request body services.CreateRoomRequest true "教室資訊"
-// @Success 200 {object} global.ApiResponse{data=services.RoomResponse}
+// @Success 200 {object} global.ApiResponse{data=resources.RoomResponse}
 // @Router /api/v1/admin/rooms [post]
 func (ctl *AdminRoomController) CreateRoom(ctx *gin.Context) {
 	helper := NewContextHelper(ctx)
@@ -79,7 +82,7 @@ func (ctl *AdminRoomController) CreateRoom(ctx *gin.Context) {
 		return
 	}
 
-	response := ctl.roomService.ToRoomResponse(*room)
+	response := ctl.roomResource.ToRoomResponse(*room)
 	helper.Success(response)
 }
 
@@ -91,7 +94,7 @@ func (ctl *AdminRoomController) CreateRoom(ctx *gin.Context) {
 // @Security BearerAuth
 // @Param room_id path int true "Room ID"
 // @Param request body services.UpdateRoomRequest true "教室資訊"
-// @Success 200 {object} global.ApiResponse{data=services.RoomResponse}
+// @Success 200 {object} global.ApiResponse{data=resources.RoomResponse}
 // @Router /api/v1/admin/rooms/{room_id} [put]
 func (ctl *AdminRoomController) UpdateRoom(ctx *gin.Context) {
 	helper := NewContextHelper(ctx)
@@ -122,7 +125,7 @@ func (ctl *AdminRoomController) UpdateRoom(ctx *gin.Context) {
 		return
 	}
 
-	response := ctl.roomService.ToRoomResponse(*room)
+	response := ctl.roomResource.ToRoomResponse(*room)
 	helper.Success(response)
 }
 
@@ -132,7 +135,7 @@ func (ctl *AdminRoomController) UpdateRoom(ctx *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Success 200 {object} global.ApiResponse{data=[]services.RoomResponse}
+// @Success 200 {object} global.ApiResponse{data=[]resources.RoomResponse}
 // @Router /api/v1/admin/rooms/active [get]
 func (ctl *AdminRoomController) GetActiveRooms(ctx *gin.Context) {
 	helper := NewContextHelper(ctx)
@@ -148,7 +151,7 @@ func (ctl *AdminRoomController) GetActiveRooms(ctx *gin.Context) {
 		return
 	}
 
-	responses := ctl.roomService.ToRoomResponses(rooms)
+	responses := ctl.roomResource.ToRoomResponses(rooms)
 	helper.Success(responses)
 }
 

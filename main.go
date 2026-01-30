@@ -15,6 +15,8 @@ import (
 	"timeLedger/app/services"
 	"timeLedger/global/logger"
 
+	"github.com/hibiken/asynq"
+
 	_ "timeLedger/docs"
 
 	_ "github.com/joho/godotenv/autoload"
@@ -68,6 +70,13 @@ func main() {
 		zapLog.Info("Notification worker disabled (set NOTIFICATION_WORKER_ENABLED=true to enable)")
 	}
 
+	// Asynq Worker（按環境變量開關，預設關閉以節省資源）
+	if os.Getenv("ASYNQ_WORKER_ENABLED") == "true" {
+		go startAsynqWorker(appInstance, ctx, zapLog)
+	} else {
+		zapLog.Info("Asynq worker disabled (set ASYNQ_WORKER_ENABLED=true to enable)")
+	}
+
 	// 啟動 API server（主要服務）
 	gin := servers.Initialize(appInstance)
 	gin.Start()
@@ -82,6 +91,7 @@ func main() {
 		<-signals
 		cancel()
 		scheduler.Stop()
+		stopAsynqWorker()
 		gin.Stop()
 		zapLog.Info("Application shutting down gracefully")
 		exit <- struct{}{}
@@ -149,5 +159,64 @@ func startNotificationWorker(appInstance *app.App, ctx context.Context, zapLog *
 				time.Sleep(1 * time.Second) // 避免 busy loop
 			}
 		}
+	}
+}
+
+// asynqServer 用於控制 Asynq Server 的生命週期
+var asynqServer *asynq.Server
+
+// startAsynqWorker 啟動 Asynq 背景 worker
+func startAsynqWorker(appInstance *app.App, ctx context.Context, zapLog *logger.Logger) {
+	zapLog.Info("Starting Asynq worker...")
+
+	cfg := &services.AsynqConfig{
+		RedisAddr:     os.Getenv("REDIS_ADDR"),
+		Concurrency:   10,
+		MaxRetry:      3,
+		RetryInterval: 5 * time.Second,
+		QueueName:     "notifications",
+	}
+
+	asynqService := services.NewAsynqNotificationService(appInstance, cfg)
+
+	// 檢查 Redis 連線
+	redisQueue := services.NewRedisQueueService(appInstance)
+	if !redisQueue.IsHealthy(context.Background()) {
+		zapLog.Warn("Redis not connected, Asynq worker will not start")
+		return
+	}
+
+	zapLog.Info("Asynq worker started, listening on Redis queue...")
+
+	// 啟動 worker（在 goroutine 中）
+	errChan := make(chan error, 1)
+
+	go func() {
+		errChan <- asynqService.StartWorker(ctx)
+	}()
+
+	// 等待 context 取消或錯誤
+	select {
+	case <-ctx.Done():
+		zapLog.Info("Asynq worker context cancelled, stopping...")
+		if asynqServer != nil {
+			asynqServer.Stop()
+		}
+		if err := asynqService.Close(); err != nil {
+			zapLog.Errorw("Error closing Asynq service", "error", err)
+		}
+		zapLog.Info("Asynq worker stopped")
+	case err := <-errChan:
+		if err != nil {
+			zapLog.Errorw("Asynq worker error", "error", err)
+		}
+	}
+}
+
+// stopAsynqWorker 停止 Asynq Server
+func stopAsynqWorker() {
+	if asynqServer != nil {
+		asynqServer.Stop()
+		logger.GetLogger().Info("Asynq server stopped")
 	}
 }

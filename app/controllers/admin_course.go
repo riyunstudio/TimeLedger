@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"timeLedger/app"
+	"timeLedger/app/resources"
 	"timeLedger/app/services"
 
 	"github.com/gin-gonic/gin"
@@ -11,12 +12,14 @@ type AdminCourseController struct {
 	BaseController
 	app           *app.App
 	courseService *services.CourseService
+	courseResource *resources.CourseResource
 }
 
 func NewAdminCourseController(app *app.App) *AdminCourseController {
 	return &AdminCourseController{
-		app:           app,
-		courseService: services.NewCourseService(app),
+		app:            app,
+		courseService:  services.NewCourseService(app),
+		courseResource: resources.NewCourseResource(app),
 	}
 }
 
@@ -26,7 +29,7 @@ func NewAdminCourseController(app *app.App) *AdminCourseController {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Success 200 {object} global.ApiResponse{data=[]services.CourseResponse}
+// @Success 200 {object} global.ApiResponse{data=[]resources.CourseResponse}
 // @Router /api/v1/admin/courses [get]
 func (ctl *AdminCourseController) GetCourses(ctx *gin.Context) {
 	helper := NewContextHelper(ctx)
@@ -42,7 +45,7 @@ func (ctl *AdminCourseController) GetCourses(ctx *gin.Context) {
 		return
 	}
 
-	responses := ctl.courseService.ToCourseResponses(courses)
+	responses := ctl.courseResource.ToCourseResponses(courses)
 	helper.Success(responses)
 }
 
@@ -53,7 +56,7 @@ func (ctl *AdminCourseController) GetCourses(ctx *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param request body services.CreateCourseRequest true "課程資訊"
-// @Success 200 {object} global.ApiResponse{data=services.CourseResponse}
+// @Success 200 {object} global.ApiResponse{data=resources.CourseResponse}
 // @Router /api/v1/admin/courses [post]
 func (ctl *AdminCourseController) CreateCourse(ctx *gin.Context) {
 	helper := NewContextHelper(ctx)
@@ -79,7 +82,7 @@ func (ctl *AdminCourseController) CreateCourse(ctx *gin.Context) {
 		return
 	}
 
-	response := ctl.courseService.ToCourseResponse(*course)
+	response := ctl.courseResource.ToCourseResponse(*course)
 	helper.Success(response)
 }
 
@@ -91,7 +94,7 @@ func (ctl *AdminCourseController) CreateCourse(ctx *gin.Context) {
 // @Security BearerAuth
 // @Param course_id path int true "Course ID"
 // @Param request body services.UpdateCourseRequest true "課程資訊"
-// @Success 200 {object} global.ApiResponse{data=services.CourseResponse}
+// @Success 200 {object} global.ApiResponse{data=resources.CourseResponse}
 // @Router /api/v1/admin/courses/{course_id} [put]
 func (ctl *AdminCourseController) UpdateCourse(ctx *gin.Context) {
 	helper := NewContextHelper(ctx)
@@ -122,7 +125,7 @@ func (ctl *AdminCourseController) UpdateCourse(ctx *gin.Context) {
 		return
 	}
 
-	response := ctl.courseService.ToCourseResponse(*course)
+	response := ctl.courseResource.ToCourseResponse(*course)
 	helper.Success(response)
 }
 
@@ -168,7 +171,7 @@ func (ctl *AdminCourseController) DeleteCourse(ctx *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Success 200 {object} global.ApiResponse{data=[]services.CourseResponse}
+// @Success 200 {object} global.ApiResponse{data=[]resources.CourseResponse}
 // @Router /api/v1/admin/courses/active [get]
 func (ctl *AdminCourseController) GetActiveCourses(ctx *gin.Context) {
 	helper := NewContextHelper(ctx)
@@ -184,7 +187,7 @@ func (ctl *AdminCourseController) GetActiveCourses(ctx *gin.Context) {
 		return
 	}
 
-	responses := ctl.courseService.ToCourseResponses(courses)
+	responses := ctl.courseResource.ToCourseResponses(courses)
 	helper.Success(responses)
 }
 

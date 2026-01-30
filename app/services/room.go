@@ -28,16 +28,6 @@ func NewRoomService(app *app.App) *RoomService {
 	}
 }
 
-// RoomResponse 教室響應結構
-type RoomResponse struct {
-	ID        uint      `json:"id"`
-	CenterID  uint      `json:"center_id"`
-	Name      string    `json:"name"`
-	Capacity  int       `json:"capacity"`
-	IsActive  bool      `json:"is_active"`
-	CreatedAt time.Time `json:"created_at"`
-}
-
 // CreateRoomRequest 建立教室請求
 type CreateRoomRequest struct {
 	Name     string `json:"name" binding:"required"`
@@ -203,25 +193,4 @@ func (s *RoomService) ToggleRoomActive(ctx context.Context, centerID, adminID, r
 	})
 
 	return nil, nil
-}
-
-// ToRoomResponse 轉換為響應結構
-func (s *RoomService) ToRoomResponse(room models.Room) RoomResponse {
-	return RoomResponse{
-		ID:        room.ID,
-		CenterID:  room.CenterID,
-		Name:      room.Name,
-		Capacity:  room.Capacity,
-		IsActive:  room.IsActive,
-		CreatedAt: room.CreatedAt,
-	}
-}
-
-// ToRoomResponses 批量轉換為響應結構
-func (s *RoomService) ToRoomResponses(rooms []models.Room) []RoomResponse {
-	responses := make([]RoomResponse, len(rooms))
-	for i, room := range rooms {
-		responses[i] = s.ToRoomResponse(room)
-	}
-	return responses
 }

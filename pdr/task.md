@@ -19,20 +19,26 @@
     - [x] Extraction of **Offering** domain from `AdminResourceController`
 
 ## Phase 3: 性能規模化 (Performance & Scalability)
-- [ ] **Redis 分層緩存**: 實施中心資料與老師課表的 Redis 快取。 <!-- id: 18 -->
-- [ ] **異步任務隊列**: 導入 `Asynq` 處理 LINE 通知與耗時 Job。 <!-- id: 6 -->
+- [x] **Redis 分層緩存**: 實施中心資料與老師課表的 Redis 快取。 <!-- id: 18 -->
+- [x] **異步任務隊列 (Asynq)**: 導入 `Asynq` 處理 LINE 通知與耗時 Job。 <!-- id: 6 -->
+    - [x] 建立 `NotificationQueueService` 處理任務派發。
+    - [x] 實作 LINE 通知異步 Enqueue 與 Payload 管理。
+    - [ ] 補齊 `main.go` 中的 Asynq Worker 啟動邏輯。
 - [x] **N+1 解決方案**: 在 `ExpandRules` 中實施批次加載打破 N+1 查詢。 <!-- id: 17 -->
 
 ## Phase 4: 工程化與穩定性 (Stability & Engineering)
-- [ ] **Service 單元測試**: 為 `ApplyTemplate` 等核心邏輯編寫穩定性測試。 <!-- id: 102 -->
-- [ ] **結構化日誌**: 導入 `Zap` 或 `Slog` 取代 `fmt` 打印。 <!-- id: 5 -->
-- [ ] **基類賦能 (BaseService)**: 封裝通用分頁與過濾邏輯。 <!-- id: 403 -->
+- [ ] **Service 單元測試**: 為 `ScheduleValidation` 等核心邏輯編寫穩定性測試。 <!-- id: 102 -->
+    - [ ] 建立 `schedule_validation_test.go` 並模擬各種衝突場景。
+- [x] **結構化日誌**: 已導入 `Zap` 結構化日誌並封裝於 `BaseService`。 <!-- id: 5 -->
+- [x] **基類賦能 (BaseService)**: 封裝通用分頁與過濾邏輯。 <!-- id: 403 -->
+    - [x] 實作動態分頁器 (Pagination Helper)。
+    - [x] 實作動態過濾條件生成器 (Filter Helper)。
 
 ## Phase 5: 進階效能與架構美學 (Advanced Performance & Architecture)
-- [ ] **課表展開深度快取**: 實施 `ExpandRules` 的 Redis 分層快取與主動失效機制。 <!-- id: 501 -->
-- [ ] **DTO/Resource 層建立**: 導入 `Resource` 套件，完全隔離 DB Model 與 API 響應。 <!-- id: 502 -->
+- [x] **課表展開深度快取**: 實施 `ExpandRules` 的 Redis 分層快取與主動失效機制。 <!-- id: 501 -->
+- [x] **DTO/Resource 層建立**: 導入 `Resource` 套件，完全隔離 DB Model 與 API 響應。 <!-- id: 502 -->
 - [ ] **AdminResource 終極解耦**: 將 Invitation 與 Teacher Note 移至專屬控制器。 <!-- id: 503 -->
-- [ ] **Repository 代碼大掃除**: 移除子 Repo 中重複的標準 CRUD 代碼。 <!-- id: 504 -->
+- [x] **Repository 代碼大掃除**: 移除子 Repo 中重複的標準 CRUD 代碼。 <!-- id: 504 -->
 
 ## Phase 6: 上線準備與生產穩定性 (Go-Live & Production)
 - [ ] **環境變數與安全檢查**: 確保生產環境 Secret 隔離。 <!-- id: 601 -->
