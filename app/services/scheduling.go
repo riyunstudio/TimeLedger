@@ -151,16 +151,19 @@ type TodaySession struct {
 
 // TodayOffering 今日課程
 type TodayOffering struct {
+	ID   uint   `json:"id"`
 	Name string `json:"name"`
 }
 
 // TodayTeacher 今日老師
 type TodayTeacher struct {
+	ID   uint   `json:"id"`
 	Name string `json:"name"`
 }
 
 // TodayRoom 今日教室
 type TodayRoom struct {
+	ID   uint   `json:"id"`
 	Name string `json:"name"`
 }
 
@@ -947,13 +950,19 @@ func (s *ScheduleService) GetTodaySummary(ctx context.Context, centerID uint) (*
 		// 判斷課程狀態
 		status := s.determineSessionStatus(now, startDateTime, endDateTime)
 
+		// 取得老師 ID（處理指針類型）
+		var teacherID uint
+		if session.TeacherID != nil {
+			teacherID = *session.TeacherID
+		}
+
 		response.Sessions = append(response.Sessions, TodaySession{
 			ID:        session.RuleID,
 			StartTime: startDateTime,
 			EndTime:   endDateTime,
-			Offering:  TodayOffering{Name: offeringName},
-			Teacher:   TodayTeacher{Name: teacherName},
-			Room:      TodayRoom{Name: roomName},
+			Offering:  TodayOffering{ID: session.OfferingID, Name: offeringName},
+			Teacher:   TodayTeacher{ID: teacherID, Name: teacherName},
+			Room:      TodayRoom{ID: session.RoomID, Name: roomName},
 			Status:    status,
 		})
 	}

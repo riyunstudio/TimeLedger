@@ -143,7 +143,15 @@ func timesOverlap(start1, end1, start2, end2 string) bool {
 }
 
 func (rp *ScheduleRuleRepository) ListByCenterID(ctx context.Context, centerID uint) ([]models.ScheduleRule, error) {
-	return rp.FindWithCenterScope(ctx, centerID)
+	var data []models.ScheduleRule
+	err := rp.app.MySQL.RDB.WithContext(ctx).
+		Preload("Offering").
+		Preload("Room").
+		Preload("Teacher").
+		Where("center_id = ?", centerID).
+		Order("weekday ASC, start_time ASC").
+		Find(&data).Error
+	return data, err
 }
 
 // CheckPersonalEventConflict 檢查個人行程是否與排課規則衝突

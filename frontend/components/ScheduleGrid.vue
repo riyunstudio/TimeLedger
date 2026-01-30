@@ -175,8 +175,8 @@
       @dragover.prevent="handleDragOver"
       @drop="handleDrop"
     >
-      <!-- 週曆視圖 -->
-      <div class="min-w-[600px] relative" ref="calendarContainerRef">
+      <!-- 週曆視圖 - 桌面版 -->
+      <div class="hidden lg:block min-w-[800px] relative" ref="calendarContainerRef">
         <!-- 表頭 -->
         <div class="grid sticky top-0 z-10 bg-slate-900/95 backdrop-blur-sm" style="grid-template-columns: 80px repeat(7, 1fr);">
           <div class="p-2 border-b border-white/10 text-center">
@@ -298,11 +298,98 @@
             </DynamicScroller>
           </div>
         </div>
+      </div>
 
-      <!-- 矩陣視圖（已停用） -->
-      <!--
-        矩陣視圖功能已停用，如有需要可重新啟用
-      -->
+      <!-- 手機版：日曆列表視圖 -->
+      <div class="lg:hidden">
+        <!-- 週選擇器（手機版） -->
+        <div class="flex items-center justify-between mb-4">
+          <button
+            @click="changeWeek(-1)"
+            class="p-2 rounded-lg hover:bg-white/10 transition-colors"
+          >
+            <svg class="w-5 h-5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <h2 class="text-base font-semibold text-white">{{ weekLabel }}</h2>
+          <button
+            @click="changeWeek(1)"
+            class="p-2 rounded-lg hover:bg-white/10 transition-colors"
+          >
+            <svg class="w-5 h-5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- 日曆卡片列表 -->
+        <div class="space-y-3">
+          <div
+            v-for="day in weekDays"
+            :key="day.value"
+            class="bg-slate-800/50 rounded-lg border border-slate-700 overflow-hidden"
+          >
+            <!-- 日期標題 -->
+            <div class="px-4 py-2 bg-slate-700/30 border-b border-slate-700 flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-sm font-medium text-white">{{ day.name }}</span>
+                <span class="text-xs text-slate-400">{{ getDayDate(day.value) }}</span>
+              </div>
+              <span v-if="getDayScheduleCount(day.value) > 0" class="text-xs px-2 py-0.5 bg-primary-500/20 text-primary-400 rounded-full">
+                {{ getDayScheduleCount(day.value) }} 堂課
+              </span>
+            </div>
+
+            <!-- 當日課程列表 -->
+            <div v-if="getDaySchedules(day.value).length > 0" class="divide-y divide-slate-700/50">
+              <div
+                v-for="schedule in getDaySchedules(day.value)"
+                :key="schedule.id"
+                class="p-3 hover:bg-white/5 transition-colors cursor-pointer"
+                @click="selectSchedule(schedule)"
+              >
+                <div class="flex items-start gap-3">
+                  <!-- 時間 -->
+                  <div class="w-14 flex-shrink-0">
+                    <div class="text-sm font-medium text-primary-400">{{ schedule.start_time }}</div>
+                    <div class="text-xs text-slate-500">{{ schedule.end_time }}</div>
+                  </div>
+
+                  <!-- 課程資訊 -->
+                  <div class="flex-1 min-w-0">
+                    <div class="font-medium text-white truncate">{{ schedule.offering_name }}</div>
+                    <div class="flex items-center gap-2 mt-1">
+                      <span v-if="schedule.teacher_name" class="text-xs text-slate-400">{{ schedule.teacher_name }}</span>
+                      <span v-if="schedule.room_name" class="text-xs text-slate-500">· {{ schedule.room_name }}</span>
+                    </div>
+                  </div>
+
+                  <!-- 狀態指示 -->
+                  <div v-if="schedule.has_exception" class="flex-shrink-0">
+                    <span
+                      v-if="schedule.exception_type === 'CANCEL'"
+                      class="text-xs px-2 py-1 bg-critical-500/20 text-critical-400 rounded"
+                    >
+                      已取消
+                    </span>
+                    <span
+                      v-else-if="schedule.exception_type === 'RESCHEDULE'"
+                      class="text-xs px-2 py-1 bg-warning-500/20 text-warning-400 rounded"
+                    >
+                      調課
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 無課程提示 -->
+            <div v-else class="p-6 text-center">
+              <p class="text-sm text-slate-500">無課程安排</p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -324,7 +411,7 @@
         v-if="showUpdateModeModal && mode === 'admin'"
         :show="showUpdateModeModal"
         :rule-name="editingRule?.offering_name"
-        :rule-date="editingRule?.date ? new Date(editingRule.date).toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' }) : ''"
+        :rule-date="editingRule?.date ? formatDate(editingRule.date) : ''"
         @close="handleUpdateModeClose"
         @confirm="handleUpdateModeConfirm"
       />
@@ -516,7 +603,7 @@
 </template>
 
 <script setup lang="ts">
-import { formatDateToString } from '~/composables/useTaiwanTime'
+import { formatDateToString, formatDate, formatDateTime } from '~/composables/useTaiwanTime'
 import { nextTick, ref, computed, watch, onMounted, onUnmounted } from 'vue'
 
 // ============================================
@@ -776,7 +863,8 @@ const fetchSchedules = async () => {
       return {
         id: schedule.rule_id || schedule.id,
         key: `${schedule.rule_id || schedule.id}-${weekday}-${startTime}-${schedule.date}`,
-        offering_name: schedule.offering_name || '-',
+        // 使用 title 或 offering_name（後端可能返回不同欄位名稱）
+        offering_name: schedule.title || schedule.offering_name || '-',
         teacher_name: schedule.teacher_name || '-',
         teacher_id: schedule.teacher_id,
         center_name: schedule.center_name || '-',
@@ -829,6 +917,23 @@ const displaySchedules = computed(() => {
 
   return result
 })
+
+// 取得某個星期幾的日期（格式：YYYY/MM/DD）
+const getDayDate = (weekday: number): string => {
+  const date = new Date(weekStart.value)
+  date.setDate(date.getDate() + (weekday - 1))
+  return formatDate(date)
+}
+
+// 取得某個星期幾的所有課程
+const getDaySchedules = (weekday: number) => {
+  return displaySchedules.value.filter((schedule: any) => schedule.weekday === weekday)
+}
+
+// 取得某個星期幾的課程數量
+const getDayScheduleCount = (weekday: number): number => {
+  return getDaySchedules(weekday).length
+}
 
 // 計算每個時段的重疊數量（基於過濾後的課程）
 const overlapCountMap = computed(() => {

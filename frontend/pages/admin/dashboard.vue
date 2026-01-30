@@ -177,8 +177,11 @@ const todayStats = ref({
 const upcomingSessions = ref<Array<{
   id: number
   time: string
+  courseId: number
   courseName: string
+  teacherId: number
   teacherName: string
+  roomId: number
   roomName: string
   minutesUntil: number
 }>>([])
@@ -216,8 +219,11 @@ const fetchTodayStats = async () => {
           upcomingList.push({
             id: session.id,
             time: startTime.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }),
+            courseId: session.offering?.id || 0,
             courseName: session.offering?.name || '未知課程',
+            teacherId: session.teacher?.id || 0,
             teacherName: session.teacher?.name || '未知老師',
+            roomId: session.room?.id || 0,
             roomName: session.room?.name || '未知教室',
             minutesUntil
           })
@@ -256,5 +262,6 @@ onMounted(async () => {
   await fetchTodayStats()
 })
 </script>
+
 
 

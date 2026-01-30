@@ -160,16 +160,19 @@ type TodaySessionResponse struct {
 
 // TodayOfferingResponse 今日課程響應
 type TodayOfferingResponse struct {
+	ID   uint   `json:"id"`
 	Name string `json:"name"`
 }
 
 // TodayTeacherResponse 今日老師響應
 type TodayTeacherResponse struct {
+	ID   uint   `json:"id"`
 	Name string `json:"name"`
 }
 
 // TodayRoomResponse 今日教室響應
 type TodayRoomResponse struct {
+	ID   uint   `json:"id"`
 	Name string `json:"name"`
 }
 
