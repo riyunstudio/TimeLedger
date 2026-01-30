@@ -9,10 +9,192 @@ import (
 	"timeLedger/app/repositories"
 )
 
+// TestScheduleService_HelperFunctions 測試輔助函數
+func TestScheduleService_HelperFunctions(t *testing.T) {
+	t.Run("splitTime_ValidFormat", func(t *testing.T) {
+		result := splitTime("14:30")
+		if len(result) != 2 {
+			t.Fatalf("Expected 2 parts, got %d", len(result))
+		}
+		if result[0] != 14 {
+			t.Errorf("Expected hour 14, got %d", result[0])
+		}
+		if result[1] != 30 {
+			t.Errorf("Expected minute 30, got %d", result[1])
+		}
+	})
+
+	t.Run("splitTime_EmptyString", func(t *testing.T) {
+		result := splitTime("")
+		if result != nil {
+			t.Error("Expected nil for empty string")
+		}
+	})
+
+	t.Run("splitTime_SinglePart", func(t *testing.T) {
+		result := splitTime("14")
+		if result != nil {
+			t.Error("Expected nil for single part")
+		}
+	})
+
+	t.Run("parseInt_ValidNumber", func(t *testing.T) {
+		result := parseInt("123")
+		if result != 123 {
+			t.Errorf("Expected 123, got %d", result)
+		}
+	})
+
+	t.Run("parseInt_EmptyString", func(t *testing.T) {
+		result := parseInt("")
+		if result != 0 {
+			t.Errorf("Expected 0 for empty string, got %d", result)
+		}
+	})
+
+	t.Run("parseInt_ComplexNumber", func(t *testing.T) {
+		// parseInt 解析數字字串，不處理特殊字元
+		// "09:00" 會被解析為 900（跳過冒號後解析數字）
+		result := parseInt("09:00")
+		if result != 900 {
+			t.Errorf("Expected 900 for '09:00' (parsing numeric parts), got %d", result)
+		}
+	})
+
+	t.Run("intToString_Zero", func(t *testing.T) {
+		result := intToString(0)
+		if result != "0" {
+			t.Errorf("Expected '0', got '%s'", result)
+		}
+	})
+
+	t.Run("intToString_MultiDigit", func(t *testing.T) {
+		result := intToString(12345)
+		if result != "12345" {
+			t.Errorf("Expected '12345', got '%s'", result)
+		}
+	})
+}
+
+// TestScheduleService_DeadlineCalculation 測試截止日計算
+func TestScheduleService_DeadlineCalculation(t *testing.T) {
+	t.Run("CalculateDeadline", func(t *testing.T) {
+		exceptionDate := time.Date(2026, 1, 25, 0, 0, 0, 0, time.UTC)
+		leadDays := 14
+
+		deadline := exceptionDate.AddDate(0, 0, -leadDays)
+		expected := time.Date(2026, 1, 11, 0, 0, 0, 0, time.UTC)
+
+		if !deadline.Equal(expected) {
+			t.Errorf("Expected deadline %v, got %v", expected, deadline)
+		}
+	})
+
+	t.Run("DaysRemaining_Positive", func(t *testing.T) {
+		// 使用未來日期測試
+		now := time.Date(2026, 1, 15, 12, 0, 0, 0, time.UTC)
+		exceptionDate := time.Date(2026, 2, 15, 0, 0, 0, 0, time.UTC)
+		leadDays := 14
+
+		deadline := exceptionDate.AddDate(0, 0, -leadDays)
+		daysRemaining := int(deadline.Sub(now).Hours() / 24)
+
+		if daysRemaining < 0 {
+			t.Errorf("Expected positive days remaining, got %d", daysRemaining)
+		}
+	})
+
+	t.Run("DaysRemaining_Negative", func(t *testing.T) {
+		now := time.Date(2026, 1, 20, 12, 0, 0, 0, time.UTC)
+		exceptionDate := time.Date(2026, 1, 25, 0, 0, 0, 0, time.UTC)
+		leadDays := 14
+
+		deadline := exceptionDate.AddDate(0, 0, -leadDays)
+		daysRemaining := int(deadline.Sub(now).Hours() / 24)
+
+		if daysRemaining >= 0 {
+			t.Errorf("Expected negative days remaining (past deadline), got %d", daysRemaining)
+		}
+	})
+}
+
+// TestScheduleService_UpdateModeConstants 測試更新模式常量
+func TestScheduleService_UpdateModeConstants(t *testing.T) {
+	t.Run("UpdateModeSingle_Value", func(t *testing.T) {
+		if UpdateModeSingle != "SINGLE" {
+			t.Errorf("Expected 'SINGLE', got '%s'", UpdateModeSingle)
+		}
+	})
+
+	t.Run("UpdateModeFuture_Value", func(t *testing.T) {
+		if UpdateModeFuture != "FUTURE" {
+			t.Errorf("Expected 'FUTURE', got '%s'", UpdateModeFuture)
+		}
+	})
+
+	t.Run("UpdateModeAll_Value", func(t *testing.T) {
+		if UpdateModeAll != "ALL" {
+			t.Errorf("Expected 'ALL', got '%s'", UpdateModeAll)
+		}
+	})
+}
+
+// TestScheduleRuleModel_EffectiveRange 測試規則有效範圍
+func TestScheduleRuleModel_EffectiveRange(t *testing.T) {
+	t.Run("WithinEffectiveRange", func(t *testing.T) {
+		ruleStart := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+		ruleEnd := time.Date(2026, 1, 31, 0, 0, 0, 0, time.UTC)
+		checkDate := time.Date(2026, 1, 15, 0, 0, 0, 0, time.UTC)
+
+		isWithin := !checkDate.Before(ruleStart) && !checkDate.After(ruleEnd)
+		if !isWithin {
+			t.Error("Date should be within effective range")
+		}
+	})
+
+	t.Run("BeforeEffectiveRange", func(t *testing.T) {
+		ruleStart := time.Date(2026, 1, 15, 0, 0, 0, 0, time.UTC)
+		ruleEnd := time.Date(2026, 1, 31, 0, 0, 0, 0, time.UTC)
+		checkDate := time.Date(2026, 1, 10, 0, 0, 0, 0, time.UTC)
+
+		isWithin := !checkDate.Before(ruleStart) && !checkDate.After(ruleEnd)
+		if isWithin {
+			t.Error("Date should NOT be within effective range")
+		}
+	})
+
+	t.Run("AfterEffectiveRange", func(t *testing.T) {
+		ruleStart := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+		ruleEnd := time.Date(2026, 1, 15, 0, 0, 0, 0, time.UTC)
+		checkDate := time.Date(2026, 1, 20, 0, 0, 0, 0, time.UTC)
+
+		isWithin := !checkDate.Before(ruleStart) && !checkDate.After(ruleEnd)
+		if isWithin {
+			t.Error("Date should NOT be within effective range")
+		}
+	})
+
+	t.Run("OpenEndedRange", func(t *testing.T) {
+		ruleStart := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+		var ruleEnd time.Time
+		checkDate := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
+
+		isWithin := true
+		if !ruleStart.IsZero() && checkDate.Before(ruleStart) {
+			isWithin = false
+		}
+		if !ruleEnd.IsZero() && checkDate.After(ruleEnd) {
+			isWithin = false
+		}
+
+		if !isWithin {
+			t.Error("Date should be within open-ended range")
+		}
+	})
+}
+
 // TestExpandRulesBatchFetchExceptions 測試 ExpandRules 的批次例外查詢優化
-// 驗證邏輯與原來 N+1 查詢方式一致
 func TestExpandRulesBatchFetchExceptions(t *testing.T) {
-	// 初始化測試環境（使用實際開發資料庫）
 	appInstance := setupTestApp(t)
 	if appInstance == nil {
 		return
@@ -21,7 +203,6 @@ func TestExpandRulesBatchFetchExceptions(t *testing.T) {
 	ctx := context.Background()
 	expansionSvc := NewScheduleExpansionService(appInstance)
 
-	// 取得測試用的規則資料
 	ruleRepo := repositories.NewScheduleRuleRepository(appInstance)
 	rules, err := ruleRepo.ListByCenterID(ctx, 1)
 	if err != nil || len(rules) == 0 {
@@ -29,19 +210,15 @@ func TestExpandRulesBatchFetchExceptions(t *testing.T) {
 		return
 	}
 
-	// 測試日期範圍（包含可能需要檢查例外的日期）
 	startDate := time.Date(2026, 1, 20, 0, 0, 0, 0, time.UTC)
 	endDate := time.Date(2026, 2, 20, 0, 0, 0, 0, time.UTC)
 
-	// 執行 ExpandRules（使用優化後的批次查詢）
 	schedules := expansionSvc.ExpandRules(ctx, rules, startDate, endDate, 1)
 
-	// 驗證結果不為空
 	if len(schedules) == 0 {
 		t.Log("No schedules generated in date range")
 	}
 
-	// 驗證每個 schedule 的基本欄位
 	for i, schedule := range schedules {
 		if schedule.RuleID == 0 {
 			t.Errorf("Schedule %d: RuleID should not be zero", i)
@@ -62,7 +239,6 @@ func TestExpandRulesBatchFetchExceptions(t *testing.T) {
 
 // TestScheduleExceptionRepositoryBatchFetch 測試 Repository 的批次查詢方法
 func TestScheduleExceptionRepositoryBatchFetch(t *testing.T) {
-	// 初始化測試環境
 	appInstance := setupTestApp(t)
 	if appInstance == nil {
 		return
@@ -71,7 +247,6 @@ func TestScheduleExceptionRepositoryBatchFetch(t *testing.T) {
 	ctx := context.Background()
 	exceptionRepo := repositories.NewScheduleExceptionRepository(appInstance)
 
-	// 取得測試用的規則資料
 	ruleRepo := repositories.NewScheduleRuleRepository(appInstance)
 	rules, err := ruleRepo.ListByCenterID(ctx, 1)
 	if err != nil || len(rules) == 0 {
@@ -79,39 +254,32 @@ func TestScheduleExceptionRepositoryBatchFetch(t *testing.T) {
 		return
 	}
 
-	// 收集規則 ID
 	ruleIDs := make([]uint, 0, len(rules))
 	for _, rule := range rules {
 		ruleIDs = append(ruleIDs, rule.ID)
 	}
 
-	// 測試日期範圍
 	startDate := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	endDate := time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC)
 
-	// 執行批次查詢
 	exceptionsMap, err := exceptionRepo.GetByRuleIDsAndDateRange(ctx, ruleIDs, startDate, endDate)
 	if err != nil {
 		t.Fatalf("Batch query failed: %v", err)
 	}
 
-	// 驗證結果結構
 	if exceptionsMap == nil {
 		t.Fatal("Exceptions map should not be nil")
 	}
 
-	// 驗證每個規則都有對應的 map
 	for _, ruleID := range ruleIDs {
 		if _, ok := exceptionsMap[ruleID]; !ok {
 			t.Logf("Rule %d has no exceptions in date range (this is expected)", ruleID)
-			// 確保即使沒有例外，該規則的 map 仍然存在
 			if exceptionsMap[ruleID] == nil {
 				exceptionsMap[ruleID] = make(map[string][]models.ScheduleException)
 			}
 		}
 	}
 
-	// 計算總例外數量
 	totalExceptions := 0
 	for _, dateMap := range exceptionsMap {
 		for _, exceptions := range dateMap {
@@ -124,7 +292,6 @@ func TestScheduleExceptionRepositoryBatchFetch(t *testing.T) {
 
 // TestExpandRulesWithExceptions 測試 ExpandRules 處理例外狀態的正確性
 func TestExpandRulesWithExceptions(t *testing.T) {
-	// 初始化測試環境
 	appInstance := setupTestApp(t)
 	if appInstance == nil {
 		return
@@ -140,16 +307,12 @@ func TestExpandRulesWithExceptions(t *testing.T) {
 		return
 	}
 
-	// 測試日期範圍
 	startDate := time.Date(2026, 1, 20, 0, 0, 0, 0, time.UTC)
 	endDate := time.Date(2026, 2, 20, 0, 0, 0, 0, time.UTC)
 
-	// 執行 ExpandRules
 	schedules := expansionSvc.ExpandRules(ctx, rules, startDate, endDate, 1)
 
-	// 驗證 HasException 欄位設置正確
 	for _, schedule := range schedules {
-		// HasException 應該與 ExceptionInfo 是否存在一致
 		if (schedule.ExceptionInfo != nil) != schedule.HasException {
 			t.Errorf("Schedule %d: HasException (%v) should match ExceptionInfo != nil (%v)",
 				schedule.RuleID, schedule.HasException, schedule.ExceptionInfo != nil)
