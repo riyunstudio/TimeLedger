@@ -130,7 +130,7 @@
 <script setup lang="ts">
 import type { ScheduleException } from '~/types'
 import { alertError } from '~/composables/useAlert'
-import { getTodayString, formatDateToString } from '~/composables/useTaiwanTime'
+import { getTodayString, formatDateToString, formatDate } from '~/composables/useTaiwanTime'
 
 interface ScheduleRuleData {
   id: number
@@ -269,12 +269,6 @@ const formatRuleDisplay = (rule: ScheduleRuleData): string => {
     : ''
 
   return `${rule.title} (${rule.weekday_text} ${rule.start_time}-${rule.end_time})${dateRange ? ' ' + dateRange : ''}`
-}
-
-const formatDate = (dateStr: string) => {
-  if (!dateStr) return '-'
-  const date = new Date(dateStr)
-  return date.toLocaleDateString('zh-TW')
 }
 
 const handleSubmit = async () => {

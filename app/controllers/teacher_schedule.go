@@ -14,24 +14,24 @@ import (
 // TeacherScheduleController 老師課表相關 API
 type TeacherScheduleController struct {
 	BaseController
-	app              *app.App
-	scheduleRuleRepo *repositories.ScheduleRuleRepository
-	scheduleQuery    services.ScheduleQueryService
-	membershipRepo   *repositories.CenterMembershipRepository
-	exceptionService services.ScheduleExceptionService
+	app               *app.App
+	scheduleRuleRepo  *repositories.ScheduleRuleRepository
+	scheduleQuery     services.ScheduleQueryService
+	membershipRepo    *repositories.CenterMembershipRepository
+	exceptionService  services.ScheduleExceptionService
 	recurrenceService services.ScheduleRecurrenceService
-	auditLogRepo     *repositories.AuditLogRepository
+	auditLogRepo      *repositories.AuditLogRepository
 }
 
 func NewTeacherScheduleController(app *app.App) *TeacherScheduleController {
 	return &TeacherScheduleController{
-		app:              app,
-		scheduleRuleRepo: repositories.NewScheduleRuleRepository(app),
-		scheduleQuery:    services.NewScheduleQueryService(app),
-		membershipRepo:   repositories.NewCenterMembershipRepository(app),
-		exceptionService: services.NewScheduleExceptionService(app),
+		app:               app,
+		scheduleRuleRepo:  repositories.NewScheduleRuleRepository(app),
+		scheduleQuery:     services.NewScheduleQueryService(app),
+		membershipRepo:    repositories.NewCenterMembershipRepository(app),
+		exceptionService:  services.NewScheduleExceptionService(app),
 		recurrenceService: services.NewScheduleRecurrenceService(app),
-		auditLogRepo:     repositories.NewAuditLogRepository(app),
+		auditLogRepo:      repositories.NewAuditLogRepository(app),
 	}
 }
 
@@ -43,7 +43,7 @@ func NewTeacherScheduleController(app *app.App) *TeacherScheduleController {
 // @Security BearerAuth
 // @Param from query string true "開始日期 (YYYY-MM-DD)"
 // @Param to query string true "結束日期 (YYYY-MM-DD)"
-// @Success 200 {object} global.ApiResponse{data=[]TeacherScheduleItem}
+// @Success 200 {object} global.ApiResponse{data=[]services.TeacherScheduleItem}
 // @Router /api/v1/teacher/me/schedule [get]
 func (ctl *TeacherScheduleController) GetSchedule(ctx *gin.Context) {
 	helper := NewContextHelper(ctx)
@@ -165,7 +165,7 @@ func (ctl *TeacherScheduleController) GetCenterScheduleRules(ctx *gin.Context) {
 // @Security BearerAuth
 // @Param start_date query string true "開始日期 (YYYY-MM-DD)"
 // @Param end_date query string true "結束日期 (YYYY-MM-DD)"
-// @Success 200 {object} global.ApiResponse{data=[]TeacherScheduleItem}
+// @Success 200 {object} global.ApiResponse{data=[]services.TeacherScheduleItem}
 // @Router /api/v1/teacher/schedules [get]
 func (ctl *TeacherScheduleController) GetSchedules(ctx *gin.Context) {
 	helper := NewContextHelper(ctx)

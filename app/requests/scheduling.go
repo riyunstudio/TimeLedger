@@ -43,9 +43,9 @@ type ReviewExceptionRequest struct {
 
 // ExpandRulesRequest 展開規則請求
 type ExpandRulesRequest struct {
-	RuleIDs   []uint    `json:"rule_ids"`
-	StartDate time.Time `json:"start_date" binding:"required"`
-	EndDate   time.Time `json:"end_date" binding:"required"`
+	RuleIDs   []uint   `json:"rule_ids"`
+	StartDate string   `json:"start_date" binding:"required,date_format"`
+	EndDate   string   `json:"end_date" binding:"required,date_format"`
 }
 
 // ValidateFullRequest 完整驗證請求
@@ -93,8 +93,8 @@ type UpdateRuleRequest struct {
 // DetectPhaseTransitionsRequest 偵測階段轉換請求
 type DetectPhaseTransitionsRequest struct {
 	OfferingID uint      `json:"offering_id" binding:"required"`
-	StartDate  time.Time `json:"start_date" binding:"required"`
-	EndDate    time.Time `json:"end_date" binding:"required"`
+	StartDate  string    `json:"start_date" binding:"required,date_format"`
+	EndDate    string    `json:"end_date" binding:"required,date_format"`
 }
 
 // CheckRuleLockStatusRequest 檢查規則鎖定狀態請求

@@ -68,7 +68,7 @@
             </div>
             <div>
               <h4 class="text-sm font-medium text-slate-300 mb-1">申請日期</h4>
-              <p class="text-slate-400">{{ formatDate(props.exception?.created_at) }}</p>
+              <p class="text-slate-400">{{ formatDateTime(props.exception?.created_at) }}</p>
             </div>
           </div>
 
@@ -101,6 +101,8 @@
 </template>
 
 <script setup lang="ts">
+import { formatDateTime } from '~/composables/useTaiwanTime'
+
 const props = defineProps<{
   exception: any
 }>()
@@ -155,17 +157,6 @@ const getStatusText = (status: string): string => {
     default:
       return status
   }
-}
-
-const formatDate = (dateStr: string): string => {
-  const date = new Date(dateStr)
-  return date.toLocaleDateString('zh-TW', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
 }
 
 const getOriginalTimeText = (exception: any): string => {

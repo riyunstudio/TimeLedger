@@ -1,6 +1,8 @@
 package controllers
 
 import (
+	"time"
+
 	"timeLedger/app"
 	"timeLedger/app/requests"
 	"timeLedger/app/services"
@@ -394,10 +396,22 @@ func (ctl *SchedulingController) ExpandRules(ctx *gin.Context) {
 		return
 	}
 
+	// 解析日期字串為 time.Time
+	startDate, err := time.Parse("2006-01-02", req.StartDate)
+	if err != nil {
+		helper.BadRequest("無效的開始日期格式，請使用 YYYY-MM-DD")
+		return
+	}
+	endDate, err := time.Parse("2006-01-02", req.EndDate)
+	if err != nil {
+		helper.BadRequest("無效的結束日期格式，請使用 YYYY-MM-DD")
+		return
+	}
+
 	svcReq := &services.ExpandRulesRequest{
 		RuleIDs:   req.RuleIDs,
-		StartDate: req.StartDate,
-		EndDate:   req.EndDate,
+		StartDate: startDate,
+		EndDate:   endDate,
 	}
 
 	schedules, err := ctl.scheduleSvc.ExpandRules(ctx.Request.Context(), centerID, svcReq)
@@ -633,7 +647,19 @@ func (ctl *SchedulingController) DetectPhaseTransitions(ctx *gin.Context) {
 		return
 	}
 
-	transitions, err := ctl.scheduleSvc.DetectPhaseTransitions(ctx.Request.Context(), centerID, req.OfferingID, req.StartDate, req.EndDate)
+	// 解析日期字串為 time.Time
+	startDate, err := time.Parse("2006-01-02", req.StartDate)
+	if err != nil {
+		helper.BadRequest("無效的開始日期格式，請使用 YYYY-MM-DD")
+		return
+	}
+	endDate, err := time.Parse("2006-01-02", req.EndDate)
+	if err != nil {
+		helper.BadRequest("無效的結束日期格式，請使用 YYYY-MM-DD")
+		return
+	}
+
+	transitions, err := ctl.scheduleSvc.DetectPhaseTransitions(ctx.Request.Context(), centerID, req.OfferingID, startDate, endDate)
 	if err != nil {
 		helper.InternalError(err.Error())
 		return

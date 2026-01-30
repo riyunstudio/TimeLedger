@@ -37,7 +37,7 @@
 ## Phase 5: 進階效能與架構美學 (Advanced Performance & Architecture)
 - [x] **課表展開深度快取**: 實施 `ExpandRules` 的 Redis 分層快取與主動失效機制。 <!-- id: 501 -->
 - [x] **DTO/Resource 層建立**: 導入 `Resource` 套件，完全隔離 DB Model 與 API 響應。 <!-- id: 502 -->
-- [ ] **AdminResource 終極解耦**: 將 Invitation 與 Teacher Note 移至專屬控制器。 <!-- id: 503 -->
+- [x] **AdminResource 終極解耦**: 已將 Invitation 移至專屬控制器，並引入 AdminTeacherResource。 <!-- id: 503 -->
 - [x] **Repository 代碼大掃除**: 移除子 Repo 中重複的標準 CRUD 代碼。 <!-- id: 504 -->
 
 ## Phase 6: 上線準備與生產穩定性 (Go-Live & Production)

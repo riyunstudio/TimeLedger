@@ -1,13 +1,24 @@
 <template>
   <div class="p-4 md:p-6 max-w-4xl mx-auto">
     <!-- Header -->
-    <div class="mb-8">
-      <h1 class="text-2xl md:text-3xl font-bold text-slate-100 mb-2">
-        🎁 邀請通知
-      </h1>
-      <p class="text-slate-400 text-sm md:text-base">
-        管理您收到的中心邀請
-      </p>
+    <div class="flex items-center justify-between mb-8">
+      <div>
+        <h1 class="text-2xl md:text-3xl font-bold text-slate-100 mb-2">
+          🎁 邀請通知
+        </h1>
+        <p class="text-slate-400 text-sm md:text-base">
+          管理您收到的中心邀請
+        </p>
+      </div>
+      <!-- 菜單按鈕 -->
+      <button
+        @click="sidebarStore.toggle()"
+        class="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
+      >
+        <svg class="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      </button>
     </div>
 
     <!-- 篩選標籤 -->
@@ -144,6 +155,11 @@
       @confirm="handleConfirm"
       @cancel="showConfirmDialog = false"
     />
+
+    <TeacherSidebar
+      v-if="sidebarStore.isOpen.value"
+      @close="sidebarStore.close()"
+    />
   </div>
 </template>
 
@@ -159,6 +175,7 @@ definePageMeta({
 
 const config = useRuntimeConfig()
 const { success, error } = useToast()
+const sidebarStore = useSidebar()
 
 const API_BASE = config.public.apiBase
 

@@ -465,11 +465,12 @@ export const useTeacherStore = defineStore('teacher', () => {
     const api = useApi()
 
     if (data.item_type === 'PERSONAL_EVENT') {
-      await api.put(`/teacher/me/personal-events/${data.item_id}`, {
+      await api.patch(`/teacher/me/personal-events/${data.item_id}`, {
         start_at: `${data.new_date}T${data.new_start_time}:00`,
         end_at: `${data.new_date}T${data.new_end_time}:00`,
         update_mode: data.update_mode || 'SINGLE',
       })
+
     } else {
       await api.post(`/teacher/scheduling/edit-recurring`, {
         rule_id: data.item_id,

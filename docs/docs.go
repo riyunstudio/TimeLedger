@@ -15,6 +15,213 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/admin/admins": {
+            "get": {
+                "description": "取得目前中心的所有管理員列表",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - Management"
+                ],
+                "summary": "取得管理員列表",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/services.AdminListItem"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "直接建立管理員帳號（僅 OWNER 可執行）",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - Management"
+                ],
+                "summary": "建立管理員",
+                "parameters": [
+                    {
+                        "description": "管理員資料",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.CreateAdminRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/admins/change-role": {
+            "post": {
+                "description": "修改指定管理員的角色（僅 OWNER 可執行，且不能修改自己）",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - Management"
+                ],
+                "summary": "修改管理員角色",
+                "parameters": [
+                    {
+                        "description": "角色變更請求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.ChangeAdminRoleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/admins/reset-password": {
+            "post": {
+                "description": "重設指定管理員的密碼（僅 OWNER 可執行）",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - Management"
+                ],
+                "summary": "重設管理員密碼",
+                "parameters": [
+                    {
+                        "description": "密碼重設請求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.ResetAdminPasswordRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/admins/toggle-status": {
+            "post": {
+                "description": "停用或啟用指定的管理員帳號（僅 OWNER 可執行）",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - Management"
+                ],
+                "summary": "停用/啟用管理員",
+                "parameters": [
+                    {
+                        "description": "狀態變更請求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.ToggleAdminStatusRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/me/change-password": {
+            "post": {
+                "description": "修改目前登入管理員的密碼",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - Profile"
+                ],
+                "summary": "修改管理員密碼",
+                "parameters": [
+                    {
+                        "description": "密碼修改請求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/services.ChangePasswordRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/admin/me/line-binding": {
             "get": {
                 "description": "取得目前管理員的 LINE 綁定狀態",
@@ -125,6 +332,335 @@ const docTemplate = `{
                 }
             }
         },
+        "/admin/me/profile": {
+            "get": {
+                "description": "取得目前登入管理員的個人資料",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - Profile"
+                ],
+                "summary": "取得管理員個人資料",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.AdminUser"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/notifications/queue-stats": {
+            "get": {
+                "description": "取得通知佇列的統計資訊",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - Notifications"
+                ],
+                "summary": "取得通知佇列統計",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/global.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/smart-matching/alternatives": {
+            "post": {
+                "description": "取得替代時段建議",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Smart Matching"
+                ],
+                "summary": "取得替代時段建議",
+                "parameters": [
+                    {
+                        "description": "時段資訊",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.GetAlternativeSlotsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/global.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/smart-matching/matches": {
+            "post": {
+                "description": "根據條件搜尋可配合的老師",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Smart Matching"
+                ],
+                "summary": "智慧媒合搜尋",
+                "parameters": [
+                    {
+                        "description": "搜尋條件",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.FindMatchesRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/global.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/smart-matching/suggestions": {
+            "get": {
+                "description": "取得搜尋建議關鍵字",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Smart Matching"
+                ],
+                "summary": "取得搜尋建議",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "搜尋關鍵字",
+                        "name": "q",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/global.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/smart-matching/talent/invite": {
+            "post": {
+                "description": "邀請老師加入人才庫",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Smart Matching"
+                ],
+                "summary": "邀請人才合作",
+                "parameters": [
+                    {
+                        "description": "邀請資訊",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.InviteTalentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.InviteTalentResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/smart-matching/talent/search": {
+            "get": {
+                "description": "搜尋符合條件的人才",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Smart Matching"
+                ],
+                "summary": "人才庫搜尋",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "縣市",
+                        "name": "city",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "區域",
+                        "name": "district",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "關鍵字",
+                        "name": "keyword",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "技能（逗號分隔）",
+                        "name": "skills",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "標籤（逗號分隔）",
+                        "name": "hashtags",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "頁碼",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每頁筆數",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/global.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/smart-matching/talent/stats": {
+            "get": {
+                "description": "取得人才庫的統計資訊",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Smart Matching"
+                ],
+                "summary": "取得人才庫統計資料",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "縣市",
+                        "name": "city",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "區域",
+                        "name": "district",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.TalentStatsResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/smart-matching/teachers/{teacher_id}/sessions": {
+            "get": {
+                "description": "取得指定教師的課表",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Smart Matching"
+                ],
+                "summary": "取得教師課表",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "教師ID",
+                        "name": "teacher_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "開始日期",
+                        "name": "start_date",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "結束日期",
+                        "name": "end_date",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.TeacherSessionResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/admin/centers": {
             "get": {
                 "security": [
@@ -156,7 +692,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/models.Center"
+                                                "$ref": "#/definitions/resources.CenterResponse"
                                             }
                                         }
                                     }
@@ -205,7 +741,125 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/models.Center"
+                                            "$ref": "#/definitions/resources.CenterResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/centers/{id}/holidays": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "取得假日列表",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Center ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "開始日期",
+                        "name": "start_date",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "結束日期",
+                        "name": "end_date",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/global.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/models.CenterHoliday"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "新增假日",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Center ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "假日資訊",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/services.CreateHolidayRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/global.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.CenterHoliday"
                                         }
                                     }
                                 }
@@ -246,7 +900,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/controllers.BulkCreateHolidaysRequest"
+                            "$ref": "#/definitions/services.BulkCreateHolidaysRequest"
                         }
                     }
                 ],
@@ -262,7 +916,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/controllers.BulkCreateHolidaysResponse"
+                                            "$ref": "#/definitions/services.BulkCreateHolidaysResponse"
                                         }
                                     }
                                 }
@@ -272,7 +926,114 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/admin/centers/{id}/holidays/{holiday_id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "刪除假日",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Center ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Holiday ID",
+                        "name": "holiday_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/global.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/admin/centers/{id}/invitations": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - Invitations"
+                ],
+                "summary": "取得邀請列表",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Center ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "篩選狀態 (PENDING/ACCEPTED/DECLINED/EXPIRED)",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "頁碼",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每頁筆數",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/global.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/controllers.PaginationResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
             "post": {
                 "security": [
                     {
@@ -303,7 +1064,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/controllers.InviteTeacherRequest"
+                            "$ref": "#/definitions/services.InviteTeacherRequest"
                         }
                     }
                 ],
@@ -320,6 +1081,162 @@ const docTemplate = `{
                                     "properties": {
                                         "data": {
                                             "$ref": "#/definitions/models.CenterInvitation"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/centers/{id}/invitations/generate-link": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - Invitations"
+                ],
+                "summary": "產生邀請連結",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Center ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "邀請資訊",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/services.GenerateInvitationLinkRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/global.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/services.InvitationLinkResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/centers/{id}/invitations/links": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - Invitations"
+                ],
+                "summary": "取得邀請連結列表",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Center ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/global.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/services.InvitationLinkResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/centers/{id}/invitations/stats": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - Invitations"
+                ],
+                "summary": "取得邀請統計資料",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Center ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/global.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/controllers.InvitationStatsResponse"
                                         }
                                     }
                                 }
@@ -372,8 +1289,8 @@ const docTemplate = `{
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "OK",
+                    "201": {
+                        "description": "Created",
                         "schema": {
                             "allOf": [
                                 {
@@ -424,7 +1341,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/models.Course"
+                                                "$ref": "#/definitions/resources.CourseResponse"
                                             }
                                         }
                                     }
@@ -457,7 +1374,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/controllers.CreateCourseRequest"
+                            "$ref": "#/definitions/services.CreateCourseRequest"
                         }
                     }
                 ],
@@ -473,7 +1390,49 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/models.Course"
+                                            "$ref": "#/definitions/resources.CourseResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/courses/active": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "取得已啟用的課程列表",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/global.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/resources.CourseResponse"
+                                            }
                                         }
                                     }
                                 }
@@ -514,7 +1473,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/controllers.UpdateCourseRequest"
+                            "$ref": "#/definitions/services.UpdateCourseRequest"
                         }
                     }
                 ],
@@ -530,7 +1489,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/models.Course"
+                                            "$ref": "#/definitions/resources.CourseResponse"
                                         }
                                     }
                                 }
@@ -574,6 +1533,51 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/admin/courses/{course_id}/toggle-active": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "切換課程啟用狀態",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Course ID",
+                        "name": "course_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "啟用狀態",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/services.ToggleActiveRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/global.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/admin/dashboard/today-summary": {
             "get": {
                 "security": [
@@ -588,9 +1592,9 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Admin - Scheduling"
+                    "Admin - Dashboard"
                 ],
-                "summary": "獲取今日課表摘要統計",
+                "summary": "取得管理員後台首頁的今日課表摘要",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -603,7 +1607,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/controllers.TodaySummaryResponse"
+                                            "$ref": "#/definitions/services.TodaySummary"
                                         }
                                     }
                                 }
@@ -613,8 +1617,8 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/admin/exceptions/all": {
-            "get": {
+        "/api/v1/admin/invitations/links/{id}": {
+            "delete": {
                 "security": [
                     {
                         "BearerAuth": []
@@ -627,79 +1631,23 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Admin - Scheduling"
+                    "Admin - Invitations"
                 ],
-                "summary": "取得所有例外申請",
+                "summary": "撤回邀請連結",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "狀態篩選：PENDING, APPROVED, REJECTED, REVOKED",
-                        "name": "status",
-                        "in": "query"
+                        "type": "integer",
+                        "description": "Invitation ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/global.ApiResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/models.ScheduleException"
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/admin/exceptions/pending": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Admin - Scheduling"
-                ],
-                "summary": "獲取中心所有待審核的例外申請",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/global.ApiResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/models.ScheduleException"
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/global.ApiResponse"
                         }
                     }
                 }
@@ -839,7 +1787,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/controllers.GetOfferingsResponse"
+                                            "$ref": "#/definitions/services.ListOfferingsOutput"
                                         }
                                     }
                                 }
@@ -876,6 +1824,45 @@ const docTemplate = `{
                     }
                 ],
                 "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/global.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.Offering"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/offerings/active": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "取得啟用的班別列表",
+                "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
@@ -887,7 +1874,10 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/models.Offering"
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/models.Offering"
+                                            }
                                         }
                                     }
                                 }
@@ -979,6 +1969,51 @@ const docTemplate = `{
                     }
                 ],
                 "responses": {
+                    "204": {
+                        "description": "No Content",
+                        "schema": {
+                            "$ref": "#/definitions/global.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/offerings/{offering_id}/toggle-active": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "切換班別啟用狀態",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Offering ID",
+                        "name": "offering_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "狀態資訊",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.ToggleActiveRequest"
+                        }
+                    }
+                ],
+                "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
@@ -1019,7 +2054,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/models.Room"
+                                                "$ref": "#/definitions/resources.RoomResponse"
                                             }
                                         }
                                     }
@@ -1052,7 +2087,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/controllers.CreateRoomRequest"
+                            "$ref": "#/definitions/services.CreateRoomRequest"
                         }
                     }
                 ],
@@ -1068,7 +2103,49 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/models.Room"
+                                            "$ref": "#/definitions/resources.RoomResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/rooms/active": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "取得已啟用的教室列表",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/global.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/resources.RoomResponse"
+                                            }
                                         }
                                     }
                                 }
@@ -1109,7 +2186,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/controllers.UpdateRoomRequest"
+                            "$ref": "#/definitions/services.UpdateRoomRequest"
                         }
                     }
                 ],
@@ -1125,7 +2202,839 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/models.Room"
+                                            "$ref": "#/definitions/resources.RoomResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/rooms/{room_id}/toggle-active": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "切換教室啟用狀態",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Room ID",
+                        "name": "room_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "啟用狀態",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/services.ToggleActiveRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/global.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/scheduling/check-overlap": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - Scheduling"
+                ],
+                "summary": "檢查課程時間是否與現有排程衝突",
+                "parameters": [
+                    {
+                        "description": "衝突檢查請求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/requests.CheckOverlapRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/global.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/services.OverlapCheckResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/scheduling/check-room-buffer": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - Scheduling"
+                ],
+                "summary": "檢查教室的緩衝時間是否足夠",
+                "parameters": [
+                    {
+                        "description": "緩衝檢查請求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/requests.CheckBufferRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/global.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/services.BufferCheckResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/scheduling/check-teacher-buffer": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - Scheduling"
+                ],
+                "summary": "檢查老師的緩衝時間是否足夠",
+                "parameters": [
+                    {
+                        "description": "緩衝檢查請求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/requests.CheckBufferRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/global.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/services.BufferCheckResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/scheduling/exceptions": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - Scheduling"
+                ],
+                "summary": "取得指定日期範圍內的所有例外申請",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "開始日期 (YYYY-MM-DD)",
+                        "name": "start_date",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "結束日期 (YYYY-MM-DD)",
+                        "name": "end_date",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/global.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/models.ScheduleException"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/scheduling/exceptions/all": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - Scheduling"
+                ],
+                "summary": "取得所有例外申請（可依狀態篩選）",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "狀態篩選：PENDING, APPROVED, REJECTED, REVOKED",
+                        "name": "status",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/global.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/models.ScheduleException"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/scheduling/exceptions/pending": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - Scheduling"
+                ],
+                "summary": "取得所有待審核的例外申請",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/global.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/models.ScheduleException"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/scheduling/exceptions/{id}/review": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - Scheduling"
+                ],
+                "summary": "審核例外申請（核准/拒絕）",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "例外ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "審核資訊",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/requests.ReviewExceptionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/global.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/scheduling/expand": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - Scheduling"
+                ],
+                "summary": "展開排課規則為具體課程場次",
+                "parameters": [
+                    {
+                        "description": "展開請求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/requests.ExpandRulesRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/global.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/services.ExpandedSchedule"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/scheduling/phase-transitions": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - Scheduling"
+                ],
+                "summary": "偵測課程序列中的階段轉換點",
+                "parameters": [
+                    {
+                        "description": "偵測請求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/requests.DetectPhaseTransitionsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/global.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/services.PhaseTransition"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/scheduling/rules": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - Scheduling"
+                ],
+                "summary": "取得中心的所有排課規則",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/global.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/models.ScheduleRule"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - Scheduling"
+                ],
+                "summary": "建立新的排課規則",
+                "parameters": [
+                    {
+                        "description": "規則資訊",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/requests.CreateRuleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/global.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/models.ScheduleRule"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/scheduling/rules/check-lock": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - Scheduling"
+                ],
+                "summary": "檢查規則是否已超過異動截止日",
+                "parameters": [
+                    {
+                        "description": "檢查請求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/requests.CheckRuleLockStatusRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/global.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/services.RuleLockStatus"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/scheduling/rules/{id}": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - Scheduling"
+                ],
+                "summary": "更新排課規則",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "規則ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "規則資訊",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/requests.UpdateRuleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/global.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/models.ScheduleRule"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - Scheduling"
+                ],
+                "summary": "刪除排課規則",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "規則ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/global.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/scheduling/rules/{id}/exceptions": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - Scheduling"
+                ],
+                "summary": "取得指定規則的所有例外申請",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "規則ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/global.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/models.ScheduleException"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/scheduling/validate": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - Scheduling"
+                ],
+                "summary": "完整驗證排課（硬衝突 + 緩衝檢查）",
+                "parameters": [
+                    {
+                        "description": "完整驗證請求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/requests.ValidateFullRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/global.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/services.FullValidationResult"
                                         }
                                     }
                                 }
@@ -1166,7 +3075,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/controllers.TeacherResponse"
+                                                "$ref": "#/definitions/resources.AdminTeacherResponse"
                                             }
                                         }
                                     }
@@ -1215,7 +3124,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/controllers.CenterTeacherNoteResponse"
+                                            "$ref": "#/definitions/resources.TeacherNoteResponse"
                                         }
                                     }
                                 }
@@ -1270,7 +3179,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/controllers.CenterTeacherNoteResponse"
+                                            "$ref": "#/definitions/resources.TeacherNoteResponse"
                                         }
                                     }
                                 }
@@ -1302,6 +3211,432 @@ const docTemplate = `{
                         "name": "teacher_id",
                         "in": "path",
                         "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/global.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/templates": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "取得課表模板列表",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/global.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/models.TimetableTemplate"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "新增課表模板",
+                "parameters": [
+                    {
+                        "description": "模板資訊",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.CreateTemplateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/global.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.TimetableTemplate"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/templates/{template_id}": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "更新課表模板",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Template ID",
+                        "name": "template_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "模板資訊",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.UpdateTemplateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/global.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.TimetableTemplate"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "刪除課表模板",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Template ID",
+                        "name": "template_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/global.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/templates/{template_id}/apply": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "套用課表模板",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Template ID",
+                        "name": "template_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "套用資訊",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.ApplyTemplateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/global.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/templates/{template_id}/cells": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "取得模板中的格子",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Template ID",
+                        "name": "template_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/global.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/models.TimetableCell"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "新增模板中的格子",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Template ID",
+                        "name": "template_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "格子資訊",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/controllers.CreateCellRequest"
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/global.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/models.TimetableCell"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/templates/{template_id}/cells/{cell_id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "刪除格子",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Template ID",
+                        "name": "template_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Cell ID",
+                        "name": "cell_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/global.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/templates/{template_id}/validate-apply": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "驗證套用模板",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Template ID",
+                        "name": "template_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "驗證資訊",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.ValidateApplyTemplateRequest"
+                        }
                     }
                 ],
                 "responses": {
@@ -1470,6 +3805,34 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/calendar/subscribe/{token}.ics": {
+            "get": {
+                "produces": [
+                    "text/calendar"
+                ],
+                "tags": [
+                    "Export"
+                ],
+                "summary": "透過 Token 訂閱課表",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "訂閱 Token",
+                        "name": "token",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "ICS 檔案",
+                        "schema": {
+                            "type": "file"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/geo/cities": {
             "get": {
                 "security": [
@@ -1613,6 +3976,88 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/invitations/{token}": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Invitations"
+                ],
+                "summary": "取得公開邀請資訊",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Invitation Token",
+                        "name": "token",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/global.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/resources.PublicInvitationInfo"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/invitations/{token}/accept": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Invitations"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Invitation Token",
+                        "name": "token",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "LINE ID Token",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.AcceptInvitationByLinkRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/global.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/teacher/exceptions": {
             "get": {
                 "security": [
@@ -1734,6 +4179,128 @@ const docTemplate = `{
                         "description": "Exception ID",
                         "name": "id",
                         "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/global.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/teacher/me/backgrounds": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Teacher - Export"
+                ],
+                "summary": "取得自訂背景圖列表",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/global.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Teacher - Export"
+                ],
+                "summary": "上傳自訂背景圖",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "背景圖片",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/global.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/controllers.UploadBackgroundResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Teacher - Export"
+                ],
+                "summary": "刪除自訂背景圖",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "圖片路徑",
+                        "name": "path",
+                        "in": "query",
                         "required": true
                     }
                 ],
@@ -1930,6 +4497,54 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/teacher/me/certificates/upload": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Teacher"
+                ],
+                "summary": "上傳證照檔案",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "證照檔案",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/global.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/controllers.UploadFileResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/teacher/me/certificates/{id}": {
             "delete": {
                 "security": [
@@ -1966,6 +4581,186 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/teacher/me/exceptions": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Teacher - Scheduling"
+                ],
+                "summary": "建立新的例外申請",
+                "parameters": [
+                    {
+                        "description": "例外資訊",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/requests.CreateExceptionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/global.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.ScheduleException"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/teacher/me/invitations": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Teacher - Invitations"
+                ],
+                "summary": "取得老師的邀請列表",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "篩選狀態 (PENDING/ACCEPTED/DECLINED/EXPIRED)",
+                        "name": "status",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/global.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/resources.InvitationResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/teacher/me/invitations/pending-count": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Teacher - Invitations"
+                ],
+                "summary": "取得待處理邀請數量",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/global.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                                "type": "integer"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/teacher/me/invitations/respond": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Teacher - Invitations"
+                ],
+                "summary": "老師回應邀請",
+                "parameters": [
+                    {
+                        "description": "回應請求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/services.RespondToInvitationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/global.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/teacher/me/personal-events": {
             "get": {
                 "security": [
@@ -1980,9 +4775,23 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Teacher"
+                    "Teacher - Events"
                 ],
                 "summary": "取得老師個人行程列表",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "開始日期 (YYYY-MM-DD)",
+                        "name": "from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "結束日期 (YYYY-MM-DD)",
+                        "name": "to",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -2020,7 +4829,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Teacher"
+                    "Teacher - Events"
                 ],
                 "summary": "新增老師個人行程",
                 "parameters": [
@@ -2030,7 +4839,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/controllers.CreatePersonalEventRequest"
+                            "$ref": "#/definitions/requests.CreatePersonalEventRequest"
                         }
                     }
                 ],
@@ -2082,7 +4891,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Teacher"
+                    "Teacher - Events"
                 ],
                 "summary": "刪除老師個人行程",
                 "parameters": [
@@ -2116,7 +4925,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Teacher"
+                    "Teacher - Events"
                 ],
                 "summary": "更新老師個人行程",
                 "parameters": [
@@ -2133,7 +4942,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/controllers.UpdatePersonalEventRequest"
+                            "$ref": "#/definitions/requests.UpdatePersonalEventRequest"
                         }
                     }
                 ],
@@ -2149,11 +4958,102 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/controllers.UpdatePersonalEventResponse"
+                                            "$ref": "#/definitions/requests.UpdatePersonalEventResponse"
                                         }
                                     }
                                 }
                             ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/teacher/me/personal-events/{id}/note": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Teacher - Events"
+                ],
+                "summary": "取得個人行程備註",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "行程ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/global.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/requests.PersonalEventNoteResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Teacher - Events"
+                ],
+                "summary": "更新個人行程備註",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "行程ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "備註內容",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/requests.UpdatePersonalEventNoteRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/global.ApiResponse"
                         }
                     }
                 }
@@ -2293,12 +5193,177 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/controllers.TeacherScheduleItem"
+                                                "$ref": "#/definitions/services.TeacherScheduleItem"
                                             }
                                         }
                                     }
                                 }
                             ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/teacher/me/schedule.ics": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "text/calendar"
+                ],
+                "tags": [
+                    "Teacher - Export"
+                ],
+                "summary": "匯出課表為 iCalendar 格式",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "開始日期 (YYYY-MM-DD)",
+                        "name": "start_date",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "結束日期 (YYYY-MM-DD)",
+                        "name": "end_date",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "ICS 檔案",
+                        "schema": {
+                            "type": "file"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/teacher/me/schedule/image": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "image/jpeg"
+                ],
+                "tags": [
+                    "Teacher - Export"
+                ],
+                "summary": "匯出課表為圖片",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "開始日期 (YYYY-MM-DD)",
+                        "name": "start_date",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "結束日期 (YYYY-MM-DD)",
+                        "name": "end_date",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "自訂背景圖路徑",
+                        "name": "background",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "JPEG 圖片",
+                        "schema": {
+                            "type": "file"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/teacher/me/schedule/subscription": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Teacher - Export"
+                ],
+                "summary": "建立課表訂閱連結",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/global.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/services.SubscriptionInfo"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Teacher - Export"
+                ],
+                "summary": "取消課表訂閱",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "訂閱 Token",
+                        "name": "token",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/global.ApiResponse"
                         }
                     }
                 }
@@ -2485,7 +5550,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/teacher/sessions/note": {
+        "/api/v1/teacher/schedules": {
             "get": {
                 "security": [
                     {
@@ -2500,6 +5565,228 @@ const docTemplate = `{
                 ],
                 "tags": [
                     "Teacher"
+                ],
+                "summary": "取得老師的課表",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "開始日期 (YYYY-MM-DD)",
+                        "name": "start_date",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "結束日期 (YYYY-MM-DD)",
+                        "name": "end_date",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/global.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/services.TeacherScheduleItem"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/teacher/scheduling/check-rule-lock": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Teacher"
+                ],
+                "summary": "檢查老師規則鎖定狀態",
+                "parameters": [
+                    {
+                        "description": "檢查規則鎖定請求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.CheckTeacherRuleLockRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/global.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/controllers.CheckTeacherRuleLockResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/teacher/scheduling/delete-recurring": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Teacher"
+                ],
+                "summary": "刪除循環排課",
+                "parameters": [
+                    {
+                        "description": "刪除循環排課請求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.DeleteRecurringScheduleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/global.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/teacher/scheduling/edit-recurring": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Teacher"
+                ],
+                "summary": "編輯循環排課",
+                "parameters": [
+                    {
+                        "description": "編輯循環排課請求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/services.RecurrenceEditRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/global.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/teacher/scheduling/preview-recurrence-edit": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Teacher"
+                ],
+                "summary": "預覽循環編輯影響範圍",
+                "parameters": [
+                    {
+                        "description": "預覽循環編輯請求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.PreviewRecurrenceEditRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/global.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/teacher/sessions/note": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Teacher - Sessions"
                 ],
                 "summary": "取得課堂筆記",
                 "parameters": [
@@ -2552,7 +5839,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Teacher"
+                    "Teacher - Sessions"
                 ],
                 "summary": "新增或更新課堂筆記",
                 "parameters": [
@@ -2619,7 +5906,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/controllers.TeacherResponse"
+                                                "$ref": "#/definitions/resources.AdminTeacherResponse"
                                             }
                                         }
                                     }
@@ -2651,6 +5938,178 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Teacher ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/global.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/notifications": {
+            "get": {
+                "description": "取得目前使用者的通知列表",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "取得通知列表",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "每頁筆數",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "偏移量",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/global.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/notifications/read-all": {
+            "post": {
+                "description": "將所有通知標記為已讀",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "標記所有通知為已讀",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/global.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/notifications/test": {
+            "post": {
+                "description": "發送一條測試通知給目前使用者",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "發送測試通知",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/global.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/notifications/token": {
+            "post": {
+                "description": "設定老師的 LINE Notify Token",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "設定通知 Token",
+                "parameters": [
+                    {
+                        "description": "Token 資訊",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.TeacherNotifyTokenRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/global.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/notifications/unread-count": {
+            "get": {
+                "description": "取得目前使用者的未讀通知數量",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "取得未讀通知數量",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/global.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/notifications/{id}/read": {
+            "post": {
+                "description": "將指定通知標記為已讀",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "標記通知為已讀",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "通知ID",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -2821,6 +6280,17 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "controllers.AcceptInvitationByLinkRequest": {
+            "type": "object",
+            "required": [
+                "line_user_id"
+            ],
+            "properties": {
+                "line_user_id": {
+                    "type": "string"
+                }
+            }
+        },
         "controllers.AdminLoginRequest": {
             "type": "object",
             "required": [
@@ -2836,59 +6306,97 @@ const docTemplate = `{
                 }
             }
         },
-        "controllers.BulkCreateHolidaysRequest": {
+        "controllers.ApplyTemplateRequest": {
             "type": "object",
             "required": [
-                "holidays"
+                "end_date",
+                "offering_id",
+                "start_date",
+                "weekdays"
             ],
             "properties": {
-                "holidays": {
+                "duration": {
+                    "type": "integer"
+                },
+                "end_date": {
+                    "type": "string"
+                },
+                "offering_id": {
+                    "type": "integer"
+                },
+                "override_buffer": {
+                    "type": "boolean"
+                },
+                "start_date": {
+                    "type": "string"
+                },
+                "weekdays": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/controllers.HolidayItem"
+                        "type": "integer"
                     }
                 }
             }
         },
-        "controllers.BulkCreateHolidaysResponse": {
+        "controllers.ChangeAdminRoleRequest": {
             "type": "object",
+            "required": [
+                "new_role",
+                "target_admin_id"
+            ],
             "properties": {
-                "holidays": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.CenterHoliday"
-                    }
+                "new_role": {
+                    "type": "string",
+                    "enum": [
+                        "ADMIN",
+                        "STAFF",
+                        "OWNER"
+                    ]
                 },
-                "total_created": {
-                    "type": "integer"
-                },
-                "total_requested": {
-                    "type": "integer"
-                },
-                "total_skipped": {
+                "target_admin_id": {
                     "type": "integer"
                 }
             }
         },
-        "controllers.CenterTeacherNoteResponse": {
+        "controllers.CheckTeacherRuleLockRequest": {
+            "type": "object",
+            "required": [
+                "exception_date",
+                "rule_id"
+            ],
+            "properties": {
+                "exception_date": {
+                    "type": "string"
+                },
+                "rule_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "controllers.CheckTeacherRuleLockResponse": {
             "type": "object",
             "properties": {
-                "created_at": {
+                "days_remaining": {
+                    "type": "integer"
+                },
+                "deadline": {
                     "type": "string"
                 },
-                "id": {
-                    "type": "integer"
+                "is_locked": {
+                    "type": "boolean"
                 },
-                "internal_note": {
+                "lock_reason": {
                     "type": "string"
-                },
-                "rating": {
+                }
+            }
+        },
+        "controllers.CityDistributionItem": {
+            "type": "object",
+            "properties": {
+                "count": {
                     "type": "integer"
                 },
-                "teacher_id": {
-                    "type": "integer"
-                },
-                "updated_at": {
+                "name": {
                     "type": "string"
                 }
             }
@@ -2920,6 +6428,60 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "rules_copied": {
+                    "type": "integer"
+                }
+            }
+        },
+        "controllers.CreateAdminRequest": {
+            "type": "object",
+            "required": [
+                "email",
+                "name",
+                "password",
+                "role"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 1
+                },
+                "password": {
+                    "type": "string",
+                    "minLength": 6
+                },
+                "role": {
+                    "type": "string",
+                    "enum": [
+                        "ADMIN",
+                        "STAFF",
+                        "OWNER"
+                    ]
+                }
+            }
+        },
+        "controllers.CreateCellRequest": {
+            "type": "object",
+            "properties": {
+                "col_no": {
+                    "type": "integer"
+                },
+                "end_time": {
+                    "type": "string"
+                },
+                "room_id": {
+                    "type": "integer"
+                },
+                "row_no": {
+                    "type": "integer"
+                },
+                "start_time": {
+                    "type": "string"
+                },
+                "teacher_id": {
                     "type": "integer"
                 }
             }
@@ -2961,33 +6523,6 @@ const docTemplate = `{
                 }
             }
         },
-        "controllers.CreateCourseRequest": {
-            "type": "object",
-            "required": [
-                "color_hex",
-                "duration",
-                "name"
-            ],
-            "properties": {
-                "color_hex": {
-                    "type": "string"
-                },
-                "duration": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "room_buffer_min": {
-                    "type": "integer",
-                    "minimum": 0
-                },
-                "teacher_buffer_min": {
-                    "type": "integer",
-                    "minimum": 0
-                }
-            }
-        },
         "controllers.CreateHashtagRequest": {
             "type": "object",
             "required": [
@@ -3019,49 +6554,6 @@ const docTemplate = `{
                 }
             }
         },
-        "controllers.CreatePersonalEventRequest": {
-            "type": "object",
-            "required": [
-                "end_at",
-                "start_at",
-                "title"
-            ],
-            "properties": {
-                "color_hex": {
-                    "type": "string"
-                },
-                "end_at": {
-                    "type": "string"
-                },
-                "is_all_day": {
-                    "type": "boolean"
-                },
-                "recurrence_rule": {
-                    "$ref": "#/definitions/models.RecurrenceRule"
-                },
-                "start_at": {
-                    "type": "string"
-                },
-                "title": {
-                    "type": "string"
-                }
-            }
-        },
-        "controllers.CreateRoomRequest": {
-            "type": "object",
-            "required": [
-                "capacity",
-                "name"
-            ],
-            "properties": {
-                "capacity": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
         "controllers.CreateSkillRequest": {
             "type": "object",
             "required": [
@@ -3086,54 +6578,165 @@ const docTemplate = `{
                 }
             }
         },
-        "controllers.GetOfferingsResponse": {
-            "type": "object",
-            "properties": {
-                "offerings": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.Offering"
-                    }
-                },
-                "pagination": {
-                    "$ref": "#/definitions/global.Pagination"
-                }
-            }
-        },
-        "controllers.HolidayItem": {
+        "controllers.CreateTemplateRequest": {
             "type": "object",
             "required": [
-                "date",
                 "name"
             ],
             "properties": {
-                "date": {
+                "name": {
                     "type": "string"
                 },
-                "name": {
+                "row_type": {
                     "type": "string"
                 }
             }
         },
-        "controllers.InviteTeacherRequest": {
+        "controllers.DeleteRecurringScheduleRequest": {
             "type": "object",
             "required": [
-                "email",
-                "role"
+                "edit_date",
+                "mode",
+                "rule_id"
             ],
             "properties": {
-                "email": {
+                "edit_date": {
                     "type": "string"
                 },
+                "mode": {
+                    "type": "string",
+                    "enum": [
+                        "SINGLE",
+                        "FUTURE",
+                        "ALL"
+                    ]
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "rule_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "controllers.FindMatchesRequest": {
+            "type": "object",
+            "required": [
+                "end_time",
+                "room_id",
+                "start_time"
+            ],
+            "properties": {
+                "end_time": {
+                    "type": "string"
+                },
+                "exclude_teacher_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "required_skills": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "room_id": {
+                    "type": "integer"
+                },
+                "start_time": {
+                    "type": "string"
+                },
+                "teacher_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "controllers.GetAlternativeSlotsRequest": {
+            "type": "object",
+            "required": [
+                "original_end",
+                "original_start",
+                "teacher_id"
+            ],
+            "properties": {
+                "duration": {
+                    "type": "integer"
+                },
+                "original_end": {
+                    "type": "string"
+                },
+                "original_start": {
+                    "type": "string"
+                },
+                "teacher_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "controllers.InvitationStatsResponse": {
+            "type": "object",
+            "properties": {
+                "accepted": {
+                    "type": "integer"
+                },
+                "expired": {
+                    "type": "integer"
+                },
+                "pending": {
+                    "type": "integer"
+                },
+                "recent_pending": {
+                    "type": "integer"
+                },
+                "rejected": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "controllers.InviteTalentRequest": {
+            "type": "object",
+            "required": [
+                "teacher_ids"
+            ],
+            "properties": {
                 "message": {
                     "type": "string"
                 },
-                "role": {
-                    "type": "string",
-                    "enum": [
-                        "TEACHER",
-                        "SUBSTITUTE"
-                    ]
+                "teacher_ids": {
+                    "type": "array",
+                    "maxItems": 20,
+                    "minItems": 1,
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "controllers.InviteTalentResponse": {
+            "type": "object",
+            "properties": {
+                "failed_count": {
+                    "type": "integer"
+                },
+                "failed_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "invitation_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "invited_count": {
+                    "type": "integer"
                 }
             }
         },
@@ -3154,6 +6757,145 @@ const docTemplate = `{
                 },
                 "welcome_sent": {
                     "type": "boolean"
+                }
+            }
+        },
+        "controllers.PaginationResponse": {
+            "type": "object",
+            "properties": {
+                "data": {},
+                "limit": {
+                    "type": "integer"
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                },
+                "total_pages": {
+                    "type": "integer"
+                }
+            }
+        },
+        "controllers.PreviewRecurrenceEditRequest": {
+            "type": "object",
+            "required": [
+                "edit_date",
+                "mode",
+                "rule_id"
+            ],
+            "properties": {
+                "edit_date": {
+                    "type": "string"
+                },
+                "mode": {
+                    "type": "string",
+                    "enum": [
+                        "SINGLE",
+                        "FUTURE",
+                        "ALL"
+                    ]
+                },
+                "rule_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "controllers.ResetAdminPasswordRequest": {
+            "type": "object",
+            "required": [
+                "new_password",
+                "target_admin_id"
+            ],
+            "properties": {
+                "new_password": {
+                    "type": "string",
+                    "minLength": 6
+                },
+                "target_admin_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "controllers.SessionItem": {
+            "type": "object",
+            "properties": {
+                "course_name": {
+                    "type": "string"
+                },
+                "end_time": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "room_name": {
+                    "type": "string"
+                },
+                "start_time": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "controllers.SkillCountItem": {
+            "type": "object",
+            "properties": {
+                "count": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "controllers.TalentStatsResponse": {
+            "type": "object",
+            "properties": {
+                "accepted_invites": {
+                    "type": "integer"
+                },
+                "average_rating": {
+                    "type": "number"
+                },
+                "city_distribution": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/controllers.CityDistributionItem"
+                    }
+                },
+                "declined_invites": {
+                    "type": "integer"
+                },
+                "member_count": {
+                    "type": "integer"
+                },
+                "monthly_change": {
+                    "type": "integer"
+                },
+                "monthly_trend": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "open_hiring_count": {
+                    "type": "integer"
+                },
+                "pending_invites": {
+                    "type": "integer"
+                },
+                "top_skills": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/controllers.SkillCountItem"
+                    }
+                },
+                "total_count": {
+                    "type": "integer"
                 }
             }
         },
@@ -3212,182 +6954,58 @@ const docTemplate = `{
                 }
             }
         },
-        "controllers.TeacherResponse": {
+        "controllers.TeacherNotifyTokenRequest": {
             "type": "object",
+            "required": [
+                "token"
+            ],
             "properties": {
-                "bio": {
-                    "type": "string"
-                },
-                "city": {
-                    "type": "string"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "district": {
-                    "type": "string"
-                },
-                "email": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "name": {
+                "token": {
                     "type": "string"
                 }
             }
         },
-        "controllers.TeacherScheduleItem": {
+        "controllers.TeacherSessionResponse": {
             "type": "object",
             "properties": {
-                "center_id": {
-                    "type": "integer"
-                },
-                "center_name": {
-                    "type": "string"
-                },
-                "date": {
-                    "type": "string"
-                },
-                "end_time": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "room_id": {
-                    "type": "integer"
-                },
-                "start_time": {
-                    "type": "string"
-                },
-                "status": {
-                    "type": "string"
+                "sessions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/controllers.SessionItem"
+                    }
                 },
                 "teacher_id": {
                     "type": "integer"
                 },
-                "title": {
-                    "type": "string"
-                },
-                "type": {
+                "teacher_name": {
                     "type": "string"
                 }
             }
         },
-        "controllers.TodayOffering": {
+        "controllers.ToggleActiveRequest": {
             "type": "object",
             "properties": {
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "controllers.TodayRoom": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "controllers.TodaySession": {
-            "type": "object",
-            "properties": {
-                "end_time": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "offering": {
-                    "$ref": "#/definitions/controllers.TodayOffering"
-                },
-                "room": {
-                    "$ref": "#/definitions/controllers.TodayRoom"
-                },
-                "start_time": {
-                    "type": "string"
-                },
-                "status": {
-                    "type": "string"
-                },
-                "teacher": {
-                    "$ref": "#/definitions/controllers.TodayTeacher"
-                }
-            }
-        },
-        "controllers.TodaySummaryResponse": {
-            "type": "object",
-            "properties": {
-                "changesCount": {
-                    "type": "integer"
-                },
-                "completedSessions": {
-                    "type": "integer"
-                },
-                "hasScheduleChanges": {
+                "is_active": {
                     "type": "boolean"
-                },
-                "inProgressSessions": {
-                    "type": "integer"
-                },
-                "inProgressTeacherNames": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "pendingExceptions": {
-                    "type": "integer"
-                },
-                "sessions": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/controllers.TodaySession"
-                    }
-                },
-                "totalSessions": {
-                    "type": "integer"
-                },
-                "upcomingSessions": {
-                    "type": "integer"
                 }
             }
         },
-        "controllers.TodayTeacher": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "controllers.UpdateCourseRequest": {
+        "controllers.ToggleAdminStatusRequest": {
             "type": "object",
             "required": [
-                "color_hex",
-                "duration",
-                "name"
+                "new_status",
+                "target_admin_id"
             ],
             "properties": {
-                "color_hex": {
-                    "type": "string"
+                "new_status": {
+                    "type": "string",
+                    "enum": [
+                        "ACTIVE",
+                        "INACTIVE"
+                    ]
                 },
-                "duration": {
+                "target_admin_id": {
                     "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "room_buffer_min": {
-                    "type": "integer",
-                    "minimum": 0
-                },
-                "teacher_buffer_min": {
-                    "type": "integer",
-                    "minimum": 0
                 }
             }
         },
@@ -3412,66 +7030,6 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "default_teacher_id": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "controllers.UpdatePersonalEventRequest": {
-            "type": "object",
-            "required": [
-                "update_mode"
-            ],
-            "properties": {
-                "color_hex": {
-                    "type": "string"
-                },
-                "end_at": {
-                    "type": "string"
-                },
-                "is_all_day": {
-                    "type": "boolean"
-                },
-                "recurrence_rule": {
-                    "$ref": "#/definitions/models.RecurrenceRule"
-                },
-                "start_at": {
-                    "type": "string"
-                },
-                "title": {
-                    "type": "string"
-                },
-                "update_mode": {
-                    "type": "string",
-                    "enum": [
-                        "SINGLE",
-                        "FUTURE",
-                        "ALL"
-                    ]
-                }
-            }
-        },
-        "controllers.UpdatePersonalEventResponse": {
-            "type": "object",
-            "properties": {
-                "message": {
-                    "type": "string"
-                },
-                "updated_count": {
-                    "type": "integer"
-                }
-            }
-        },
-        "controllers.UpdateRoomRequest": {
-            "type": "object",
-            "required": [
-                "capacity",
-                "name"
-            ],
-            "properties": {
-                "capacity": {
                     "type": "integer"
                 },
                 "name": {
@@ -3526,6 +7084,39 @@ const docTemplate = `{
                 }
             }
         },
+        "controllers.UpdateTemplateRequest": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "controllers.UploadBackgroundResponse": {
+            "type": "object",
+            "properties": {
+                "file_name": {
+                    "type": "string"
+                },
+                "image_path": {
+                    "type": "string"
+                }
+            }
+        },
+        "controllers.UploadFileResponse": {
+            "type": "object",
+            "properties": {
+                "file_name": {
+                    "type": "string"
+                },
+                "file_size": {
+                    "type": "integer"
+                },
+                "file_url": {
+                    "type": "string"
+                }
+            }
+        },
         "controllers.UpsertTeacherNoteRequest": {
             "type": "object",
             "required": [
@@ -3539,6 +7130,35 @@ const docTemplate = `{
                     "type": "integer",
                     "maximum": 5,
                     "minimum": 0
+                }
+            }
+        },
+        "controllers.ValidateApplyTemplateRequest": {
+            "type": "object",
+            "required": [
+                "end_date",
+                "offering_id",
+                "start_date",
+                "weekdays"
+            ],
+            "properties": {
+                "end_date": {
+                    "type": "string"
+                },
+                "offering_id": {
+                    "type": "integer"
+                },
+                "override_buffer": {
+                    "type": "boolean"
+                },
+                "start_date": {
+                    "type": "string"
+                },
+                "weekdays": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 }
             }
         },
@@ -3593,7 +7213,180 @@ const docTemplate = `{
                 90003,
                 90004,
                 90005,
-                100001
+                100001,
+                100002,
+                100003,
+                100004,
+                110001,
+                110002,
+                110003,
+                120001,
+                120002,
+                120003,
+                120004,
+                120005,
+                120006,
+                120007,
+                120008,
+                120009,
+                120010,
+                120011,
+                120012,
+                50009,
+                50010,
+                50011,
+                50012,
+                50013,
+                50014,
+                50015,
+                50016,
+                50017,
+                50018,
+                60006,
+                60007,
+                60008,
+                60009,
+                60010,
+                60011,
+                60012,
+                60013,
+                60014,
+                60015,
+                60016,
+                60017,
+                60018
+            ],
+            "x-enum-comments": {
+                "ERR_CHECK_VIOLATION": "CHECK 約束違反",
+                "ERR_CONCURRENT_MODIFIED": "並發修改衝突",
+                "ERR_CONSTRAINT_VIOLATION": "違反資料庫約束",
+                "ERR_DEADLOCK_DETECTED": "偵測到資料庫死鎖",
+                "ERR_EXCLUSIVE_LOCK_FAILED": "排他鎖獲取失敗",
+                "ERR_FOREIGN_KEY_VIOLATION": "外鍵約束違反",
+                "ERR_LOCK_WAIT_TIMEOUT": "鎖等待超時",
+                "ERR_PARTIAL_COMPLETION": "交易部分完成（部分操作成功）",
+                "ERR_RESOURCE_LOCKED": "資源被鎖定（如另一筆交易正在修改）",
+                "ERR_ROLLBACK_FAILED": "交易回滾失敗",
+                "ERR_SERIALIZATION_FAILURE": "序列化失敗（並發衝突）",
+                "ERR_SHARE_LOCK_FAILED": "共享鎖獲取失敗",
+                "ERR_TX_FAILED": "交易執行失敗",
+                "ERR_TX_TIMEOUT": "交易執行超時",
+                "ERR_UNIQUE_VIOLATION": "唯一約束違反",
+                "EXCEPTION_ALREADY_PROCESSED": "例外已被處理",
+                "EXCEPTION_CANCEL_DEADLINE_PASSED": "停課截止日已過",
+                "EXCEPTION_DEADLINE_EXCEEDED": "超過例外申請截止日",
+                "EXCEPTION_REPLACE_TEACHER_INVALID": "代課老師無效",
+                "EXCEPTION_RESCHEDULE_CONFLICT": "調課時間與現有排程衝突",
+                "EXCEPTION_RESCHEDULE_NO_NEW_TIME": "調課必須提供新時間",
+                "EXCEPTION_SELF_REVIEW_FORBIDDEN": "不能審核自己提交的申請",
+                "RECURRENCE_BATCH_LIMIT_EXCEEDED": "批量操作超過限制",
+                "RECURRENCE_DELETE_CONFIRM": "刪除操作需要確認",
+                "RECURRENCE_EDIT_DATE_REQUIRED": "編輯日期為必填",
+                "RECURRENCE_EDIT_MODE_INVALID": "無效的編輯模式",
+                "RECURRENCE_FUTURE_WITH_EDIT_DATE": "FUTURE 模式必須指定編輯日期",
+                "RECURRENCE_NO_AFFECTED_SESSIONS": "沒有受影響的場次",
+                "SCHED_COURSE_NOT_FOUND": "課程模板不存在",
+                "SCHED_DURATION_EXCEEDS_LIMIT": "課程時長超過限制",
+                "SCHED_END_BEFORE_START": "結束日期早於開始日期",
+                "SCHED_INVALID_DATE_FORMAT": "無效的日期格式",
+                "SCHED_INVALID_DURATION": "無效的課程時長",
+                "SCHED_INVALID_WEEKDAY": "無效的星期幾",
+                "SCHED_OFFERING_NOT_FOUND": "班別不存在",
+                "SCHED_ROOM_REQUIRED": "必須指定教室",
+                "SCHED_START_AFTER_END": "開始時間晚於結束時間",
+                "SCHED_TEACHER_REQUIRED": "必須指定老師"
+            },
+            "x-enum-descriptions": [
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "資源被鎖定（如另一筆交易正在修改）",
+                "並發修改衝突",
+                "交易執行失敗",
+                "交易執行超時",
+                "偵測到資料庫死鎖",
+                "交易部分完成（部分操作成功）",
+                "交易回滾失敗",
+                "違反資料庫約束",
+                "外鍵約束違反",
+                "唯一約束違反",
+                "CHECK 約束違反",
+                "序列化失敗（並發衝突）",
+                "鎖等待超時",
+                "共享鎖獲取失敗",
+                "排他鎖獲取失敗",
+                "必須指定老師",
+                "必須指定教室",
+                "班別不存在",
+                "課程模板不存在",
+                "無效的星期幾",
+                "無效的課程時長",
+                "開始時間晚於結束時間",
+                "無效的日期格式",
+                "結束日期早於開始日期",
+                "課程時長超過限制",
+                "超過例外申請截止日",
+                "不能審核自己提交的申請",
+                "例外已被處理",
+                "調課時間與現有排程衝突",
+                "代課老師無效",
+                "停課截止日已過",
+                "調課必須提供新時間",
+                "無效的編輯模式",
+                "沒有受影響的場次",
+                "FUTURE 模式必須指定編輯日期",
+                "編輯日期為必填",
+                "刪除操作需要確認",
+                "批量操作超過限制"
             ],
             "x-enum-varnames": [
                 "SYSTEM_ERROR",
@@ -3644,7 +7437,48 @@ const docTemplate = `{
                 "LINE_BINDING_CODE_INVALID",
                 "LINE_BINDING_EXPIRED",
                 "LINE_NOTIFY_FAILED",
-                "ADMIN_NOT_FOUND"
+                "ADMIN_NOT_FOUND",
+                "ADMIN_EMAIL_EXISTS",
+                "PASSWORD_NOT_MATCH",
+                "ADMIN_CANNOT_DISABLE_SELF",
+                "ERR_RESOURCE_LOCKED",
+                "ERR_CONCURRENT_MODIFIED",
+                "ERR_TX_FAILED",
+                "ERR_TX_TIMEOUT",
+                "ERR_DEADLOCK_DETECTED",
+                "ERR_PARTIAL_COMPLETION",
+                "ERR_ROLLBACK_FAILED",
+                "ERR_CONSTRAINT_VIOLATION",
+                "ERR_FOREIGN_KEY_VIOLATION",
+                "ERR_UNIQUE_VIOLATION",
+                "ERR_CHECK_VIOLATION",
+                "ERR_SERIALIZATION_FAILURE",
+                "ERR_LOCK_WAIT_TIMEOUT",
+                "ERR_SHARE_LOCK_FAILED",
+                "ERR_EXCLUSIVE_LOCK_FAILED",
+                "SCHED_TEACHER_REQUIRED",
+                "SCHED_ROOM_REQUIRED",
+                "SCHED_OFFERING_NOT_FOUND",
+                "SCHED_COURSE_NOT_FOUND",
+                "SCHED_INVALID_WEEKDAY",
+                "SCHED_INVALID_DURATION",
+                "SCHED_START_AFTER_END",
+                "SCHED_INVALID_DATE_FORMAT",
+                "SCHED_END_BEFORE_START",
+                "SCHED_DURATION_EXCEEDS_LIMIT",
+                "EXCEPTION_DEADLINE_EXCEEDED",
+                "EXCEPTION_SELF_REVIEW_FORBIDDEN",
+                "EXCEPTION_ALREADY_PROCESSED",
+                "EXCEPTION_RESCHEDULE_CONFLICT",
+                "EXCEPTION_REPLACE_TEACHER_INVALID",
+                "EXCEPTION_CANCEL_DEADLINE_PASSED",
+                "EXCEPTION_RESCHEDULE_NO_NEW_TIME",
+                "RECURRENCE_EDIT_MODE_INVALID",
+                "RECURRENCE_NO_AFFECTED_SESSIONS",
+                "RECURRENCE_FUTURE_WITH_EDIT_DATE",
+                "RECURRENCE_EDIT_DATE_REQUIRED",
+                "RECURRENCE_DELETE_CONFIRM",
+                "RECURRENCE_BATCH_LIMIT_EXCEEDED"
             ]
         },
         "global.ApiResponse": {
@@ -3702,23 +7536,38 @@ const docTemplate = `{
                 }
             }
         },
-        "models.Center": {
+        "models.AdminUser": {
             "type": "object",
             "properties": {
+                "center_id": {
+                    "type": "integer"
+                },
                 "created_at": {
+                    "type": "string"
+                },
+                "email": {
                     "type": "string"
                 },
                 "id": {
                     "type": "integer"
                 },
+                "line_bound_at": {
+                    "type": "string"
+                },
+                "line_notify_enabled": {
+                    "type": "boolean"
+                },
                 "name": {
                     "type": "string"
                 },
-                "plan_level": {
+                "role": {
                     "type": "string"
                 },
-                "settings": {
-                    "$ref": "#/definitions/models.CenterSettings"
+                "status": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
                 }
             }
         },
@@ -3777,6 +7626,10 @@ const docTemplate = `{
                 "responded_at": {
                     "type": "string"
                 },
+                "role": {
+                    "description": "角色：TEACHER 或 SUBSTITUTE",
+                    "type": "string"
+                },
                 "status": {
                     "$ref": "#/definitions/models.InvitationStatus"
                 },
@@ -3785,55 +7638,6 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "token": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.CenterSettings": {
-            "type": "object",
-            "properties": {
-                "allow_public_register": {
-                    "type": "boolean"
-                },
-                "default_language": {
-                    "type": "string"
-                },
-                "exception_lead_days": {
-                    "type": "integer"
-                }
-            }
-        },
-        "models.Course": {
-            "type": "object",
-            "properties": {
-                "center_id": {
-                    "type": "integer"
-                },
-                "color_hex": {
-                    "type": "string"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "default_duration": {
-                    "type": "integer"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "is_active": {
-                    "type": "boolean"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "room_buffer_min": {
-                    "type": "integer"
-                },
-                "teacher_buffer_min": {
-                    "type": "integer"
-                },
-                "updated_at": {
                     "type": "string"
                 }
             }
@@ -3965,6 +7769,9 @@ const docTemplate = `{
                 },
                 "is_all_day": {
                     "type": "boolean"
+                },
+                "note": {
+                    "type": "string"
                 },
                 "recurrence_rule": {
                     "$ref": "#/definitions/models.RecurrenceRule"
@@ -4319,6 +8126,428 @@ const docTemplate = `{
                 }
             }
         },
+        "models.TimetableCell": {
+            "type": "object",
+            "properties": {
+                "col_no": {
+                    "type": "integer"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "end_time": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "room_id": {
+                    "type": "integer"
+                },
+                "row_no": {
+                    "type": "integer"
+                },
+                "start_time": {
+                    "type": "string"
+                },
+                "teacher_id": {
+                    "type": "integer"
+                },
+                "template_id": {
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.TimetableTemplate": {
+            "type": "object",
+            "properties": {
+                "cells": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.TimetableCell"
+                    }
+                },
+                "center_id": {
+                    "type": "integer"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "row_type": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "requests.CheckBufferRequest": {
+            "type": "object",
+            "required": [
+                "course_id",
+                "next_start_time",
+                "prev_end_time",
+                "room_id",
+                "teacher_id"
+            ],
+            "properties": {
+                "course_id": {
+                    "type": "integer"
+                },
+                "next_start_time": {
+                    "type": "string"
+                },
+                "prev_end_time": {
+                    "type": "string"
+                },
+                "room_id": {
+                    "type": "integer"
+                },
+                "teacher_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "requests.CheckOverlapRequest": {
+            "type": "object",
+            "required": [
+                "end_time",
+                "room_id",
+                "start_time"
+            ],
+            "properties": {
+                "end_time": {
+                    "type": "string"
+                },
+                "exclude_rule_id": {
+                    "type": "integer"
+                },
+                "room_id": {
+                    "type": "integer"
+                },
+                "start_time": {
+                    "type": "string"
+                },
+                "teacher_id": {
+                    "type": "integer"
+                },
+                "weekday": {
+                    "description": "可選，如果未提供則從 StartTime 推算",
+                    "type": "integer"
+                }
+            }
+        },
+        "requests.CheckRuleLockStatusRequest": {
+            "type": "object",
+            "required": [
+                "exception_date",
+                "rule_id"
+            ],
+            "properties": {
+                "exception_date": {
+                    "type": "string"
+                },
+                "rule_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "requests.CreateExceptionRequest": {
+            "type": "object",
+            "required": [
+                "original_date",
+                "reason",
+                "rule_id",
+                "type"
+            ],
+            "properties": {
+                "new_end_at": {
+                    "type": "string"
+                },
+                "new_room_id": {
+                    "type": "integer"
+                },
+                "new_start_at": {
+                    "type": "string"
+                },
+                "new_teacher_id": {
+                    "type": "integer"
+                },
+                "new_teacher_name": {
+                    "type": "string"
+                },
+                "original_date": {
+                    "type": "string"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "rule_id": {
+                    "type": "integer"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "requests.CreatePersonalEventRequest": {
+            "type": "object",
+            "required": [
+                "end_at",
+                "start_at",
+                "title"
+            ],
+            "properties": {
+                "color_hex": {
+                    "type": "string"
+                },
+                "end_at": {
+                    "type": "string"
+                },
+                "is_all_day": {
+                    "type": "boolean"
+                },
+                "recurrence_rule": {
+                    "$ref": "#/definitions/models.RecurrenceRule"
+                },
+                "start_at": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "requests.CreateRuleRequest": {
+            "type": "object",
+            "required": [
+                "duration",
+                "end_time",
+                "name",
+                "offering_id",
+                "room_id",
+                "start_date",
+                "start_time",
+                "weekdays"
+            ],
+            "properties": {
+                "duration": {
+                    "type": "integer"
+                },
+                "end_date": {
+                    "type": "string"
+                },
+                "end_time": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "offering_id": {
+                    "type": "integer"
+                },
+                "override_buffer": {
+                    "type": "boolean"
+                },
+                "room_id": {
+                    "type": "integer"
+                },
+                "start_date": {
+                    "type": "string"
+                },
+                "start_time": {
+                    "type": "string"
+                },
+                "teacher_id": {
+                    "type": "integer"
+                },
+                "weekdays": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "requests.DetectPhaseTransitionsRequest": {
+            "type": "object",
+            "required": [
+                "end_date",
+                "offering_id",
+                "start_date"
+            ],
+            "properties": {
+                "end_date": {
+                    "type": "string"
+                },
+                "offering_id": {
+                    "type": "integer"
+                },
+                "start_date": {
+                    "type": "string"
+                }
+            }
+        },
+        "requests.ExpandRulesRequest": {
+            "type": "object",
+            "required": [
+                "end_date",
+                "start_date"
+            ],
+            "properties": {
+                "end_date": {
+                    "type": "string"
+                },
+                "rule_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "start_date": {
+                    "type": "string"
+                }
+            }
+        },
+        "requests.PersonalEventNoteResponse": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string"
+                }
+            }
+        },
+        "requests.ReviewExceptionRequest": {
+            "type": "object",
+            "required": [
+                "action"
+            ],
+            "properties": {
+                "action": {
+                    "type": "string"
+                },
+                "override_buffer": {
+                    "type": "boolean"
+                },
+                "reason": {
+                    "type": "string"
+                }
+            }
+        },
+        "requests.UpdatePersonalEventNoteRequest": {
+            "type": "object",
+            "required": [
+                "content"
+            ],
+            "properties": {
+                "content": {
+                    "type": "string"
+                }
+            }
+        },
+        "requests.UpdatePersonalEventRequest": {
+            "type": "object",
+            "required": [
+                "update_mode"
+            ],
+            "properties": {
+                "color_hex": {
+                    "type": "string"
+                },
+                "end_at": {
+                    "type": "string"
+                },
+                "is_all_day": {
+                    "type": "boolean"
+                },
+                "recurrence_rule": {
+                    "$ref": "#/definitions/models.RecurrenceRule"
+                },
+                "start_at": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "update_mode": {
+                    "type": "string",
+                    "enum": [
+                        "SINGLE",
+                        "FUTURE",
+                        "ALL"
+                    ]
+                }
+            }
+        },
+        "requests.UpdatePersonalEventResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                },
+                "updated_count": {
+                    "type": "integer"
+                }
+            }
+        },
+        "requests.UpdateRuleRequest": {
+            "type": "object",
+            "properties": {
+                "duration": {
+                    "type": "integer"
+                },
+                "end_date": {
+                    "type": "string"
+                },
+                "end_time": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "offering_id": {
+                    "type": "integer"
+                },
+                "room_id": {
+                    "type": "integer"
+                },
+                "start_date": {
+                    "type": "string"
+                },
+                "start_time": {
+                    "type": "string"
+                },
+                "teacher_id": {
+                    "type": "integer"
+                },
+                "update_mode": {
+                    "description": "更新模式：SINGLE - 只修改這一天，FUTURE - 修改這天及之後，ALL - 修改所有",
+                    "type": "string"
+                },
+                "weekdays": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
         "requests.UpsertSessionNoteRequest": {
             "type": "object",
             "required": [
@@ -4377,6 +8606,119 @@ const docTemplate = `{
                 }
             }
         },
+        "requests.ValidateFullRequest": {
+            "type": "object",
+            "required": [
+                "course_id",
+                "end_time",
+                "room_id",
+                "start_time"
+            ],
+            "properties": {
+                "allow_buffer_override": {
+                    "type": "boolean"
+                },
+                "course_id": {
+                    "type": "integer"
+                },
+                "end_time": {
+                    "type": "string"
+                },
+                "exclude_rule_id": {
+                    "type": "integer"
+                },
+                "room_id": {
+                    "type": "integer"
+                },
+                "start_time": {
+                    "type": "string"
+                },
+                "teacher_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "resources.AdminCertificateResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "file_url": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "issued_at": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "resources.AdminTeacherResponse": {
+            "type": "object",
+            "properties": {
+                "bio": {
+                    "type": "string"
+                },
+                "certificates": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/resources.AdminCertificateResponse"
+                    }
+                },
+                "city": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "district": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "skills": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/resources.AdminTeacherSkillResponse"
+                    }
+                }
+            }
+        },
+        "resources.AdminTeacherSkillResponse": {
+            "type": "object",
+            "properties": {
+                "category": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "level": {
+                    "type": "string"
+                },
+                "skill_name": {
+                    "type": "string"
+                }
+            }
+        },
         "resources.CenterMembershipResource": {
             "type": "object",
             "properties": {
@@ -4394,6 +8736,72 @@ const docTemplate = `{
                 },
                 "status": {
                     "type": "string"
+                }
+            }
+        },
+        "resources.CenterResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "plan_level": {
+                    "type": "string"
+                },
+                "settings": {
+                    "$ref": "#/definitions/resources.CenterSettings"
+                }
+            }
+        },
+        "resources.CenterSettings": {
+            "type": "object",
+            "properties": {
+                "allow_public_register": {
+                    "type": "boolean"
+                },
+                "default_language": {
+                    "type": "string"
+                },
+                "exception_lead_days": {
+                    "type": "integer"
+                }
+            }
+        },
+        "resources.CourseResponse": {
+            "type": "object",
+            "properties": {
+                "center_id": {
+                    "type": "integer"
+                },
+                "color_hex": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "default_duration": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "room_buffer_min": {
+                    "type": "integer"
+                },
+                "teacher_buffer_min": {
+                    "type": "integer"
                 }
             }
         },
@@ -4442,14 +8850,95 @@ const docTemplate = `{
                 }
             }
         },
+        "resources.InvitationResponse": {
+            "type": "object",
+            "properties": {
+                "center_id": {
+                    "type": "integer"
+                },
+                "center_name": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "expires_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "invite_type": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "responded_at": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
         "resources.PersonalHashtag": {
             "type": "object",
             "properties": {
                 "hashtag_id": {
                     "type": "integer"
                 },
+                "name": {
+                    "type": "string"
+                },
+                "sort_order": {
+                    "type": "integer"
+                }
+            }
+        },
+        "resources.PublicInvitationInfo": {
+            "type": "object",
+            "properties": {
+                "center_id": {
+                    "type": "integer"
+                },
+                "center_name": {
+                    "type": "string"
+                },
+                "expires_at": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "integer"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "resources.RoomResponse": {
+            "type": "object",
+            "properties": {
+                "capacity": {
+                    "type": "integer"
+                },
+                "center_id": {
+                    "type": "integer"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "is_active": {
+                    "type": "boolean"
                 },
                 "name": {
                     "type": "string"
@@ -4473,6 +8962,29 @@ const docTemplate = `{
                 },
                 "session_date": {
                     "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "resources.TeacherNoteResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "internal_note": {
+                    "type": "string"
+                },
+                "rating": {
+                    "type": "integer"
+                },
+                "teacher_id": {
+                    "type": "integer"
                 },
                 "updated_at": {
                     "type": "string"
@@ -4577,6 +9089,286 @@ const docTemplate = `{
                 }
             }
         },
+        "services.AdminListItem": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "line_bound_at": {
+                    "type": "string"
+                },
+                "line_notify_enabled": {
+                    "type": "boolean"
+                },
+                "line_user_id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "services.BufferCheckResult": {
+            "type": "object",
+            "properties": {
+                "conflicts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/services.ValidationConflict"
+                    }
+                },
+                "valid": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "services.BulkCreateHolidaysRequest": {
+            "type": "object",
+            "required": [
+                "holidays"
+            ],
+            "properties": {
+                "holidays": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/services.HolidayItem"
+                    }
+                }
+            }
+        },
+        "services.BulkCreateHolidaysResponse": {
+            "type": "object",
+            "properties": {
+                "holidays": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.CenterHoliday"
+                    }
+                },
+                "total_created": {
+                    "type": "integer"
+                },
+                "total_requested": {
+                    "type": "integer"
+                },
+                "total_skipped": {
+                    "type": "integer"
+                }
+            }
+        },
+        "services.ChangePasswordRequest": {
+            "type": "object",
+            "required": [
+                "new_password",
+                "old_password"
+            ],
+            "properties": {
+                "new_password": {
+                    "type": "string",
+                    "minLength": 6
+                },
+                "old_password": {
+                    "type": "string",
+                    "minLength": 6
+                }
+            }
+        },
+        "services.CreateCourseRequest": {
+            "type": "object",
+            "required": [
+                "color_hex",
+                "duration",
+                "name"
+            ],
+            "properties": {
+                "color_hex": {
+                    "type": "string"
+                },
+                "duration": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "room_buffer_min": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "teacher_buffer_min": {
+                    "type": "integer",
+                    "minimum": 0
+                }
+            }
+        },
+        "services.CreateHolidayRequest": {
+            "type": "object",
+            "required": [
+                "date",
+                "name"
+            ],
+            "properties": {
+                "date": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "services.CreateRoomRequest": {
+            "type": "object",
+            "required": [
+                "capacity",
+                "name"
+            ],
+            "properties": {
+                "capacity": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "services.ExpandedException": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "new_end_at": {
+                    "type": "string"
+                },
+                "new_start_at": {
+                    "type": "string"
+                },
+                "new_teacher_id": {
+                    "type": "integer"
+                },
+                "status": {
+                    "description": "PENDING, APPROVED, REJECTED, REVOKED",
+                    "type": "string"
+                },
+                "type": {
+                    "description": "CANCEL, RESCHEDULE, REPLACE_TEACHER",
+                    "type": "string"
+                }
+            }
+        },
+        "services.ExpandedSchedule": {
+            "type": "object",
+            "properties": {
+                "date": {
+                    "type": "string"
+                },
+                "effective_range": {
+                    "$ref": "#/definitions/models.DateRange"
+                },
+                "end_time": {
+                    "type": "string"
+                },
+                "exception_info": {
+                    "$ref": "#/definitions/services.ExpandedException"
+                },
+                "has_exception": {
+                    "type": "boolean"
+                },
+                "is_cross_day_part": {
+                    "description": "跨日課程的一部分",
+                    "type": "boolean"
+                },
+                "is_holiday": {
+                    "type": "boolean"
+                },
+                "offering_id": {
+                    "type": "integer"
+                },
+                "offering_name": {
+                    "description": "關聯資料",
+                    "type": "string"
+                },
+                "room_id": {
+                    "type": "integer"
+                },
+                "room_name": {
+                    "type": "string"
+                },
+                "rule_id": {
+                    "type": "integer"
+                },
+                "start_time": {
+                    "type": "string"
+                },
+                "teacher_id": {
+                    "type": "integer"
+                },
+                "teacher_name": {
+                    "type": "string"
+                }
+            }
+        },
+        "services.FullValidationResult": {
+            "type": "object",
+            "properties": {
+                "conflicts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/services.ValidationConflict"
+                    }
+                },
+                "valid": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "services.GenerateInvitationLinkRequest": {
+            "type": "object",
+            "properties": {
+                "adminID": {
+                    "type": "integer"
+                },
+                "centerID": {
+                    "type": "integer"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                }
+            }
+        },
+        "services.HolidayItem": {
+            "type": "object",
+            "required": [
+                "date",
+                "name"
+            ],
+            "properties": {
+                "date": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
         "services.IdentInfo": {
             "type": "object",
             "properties": {
@@ -4601,6 +9393,78 @@ const docTemplate = `{
                 }
             }
         },
+        "services.InvitationLinkResponse": {
+            "type": "object",
+            "properties": {
+                "center_id": {
+                    "type": "integer"
+                },
+                "center_name": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "expires_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "invite_link": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "token": {
+                    "type": "string"
+                }
+            }
+        },
+        "services.InviteTeacherRequest": {
+            "type": "object",
+            "properties": {
+                "adminID": {
+                    "type": "integer"
+                },
+                "centerID": {
+                    "type": "integer"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                }
+            }
+        },
+        "services.ListOfferingsOutput": {
+            "type": "object",
+            "properties": {
+                "offerings": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Offering"
+                    }
+                },
+                "pagination": {
+                    "$ref": "#/definitions/global.Pagination"
+                }
+            }
+        },
         "services.LoginResponse": {
             "type": "object",
             "properties": {
@@ -4609,6 +9473,397 @@ const docTemplate = `{
                 },
                 "user": {
                     "$ref": "#/definitions/services.IdentInfo"
+                }
+            }
+        },
+        "services.OverlapCheckResult": {
+            "type": "object",
+            "properties": {
+                "conflicts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/services.ValidationConflict"
+                    }
+                },
+                "valid": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "services.PhaseTransition": {
+            "type": "object",
+            "properties": {
+                "date": {
+                    "type": "string"
+                },
+                "has_gap": {
+                    "type": "boolean"
+                },
+                "next_end_time": {
+                    "type": "string"
+                },
+                "next_room_id": {
+                    "type": "integer"
+                },
+                "next_rule_id": {
+                    "type": "integer"
+                },
+                "next_start_time": {
+                    "type": "string"
+                },
+                "next_teacher_id": {
+                    "type": "integer"
+                },
+                "prev_end_time": {
+                    "type": "string"
+                },
+                "prev_room_id": {
+                    "type": "integer"
+                },
+                "prev_rule_id": {
+                    "type": "integer"
+                },
+                "prev_start_time": {
+                    "type": "string"
+                },
+                "prev_teacher_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "services.RecurrenceEditMode": {
+            "type": "string",
+            "enum": [
+                "SINGLE",
+                "FUTURE",
+                "ALL"
+            ],
+            "x-enum-varnames": [
+                "RecurrenceEditSingle",
+                "RecurrenceEditFuture",
+                "RecurrenceEditAll"
+            ]
+        },
+        "services.RecurrenceEditRequest": {
+            "type": "object",
+            "required": [
+                "edit_date",
+                "mode",
+                "rule_id"
+            ],
+            "properties": {
+                "edit_date": {
+                    "type": "string"
+                },
+                "mode": {
+                    "enum": [
+                        "SINGLE",
+                        "FUTURE",
+                        "ALL"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/services.RecurrenceEditMode"
+                        }
+                    ]
+                },
+                "new_end_time": {
+                    "type": "string"
+                },
+                "new_room_id": {
+                    "type": "integer"
+                },
+                "new_start_time": {
+                    "type": "string"
+                },
+                "new_teacher_id": {
+                    "type": "integer"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "rule_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "services.RespondToInvitationRequest": {
+            "type": "object",
+            "properties": {
+                "invitationID": {
+                    "type": "integer"
+                },
+                "response": {
+                    "description": "\"ACCEPT\" 或 \"DECLINE\"",
+                    "type": "string"
+                },
+                "teacherID": {
+                    "type": "integer"
+                }
+            }
+        },
+        "services.RuleLockStatus": {
+            "type": "object",
+            "properties": {
+                "days_remaining": {
+                    "type": "integer"
+                },
+                "deadline": {
+                    "type": "string"
+                },
+                "is_locked": {
+                    "type": "boolean"
+                },
+                "lock_at": {
+                    "type": "string"
+                },
+                "lock_reason": {
+                    "type": "string"
+                }
+            }
+        },
+        "services.SubscriptionInfo": {
+            "type": "object",
+            "properties": {
+                "center_id": {
+                    "type": "integer"
+                },
+                "center_name": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "expires_at": {
+                    "type": "string"
+                },
+                "teacher_id": {
+                    "type": "integer"
+                },
+                "teacher_name": {
+                    "type": "string"
+                },
+                "token": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "services.TeacherScheduleItem": {
+            "type": "object",
+            "properties": {
+                "center_id": {
+                    "type": "integer"
+                },
+                "center_name": {
+                    "type": "string"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "end_time": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "is_cross_day_part": {
+                    "type": "boolean"
+                },
+                "room_id": {
+                    "type": "integer"
+                },
+                "rule_id": {
+                    "type": "integer"
+                },
+                "start_time": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "teacher_id": {
+                    "type": "integer"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "services.TodayOffering": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "services.TodayRoom": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "services.TodaySession": {
+            "type": "object",
+            "properties": {
+                "end_time": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "offering": {
+                    "$ref": "#/definitions/services.TodayOffering"
+                },
+                "room": {
+                    "$ref": "#/definitions/services.TodayRoom"
+                },
+                "start_time": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "teacher": {
+                    "$ref": "#/definitions/services.TodayTeacher"
+                }
+            }
+        },
+        "services.TodaySummary": {
+            "type": "object",
+            "properties": {
+                "changes_count": {
+                    "type": "integer"
+                },
+                "completed_sessions": {
+                    "type": "integer"
+                },
+                "has_schedule_changes": {
+                    "type": "boolean"
+                },
+                "in_progress_sessions": {
+                    "type": "integer"
+                },
+                "in_progress_teacher_names": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "pending_exceptions": {
+                    "type": "integer"
+                },
+                "sessions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/services.TodaySession"
+                    }
+                },
+                "total_sessions": {
+                    "type": "integer"
+                },
+                "upcoming_sessions": {
+                    "type": "integer"
+                }
+            }
+        },
+        "services.TodayTeacher": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "services.ToggleActiveRequest": {
+            "type": "object",
+            "properties": {
+                "is_active": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "services.UpdateCourseRequest": {
+            "type": "object",
+            "required": [
+                "color_hex",
+                "duration",
+                "name"
+            ],
+            "properties": {
+                "color_hex": {
+                    "type": "string"
+                },
+                "duration": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "room_buffer_min": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "teacher_buffer_min": {
+                    "type": "integer",
+                    "minimum": 0
+                }
+            }
+        },
+        "services.UpdateRoomRequest": {
+            "type": "object",
+            "required": [
+                "capacity",
+                "name"
+            ],
+            "properties": {
+                "capacity": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "services.ValidationConflict": {
+            "type": "object",
+            "properties": {
+                "can_override": {
+                    "type": "boolean"
+                },
+                "conflict_source": {
+                    "description": "RULE, SESSION, PERSONAL",
+                    "type": "string"
+                },
+                "conflict_source_id": {
+                    "type": "integer"
+                },
+                "details": {
+                    "type": "string"
+                },
+                "diff_minutes": {
+                    "type": "integer"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "require_approval": {
+                    "type": "boolean"
+                },
+                "required_minutes": {
+                    "type": "integer"
+                },
+                "type": {
+                    "description": "TEACHER_OVERLAP, ROOM_OVERLAP, TEACHER_BUFFER, ROOM_BUFFER",
+                    "type": "string"
                 }
             }
         }

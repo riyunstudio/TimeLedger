@@ -62,6 +62,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatDate } from '~/composables/useTaiwanTime'
 import type { PersonalEvent } from '~/types'
 
 interface Props {
@@ -97,12 +98,6 @@ const theme = computed(() => {
     buttonClass: 'hover:bg-[#f0ede8] text-[#5a524d]',
   }
 })
-
-const formatDate = (dateStr?: string): string => {
-  if (!dateStr) return ''
-  const date = new Date(dateStr)
-  return date.toLocaleDateString('zh-TW', { month: 'long', day: 'numeric', weekday: 'long' })
-}
 
 const loadNote = async () => {
   if (!eventData.value) return

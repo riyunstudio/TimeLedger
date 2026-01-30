@@ -77,6 +77,12 @@ export default defineNuxtConfig({
     workbox: {
       navigateFallback: '/',
       globPatterns: ['**/*.{js,css,html,png,svg,ico}'],
+      globIgnores: [
+        '**/node_modules/**/*',
+        '**/sw.js',
+        '**/workbox-*.js',
+        '**/dev-sw-dist/**/*',
+      ],
       runtimeCaching: [
         {
           urlPattern: /^https:\/\/api\.timeledger\.app\/api\/v1\/.*$/,

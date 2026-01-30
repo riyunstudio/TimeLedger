@@ -52,7 +52,7 @@ func (dr DateRange) MarshalJSON() ([]byte, error) {
 	})
 }
 
-// UnmarshalJSON 自訂 JSON 反序列化，支援 ISO 8601 和 MySQL 格式
+// UnmarshalJSON 自訂 JSON 反序列化，支援多種日期格式
 func (dr *DateRange) UnmarshalJSON(data []byte) error {
 	type Alias DateRange
 	aux := &struct {
@@ -63,27 +63,46 @@ func (dr *DateRange) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	// 嘗試解析 MySQL 格式
+	// 嘗試多種日期格式
 	loc := time.UTC
-	startDate, err := time.ParseInLocation("2006-01-02 15:04:05", aux.StartDate, loc)
-	if err != nil {
-		// 嘗試解析 ISO 8601 格式
-		startDate, err = time.ParseInLocation(time.RFC3339, aux.StartDate, loc)
-		if err != nil {
-			return errors.New("invalid start_date format")
-		}
-	}
-	dr.StartDate = startDate
 
-	if aux.EndDate != "" {
-		endDate, err := time.ParseInLocation("2006-01-02 15:04:05", aux.EndDate, loc)
-		if err != nil {
-			endDate, err = time.ParseInLocation(time.RFC3339, aux.EndDate, loc)
-			if err != nil {
-				return errors.New("invalid end_date format")
+	// 格式1: YYYY-MM-DD HH:MM:SS+08:00 (帶時區的 ISO 8601)
+	startDate, err := time.ParseInLocation("2006-01-02T15:04:05Z07:00", aux.StartDate, loc)
+	if err == nil {
+		dr.StartDate = startDate
+	} else {
+		// 格式2: YYYY-MM-DD HH:MM:SS (MySQL datetime)
+		startDate, err = time.ParseInLocation("2006-01-02 15:04:05", aux.StartDate, loc)
+		if err == nil {
+			dr.StartDate = startDate
+		} else {
+			// 格式3: YYYY-MM-DD (日期 only)
+			startDate, err = time.ParseInLocation("2006-01-02", aux.StartDate, loc)
+			if err == nil {
+				dr.StartDate = startDate
+			} else {
+				return errors.New("invalid start_date format: " + aux.StartDate)
 			}
 		}
-		dr.EndDate = endDate
+	}
+
+	if aux.EndDate != "" {
+		endDate, err := time.ParseInLocation("2006-01-02T15:04:05Z07:00", aux.EndDate, loc)
+		if err == nil {
+			dr.EndDate = endDate
+		} else {
+			endDate, err = time.ParseInLocation("2006-01-02 15:04:05", aux.EndDate, loc)
+			if err == nil {
+				dr.EndDate = endDate
+			} else {
+				endDate, err = time.ParseInLocation("2006-01-02", aux.EndDate, loc)
+				if err == nil {
+					dr.EndDate = endDate
+				} else {
+					return errors.New("invalid end_date format: " + aux.EndDate)
+				}
+			}
+		}
 	}
 
 	return nil

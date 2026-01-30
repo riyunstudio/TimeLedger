@@ -80,7 +80,7 @@
             </span>
           </div>
           <div class="text-white font-medium mb-1">
-            {{ exception.original_date }}
+            {{ formatDate(exception.original_date) }}
           </div>
           <p class="text-sm text-slate-400 line-clamp-2">{{ exception.reason }}</p>
 
@@ -93,7 +93,7 @@
               </div>
               <div v-if="exception.type === 'RESCHEDULE'">
                 <p class="text-slate-400">新時間</p>
-                <p class="text-white">{{ formatDateTime(exception.new_start_at || '') }} - {{ formatDateTime(exception.new_end_at || '') }}</p>
+                <p class="text-white">{{ formatDate(exception.new_start_at || '') }} - {{ formatDate(exception.new_end_at || '') }}</p>
               </div>
               <div v-if="exception.new_teacher_name">
                 <p class="text-slate-400">代課老師</p>
@@ -200,6 +200,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatDateTime } from '~/composables/useTaiwanTime'
 import type { ScheduleException } from '~/types'
 
  definePageMeta({
@@ -309,12 +310,6 @@ const getStatusText = (status: string) => {
     default:
       return status
   }
-}
-
-const formatDateTime = (dateStr: string) => {
-  if (!dateStr) return '-'
-  const date = new Date(dateStr)
-  return date.toLocaleString('zh-TW')
 }
 
 const handleRevoke = async (id: number) => {

@@ -73,6 +73,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatDate } from '~/composables/useTaiwanTime'
 import type { ScheduleItem, SessionNote } from '~/types'
 
 const { isOpen, scheduleItem } = defineProps<{
@@ -105,12 +106,6 @@ const theme = computed(() => {
   ]
   return exportThemes[0]
 })
-
-const formatDate = (dateStr?: string): string => {
-  if (!dateStr) return ''
-  const date = new Date(dateStr)
-  return date.toLocaleDateString('zh-TW', { month: 'long', day: 'numeric', weekday: 'long' })
-}
 
 const loadNote = async () => {
   // 優先使用 rule_id，其次從 data 取得

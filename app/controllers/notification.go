@@ -66,8 +66,10 @@ func (ctl *NotificationController) ListNotifications(ctx *gin.Context) {
 	userType, _ := helper.UserType()
 
 	var req ListNotificationsRequest
-	if !helper.MustBindJSON(&req) {
-		return
+	// 使用 ShouldBindQuery 綁定 GET 查詢參數
+	if err := ctx.ShouldBindQuery(&req); err != nil {
+		req.Limit = 20  // 使用預設值
+		req.Offset = 0
 	}
 
 	notifications, err := ctl.notificationService.GetNotifications(ctx.Request.Context(), userID, userType, req.Limit, req.Offset)

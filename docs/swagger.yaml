@@ -1,4 +1,11 @@
 definitions:
+  controllers.AcceptInvitationByLinkRequest:
+    properties:
+      line_user_id:
+        type: string
+    required:
+    - line_user_id
+    type: object
   controllers.AdminLoginRequest:
     properties:
       email:
@@ -9,41 +16,68 @@ definitions:
     - email
     - password
     type: object
-  controllers.BulkCreateHolidaysRequest:
+  controllers.ApplyTemplateRequest:
     properties:
-      holidays:
+      duration:
+        type: integer
+      end_date:
+        type: string
+      offering_id:
+        type: integer
+      override_buffer:
+        type: boolean
+      start_date:
+        type: string
+      weekdays:
         items:
-          $ref: '#/definitions/controllers.HolidayItem'
+          type: integer
         type: array
     required:
-    - holidays
+    - end_date
+    - offering_id
+    - start_date
+    - weekdays
     type: object
-  controllers.BulkCreateHolidaysResponse:
+  controllers.ChangeAdminRoleRequest:
     properties:
-      holidays:
-        items:
-          $ref: '#/definitions/models.CenterHoliday'
-        type: array
-      total_created:
+      new_role:
+        enum:
+        - ADMIN
+        - STAFF
+        - OWNER
+        type: string
+      target_admin_id:
         type: integer
-      total_requested:
-        type: integer
-      total_skipped:
-        type: integer
+    required:
+    - new_role
+    - target_admin_id
     type: object
-  controllers.CenterTeacherNoteResponse:
+  controllers.CheckTeacherRuleLockRequest:
     properties:
-      created_at:
+      exception_date:
         type: string
-      id:
+      rule_id:
         type: integer
-      internal_note:
+    required:
+    - exception_date
+    - rule_id
+    type: object
+  controllers.CheckTeacherRuleLockResponse:
+    properties:
+      days_remaining:
+        type: integer
+      deadline:
         type: string
-      rating:
+      is_locked:
+        type: boolean
+      lock_reason:
+        type: string
+    type: object
+  controllers.CityDistributionItem:
+    properties:
+      count:
         type: integer
-      teacher_id:
-        type: integer
-      updated_at:
+      name:
         type: string
     type: object
   controllers.CopyOfferingRequest:
@@ -64,6 +98,44 @@ definitions:
       name:
         type: string
       rules_copied:
+        type: integer
+    type: object
+  controllers.CreateAdminRequest:
+    properties:
+      email:
+        type: string
+      name:
+        maxLength: 255
+        minLength: 1
+        type: string
+      password:
+        minLength: 6
+        type: string
+      role:
+        enum:
+        - ADMIN
+        - STAFF
+        - OWNER
+        type: string
+    required:
+    - email
+    - name
+    - password
+    - role
+    type: object
+  controllers.CreateCellRequest:
+    properties:
+      col_no:
+        type: integer
+      end_time:
+        type: string
+      room_id:
+        type: integer
+      row_no:
+        type: integer
+      start_time:
+        type: string
+      teacher_id:
         type: integer
     type: object
   controllers.CreateCenterRequest:
@@ -91,25 +163,6 @@ definitions:
     - issued_at
     - name
     type: object
-  controllers.CreateCourseRequest:
-    properties:
-      color_hex:
-        type: string
-      duration:
-        type: integer
-      name:
-        type: string
-      room_buffer_min:
-        minimum: 0
-        type: integer
-      teacher_buffer_min:
-        minimum: 0
-        type: integer
-    required:
-    - color_hex
-    - duration
-    - name
-    type: object
   controllers.CreateHashtagRequest:
     properties:
       name:
@@ -130,35 +183,6 @@ definitions:
     required:
     - course_id
     type: object
-  controllers.CreatePersonalEventRequest:
-    properties:
-      color_hex:
-        type: string
-      end_at:
-        type: string
-      is_all_day:
-        type: boolean
-      recurrence_rule:
-        $ref: '#/definitions/models.RecurrenceRule'
-      start_at:
-        type: string
-      title:
-        type: string
-    required:
-    - end_at
-    - start_at
-    - title
-    type: object
-  controllers.CreateRoomRequest:
-    properties:
-      capacity:
-        type: integer
-      name:
-        type: string
-    required:
-    - capacity
-    - name
-    type: object
   controllers.CreateSkillRequest:
     properties:
       category:
@@ -175,39 +199,114 @@ definitions:
     - category
     - skill_name
     type: object
-  controllers.GetOfferingsResponse:
+  controllers.CreateTemplateRequest:
     properties:
-      offerings:
-        items:
-          $ref: '#/definitions/models.Offering'
-        type: array
-      pagination:
-        $ref: '#/definitions/global.Pagination'
-    type: object
-  controllers.HolidayItem:
-    properties:
-      date:
-        type: string
       name:
         type: string
+      row_type:
+        type: string
     required:
-    - date
     - name
     type: object
-  controllers.InviteTeacherRequest:
+  controllers.DeleteRecurringScheduleRequest:
     properties:
-      email:
+      edit_date:
         type: string
+      mode:
+        enum:
+        - SINGLE
+        - FUTURE
+        - ALL
+        type: string
+      reason:
+        type: string
+      rule_id:
+        type: integer
+    required:
+    - edit_date
+    - mode
+    - rule_id
+    type: object
+  controllers.FindMatchesRequest:
+    properties:
+      end_time:
+        type: string
+      exclude_teacher_ids:
+        items:
+          type: integer
+        type: array
+      required_skills:
+        items:
+          type: string
+        type: array
+      room_id:
+        type: integer
+      start_time:
+        type: string
+      teacher_id:
+        type: integer
+    required:
+    - end_time
+    - room_id
+    - start_time
+    type: object
+  controllers.GetAlternativeSlotsRequest:
+    properties:
+      duration:
+        type: integer
+      original_end:
+        type: string
+      original_start:
+        type: string
+      teacher_id:
+        type: integer
+    required:
+    - original_end
+    - original_start
+    - teacher_id
+    type: object
+  controllers.InvitationStatsResponse:
+    properties:
+      accepted:
+        type: integer
+      expired:
+        type: integer
+      pending:
+        type: integer
+      recent_pending:
+        type: integer
+      rejected:
+        type: integer
+      total:
+        type: integer
+    type: object
+  controllers.InviteTalentRequest:
+    properties:
       message:
         type: string
-      role:
-        enum:
-        - TEACHER
-        - SUBSTITUTE
-        type: string
+      teacher_ids:
+        items:
+          type: integer
+        maxItems: 20
+        minItems: 1
+        type: array
     required:
-    - email
-    - role
+    - teacher_ids
+    type: object
+  controllers.InviteTalentResponse:
+    properties:
+      failed_count:
+        type: integer
+      failed_ids:
+        items:
+          type: integer
+        type: array
+      invitation_ids:
+        items:
+          type: integer
+        type: array
+      invited_count:
+        type: integer
     type: object
   controllers.LINEBindingResponse:
     properties:
@@ -221,6 +320,99 @@ definitions:
         type: boolean
       welcome_sent:
         type: boolean
+    type: object
+  controllers.PaginationResponse:
+    properties:
+      data: {}
+      limit:
+        type: integer
+      page:
+        type: integer
+      total:
+        type: integer
+      total_pages:
+        type: integer
+    type: object
+  controllers.PreviewRecurrenceEditRequest:
+    properties:
+      edit_date:
+        type: string
+      mode:
+        enum:
+        - SINGLE
+        - FUTURE
+        - ALL
+        type: string
+      rule_id:
+        type: integer
+    required:
+    - edit_date
+    - mode
+    - rule_id
+    type: object
+  controllers.ResetAdminPasswordRequest:
+    properties:
+      new_password:
+        minLength: 6
+        type: string
+      target_admin_id:
+        type: integer
+    required:
+    - new_password
+    - target_admin_id
+    type: object
+  controllers.SessionItem:
+    properties:
+      course_name:
+        type: string
+      end_time:
+        type: string
+      id:
+        type: integer
+      room_name:
+        type: string
+      start_time:
+        type: string
+      status:
+        type: string
+    type: object
+  controllers.SkillCountItem:
+    properties:
+      count:
+        type: integer
+      name:
+        type: string
+    type: object
+  controllers.TalentStatsResponse:
+    properties:
+      accepted_invites:
+        type: integer
+      average_rating:
+        type: number
+      city_distribution:
+        items:
+          $ref: '#/definitions/controllers.CityDistributionItem'
+        type: array
+      declined_invites:
+        type: integer
+      member_count:
+        type: integer
+      monthly_change:
+        type: integer
+      monthly_trend:
+        items:
+          type: integer
+        type: array
+      open_hiring_count:
+        type: integer
+      pending_invites:
+        type: integer
+      top_skills:
+        items:
+          $ref: '#/definitions/controllers.SkillCountItem'
+        type: array
+      total_count:
+        type: integer
     type: object
   controllers.TeacherCreateExceptionRequest:
     properties:
@@ -260,123 +452,41 @@ definitions:
       line_user_id:
         type: string
     type: object
-  controllers.TeacherResponse:
+  controllers.TeacherNotifyTokenRequest:
     properties:
-      bio:
+      token:
         type: string
-      city:
-        type: string
-      created_at:
-        type: string
-      district:
-        type: string
-      email:
-        type: string
-      id:
-        type: integer
-      name:
-        type: string
+    required:
+    - token
     type: object
-  controllers.TeacherScheduleItem:
+  controllers.TeacherSessionResponse:
     properties:
-      center_id:
-        type: integer
-      center_name:
-        type: string
-      date:
-        type: string
-      end_time:
-        type: string
-      id:
-        type: string
-      room_id:
-        type: integer
-      start_time:
-        type: string
-      status:
-        type: string
-      teacher_id:
-        type: integer
-      title:
-        type: string
-      type:
-        type: string
-    type: object
-  controllers.TodayOffering:
-    properties:
-      name:
-        type: string
-    type: object
-  controllers.TodayRoom:
-    properties:
-      name:
-        type: string
-    type: object
-  controllers.TodaySession:
-    properties:
-      end_time:
-        type: string
-      id:
-        type: integer
-      offering:
-        $ref: '#/definitions/controllers.TodayOffering'
-      room:
-        $ref: '#/definitions/controllers.TodayRoom'
-      start_time:
-        type: string
-      status:
-        type: string
-      teacher:
-        $ref: '#/definitions/controllers.TodayTeacher'
-    type: object
-  controllers.TodaySummaryResponse:
-    properties:
-      changesCount:
-        type: integer
-      completedSessions:
-        type: integer
-      hasScheduleChanges:
-        type: boolean
-      inProgressSessions:
-        type: integer
-      inProgressTeacherNames:
-        items:
-          type: string
-        type: array
-      pendingExceptions:
-        type: integer
       sessions:
         items:
-          $ref: '#/definitions/controllers.TodaySession'
+          $ref: '#/definitions/controllers.SessionItem'
         type: array
-      totalSessions:
+      teacher_id:
         type: integer
-      upcomingSessions:
-        type: integer
-    type: object
-  controllers.TodayTeacher:
-    properties:
-      name:
+      teacher_name:
         type: string
     type: object
-  controllers.UpdateCourseRequest:
+  controllers.ToggleActiveRequest:
     properties:
-      color_hex:
+      is_active:
+        type: boolean
+    type: object
+  controllers.ToggleAdminStatusRequest:
+    properties:
+      new_status:
+        enum:
+        - ACTIVE
+        - INACTIVE
         type: string
-      duration:
-        type: integer
-      name:
-        type: string
-      room_buffer_min:
-        minimum: 0
-        type: integer
-      teacher_buffer_min:
-        minimum: 0
+      target_admin_id:
         type: integer
     required:
-    - color_hex
-    - duration
-    - name
+    - new_status
+    - target_admin_id
     type: object
   controllers.UpdateNotifySettingsRequest:
     properties:
@@ -395,46 +505,6 @@ definitions:
         type: integer
       name:
         type: string
-    type: object
-  controllers.UpdatePersonalEventRequest:
-    properties:
-      color_hex:
-        type: string
-      end_at:
-        type: string
-      is_all_day:
-        type: boolean
-      recurrence_rule:
-        $ref: '#/definitions/models.RecurrenceRule'
-      start_at:
-        type: string
-      title:
-        type: string
-      update_mode:
-        enum:
-        - SINGLE
-        - FUTURE
-        - ALL
-        type: string
-    required:
-    - update_mode
-    type: object
-  controllers.UpdatePersonalEventResponse:
-    properties:
-      message:
-        type: string
-      updated_count:
-        type: integer
-    type: object
-  controllers.UpdateRoomRequest:
-    properties:
-      capacity:
-        type: integer
-      name:
-        type: string
-    required:
-    - capacity
-    - name
     type: object
   controllers.UpdateSkillRequest:
     properties:
@@ -467,6 +537,27 @@ definitions:
       public_contact_info:
         type: string
     type: object
+  controllers.UpdateTemplateRequest:
+    properties:
+      name:
+        type: string
+    type: object
+  controllers.UploadBackgroundResponse:
+    properties:
+      file_name:
+        type: string
+      image_path:
+        type: string
+    type: object
+  controllers.UploadFileResponse:
+    properties:
+      file_name:
+        type: string
+      file_size:
+        type: integer
+      file_url:
+        type: string
+    type: object
   controllers.UpsertTeacherNoteRequest:
     properties:
       internal_note:
@@ -477,6 +568,26 @@ definitions:
         type: integer
     required:
     - rating
+    type: object
+  controllers.ValidateApplyTemplateRequest:
+    properties:
+      end_date:
+        type: string
+      offering_id:
+        type: integer
+      override_buffer:
+        type: boolean
+      start_date:
+        type: string
+      weekdays:
+        items:
+          type: integer
+        type: array
+    required:
+    - end_date
+    - offering_id
+    - start_date
+    - weekdays
     type: object
   errInfos.ErrCode:
     enum:
@@ -529,7 +640,178 @@ definitions:
     - 90004
     - 90005
     - 100001
+    - 100002
+    - 100003
+    - 100004
+    - 110001
+    - 110002
+    - 110003
+    - 120001
+    - 120002
+    - 120003
+    - 120004
+    - 120005
+    - 120006
+    - 120007
+    - 120008
+    - 120009
+    - 120010
+    - 120011
+    - 120012
+    - 50009
+    - 50010
+    - 50011
+    - 50012
+    - 50013
+    - 50014
+    - 50015
+    - 50016
+    - 50017
+    - 50018
+    - 60006
+    - 60007
+    - 60008
+    - 60009
+    - 60010
+    - 60011
+    - 60012
+    - 60013
+    - 60014
+    - 60015
+    - 60016
+    - 60017
+    - 60018
     type: integer
+    x-enum-comments:
+      ERR_CHECK_VIOLATION: CHECK 約束違反
+      ERR_CONCURRENT_MODIFIED: 並發修改衝突
+      ERR_CONSTRAINT_VIOLATION: 違反資料庫約束
+      ERR_DEADLOCK_DETECTED: 偵測到資料庫死鎖
+      ERR_EXCLUSIVE_LOCK_FAILED: 排他鎖獲取失敗
+      ERR_FOREIGN_KEY_VIOLATION: 外鍵約束違反
+      ERR_LOCK_WAIT_TIMEOUT: 鎖等待超時
+      ERR_PARTIAL_COMPLETION: 交易部分完成（部分操作成功）
+      ERR_RESOURCE_LOCKED: 資源被鎖定（如另一筆交易正在修改）
+      ERR_ROLLBACK_FAILED: 交易回滾失敗
+      ERR_SERIALIZATION_FAILURE: 序列化失敗（並發衝突）
+      ERR_SHARE_LOCK_FAILED: 共享鎖獲取失敗
+      ERR_TX_FAILED: 交易執行失敗
+      ERR_TX_TIMEOUT: 交易執行超時
+      ERR_UNIQUE_VIOLATION: 唯一約束違反
+      EXCEPTION_ALREADY_PROCESSED: 例外已被處理
+      EXCEPTION_CANCEL_DEADLINE_PASSED: 停課截止日已過
+      EXCEPTION_DEADLINE_EXCEEDED: 超過例外申請截止日
+      EXCEPTION_REPLACE_TEACHER_INVALID: 代課老師無效
+      EXCEPTION_RESCHEDULE_CONFLICT: 調課時間與現有排程衝突
+      EXCEPTION_RESCHEDULE_NO_NEW_TIME: 調課必須提供新時間
+      EXCEPTION_SELF_REVIEW_FORBIDDEN: 不能審核自己提交的申請
+      RECURRENCE_BATCH_LIMIT_EXCEEDED: 批量操作超過限制
+      RECURRENCE_DELETE_CONFIRM: 刪除操作需要確認
+      RECURRENCE_EDIT_DATE_REQUIRED: 編輯日期為必填
+      RECURRENCE_EDIT_MODE_INVALID: 無效的編輯模式
+      RECURRENCE_FUTURE_WITH_EDIT_DATE: FUTURE 模式必須指定編輯日期
+      RECURRENCE_NO_AFFECTED_SESSIONS: 沒有受影響的場次
+      SCHED_COURSE_NOT_FOUND: 課程模板不存在
+      SCHED_DURATION_EXCEEDS_LIMIT: 課程時長超過限制
+      SCHED_END_BEFORE_START: 結束日期早於開始日期
+      SCHED_INVALID_DATE_FORMAT: 無效的日期格式
+      SCHED_INVALID_DURATION: 無效的課程時長
+      SCHED_INVALID_WEEKDAY: 無效的星期幾
+      SCHED_OFFERING_NOT_FOUND: 班別不存在
+      SCHED_ROOM_REQUIRED: 必須指定教室
+      SCHED_START_AFTER_END: 開始時間晚於結束時間
+      SCHED_TEACHER_REQUIRED: 必須指定老師
+    x-enum-descriptions:
+    - ""
+    - ""
+    - ""
+    - ""
+    - ""
+    - ""
+    - ""
+    - ""
+    - ""
+    - ""
+    - ""
+    - ""
+    - ""
+    - ""
+    - ""
+    - ""
+    - ""
+    - ""
+    - ""
+    - ""
+    - ""
+    - ""
+    - ""
+    - ""
+    - ""
+    - ""
+    - ""
+    - ""
+    - ""
+    - ""
+    - ""
+    - ""
+    - ""
+    - ""
+    - ""
+    - ""
+    - ""
+    - ""
+    - ""
+    - ""
+    - ""
+    - ""
+    - ""
+    - ""
+    - ""
+    - ""
+    - ""
+    - ""
+    - ""
+    - ""
+    - ""
+    - ""
+    - 資源被鎖定（如另一筆交易正在修改）
+    - 並發修改衝突
+    - 交易執行失敗
+    - 交易執行超時
+    - 偵測到資料庫死鎖
+    - 交易部分完成（部分操作成功）
+    - 交易回滾失敗
+    - 違反資料庫約束
+    - 外鍵約束違反
+    - 唯一約束違反
+    - CHECK 約束違反
+    - 序列化失敗（並發衝突）
+    - 鎖等待超時
+    - 共享鎖獲取失敗
+    - 排他鎖獲取失敗
+    - 必須指定老師
+    - 必須指定教室
+    - 班別不存在
+    - 課程模板不存在
+    - 無效的星期幾
+    - 無效的課程時長
+    - 開始時間晚於結束時間
+    - 無效的日期格式
+    - 結束日期早於開始日期
+    - 課程時長超過限制
+    - 超過例外申請截止日
+    - 不能審核自己提交的申請
+    - 例外已被處理
+    - 調課時間與現有排程衝突
+    - 代課老師無效
+    - 停課截止日已過
+    - 調課必須提供新時間
+    - 無效的編輯模式
+    - 沒有受影響的場次
+    - FUTURE 模式必須指定編輯日期
+    - 編輯日期為必填
+    - 刪除操作需要確認
+    - 批量操作超過限制
     x-enum-varnames:
     - SYSTEM_ERROR
     - PARAMS_VALIDATE_ERROR
@@ -580,6 +862,47 @@ definitions:
     - LINE_BINDING_EXPIRED
     - LINE_NOTIFY_FAILED
     - ADMIN_NOT_FOUND
+    - ADMIN_EMAIL_EXISTS
+    - PASSWORD_NOT_MATCH
+    - ADMIN_CANNOT_DISABLE_SELF
+    - ERR_RESOURCE_LOCKED
+    - ERR_CONCURRENT_MODIFIED
+    - ERR_TX_FAILED
+    - ERR_TX_TIMEOUT
+    - ERR_DEADLOCK_DETECTED
+    - ERR_PARTIAL_COMPLETION
+    - ERR_ROLLBACK_FAILED
+    - ERR_CONSTRAINT_VIOLATION
+    - ERR_FOREIGN_KEY_VIOLATION
+    - ERR_UNIQUE_VIOLATION
+    - ERR_CHECK_VIOLATION
+    - ERR_SERIALIZATION_FAILURE
+    - ERR_LOCK_WAIT_TIMEOUT
+    - ERR_SHARE_LOCK_FAILED
+    - ERR_EXCLUSIVE_LOCK_FAILED
+    - SCHED_TEACHER_REQUIRED
+    - SCHED_ROOM_REQUIRED
+    - SCHED_OFFERING_NOT_FOUND
+    - SCHED_COURSE_NOT_FOUND
+    - SCHED_INVALID_WEEKDAY
+    - SCHED_INVALID_DURATION
+    - SCHED_START_AFTER_END
+    - SCHED_INVALID_DATE_FORMAT
+    - SCHED_END_BEFORE_START
+    - SCHED_DURATION_EXCEEDS_LIMIT
+    - EXCEPTION_DEADLINE_EXCEEDED
+    - EXCEPTION_SELF_REVIEW_FORBIDDEN
+    - EXCEPTION_ALREADY_PROCESSED
+    - EXCEPTION_RESCHEDULE_CONFLICT
+    - EXCEPTION_REPLACE_TEACHER_INVALID
+    - EXCEPTION_CANCEL_DEADLINE_PASSED
+    - EXCEPTION_RESCHEDULE_NO_NEW_TIME
+    - RECURRENCE_EDIT_MODE_INVALID
+    - RECURRENCE_NO_AFFECTED_SESSIONS
+    - RECURRENCE_FUTURE_WITH_EDIT_DATE
+    - RECURRENCE_EDIT_DATE_REQUIRED
+    - RECURRENCE_DELETE_CONFIRM
+    - RECURRENCE_BATCH_LIMIT_EXCEEDED
   global.ApiResponse:
     properties:
       code:
@@ -616,18 +939,28 @@ definitions:
       type:
         type: string
     type: object
-  models.Center:
+  models.AdminUser:
     properties:
+      center_id:
+        type: integer
       created_at:
+        type: string
+      email:
         type: string
       id:
         type: integer
+      line_bound_at:
+        type: string
+      line_notify_enabled:
+        type: boolean
       name:
         type: string
-      plan_level:
+      role:
         type: string
-      settings:
-        $ref: '#/definitions/models.CenterSettings'
+      status:
+        type: string
+      updated_at:
+        type: string
     type: object
   models.CenterHoliday:
     properties:
@@ -666,44 +999,15 @@ definitions:
         type: string
       responded_at:
         type: string
+      role:
+        description: 角色：TEACHER 或 SUBSTITUTE
+        type: string
       status:
         $ref: '#/definitions/models.InvitationStatus'
       teacher_id:
         description: 被邀請的老師ID
         type: integer
       token:
-        type: string
-    type: object
-  models.CenterSettings:
-    properties:
-      allow_public_register:
-        type: boolean
-      default_language:
-        type: string
-      exception_lead_days:
-        type: integer
-    type: object
-  models.Course:
-    properties:
-      center_id:
-        type: integer
-      color_hex:
-        type: string
-      created_at:
-        type: string
-      default_duration:
-        type: integer
-      id:
-        type: integer
-      is_active:
-        type: boolean
-      name:
-        type: string
-      room_buffer_min:
-        type: integer
-      teacher_buffer_min:
-        type: integer
-      updated_at:
         type: string
     type: object
   models.DateRange:
@@ -797,6 +1101,8 @@ definitions:
         type: integer
       is_all_day:
         type: boolean
+      note:
+        type: string
       recurrence_rule:
         $ref: '#/definitions/models.RecurrenceRule'
       start_at:
@@ -1027,6 +1333,291 @@ definitions:
       teacher_skill_id:
         type: integer
     type: object
+  models.TimetableCell:
+    properties:
+      col_no:
+        type: integer
+      created_at:
+        type: string
+      end_time:
+        type: string
+      id:
+        type: integer
+      is_active:
+        type: boolean
+      room_id:
+        type: integer
+      row_no:
+        type: integer
+      start_time:
+        type: string
+      teacher_id:
+        type: integer
+      template_id:
+        type: integer
+      updated_at:
+        type: string
+    type: object
+  models.TimetableTemplate:
+    properties:
+      cells:
+        items:
+          $ref: '#/definitions/models.TimetableCell'
+        type: array
+      center_id:
+        type: integer
+      created_at:
+        type: string
+      id:
+        type: integer
+      is_active:
+        type: boolean
+      name:
+        type: string
+      row_type:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  requests.CheckBufferRequest:
+    properties:
+      course_id:
+        type: integer
+      next_start_time:
+        type: string
+      prev_end_time:
+        type: string
+      room_id:
+        type: integer
+      teacher_id:
+        type: integer
+    required:
+    - course_id
+    - next_start_time
+    - prev_end_time
+    - room_id
+    - teacher_id
+    type: object
+  requests.CheckOverlapRequest:
+    properties:
+      end_time:
+        type: string
+      exclude_rule_id:
+        type: integer
+      room_id:
+        type: integer
+      start_time:
+        type: string
+      teacher_id:
+        type: integer
+      weekday:
+        description: 可選，如果未提供則從 StartTime 推算
+        type: integer
+    required:
+    - end_time
+    - room_id
+    - start_time
+    type: object
+  requests.CheckRuleLockStatusRequest:
+    properties:
+      exception_date:
+        type: string
+      rule_id:
+        type: integer
+    required:
+    - exception_date
+    - rule_id
+    type: object
+  requests.CreateExceptionRequest:
+    properties:
+      new_end_at:
+        type: string
+      new_room_id:
+        type: integer
+      new_start_at:
+        type: string
+      new_teacher_id:
+        type: integer
+      new_teacher_name:
+        type: string
+      original_date:
+        type: string
+      reason:
+        type: string
+      rule_id:
+        type: integer
+      type:
+        type: string
+    required:
+    - original_date
+    - reason
+    - rule_id
+    - type
+    type: object
+  requests.CreatePersonalEventRequest:
+    properties:
+      color_hex:
+        type: string
+      end_at:
+        type: string
+      is_all_day:
+        type: boolean
+      recurrence_rule:
+        $ref: '#/definitions/models.RecurrenceRule'
+      start_at:
+        type: string
+      title:
+        type: string
+    required:
+    - end_at
+    - start_at
+    - title
+    type: object
+  requests.CreateRuleRequest:
+    properties:
+      duration:
+        type: integer
+      end_date:
+        type: string
+      end_time:
+        type: string
+      name:
+        type: string
+      offering_id:
+        type: integer
+      override_buffer:
+        type: boolean
+      room_id:
+        type: integer
+      start_date:
+        type: string
+      start_time:
+        type: string
+      teacher_id:
+        type: integer
+      weekdays:
+        items:
+          type: integer
+        minItems: 1
+        type: array
+    required:
+    - duration
+    - end_time
+    - name
+    - offering_id
+    - room_id
+    - start_date
+    - start_time
+    - weekdays
+    type: object
+  requests.DetectPhaseTransitionsRequest:
+    properties:
+      end_date:
+        type: string
+      offering_id:
+        type: integer
+      start_date:
+        type: string
+    required:
+    - end_date
+    - offering_id
+    - start_date
+    type: object
+  requests.ExpandRulesRequest:
+    properties:
+      end_date:
+        type: string
+      rule_ids:
+        items:
+          type: integer
+        type: array
+      start_date:
+        type: string
+    required:
+    - end_date
+    - start_date
+    type: object
+  requests.PersonalEventNoteResponse:
+    properties:
+      content:
+        type: string
+    type: object
+  requests.ReviewExceptionRequest:
+    properties:
+      action:
+        type: string
+      override_buffer:
+        type: boolean
+      reason:
+        type: string
+    required:
+    - action
+    type: object
+  requests.UpdatePersonalEventNoteRequest:
+    properties:
+      content:
+        type: string
+    required:
+    - content
+    type: object
+  requests.UpdatePersonalEventRequest:
+    properties:
+      color_hex:
+        type: string
+      end_at:
+        type: string
+      is_all_day:
+        type: boolean
+      recurrence_rule:
+        $ref: '#/definitions/models.RecurrenceRule'
+      start_at:
+        type: string
+      title:
+        type: string
+      update_mode:
+        enum:
+        - SINGLE
+        - FUTURE
+        - ALL
+        type: string
+    required:
+    - update_mode
+    type: object
+  requests.UpdatePersonalEventResponse:
+    properties:
+      message:
+        type: string
+      updated_count:
+        type: integer
+    type: object
+  requests.UpdateRuleRequest:
+    properties:
+      duration:
+        type: integer
+      end_date:
+        type: string
+      end_time:
+        type: string
+      name:
+        type: string
+      offering_id:
+        type: integer
+      room_id:
+        type: integer
+      start_date:
+        type: string
+      start_time:
+        type: string
+      teacher_id:
+        type: integer
+      update_mode:
+        description: 更新模式：SINGLE - 只修改這一天，FUTURE - 修改這天及之後，ALL - 修改所有
+        type: string
+      weekdays:
+        items:
+          type: integer
+        type: array
+    type: object
   requests.UpsertSessionNoteRequest:
     properties:
       content:
@@ -1065,6 +1656,81 @@ definitions:
     required:
     - id
     type: object
+  requests.ValidateFullRequest:
+    properties:
+      allow_buffer_override:
+        type: boolean
+      course_id:
+        type: integer
+      end_time:
+        type: string
+      exclude_rule_id:
+        type: integer
+      room_id:
+        type: integer
+      start_time:
+        type: string
+      teacher_id:
+        type: integer
+    required:
+    - course_id
+    - end_time
+    - room_id
+    - start_time
+    type: object
+  resources.AdminCertificateResponse:
+    properties:
+      created_at:
+        type: string
+      file_url:
+        type: string
+      id:
+        type: integer
+      issued_at:
+        type: string
+      name:
+        type: string
+    type: object
+  resources.AdminTeacherResponse:
+    properties:
+      bio:
+        type: string
+      certificates:
+        items:
+          $ref: '#/definitions/resources.AdminCertificateResponse'
+        type: array
+      city:
+        type: string
+      created_at:
+        type: string
+      district:
+        type: string
+      email:
+        type: string
+      id:
+        type: integer
+      is_active:
+        type: boolean
+      name:
+        type: string
+      phone:
+        type: string
+      skills:
+        items:
+          $ref: '#/definitions/resources.AdminTeacherSkillResponse'
+        type: array
+    type: object
+  resources.AdminTeacherSkillResponse:
+    properties:
+      category:
+        type: string
+      id:
+        type: integer
+      level:
+        type: string
+      skill_name:
+        type: string
+    type: object
   resources.CenterMembershipResource:
     properties:
       center_id:
@@ -1077,6 +1743,49 @@ definitions:
         type: integer
       status:
         type: string
+    type: object
+  resources.CenterResponse:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      plan_level:
+        type: string
+      settings:
+        $ref: '#/definitions/resources.CenterSettings'
+    type: object
+  resources.CenterSettings:
+    properties:
+      allow_public_register:
+        type: boolean
+      default_language:
+        type: string
+      exception_lead_days:
+        type: integer
+    type: object
+  resources.CourseResponse:
+    properties:
+      center_id:
+        type: integer
+      color_hex:
+        type: string
+      created_at:
+        type: string
+      default_duration:
+        type: integer
+      id:
+        type: integer
+      is_active:
+        type: boolean
+      name:
+        type: string
+      room_buffer_min:
+        type: integer
+      teacher_buffer_min:
+        type: integer
     type: object
   resources.GeoCityResource:
     properties:
@@ -1107,12 +1816,65 @@ definitions:
       usage_count:
         type: integer
     type: object
+  resources.InvitationResponse:
+    properties:
+      center_id:
+        type: integer
+      center_name:
+        type: string
+      created_at:
+        type: string
+      expires_at:
+        type: string
+      id:
+        type: integer
+      invite_type:
+        type: string
+      message:
+        type: string
+      responded_at:
+        type: string
+      status:
+        type: string
+    type: object
   resources.PersonalHashtag:
     properties:
       hashtag_id:
         type: integer
+      name:
+        type: string
+      sort_order:
+        type: integer
+    type: object
+  resources.PublicInvitationInfo:
+    properties:
+      center_id:
+        type: integer
+      center_name:
+        type: string
+      expires_at:
+        type: string
       id:
         type: integer
+      message:
+        type: string
+      role:
+        type: string
+      status:
+        type: string
+    type: object
+  resources.RoomResponse:
+    properties:
+      capacity:
+        type: integer
+      center_id:
+        type: integer
+      created_at:
+        type: string
+      id:
+        type: integer
+      is_active:
+        type: boolean
       name:
         type: string
     type: object
@@ -1128,6 +1890,21 @@ definitions:
         type: integer
       session_date:
         type: string
+      updated_at:
+        type: string
+    type: object
+  resources.TeacherNoteResponse:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      internal_note:
+        type: string
+      rating:
+        type: integer
+      teacher_id:
+        type: integer
       updated_at:
         type: string
     type: object
@@ -1195,6 +1972,193 @@ definitions:
       updated_at:
         type: integer
     type: object
+  services.AdminListItem:
+    properties:
+      created_at:
+        type: string
+      email:
+        type: string
+      id:
+        type: integer
+      line_bound_at:
+        type: string
+      line_notify_enabled:
+        type: boolean
+      line_user_id:
+        type: string
+      name:
+        type: string
+      role:
+        type: string
+      status:
+        type: string
+    type: object
+  services.BufferCheckResult:
+    properties:
+      conflicts:
+        items:
+          $ref: '#/definitions/services.ValidationConflict'
+        type: array
+      valid:
+        type: boolean
+    type: object
+  services.BulkCreateHolidaysRequest:
+    properties:
+      holidays:
+        items:
+          $ref: '#/definitions/services.HolidayItem'
+        type: array
+    required:
+    - holidays
+    type: object
+  services.BulkCreateHolidaysResponse:
+    properties:
+      holidays:
+        items:
+          $ref: '#/definitions/models.CenterHoliday'
+        type: array
+      total_created:
+        type: integer
+      total_requested:
+        type: integer
+      total_skipped:
+        type: integer
+    type: object
+  services.ChangePasswordRequest:
+    properties:
+      new_password:
+        minLength: 6
+        type: string
+      old_password:
+        minLength: 6
+        type: string
+    required:
+    - new_password
+    - old_password
+    type: object
+  services.CreateCourseRequest:
+    properties:
+      color_hex:
+        type: string
+      duration:
+        type: integer
+      name:
+        type: string
+      room_buffer_min:
+        minimum: 0
+        type: integer
+      teacher_buffer_min:
+        minimum: 0
+        type: integer
+    required:
+    - color_hex
+    - duration
+    - name
+    type: object
+  services.CreateHolidayRequest:
+    properties:
+      date:
+        type: string
+      name:
+        type: string
+    required:
+    - date
+    - name
+    type: object
+  services.CreateRoomRequest:
+    properties:
+      capacity:
+        type: integer
+      name:
+        type: string
+    required:
+    - capacity
+    - name
+    type: object
+  services.ExpandedException:
+    properties:
+      id:
+        type: integer
+      new_end_at:
+        type: string
+      new_start_at:
+        type: string
+      new_teacher_id:
+        type: integer
+      status:
+        description: PENDING, APPROVED, REJECTED, REVOKED
+        type: string
+      type:
+        description: CANCEL, RESCHEDULE, REPLACE_TEACHER
+        type: string
+    type: object
+  services.ExpandedSchedule:
+    properties:
+      date:
+        type: string
+      effective_range:
+        $ref: '#/definitions/models.DateRange'
+      end_time:
+        type: string
+      exception_info:
+        $ref: '#/definitions/services.ExpandedException'
+      has_exception:
+        type: boolean
+      is_cross_day_part:
+        description: 跨日課程的一部分
+        type: boolean
+      is_holiday:
+        type: boolean
+      offering_id:
+        type: integer
+      offering_name:
+        description: 關聯資料
+        type: string
+      room_id:
+        type: integer
+      room_name:
+        type: string
+      rule_id:
+        type: integer
+      start_time:
+        type: string
+      teacher_id:
+        type: integer
+      teacher_name:
+        type: string
+    type: object
+  services.FullValidationResult:
+    properties:
+      conflicts:
+        items:
+          $ref: '#/definitions/services.ValidationConflict'
+        type: array
+      valid:
+        type: boolean
+    type: object
+  services.GenerateInvitationLinkRequest:
+    properties:
+      adminID:
+        type: integer
+      centerID:
+        type: integer
+      email:
+        type: string
+      message:
+        type: string
+      role:
+        type: string
+    type: object
+  services.HolidayItem:
+    properties:
+      date:
+        type: string
+      name:
+        type: string
+    required:
+    - date
+    - name
+    type: object
   services.IdentInfo:
     properties:
       center_id:
@@ -1211,6 +2175,53 @@ definitions:
         description: ADMIN or TEACHER
         type: string
     type: object
+  services.InvitationLinkResponse:
+    properties:
+      center_id:
+        type: integer
+      center_name:
+        type: string
+      created_at:
+        type: string
+      email:
+        type: string
+      expires_at:
+        type: string
+      id:
+        type: integer
+      invite_link:
+        type: string
+      message:
+        type: string
+      role:
+        type: string
+      status:
+        type: string
+      token:
+        type: string
+    type: object
+  services.InviteTeacherRequest:
+    properties:
+      adminID:
+        type: integer
+      centerID:
+        type: integer
+      email:
+        type: string
+      message:
+        type: string
+      role:
+        type: string
+    type: object
+  services.ListOfferingsOutput:
+    properties:
+      offerings:
+        items:
+          $ref: '#/definitions/models.Offering'
+        type: array
+      pagination:
+        $ref: '#/definitions/global.Pagination'
+    type: object
   services.LoginResponse:
     properties:
       token:
@@ -1218,12 +2229,406 @@ definitions:
       user:
         $ref: '#/definitions/services.IdentInfo'
     type: object
+  services.OverlapCheckResult:
+    properties:
+      conflicts:
+        items:
+          $ref: '#/definitions/services.ValidationConflict'
+        type: array
+      valid:
+        type: boolean
+    type: object
+  services.PhaseTransition:
+    properties:
+      date:
+        type: string
+      has_gap:
+        type: boolean
+      next_end_time:
+        type: string
+      next_room_id:
+        type: integer
+      next_rule_id:
+        type: integer
+      next_start_time:
+        type: string
+      next_teacher_id:
+        type: integer
+      prev_end_time:
+        type: string
+      prev_room_id:
+        type: integer
+      prev_rule_id:
+        type: integer
+      prev_start_time:
+        type: string
+      prev_teacher_id:
+        type: integer
+    type: object
+  services.RecurrenceEditMode:
+    enum:
+    - SINGLE
+    - FUTURE
+    - ALL
+    type: string
+    x-enum-varnames:
+    - RecurrenceEditSingle
+    - RecurrenceEditFuture
+    - RecurrenceEditAll
+  services.RecurrenceEditRequest:
+    properties:
+      edit_date:
+        type: string
+      mode:
+        allOf:
+        - $ref: '#/definitions/services.RecurrenceEditMode'
+        enum:
+        - SINGLE
+        - FUTURE
+        - ALL
+      new_end_time:
+        type: string
+      new_room_id:
+        type: integer
+      new_start_time:
+        type: string
+      new_teacher_id:
+        type: integer
+      reason:
+        type: string
+      rule_id:
+        type: integer
+    required:
+    - edit_date
+    - mode
+    - rule_id
+    type: object
+  services.RespondToInvitationRequest:
+    properties:
+      invitationID:
+        type: integer
+      response:
+        description: '"ACCEPT" 或 "DECLINE"'
+        type: string
+      teacherID:
+        type: integer
+    type: object
+  services.RuleLockStatus:
+    properties:
+      days_remaining:
+        type: integer
+      deadline:
+        type: string
+      is_locked:
+        type: boolean
+      lock_at:
+        type: string
+      lock_reason:
+        type: string
+    type: object
+  services.SubscriptionInfo:
+    properties:
+      center_id:
+        type: integer
+      center_name:
+        type: string
+      created_at:
+        type: string
+      expires_at:
+        type: string
+      teacher_id:
+        type: integer
+      teacher_name:
+        type: string
+      token:
+        type: string
+      url:
+        type: string
+    type: object
+  services.TeacherScheduleItem:
+    properties:
+      center_id:
+        type: integer
+      center_name:
+        type: string
+      date:
+        type: string
+      end_time:
+        type: string
+      id:
+        type: string
+      is_cross_day_part:
+        type: boolean
+      room_id:
+        type: integer
+      rule_id:
+        type: integer
+      start_time:
+        type: string
+      status:
+        type: string
+      teacher_id:
+        type: integer
+      title:
+        type: string
+      type:
+        type: string
+    type: object
+  services.TodayOffering:
+    properties:
+      name:
+        type: string
+    type: object
+  services.TodayRoom:
+    properties:
+      name:
+        type: string
+    type: object
+  services.TodaySession:
+    properties:
+      end_time:
+        type: string
+      id:
+        type: integer
+      offering:
+        $ref: '#/definitions/services.TodayOffering'
+      room:
+        $ref: '#/definitions/services.TodayRoom'
+      start_time:
+        type: string
+      status:
+        type: string
+      teacher:
+        $ref: '#/definitions/services.TodayTeacher'
+    type: object
+  services.TodaySummary:
+    properties:
+      changes_count:
+        type: integer
+      completed_sessions:
+        type: integer
+      has_schedule_changes:
+        type: boolean
+      in_progress_sessions:
+        type: integer
+      in_progress_teacher_names:
+        items:
+          type: string
+        type: array
+      pending_exceptions:
+        type: integer
+      sessions:
+        items:
+          $ref: '#/definitions/services.TodaySession'
+        type: array
+      total_sessions:
+        type: integer
+      upcoming_sessions:
+        type: integer
+    type: object
+  services.TodayTeacher:
+    properties:
+      name:
+        type: string
+    type: object
+  services.ToggleActiveRequest:
+    properties:
+      is_active:
+        type: boolean
+    type: object
+  services.UpdateCourseRequest:
+    properties:
+      color_hex:
+        type: string
+      duration:
+        type: integer
+      name:
+        type: string
+      room_buffer_min:
+        minimum: 0
+        type: integer
+      teacher_buffer_min:
+        minimum: 0
+        type: integer
+    required:
+    - color_hex
+    - duration
+    - name
+    type: object
+  services.UpdateRoomRequest:
+    properties:
+      capacity:
+        type: integer
+      name:
+        type: string
+    required:
+    - capacity
+    - name
+    type: object
+  services.ValidationConflict:
+    properties:
+      can_override:
+        type: boolean
+      conflict_source:
+        description: RULE, SESSION, PERSONAL
+        type: string
+      conflict_source_id:
+        type: integer
+      details:
+        type: string
+      diff_minutes:
+        type: integer
+      message:
+        type: string
+      require_approval:
+        type: boolean
+      required_minutes:
+        type: integer
+      type:
+        description: TEACHER_OVERLAP, ROOM_OVERLAP, TEACHER_BUFFER, ROOM_BUFFER
+        type: string
+    type: object
 info:
   contact: {}
   description: API 維護文件
   title: timeLedger 阿卡莉 模板框架
   version: "1.0"
 paths:
+  /admin/admins:
+    get:
+      consumes:
+      - application/json
+      description: 取得目前中心的所有管理員列表
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/services.AdminListItem'
+            type: array
+      summary: 取得管理員列表
+      tags:
+      - Admin - Management
+    post:
+      consumes:
+      - application/json
+      description: 直接建立管理員帳號（僅 OWNER 可執行）
+      parameters:
+      - description: 管理員資料
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.CreateAdminRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 建立管理員
+      tags:
+      - Admin - Management
+  /admin/admins/change-role:
+    post:
+      consumes:
+      - application/json
+      description: 修改指定管理員的角色（僅 OWNER 可執行，且不能修改自己）
+      parameters:
+      - description: 角色變更請求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.ChangeAdminRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 修改管理員角色
+      tags:
+      - Admin - Management
+  /admin/admins/reset-password:
+    post:
+      consumes:
+      - application/json
+      description: 重設指定管理員的密碼（僅 OWNER 可執行）
+      parameters:
+      - description: 密碼重設請求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.ResetAdminPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 重設管理員密碼
+      tags:
+      - Admin - Management
+  /admin/admins/toggle-status:
+    post:
+      consumes:
+      - application/json
+      description: 停用或啟用指定的管理員帳號（僅 OWNER 可執行）
+      parameters:
+      - description: 狀態變更請求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.ToggleAdminStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 停用/啟用管理員
+      tags:
+      - Admin - Management
+  /admin/me/change-password:
+    post:
+      consumes:
+      - application/json
+      description: 修改目前登入管理員的密碼
+      parameters:
+      - description: 密碼修改請求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/services.ChangePasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 修改管理員密碼
+      tags:
+      - Admin - Profile
   /admin/me/line-binding:
     get:
       consumes:
@@ -1296,6 +2701,221 @@ paths:
       summary: 解除 LINE 綁定
       tags:
       - Admin - LINE
+  /admin/me/profile:
+    get:
+      consumes:
+      - application/json
+      description: 取得目前登入管理員的個人資料
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.AdminUser'
+      summary: 取得管理員個人資料
+      tags:
+      - Admin - Profile
+  /admin/notifications/queue-stats:
+    get:
+      consumes:
+      - application/json
+      description: 取得通知佇列的統計資訊
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/global.ApiResponse'
+      summary: 取得通知佇列統計
+      tags:
+      - Admin - Notifications
+  /admin/smart-matching/alternatives:
+    post:
+      consumes:
+      - application/json
+      description: 取得替代時段建議
+      parameters:
+      - description: 時段資訊
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.GetAlternativeSlotsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/global.ApiResponse'
+      summary: 取得替代時段建議
+      tags:
+      - Smart Matching
+  /admin/smart-matching/matches:
+    post:
+      consumes:
+      - application/json
+      description: 根據條件搜尋可配合的老師
+      parameters:
+      - description: 搜尋條件
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.FindMatchesRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/global.ApiResponse'
+      summary: 智慧媒合搜尋
+      tags:
+      - Smart Matching
+  /admin/smart-matching/suggestions:
+    get:
+      consumes:
+      - application/json
+      description: 取得搜尋建議關鍵字
+      parameters:
+      - description: 搜尋關鍵字
+        in: query
+        name: q
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/global.ApiResponse'
+      summary: 取得搜尋建議
+      tags:
+      - Smart Matching
+  /admin/smart-matching/talent/invite:
+    post:
+      consumes:
+      - application/json
+      description: 邀請老師加入人才庫
+      parameters:
+      - description: 邀請資訊
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.InviteTalentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.InviteTalentResponse'
+      summary: 邀請人才合作
+      tags:
+      - Smart Matching
+  /admin/smart-matching/talent/search:
+    get:
+      consumes:
+      - application/json
+      description: 搜尋符合條件的人才
+      parameters:
+      - description: 縣市
+        in: query
+        name: city
+        type: string
+      - description: 區域
+        in: query
+        name: district
+        type: string
+      - description: 關鍵字
+        in: query
+        name: keyword
+        type: string
+      - description: 技能（逗號分隔）
+        in: query
+        name: skills
+        type: string
+      - description: 標籤（逗號分隔）
+        in: query
+        name: hashtags
+        type: string
+      - description: 頁碼
+        in: query
+        name: page
+        type: integer
+      - description: 每頁筆數
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/global.ApiResponse'
+      summary: 人才庫搜尋
+      tags:
+      - Smart Matching
+  /admin/smart-matching/talent/stats:
+    get:
+      consumes:
+      - application/json
+      description: 取得人才庫的統計資訊
+      parameters:
+      - description: 縣市
+        in: query
+        name: city
+        type: string
+      - description: 區域
+        in: query
+        name: district
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.TalentStatsResponse'
+      summary: 取得人才庫統計資料
+      tags:
+      - Smart Matching
+  /admin/smart-matching/teachers/{teacher_id}/sessions:
+    get:
+      consumes:
+      - application/json
+      description: 取得指定教師的課表
+      parameters:
+      - description: 教師ID
+        in: path
+        name: teacher_id
+        required: true
+        type: integer
+      - description: 開始日期
+        in: query
+        name: start_date
+        required: true
+        type: string
+      - description: 結束日期
+        in: query
+        name: end_date
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.TeacherSessionResponse'
+      summary: 取得教師課表
+      tags:
+      - Smart Matching
   /api/v1/admin/centers:
     get:
       consumes:
@@ -1311,7 +2931,7 @@ paths:
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/models.Center'
+                    $ref: '#/definitions/resources.CenterResponse'
                   type: array
               type: object
       security:
@@ -1339,11 +2959,107 @@ paths:
             - $ref: '#/definitions/global.ApiResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/models.Center'
+                  $ref: '#/definitions/resources.CenterResponse'
               type: object
       security:
       - BearerAuth: []
       summary: 新增中心
+      tags:
+      - Admin
+  /api/v1/admin/centers/{id}/holidays:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: Center ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 開始日期
+        in: query
+        name: start_date
+        type: string
+      - description: 結束日期
+        in: query
+        name: end_date
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/global.ApiResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.CenterHoliday'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 取得假日列表
+      tags:
+      - Admin
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Center ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 假日資訊
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/services.CreateHolidayRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/global.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.CenterHoliday'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 新增假日
+      tags:
+      - Admin
+  /api/v1/admin/centers/{id}/holidays/{holiday_id}:
+    delete:
+      consumes:
+      - application/json
+      parameters:
+      - description: Center ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Holiday ID
+        in: path
+        name: holiday_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/global.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: 刪除假日
       tags:
       - Admin
   /api/v1/admin/centers/{id}/holidays/bulk:
@@ -1361,7 +3077,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/controllers.BulkCreateHolidaysRequest'
+          $ref: '#/definitions/services.BulkCreateHolidaysRequest'
       produces:
       - application/json
       responses:
@@ -1372,7 +3088,7 @@ paths:
             - $ref: '#/definitions/global.ApiResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/controllers.BulkCreateHolidaysResponse'
+                  $ref: '#/definitions/services.BulkCreateHolidaysResponse'
               type: object
       security:
       - BearerAuth: []
@@ -1380,6 +3096,44 @@ paths:
       tags:
       - Admin
   /api/v1/admin/centers/{id}/invitations:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: Center ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 篩選狀態 (PENDING/ACCEPTED/DECLINED/EXPIRED)
+        in: query
+        name: status
+        type: string
+      - description: 頁碼
+        in: query
+        name: page
+        type: integer
+      - description: 每頁筆數
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/global.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/controllers.PaginationResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 取得邀請列表
+      tags:
+      - Admin - Invitations
     post:
       consumes:
       - application/json
@@ -1394,7 +3148,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/controllers.InviteTeacherRequest'
+          $ref: '#/definitions/services.InviteTeacherRequest'
       produces:
       - application/json
       responses:
@@ -1412,6 +3166,95 @@ paths:
       summary: 邀請老師加入中心
       tags:
       - Admin
+  /api/v1/admin/centers/{id}/invitations/generate-link:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Center ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 邀請資訊
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/services.GenerateInvitationLinkRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/global.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/services.InvitationLinkResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 產生邀請連結
+      tags:
+      - Admin - Invitations
+  /api/v1/admin/centers/{id}/invitations/links:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: Center ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/global.ApiResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/services.InvitationLinkResponse'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 取得邀請連結列表
+      tags:
+      - Admin - Invitations
+  /api/v1/admin/centers/{id}/invitations/stats:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: Center ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/global.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/controllers.InvitationStatsResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 取得邀請統計資料
+      tags:
+      - Admin - Invitations
   /api/v1/admin/centers/{id}/offerings/{offering_id}/copy:
     post:
       consumes:
@@ -1436,8 +3279,8 @@ paths:
       produces:
       - application/json
       responses:
-        "200":
-          description: OK
+        "201":
+          description: Created
           schema:
             allOf:
             - $ref: '#/definitions/global.ApiResponse'
@@ -1465,7 +3308,7 @@ paths:
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/models.Course'
+                    $ref: '#/definitions/resources.CourseResponse'
                   type: array
               type: object
       security:
@@ -1482,7 +3325,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/controllers.CreateCourseRequest'
+          $ref: '#/definitions/services.CreateCourseRequest'
       produces:
       - application/json
       responses:
@@ -1493,7 +3336,7 @@ paths:
             - $ref: '#/definitions/global.ApiResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/models.Course'
+                  $ref: '#/definitions/resources.CourseResponse'
               type: object
       security:
       - BearerAuth: []
@@ -1536,7 +3379,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/controllers.UpdateCourseRequest'
+          $ref: '#/definitions/services.UpdateCourseRequest'
       produces:
       - application/json
       responses:
@@ -1547,11 +3390,62 @@ paths:
             - $ref: '#/definitions/global.ApiResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/models.Course'
+                  $ref: '#/definitions/resources.CourseResponse'
               type: object
       security:
       - BearerAuth: []
       summary: 更新課程
+      tags:
+      - Admin
+  /api/v1/admin/courses/{course_id}/toggle-active:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Course ID
+        in: path
+        name: course_id
+        required: true
+        type: integer
+      - description: 啟用狀態
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/services.ToggleActiveRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/global.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: 切換課程啟用狀態
+      tags:
+      - Admin
+  /api/v1/admin/courses/active:
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/global.ApiResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/resources.CourseResponse'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 取得已啟用的課程列表
       tags:
       - Admin
   /api/v1/admin/dashboard/today-summary:
@@ -1568,64 +3462,35 @@ paths:
             - $ref: '#/definitions/global.ApiResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/controllers.TodaySummaryResponse'
+                  $ref: '#/definitions/services.TodaySummary'
               type: object
       security:
       - BearerAuth: []
-      summary: 獲取今日課表摘要統計
+      summary: 取得管理員後台首頁的今日課表摘要
       tags:
-      - Admin - Scheduling
-  /api/v1/admin/exceptions/all:
-    get:
+      - Admin - Dashboard
+  /api/v1/admin/invitations/links/{id}:
+    delete:
       consumes:
       - application/json
       parameters:
-      - description: 狀態篩選：PENDING, APPROVED, REJECTED, REVOKED
-        in: query
-        name: status
-        type: string
+      - description: Invitation ID
+        in: path
+        name: id
+        required: true
+        type: integer
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            allOf:
-            - $ref: '#/definitions/global.ApiResponse'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/models.ScheduleException'
-                  type: array
-              type: object
+            $ref: '#/definitions/global.ApiResponse'
       security:
       - BearerAuth: []
-      summary: 取得所有例外申請
+      summary: 撤回邀請連結
       tags:
-      - Admin - Scheduling
-  /api/v1/admin/exceptions/pending:
-    get:
-      consumes:
-      - application/json
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/global.ApiResponse'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/models.ScheduleException'
-                  type: array
-              type: object
-      security:
-      - BearerAuth: []
-      summary: 獲取中心所有待審核的例外申請
-      tags:
-      - Admin - Scheduling
+      - Admin - Invitations
   /api/v1/admin/me/line/qrcode:
     get:
       description: 產生可掃描開啟 LINE 官方帳號聊天的 QR Code
@@ -1707,7 +3572,7 @@ paths:
             - $ref: '#/definitions/global.ApiResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/controllers.GetOfferingsResponse'
+                  $ref: '#/definitions/services.ListOfferingsOutput'
               type: object
       security:
       - BearerAuth: []
@@ -1727,8 +3592,8 @@ paths:
       produces:
       - application/json
       responses:
-        "200":
-          description: OK
+        "201":
+          description: Created
           schema:
             allOf:
             - $ref: '#/definitions/global.ApiResponse'
@@ -1754,8 +3619,8 @@ paths:
       produces:
       - application/json
       responses:
-        "200":
-          description: OK
+        "204":
+          description: No Content
           schema:
             $ref: '#/definitions/global.ApiResponse'
       security:
@@ -1795,6 +3660,57 @@ paths:
       summary: 更新班別
       tags:
       - Admin
+  /api/v1/admin/offerings/{offering_id}/toggle-active:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Offering ID
+        in: path
+        name: offering_id
+        required: true
+        type: integer
+      - description: 狀態資訊
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.ToggleActiveRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/global.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: 切換班別啟用狀態
+      tags:
+      - Admin
+  /api/v1/admin/offerings/active:
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/global.ApiResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.Offering'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 取得啟用的班別列表
+      tags:
+      - Admin
   /api/v1/admin/rooms:
     get:
       consumes:
@@ -1810,7 +3726,7 @@ paths:
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/models.Room'
+                    $ref: '#/definitions/resources.RoomResponse'
                   type: array
               type: object
       security:
@@ -1827,7 +3743,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/controllers.CreateRoomRequest'
+          $ref: '#/definitions/services.CreateRoomRequest'
       produces:
       - application/json
       responses:
@@ -1838,7 +3754,7 @@ paths:
             - $ref: '#/definitions/global.ApiResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/models.Room'
+                  $ref: '#/definitions/resources.RoomResponse'
               type: object
       security:
       - BearerAuth: []
@@ -1860,7 +3776,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/controllers.UpdateRoomRequest'
+          $ref: '#/definitions/services.UpdateRoomRequest'
       produces:
       - application/json
       responses:
@@ -1871,13 +3787,512 @@ paths:
             - $ref: '#/definitions/global.ApiResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/models.Room'
+                  $ref: '#/definitions/resources.RoomResponse'
               type: object
       security:
       - BearerAuth: []
       summary: 更新教室
       tags:
       - Admin
+  /api/v1/admin/rooms/{room_id}/toggle-active:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Room ID
+        in: path
+        name: room_id
+        required: true
+        type: integer
+      - description: 啟用狀態
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/services.ToggleActiveRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/global.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: 切換教室啟用狀態
+      tags:
+      - Admin
+  /api/v1/admin/rooms/active:
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/global.ApiResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/resources.RoomResponse'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 取得已啟用的教室列表
+      tags:
+      - Admin
+  /api/v1/admin/scheduling/check-overlap:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 衝突檢查請求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/requests.CheckOverlapRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/global.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/services.OverlapCheckResult'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 檢查課程時間是否與現有排程衝突
+      tags:
+      - Admin - Scheduling
+  /api/v1/admin/scheduling/check-room-buffer:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 緩衝檢查請求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/requests.CheckBufferRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/global.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/services.BufferCheckResult'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 檢查教室的緩衝時間是否足夠
+      tags:
+      - Admin - Scheduling
+  /api/v1/admin/scheduling/check-teacher-buffer:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 緩衝檢查請求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/requests.CheckBufferRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/global.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/services.BufferCheckResult'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 檢查老師的緩衝時間是否足夠
+      tags:
+      - Admin - Scheduling
+  /api/v1/admin/scheduling/exceptions:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: 開始日期 (YYYY-MM-DD)
+        in: query
+        name: start_date
+        type: string
+      - description: 結束日期 (YYYY-MM-DD)
+        in: query
+        name: end_date
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/global.ApiResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.ScheduleException'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 取得指定日期範圍內的所有例外申請
+      tags:
+      - Admin - Scheduling
+  /api/v1/admin/scheduling/exceptions/{id}/review:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 例外ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 審核資訊
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/requests.ReviewExceptionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/global.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: 審核例外申請（核准/拒絕）
+      tags:
+      - Admin - Scheduling
+  /api/v1/admin/scheduling/exceptions/all:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: 狀態篩選：PENDING, APPROVED, REJECTED, REVOKED
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/global.ApiResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.ScheduleException'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 取得所有例外申請（可依狀態篩選）
+      tags:
+      - Admin - Scheduling
+  /api/v1/admin/scheduling/exceptions/pending:
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/global.ApiResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.ScheduleException'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 取得所有待審核的例外申請
+      tags:
+      - Admin - Scheduling
+  /api/v1/admin/scheduling/expand:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 展開請求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/requests.ExpandRulesRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/global.ApiResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/services.ExpandedSchedule'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 展開排課規則為具體課程場次
+      tags:
+      - Admin - Scheduling
+  /api/v1/admin/scheduling/phase-transitions:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 偵測請求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/requests.DetectPhaseTransitionsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/global.ApiResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/services.PhaseTransition'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 偵測課程序列中的階段轉換點
+      tags:
+      - Admin - Scheduling
+  /api/v1/admin/scheduling/rules:
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/global.ApiResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.ScheduleRule'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 取得中心的所有排課規則
+      tags:
+      - Admin - Scheduling
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 規則資訊
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/requests.CreateRuleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/global.ApiResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.ScheduleRule'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 建立新的排課規則
+      tags:
+      - Admin - Scheduling
+  /api/v1/admin/scheduling/rules/{id}:
+    delete:
+      consumes:
+      - application/json
+      parameters:
+      - description: 規則ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/global.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: 刪除排課規則
+      tags:
+      - Admin - Scheduling
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: 規則ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 規則資訊
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/requests.UpdateRuleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/global.ApiResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.ScheduleRule'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 更新排課規則
+      tags:
+      - Admin - Scheduling
+  /api/v1/admin/scheduling/rules/{id}/exceptions:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: 規則ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/global.ApiResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.ScheduleException'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 取得指定規則的所有例外申請
+      tags:
+      - Admin - Scheduling
+  /api/v1/admin/scheduling/rules/check-lock:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 檢查請求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/requests.CheckRuleLockStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/global.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/services.RuleLockStatus'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 檢查規則是否已超過異動截止日
+      tags:
+      - Admin - Scheduling
+  /api/v1/admin/scheduling/validate:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 完整驗證請求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/requests.ValidateFullRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/global.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/services.FullValidationResult'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 完整驗證排課（硬衝突 + 緩衝檢查）
+      tags:
+      - Admin - Scheduling
   /api/v1/admin/teachers:
     get:
       consumes:
@@ -1893,7 +4308,7 @@ paths:
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/controllers.TeacherResponse'
+                    $ref: '#/definitions/resources.AdminTeacherResponse'
                   type: array
               type: object
       security:
@@ -1942,7 +4357,7 @@ paths:
             - $ref: '#/definitions/global.ApiResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/controllers.CenterTeacherNoteResponse'
+                  $ref: '#/definitions/resources.TeacherNoteResponse'
               type: object
       security:
       - BearerAuth: []
@@ -1974,11 +4389,263 @@ paths:
             - $ref: '#/definitions/global.ApiResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/controllers.CenterTeacherNoteResponse'
+                  $ref: '#/definitions/resources.TeacherNoteResponse'
               type: object
       security:
       - BearerAuth: []
       summary: 新增或更新老師評分與備註
+      tags:
+      - Admin
+  /api/v1/admin/templates:
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/global.ApiResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.TimetableTemplate'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 取得課表模板列表
+      tags:
+      - Admin
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 模板資訊
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.CreateTemplateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/global.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.TimetableTemplate'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 新增課表模板
+      tags:
+      - Admin
+  /api/v1/admin/templates/{template_id}:
+    delete:
+      consumes:
+      - application/json
+      parameters:
+      - description: Template ID
+        in: path
+        name: template_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/global.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: 刪除課表模板
+      tags:
+      - Admin
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Template ID
+        in: path
+        name: template_id
+        required: true
+        type: integer
+      - description: 模板資訊
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.UpdateTemplateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/global.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.TimetableTemplate'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 更新課表模板
+      tags:
+      - Admin
+  /api/v1/admin/templates/{template_id}/apply:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Template ID
+        in: path
+        name: template_id
+        required: true
+        type: integer
+      - description: 套用資訊
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.ApplyTemplateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/global.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: 套用課表模板
+      tags:
+      - Admin
+  /api/v1/admin/templates/{template_id}/cells:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: Template ID
+        in: path
+        name: template_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/global.ApiResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.TimetableCell'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 取得模板中的格子
+      tags:
+      - Admin
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Template ID
+        in: path
+        name: template_id
+        required: true
+        type: integer
+      - description: 格子資訊
+        in: body
+        name: request
+        required: true
+        schema:
+          items:
+            $ref: '#/definitions/controllers.CreateCellRequest'
+          type: array
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/global.ApiResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.TimetableCell'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 新增模板中的格子
+      tags:
+      - Admin
+  /api/v1/admin/templates/{template_id}/cells/{cell_id}:
+    delete:
+      consumes:
+      - application/json
+      parameters:
+      - description: Template ID
+        in: path
+        name: template_id
+        required: true
+        type: integer
+      - description: Cell ID
+        in: path
+        name: cell_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/global.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: 刪除格子
+      tags:
+      - Admin
+  /api/v1/admin/templates/{template_id}/validate-apply:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Template ID
+        in: path
+        name: template_id
+        required: true
+        type: integer
+      - description: 驗證資訊
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.ValidateApplyTemplateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/global.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: 驗證套用模板
       tags:
       - Admin
   /api/v1/auth/admin/login:
@@ -2070,6 +4737,24 @@ paths:
       summary: 老師 LINE 登入
       tags:
       - Auth
+  /api/v1/calendar/subscribe/{token}.ics:
+    get:
+      parameters:
+      - description: 訂閱 Token
+        in: path
+        name: token
+        required: true
+        type: string
+      produces:
+      - text/calendar
+      responses:
+        "200":
+          description: ICS 檔案
+          schema:
+            type: file
+      summary: 透過 Token 訂閱課表
+      tags:
+      - Export
   /api/v1/geo/cities:
     get:
       consumes:
@@ -2150,6 +4835,56 @@ paths:
       summary: 搜尋標籤
       tags:
       - Hashtag
+  /api/v1/invitations/{token}:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: Invitation Token
+        in: path
+        name: token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/global.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/resources.PublicInvitationInfo'
+              type: object
+      summary: 取得公開邀請資訊
+      tags:
+      - Invitations
+  /api/v1/invitations/{token}/accept:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Invitation Token
+        in: path
+        name: token
+        required: true
+        type: string
+      - description: LINE ID Token
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.AcceptInvitationByLinkRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/global.ApiResponse'
+      tags:
+      - Invitations
   /api/v1/teacher/exceptions:
     get:
       consumes:
@@ -2227,6 +4962,76 @@ paths:
       summary: 老師撤回待審核的例外申請
       tags:
       - Teacher
+  /api/v1/teacher/me/backgrounds:
+    delete:
+      consumes:
+      - application/json
+      parameters:
+      - description: 圖片路徑
+        in: query
+        name: path
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/global.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: 刪除自訂背景圖
+      tags:
+      - Teacher - Export
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/global.ApiResponse'
+            - properties:
+                data:
+                  items:
+                    type: string
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 取得自訂背景圖列表
+      tags:
+      - Teacher - Export
+    post:
+      consumes:
+      - multipart/form-data
+      parameters:
+      - description: 背景圖片
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/global.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/controllers.UploadBackgroundResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 上傳自訂背景圖
+      tags:
+      - Teacher - Export
   /api/v1/teacher/me/centers:
     get:
       consumes:
@@ -2351,10 +5156,148 @@ paths:
       summary: 刪除老師證照
       tags:
       - Teacher
+  /api/v1/teacher/me/certificates/upload:
+    post:
+      consumes:
+      - multipart/form-data
+      parameters:
+      - description: 證照檔案
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/global.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/controllers.UploadFileResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 上傳證照檔案
+      tags:
+      - Teacher
+  /api/v1/teacher/me/exceptions:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 例外資訊
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/requests.CreateExceptionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/global.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.ScheduleException'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 建立新的例外申請
+      tags:
+      - Teacher - Scheduling
+  /api/v1/teacher/me/invitations:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: 篩選狀態 (PENDING/ACCEPTED/DECLINED/EXPIRED)
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/global.ApiResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/resources.InvitationResponse'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 取得老師的邀請列表
+      tags:
+      - Teacher - Invitations
+  /api/v1/teacher/me/invitations/pending-count:
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/global.ApiResponse'
+            - properties:
+                data:
+                  additionalProperties:
+                    type: integer
+                  type: object
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 取得待處理邀請數量
+      tags:
+      - Teacher - Invitations
+  /api/v1/teacher/me/invitations/respond:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 回應請求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/services.RespondToInvitationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/global.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: 老師回應邀請
+      tags:
+      - Teacher - Invitations
   /api/v1/teacher/me/personal-events:
     get:
       consumes:
       - application/json
+      parameters:
+      - description: 開始日期 (YYYY-MM-DD)
+        in: query
+        name: from
+        type: string
+      - description: 結束日期 (YYYY-MM-DD)
+        in: query
+        name: to
+        type: string
       produces:
       - application/json
       responses:
@@ -2373,7 +5316,7 @@ paths:
       - BearerAuth: []
       summary: 取得老師個人行程列表
       tags:
-      - Teacher
+      - Teacher - Events
     post:
       consumes:
       - application/json
@@ -2383,7 +5326,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/controllers.CreatePersonalEventRequest'
+          $ref: '#/definitions/requests.CreatePersonalEventRequest'
       produces:
       - application/json
       responses:
@@ -2408,7 +5351,7 @@ paths:
       - BearerAuth: []
       summary: 新增老師個人行程
       tags:
-      - Teacher
+      - Teacher - Events
   /api/v1/teacher/me/personal-events/{id}:
     delete:
       consumes:
@@ -2430,7 +5373,7 @@ paths:
       - BearerAuth: []
       summary: 刪除老師個人行程
       tags:
-      - Teacher
+      - Teacher - Events
     patch:
       consumes:
       - application/json
@@ -2445,7 +5388,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/controllers.UpdatePersonalEventRequest'
+          $ref: '#/definitions/requests.UpdatePersonalEventRequest'
       produces:
       - application/json
       responses:
@@ -2456,13 +5399,67 @@ paths:
             - $ref: '#/definitions/global.ApiResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/controllers.UpdatePersonalEventResponse'
+                  $ref: '#/definitions/requests.UpdatePersonalEventResponse'
               type: object
       security:
       - BearerAuth: []
       summary: 更新老師個人行程
       tags:
-      - Teacher
+      - Teacher - Events
+  /api/v1/teacher/me/personal-events/{id}/note:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: 行程ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/global.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/requests.PersonalEventNoteResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 取得個人行程備註
+      tags:
+      - Teacher - Events
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: 行程ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 備註內容
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/requests.UpdatePersonalEventNoteRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/global.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: 更新個人行程備註
+      tags:
+      - Teacher - Events
   /api/v1/teacher/me/profile:
     get:
       consumes:
@@ -2537,7 +5534,7 @@ paths:
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/controllers.TeacherScheduleItem'
+                    $ref: '#/definitions/services.TeacherScheduleItem'
                   type: array
               type: object
       security:
@@ -2545,6 +5542,106 @@ paths:
       summary: 取得老師的綜合課表
       tags:
       - Teacher
+  /api/v1/teacher/me/schedule.ics:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: 開始日期 (YYYY-MM-DD)
+        in: query
+        name: start_date
+        required: true
+        type: string
+      - description: 結束日期 (YYYY-MM-DD)
+        in: query
+        name: end_date
+        required: true
+        type: string
+      produces:
+      - text/calendar
+      responses:
+        "200":
+          description: ICS 檔案
+          schema:
+            type: file
+      security:
+      - BearerAuth: []
+      summary: 匯出課表為 iCalendar 格式
+      tags:
+      - Teacher - Export
+  /api/v1/teacher/me/schedule/image:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: 開始日期 (YYYY-MM-DD)
+        in: query
+        name: start_date
+        required: true
+        type: string
+      - description: 結束日期 (YYYY-MM-DD)
+        in: query
+        name: end_date
+        required: true
+        type: string
+      - description: 自訂背景圖路徑
+        in: query
+        name: background
+        type: string
+      produces:
+      - image/jpeg
+      responses:
+        "200":
+          description: JPEG 圖片
+          schema:
+            type: file
+      security:
+      - BearerAuth: []
+      summary: 匯出課表為圖片
+      tags:
+      - Teacher - Export
+  /api/v1/teacher/me/schedule/subscription:
+    delete:
+      consumes:
+      - application/json
+      parameters:
+      - description: 訂閱 Token
+        in: query
+        name: token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/global.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: 取消課表訂閱
+      tags:
+      - Teacher - Export
+    post:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/global.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/services.SubscriptionInfo'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 建立課表訂閱連結
+      tags:
+      - Teacher - Export
   /api/v1/teacher/me/skills:
     get:
       consumes:
@@ -2649,6 +5746,137 @@ paths:
       summary: 更新老師技能
       tags:
       - Teacher
+  /api/v1/teacher/schedules:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: 開始日期 (YYYY-MM-DD)
+        in: query
+        name: start_date
+        required: true
+        type: string
+      - description: 結束日期 (YYYY-MM-DD)
+        in: query
+        name: end_date
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/global.ApiResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/services.TeacherScheduleItem'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 取得老師的課表
+      tags:
+      - Teacher
+  /api/v1/teacher/scheduling/check-rule-lock:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 檢查規則鎖定請求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.CheckTeacherRuleLockRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/global.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/controllers.CheckTeacherRuleLockResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 檢查老師規則鎖定狀態
+      tags:
+      - Teacher
+  /api/v1/teacher/scheduling/delete-recurring:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 刪除循環排課請求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.DeleteRecurringScheduleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/global.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: 刪除循環排課
+      tags:
+      - Teacher
+  /api/v1/teacher/scheduling/edit-recurring:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 編輯循環排課請求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/services.RecurrenceEditRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/global.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: 編輯循環排課
+      tags:
+      - Teacher
+  /api/v1/teacher/scheduling/preview-recurrence-edit:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 預覽循環編輯請求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.PreviewRecurrenceEditRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/global.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: 預覽循環編輯影響範圍
+      tags:
+      - Teacher
   /api/v1/teacher/sessions/note:
     get:
       consumes:
@@ -2680,7 +5908,7 @@ paths:
       - BearerAuth: []
       summary: 取得課堂筆記
       tags:
-      - Teacher
+      - Teacher - Sessions
     put:
       consumes:
       - application/json
@@ -2707,7 +5935,7 @@ paths:
       - BearerAuth: []
       summary: 新增或更新課堂筆記
       tags:
-      - Teacher
+      - Teacher - Sessions
   /api/v1/teachers:
     get:
       consumes:
@@ -2723,7 +5951,7 @@ paths:
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/controllers.TeacherResponse'
+                    $ref: '#/definitions/resources.AdminTeacherResponse'
                   type: array
               type: object
       security:
@@ -2753,6 +5981,118 @@ paths:
       summary: 刪除老師
       tags:
       - Admin
+  /notifications:
+    get:
+      consumes:
+      - application/json
+      description: 取得目前使用者的通知列表
+      parameters:
+      - description: 每頁筆數
+        in: query
+        name: limit
+        type: integer
+      - description: 偏移量
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/global.ApiResponse'
+      summary: 取得通知列表
+      tags:
+      - Notifications
+  /notifications/{id}/read:
+    post:
+      consumes:
+      - application/json
+      description: 將指定通知標記為已讀
+      parameters:
+      - description: 通知ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/global.ApiResponse'
+      summary: 標記通知為已讀
+      tags:
+      - Notifications
+  /notifications/read-all:
+    post:
+      consumes:
+      - application/json
+      description: 將所有通知標記為已讀
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/global.ApiResponse'
+      summary: 標記所有通知為已讀
+      tags:
+      - Notifications
+  /notifications/test:
+    post:
+      consumes:
+      - application/json
+      description: 發送一條測試通知給目前使用者
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/global.ApiResponse'
+      summary: 發送測試通知
+      tags:
+      - Notifications
+  /notifications/token:
+    post:
+      consumes:
+      - application/json
+      description: 設定老師的 LINE Notify Token
+      parameters:
+      - description: Token 資訊
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.TeacherNotifyTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/global.ApiResponse'
+      summary: 設定通知 Token
+      tags:
+      - Notifications
+  /notifications/unread-count:
+    get:
+      consumes:
+      - application/json
+      description: 取得目前使用者的未讀通知數量
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/global.ApiResponse'
+      summary: 取得未讀通知數量
+      tags:
+      - Notifications
   /user:
     get:
       parameters:

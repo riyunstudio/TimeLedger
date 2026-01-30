@@ -18,6 +18,69 @@ export function formatDateToString(date: Date): string {
 }
 
 /**
+ * 將日期字串轉換為 YYYY-MM-DD hh:mm:ss 格式
+ * 支援 ISO 8601 格式 (2026-01-20T00:00:00+08:00) 和其他格式
+ */
+export function formatDateTime(dateStr: string): string {
+  if (!dateStr) return '-'
+  const date = new Date(dateStr)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  const seconds = String(date.getSeconds()).padStart(2, '0')
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
+}
+
+/**
+ * 將日期字串轉換為 YYYY-MM-DD 格式（純日期）
+ */
+export function formatDate(dateStr: string): string {
+  if (!dateStr) return '-'
+  const date = new Date(dateStr)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+/**
+ * 將時間字串格式化為 hh:mm 格式
+ */
+export function formatTime(timeStr: string): string {
+  if (!timeStr) return '-'
+  // 如果已經是 hh:mm 格式，直接返回
+  if (/^\d{2}:\d{2}$/.test(timeStr)) {
+    return timeStr
+  }
+  // 如果是 ISO 格式，提取時間部分
+  const match = timeStr.match(/T(\d{2}:\d{2})/)
+  if (match) {
+    return match[1]
+  }
+  return timeStr
+}
+
+/**
+ * 從 API 回傳的日期字串解析為 Date 物件
+ * 支援 ISO 8601 格式 (2026-01-20T00:00:00+08:00) 和 YYYY-MM-DD 格式
+ */
+export function parseApiDate(dateStr: string): Date {
+  if (!dateStr) return new Date()
+  const date = new Date(dateStr)
+  // 檢查日期是否有效
+  if (isNaN(date.getTime())) {
+    // 如果解析失敗，嘗試其他格式
+    const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/)
+    if (match) {
+      return new Date(parseInt(match[1]), parseInt(match[2]) - 1, parseInt(match[3]))
+    }
+  }
+  return date
+}
+
+/**
  * 取得現在的日期字串（台灣時區）
  */
 export function getTodayString(): string {

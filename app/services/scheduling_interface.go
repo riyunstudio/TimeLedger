@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 	"timeLedger/app/models"
 )
@@ -107,6 +108,18 @@ type ExpandedSchedule struct {
 	IsCrossDayPart bool              `json:"is_cross_day_part,omitempty"` // 跨日課程的一部分
 }
 
+// MarshalJSON 確保 Date 欄位以 ISO 8601 日期格式序列化
+func (es ExpandedSchedule) MarshalJSON() ([]byte, error) {
+	type Alias ExpandedSchedule
+	return json.Marshal(struct {
+		Alias
+		Date string `json:"date"`
+	}{
+		Alias: Alias(es),
+		Date:  es.Date.Format("2006-01-02"),
+	})
+}
+
 type ExpandedException struct {
 	ID           uint       `json:"id"`
 	Type         string     `json:"type"`   // CANCEL, RESCHEDULE, REPLACE_TEACHER
@@ -129,6 +142,18 @@ type PhaseTransition struct {
 	NextStartTime string    `json:"next_start_time,omitempty"`
 	NextEndTime   string    `json:"next_end_time,omitempty"`
 	HasGap        bool      `json:"has_gap"`
+}
+
+// MarshalJSON 確保 Date 欄位以 ISO 8601 日期格式序列化
+func (pt PhaseTransition) MarshalJSON() ([]byte, error) {
+	type Alias PhaseTransition
+	return json.Marshal(struct {
+		Alias
+		Date string `json:"date"`
+	}{
+		Alias: Alias(pt),
+		Date:  pt.Date.Format("2006-01-02"),
+	})
 }
 
 type RecurrenceEditMode string

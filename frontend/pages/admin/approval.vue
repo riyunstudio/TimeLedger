@@ -199,7 +199,7 @@
           </div>
           <div v-if="exception.new_start_at" class="flex flex-col sm:flex-row sm:items-center gap-2">
             <span class="text-slate-400 text-sm">新時間：</span>
-            <span class="text-success-500 text-sm">{{ formatDateTime(exception.new_start_at) }} - {{ formatDateTime(exception.new_end_at) }}</span>
+            <span class="text-success-500 text-sm">{{ formatDate(exception.new_start_at) }} - {{ formatDate(exception.new_end_at) }}</span>
           </div>
           <div v-if="exception.new_teacher_name" class="flex items-center gap-2">
             <span class="text-slate-400 text-sm">代課老師：</span>
@@ -238,6 +238,8 @@
 </template>
 
 <script setup lang="ts">
+import { formatDate, formatDateTime } from '~/composables/useTaiwanTime'
+
 definePageMeta({
   middleware: 'auth-admin',
   layout: 'admin',
@@ -451,23 +453,6 @@ const getEmptyMessage = (): string => {
     default:
       return '目前沒有任何申請'
   }
-}
-
-const formatDate = (dateStr: string): string => {
-  if (!dateStr) return '-'
-  const date = new Date(dateStr)
-  return date.toLocaleDateString('zh-TW', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    weekday: 'short',
-  })
-}
-
-const formatDateTime = (dateStr: string): string => {
-  if (!dateStr) return '-'
-  const date = new Date(dateStr)
-  return date.toLocaleString('zh-TW')
 }
 
 const getOriginalTimeText = (exception: any): string => {
