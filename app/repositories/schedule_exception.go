@@ -8,100 +8,29 @@ import (
 )
 
 type ScheduleExceptionRepository struct {
-	BaseRepository
-	app   *app.App
-	model *models.ScheduleException
+	GenericRepository[models.ScheduleException]
+	app *app.App
 }
 
 func NewScheduleExceptionRepository(app *app.App) *ScheduleExceptionRepository {
 	return &ScheduleExceptionRepository{
-		app: app,
+		GenericRepository: NewGenericRepository[models.ScheduleException](app.MySQL.RDB, app.MySQL.WDB),
+		app:               app,
 	}
-}
-
-func (rp *ScheduleExceptionRepository) GetByID(ctx context.Context, id uint) (models.ScheduleException, error) {
-	var data models.ScheduleException
-	err := rp.app.MySQL.RDB.WithContext(ctx).Where("id = ?", id).First(&data).Error
-	return data, err
-}
-
-func (rp *ScheduleExceptionRepository) GetByIDAndCenterID(ctx context.Context, id uint, centerID uint) (models.ScheduleException, error) {
-	var data models.ScheduleException
-	err := rp.app.MySQL.RDB.WithContext(ctx).Where("id = ? AND center_id = ?", id, centerID).First(&data).Error
-	return data, err
 }
 
 func (rp *ScheduleExceptionRepository) GetByRuleAndDate(ctx context.Context, ruleID uint, date time.Time) ([]models.ScheduleException, error) {
-	var data []models.ScheduleException
-	// 將 date 轉換為日期字串進行比較
-	dateStr := date.Format("2006-01-02")
-	err := rp.app.MySQL.RDB.WithContext(ctx).Where("rule_id = ? AND DATE(original_date) = ?", ruleID, dateStr).Find(&data).Error
-	return data, err
-}
-
-func (rp *ScheduleExceptionRepository) GetByRuleIDAndDateStr(ctx context.Context, ruleID uint, dateStr string) ([]models.ScheduleException, error) {
-	var data []models.ScheduleException
-	err := rp.app.MySQL.RDB.WithContext(ctx).Where("rule_id = ? AND DATE(original_date) = ?", ruleID, dateStr).Find(&data).Error
-	return data, err
+	return rp.Find(ctx, "rule_id = ? AND DATE(original_date) = ?", ruleID, date.Format("2006-01-02"))
 }
 
 func (rp *ScheduleExceptionRepository) GetByRuleAndDateAndCenterID(ctx context.Context, ruleID uint, centerID uint, date time.Time) ([]models.ScheduleException, error) {
-	var data []models.ScheduleException
-	err := rp.app.MySQL.RDB.WithContext(ctx).Where("rule_id = ? AND center_id = ? AND original_date = ?", ruleID, centerID, date).Find(&data).Error
-	return data, err
-}
-
-func (rp *ScheduleExceptionRepository) ListByCenterID(ctx context.Context, centerID uint) ([]models.ScheduleException, error) {
-	var data []models.ScheduleException
-	err := rp.app.MySQL.RDB.WithContext(ctx).Where("center_id = ?", centerID).Find(&data).Error
-	return data, err
-}
-
-func (rp *ScheduleExceptionRepository) Create(ctx context.Context, data models.ScheduleException) (models.ScheduleException, error) {
-	err := rp.app.MySQL.WDB.WithContext(ctx).Create(&data).Error
-	return data, err
-}
-
-func (rp *ScheduleExceptionRepository) Update(ctx context.Context, data models.ScheduleException) error {
-	return rp.app.MySQL.WDB.WithContext(ctx).Save(&data).Error
-}
-
-func (rp *ScheduleExceptionRepository) UpdateByIDAndCenterID(ctx context.Context, id uint, centerID uint, data models.ScheduleException) error {
-	return rp.app.MySQL.WDB.WithContext(ctx).Where("id = ? AND center_id = ?", id, centerID).Save(&data).Error
-}
-
-func (rp *ScheduleExceptionRepository) Delete(ctx context.Context, id uint) error {
-	return rp.app.MySQL.WDB.WithContext(ctx).Delete(&models.ScheduleException{}, id).Error
-}
-
-func (rp *ScheduleExceptionRepository) DeleteByIDAndCenterID(ctx context.Context, id uint, centerID uint) error {
-	return rp.app.MySQL.WDB.WithContext(ctx).Where("id = ? AND center_id = ?", id, centerID).Delete(&models.ScheduleException{}).Error
-}
-
-// BatchGetByRuleIDs 批量取得多個規則的例外記錄（效能優化：減少 N+1 查詢）
-func (rp *ScheduleExceptionRepository) BatchGetByRuleIDs(ctx context.Context, ruleIDs []uint, date time.Time) (map[uint][]models.ScheduleException, error) {
-	if len(ruleIDs) == 0 {
-		return make(map[uint][]models.ScheduleException), nil
-	}
-
-	// 將 date 轉換為日期字串進行比較
-	dateStr := date.Format("2006-01-02")
-
-	var exceptions []models.ScheduleException
-	err := rp.app.MySQL.RDB.WithContext(ctx).Where("rule_id IN ? AND DATE(original_date) = ?", ruleIDs, dateStr).Find(&exceptions).Error
+	result, err := rp.FindWithCenterScope(ctx, centerID, "rule_id = ? AND original_date = ?", ruleID, date)
 	if err != nil {
 		return nil, err
-	}
-
-	// 按規則 ID 分組
-	result := make(map[uint][]models.ScheduleException, len(ruleIDs))
-	for _, exc := range exceptions {
-		result[exc.RuleID] = append(result[exc.RuleID], exc)
 	}
 	return result, nil
 }
 
-// GetByTeacherID 取得老師的所有例外申請（依據會員關係）
 func (rp *ScheduleExceptionRepository) GetByTeacherID(ctx context.Context, teacherID uint, status string) ([]models.ScheduleException, error) {
 	var exceptions []models.ScheduleException
 
@@ -113,7 +42,6 @@ func (rp *ScheduleExceptionRepository) GetByTeacherID(ctx context.Context, teach
 		Where("center_memberships.status = ?", "ACTIVE")
 
 	if status != "" {
-		// 支援新旧两种状态值（向后兼容）
 		if status == "APPROVED" {
 			query = query.Where("schedule_exceptions.status IN ('APPROVED', 'APPROVE')")
 		} else if status == "REJECTED" {
@@ -125,4 +53,51 @@ func (rp *ScheduleExceptionRepository) GetByTeacherID(ctx context.Context, teach
 
 	err := query.Order("schedule_exceptions.created_at DESC").Find(&exceptions).Error
 	return exceptions, err
+}
+
+func (rp *ScheduleExceptionRepository) BatchGetByRuleIDs(ctx context.Context, ruleIDs []uint, date time.Time) (map[uint][]models.ScheduleException, error) {
+	if len(ruleIDs) == 0 {
+		return make(map[uint][]models.ScheduleException), nil
+	}
+
+	exceptions, err := rp.Find(ctx, "rule_id IN ? AND DATE(original_date) = ?", ruleIDs, date.Format("2006-01-02"))
+	if err != nil {
+		return nil, err
+	}
+
+	result := make(map[uint][]models.ScheduleException, len(ruleIDs))
+	for _, exc := range exceptions {
+		result[exc.RuleID] = append(result[exc.RuleID], exc)
+	}
+	return result, nil
+}
+
+func (rp *ScheduleExceptionRepository) GetByRuleIDsAndDateRange(ctx context.Context, ruleIDs []uint, startDate, endDate time.Time) (map[uint]map[string][]models.ScheduleException, error) {
+	if len(ruleIDs) == 0 {
+		return make(map[uint]map[string][]models.ScheduleException), nil
+	}
+
+	exceptions, err := rp.Find(ctx, "rule_id IN ? AND DATE(original_date) >= ? AND DATE(original_date) <= ?", ruleIDs, startDate.Format("2006-01-02"), endDate.Format("2006-01-02"))
+	if err != nil {
+		return nil, err
+	}
+
+	result := make(map[uint]map[string][]models.ScheduleException)
+	for _, ruleID := range ruleIDs {
+		result[ruleID] = make(map[string][]models.ScheduleException)
+	}
+
+	for _, exc := range exceptions {
+		dateStr := exc.OriginalDate.Format("2006-01-02")
+		if result[exc.RuleID] == nil {
+			result[exc.RuleID] = make(map[string][]models.ScheduleException)
+		}
+		result[exc.RuleID][dateStr] = append(result[exc.RuleID][dateStr], exc)
+	}
+
+	return result, nil
+}
+
+func (rp *ScheduleExceptionRepository) ListByCenterID(ctx context.Context, centerID uint) ([]models.ScheduleException, error) {
+	return rp.FindWithCenterScope(ctx, centerID)
 }

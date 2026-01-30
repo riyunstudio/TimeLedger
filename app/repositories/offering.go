@@ -8,82 +8,25 @@ import (
 )
 
 type OfferingRepository struct {
-	BaseRepository
-	app   *app.App
-	model *models.Offering
+	GenericRepository[models.Offering]
+	app *app.App
 }
 
 func NewOfferingRepository(app *app.App) *OfferingRepository {
 	return &OfferingRepository{
-		app: app,
+		GenericRepository: NewGenericRepository[models.Offering](app.MySQL.RDB, app.MySQL.WDB),
+		app:               app,
 	}
 }
 
-func (rp *OfferingRepository) GetByID(ctx context.Context, id uint) (models.Offering, error) {
-	var data models.Offering
-	err := rp.app.MySQL.RDB.WithContext(ctx).Where("id = ?", id).First(&data).Error
-	return data, err
-}
-
-func (rp *OfferingRepository) GetByIDAndCenterID(ctx context.Context, id uint, centerID uint) (models.Offering, error) {
-	var data models.Offering
-	err := rp.app.MySQL.RDB.WithContext(ctx).Where("id = ? AND center_id = ?", id, centerID).First(&data).Error
-	return data, err
-}
-
-func (rp *OfferingRepository) ListByCenterID(ctx context.Context, centerID uint) ([]models.Offering, error) {
-	var data []models.Offering
-	err := rp.app.MySQL.RDB.WithContext(ctx).Where("center_id = ?", centerID).Find(&data).Error
-	return data, err
-}
-
 func (rp *OfferingRepository) ListActiveByCenterID(ctx context.Context, centerID uint) ([]models.Offering, error) {
-	var data []models.Offering
-	err := rp.app.MySQL.RDB.WithContext(ctx).Where("center_id = ? AND is_active = ?", centerID, true).Find(&data).Error
-	return data, err
+	return rp.FindWithCenterScope(ctx, centerID, "is_active = ?", true)
 }
 
 func (rp *OfferingRepository) ToggleActive(ctx context.Context, id uint, centerID uint, isActive bool) error {
-	result := rp.app.MySQL.WDB.WithContext(ctx).
-		Model(&models.Offering{}).
-		Where("id = ? AND center_id = ?", id, centerID).
-		Update("is_active", isActive)
-
-	return result.Error
-}
-
-func (rp *OfferingRepository) ListByCenterIDPaginated(ctx context.Context, centerID uint, page, limit int64) ([]models.Offering, int64, error) {
-	var data []models.Offering
-	var total int64
-
-	rp.app.MySQL.RDB.WithContext(ctx).Model(&models.Offering{}).
-		Where("center_id = ?", centerID).
-		Count(&total)
-
-	offset := (page - 1) * limit
-	err := rp.app.MySQL.RDB.WithContext(ctx).
-		Where("center_id = ?", centerID).
-		Order("id ASC").
-		Limit(int(limit)).
-		Offset(int(offset)).
-		Find(&data).Error
-
-	return data, total, err
-}
-
-func (rp *OfferingRepository) Create(ctx context.Context, data models.Offering) (models.Offering, error) {
-	err := rp.app.MySQL.WDB.WithContext(ctx).Create(&data).Error
-	return data, err
-}
-
-func (rp *OfferingRepository) Update(ctx context.Context, data models.Offering) error {
-	return rp.app.MySQL.WDB.WithContext(ctx).Save(&data).Error
-}
-
-func (rp *OfferingRepository) DeleteByID(ctx context.Context, id uint, centerID uint) error {
-	return rp.app.MySQL.WDB.WithContext(ctx).
-		Where("id = ? AND center_id = ?", id, centerID).
-		Delete(&models.Offering{}).Error
+	return rp.UpdateFieldsWithCenterScope(ctx, id, centerID, map[string]interface{}{
+		"is_active": isActive,
+	})
 }
 
 func (rp *OfferingRepository) Copy(ctx context.Context, original models.Offering, newName string) (models.Offering, error) {
@@ -100,4 +43,16 @@ func (rp *OfferingRepository) Copy(ctx context.Context, original models.Offering
 	}
 	err := rp.app.MySQL.WDB.WithContext(ctx).Create(&newOffering).Error
 	return newOffering, err
+}
+
+func (rp *OfferingRepository) ListByCenterIDPaginated(ctx context.Context, centerID uint, page, limit int) ([]models.Offering, int64, error) {
+	return rp.FindPaged(ctx, page, limit, "created_at DESC", "center_id = ?", centerID)
+}
+
+func (rp *OfferingRepository) DeleteByID(ctx context.Context, id, centerID uint) error {
+	return rp.DeleteByIDWithCenterScope(ctx, id, centerID)
+}
+
+func (rp *OfferingRepository) GetByIDAndCenterID(ctx context.Context, id, centerID uint) (models.Offering, error) {
+	return rp.GetByIDWithCenterScope(ctx, id, centerID)
 }

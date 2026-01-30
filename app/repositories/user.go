@@ -7,19 +7,19 @@ import (
 )
 
 type UserRepository struct {
-	BaseRepository
-	app   *app.App
-	model *models.User
+	GenericRepository[models.User]
+	app *app.App
 }
 
 func NewUserRepository(app *app.App) *UserRepository {
 	return &UserRepository{
-		app: app,
+		GenericRepository: NewGenericRepository[models.User](app.MySQL.RDB, app.MySQL.WDB),
+		app:               app,
 	}
 }
 
 func (rp *UserRepository) Get(ctx context.Context, cond models.User) (data models.User, err error) {
-	query := rp.app.MySQL.RDB.WithContext(ctx).Model(&rp.model)
+	query := rp.app.MySQL.RDB.WithContext(ctx).Model(&data)
 	if cond.ID != 0 {
 		query.Where("id = ?", cond.ID)
 	}
@@ -28,13 +28,4 @@ func (rp *UserRepository) Get(ctx context.Context, cond models.User) (data model
 	}
 	err = query.Find(&data).Error
 	return
-}
-
-func (rp *UserRepository) Create(ctx context.Context, data models.User) (models.User, error) {
-	err := rp.app.MySQL.WDB.WithContext(ctx).Model(&rp.model).Create(&data).Error
-	return data, err
-}
-
-func (rp *UserRepository) UpdateById(ctx context.Context, data models.User) error {
-	return rp.app.MySQL.WDB.WithContext(ctx).Model(&rp.model).Where("id", data.ID).Updates(&data).Error
 }

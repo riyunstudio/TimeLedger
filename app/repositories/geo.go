@@ -7,12 +7,15 @@ import (
 )
 
 type GeoRepository struct {
-	BaseRepository
+	GenericRepository[models.GeoCity]
 	app *app.App
 }
 
 func NewGeoRepository(app *app.App) *GeoRepository {
-	return &GeoRepository{app: app}
+	return &GeoRepository{
+		GenericRepository: NewGenericRepository[models.GeoCity](app.MySQL.RDB, app.MySQL.WDB),
+		app:               app,
+	}
 }
 
 func (r *GeoRepository) ListCities(ctx context.Context) ([]models.GeoCity, error) {

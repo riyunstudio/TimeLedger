@@ -7,39 +7,21 @@ import (
 )
 
 type TeacherSkillRepository struct {
-	BaseRepository
+	GenericRepository[models.TeacherSkill]
 	app *app.App
 }
 
 func NewTeacherSkillRepository(app *app.App) *TeacherSkillRepository {
-	return &TeacherSkillRepository{app: app}
+	return &TeacherSkillRepository{
+		GenericRepository: NewGenericRepository[models.TeacherSkill](app.MySQL.RDB, app.MySQL.WDB),
+		app:               app,
+	}
 }
 
 func (r *TeacherSkillRepository) ListByTeacherID(ctx context.Context, teacherID uint) ([]models.TeacherSkill, error) {
-	var skills []models.TeacherSkill
-	err := r.app.MySQL.RDB.WithContext(ctx).Preload("Hashtags.Hashtag").Where("teacher_id = ?", teacherID).Find(&skills).Error
-	return skills, err
+	return r.Find(ctx, "teacher_id = ?", teacherID)
 }
 
-func (r *TeacherSkillRepository) Create(ctx context.Context, skill *models.TeacherSkill) error {
-	return r.app.MySQL.WDB.WithContext(ctx).Create(skill).Error
-}
-
-func (r *TeacherSkillRepository) Update(ctx context.Context, skill *models.TeacherSkill) error {
-	return r.app.MySQL.WDB.WithContext(ctx).Save(skill).Error
-}
-
-func (r *TeacherSkillRepository) Delete(ctx context.Context, id uint) error {
-	return r.app.MySQL.WDB.WithContext(ctx).Delete(&models.TeacherSkill{}, id).Error
-}
-
-func (r *TeacherSkillRepository) GetByID(ctx context.Context, id uint) (*models.TeacherSkill, error) {
-	var skill models.TeacherSkill
-	err := r.app.MySQL.RDB.WithContext(ctx).Preload("Hashtags.Hashtag").First(&skill, id).Error
-	return &skill, err
-}
-
-// BatchListByTeacherIDs 批量取得多個教師的技能資料（效能優化：減少 N+1 查詢）
 func (r *TeacherSkillRepository) BatchListByTeacherIDs(ctx context.Context, teacherIDs []uint) (map[uint][]models.TeacherSkill, error) {
 	if len(teacherIDs) == 0 {
 		return make(map[uint][]models.TeacherSkill), nil
@@ -51,7 +33,6 @@ func (r *TeacherSkillRepository) BatchListByTeacherIDs(ctx context.Context, teac
 		return nil, err
 	}
 
-	// 按教師 ID 分組
 	result := make(map[uint][]models.TeacherSkill, len(teacherIDs))
 	for _, skill := range skills {
 		result[skill.TeacherID] = append(result[skill.TeacherID], skill)
@@ -59,14 +40,12 @@ func (r *TeacherSkillRepository) BatchListByTeacherIDs(ctx context.Context, teac
 	return result, nil
 }
 
-// DeleteAllHashtags 刪除技能所有標籤關聯
 func (r *TeacherSkillRepository) DeleteAllHashtags(ctx context.Context, skillID uint) error {
 	return r.app.MySQL.WDB.WithContext(ctx).
 		Where("teacher_skill_id = ?", skillID).
 		Delete(&models.TeacherSkillHashtag{}).Error
 }
 
-// CreateHashtag 建立技能標籤關聯
 func (r *TeacherSkillRepository) CreateHashtag(ctx context.Context, skillID, hashtagID uint) error {
 	return r.app.MySQL.WDB.WithContext(ctx).
 		Create(&models.TeacherSkillHashtag{

@@ -7,42 +7,26 @@ import (
 )
 
 type TimetableCellRepository struct {
-	BaseRepository
-	app   *app.App
-	model *models.TimetableCell
+	GenericRepository[models.TimetableCell]
+	app *app.App
 }
 
 func NewTimetableCellRepository(app *app.App) *TimetableCellRepository {
 	return &TimetableCellRepository{
-		app: app,
+		GenericRepository: NewGenericRepository[models.TimetableCell](app.MySQL.RDB, app.MySQL.WDB),
+		app:               app,
 	}
 }
 
-func (rp *TimetableCellRepository) GetByID(ctx context.Context, id uint) (models.TimetableCell, error) {
-	var data models.TimetableCell
-	err := rp.app.MySQL.RDB.WithContext(ctx).Where("id = ?", id).First(&data).Error
-	return data, err
-}
-
 func (rp *TimetableCellRepository) ListByTemplateID(ctx context.Context, templateID uint) ([]models.TimetableCell, error) {
-	var data []models.TimetableCell
-	err := rp.app.MySQL.RDB.WithContext(ctx).Where("template_id = ?", templateID).Find(&data).Error
-	return data, err
-}
-
-func (rp *TimetableCellRepository) Create(ctx context.Context, data models.TimetableCell) (models.TimetableCell, error) {
-	err := rp.app.MySQL.WDB.WithContext(ctx).Create(&data).Error
-	return data, err
-}
-
-func (rp *TimetableCellRepository) Update(ctx context.Context, data models.TimetableCell) error {
-	return rp.app.MySQL.WDB.WithContext(ctx).Save(&data).Error
-}
-
-func (rp *TimetableCellRepository) Delete(ctx context.Context, id uint) error {
-	return rp.app.MySQL.WDB.WithContext(ctx).Delete(&models.TimetableCell{}, id).Error
+	return rp.Find(ctx, "template_id = ?", templateID)
 }
 
 func (rp *TimetableCellRepository) DeleteByTemplateID(ctx context.Context, templateID uint) error {
-	return rp.app.MySQL.WDB.WithContext(ctx).Where("template_id = ?", templateID).Delete(&models.TimetableCell{}).Error
+	_, err := rp.DeleteWhere(ctx, "template_id = ?", templateID)
+	return err
+}
+
+func (rp *TimetableCellRepository) Delete(ctx context.Context, id uint) error {
+	return rp.DeleteByID(ctx, id)
 }

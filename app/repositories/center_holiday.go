@@ -10,69 +10,34 @@ import (
 )
 
 type CenterHolidayRepository struct {
+	GenericRepository[models.CenterHoliday]
 	app *app.App
 }
 
 func NewCenterHolidayRepository(app *app.App) *CenterHolidayRepository {
-	return &CenterHolidayRepository{app: app}
-}
-
-func (r *CenterHolidayRepository) Create(ctx context.Context, holiday models.CenterHoliday) (models.CenterHoliday, error) {
-	err := r.app.MySQL.WDB.WithContext(ctx).Create(&holiday).Error
-	return holiday, err
-}
-
-func (r *CenterHolidayRepository) GetByID(ctx context.Context, id uint) (models.CenterHoliday, error) {
-	var holiday models.CenterHoliday
-	err := r.app.MySQL.RDB.WithContext(ctx).First(&holiday, id).Error
-	return holiday, err
+	return &CenterHolidayRepository{
+		GenericRepository: NewGenericRepository[models.CenterHoliday](app.MySQL.RDB, app.MySQL.WDB),
+		app:               app,
+	}
 }
 
 func (r *CenterHolidayRepository) GetByCenterAndDate(ctx context.Context, centerID uint, date time.Time) (models.CenterHoliday, error) {
-	var holiday models.CenterHoliday
-	err := r.app.MySQL.RDB.WithContext(ctx).
-		Where("center_id = ? AND date = ?", centerID, date.Format("2006-01-02")).
-		First(&holiday).Error
-	return holiday, err
-}
-
-func (r *CenterHolidayRepository) ListByCenterID(ctx context.Context, centerID uint) ([]models.CenterHoliday, error) {
-	var holidays []models.CenterHoliday
-	err := r.app.MySQL.RDB.WithContext(ctx).
-		Where("center_id = ?", centerID).
-		Order("date ASC").
-		Find(&holidays).Error
-	return holidays, err
+	return r.First(ctx, "center_id = ? AND date = ?", centerID, date.Format("2006-01-02"))
 }
 
 func (r *CenterHolidayRepository) ListByDateRange(ctx context.Context, centerID uint, start, end time.Time) ([]models.CenterHoliday, error) {
-	var holidays []models.CenterHoliday
-	err := r.app.MySQL.RDB.WithContext(ctx).
-		Where("center_id = ? AND date >= ? AND date <= ?", centerID, start.Format("2006-01-02"), end.Format("2006-01-02")).
-		Order("date ASC").
-		Find(&holidays).Error
-	return holidays, err
-}
-
-func (r *CenterHolidayRepository) Delete(ctx context.Context, id uint) error {
-	return r.app.MySQL.WDB.WithContext(ctx).Delete(&models.CenterHoliday{}, id).Error
+	return r.Find(ctx, "center_id = ? AND date >= ? AND date <= ?", centerID, start.Format("2006-01-02"), end.Format("2006-01-02"))
 }
 
 func (r *CenterHolidayRepository) ExistsByCenterAndDate(ctx context.Context, centerID uint, date time.Time) (bool, error) {
-	var count int64
-	err := r.app.MySQL.RDB.WithContext(ctx).
-		Model(&models.CenterHoliday{}).
-		Where("center_id = ? AND date = ?", centerID, date.Format("2006-01-02")).
-		Count(&count).Error
-	return count > 0, err
+	return r.Exists(ctx, "center_id = ? AND date = ?", centerID, date.Format("2006-01-02"))
 }
 
 func (r *CenterHolidayRepository) BulkCreate(ctx context.Context, holidays []models.CenterHoliday) ([]models.CenterHoliday, error) {
 	if len(holidays) == 0 {
 		return holidays, nil
 	}
-	err := r.app.MySQL.WDB.WithContext(ctx).Create(&holidays).Error
-	return holidays, err
+	return r.CreateBatch(ctx, holidays)
 }
 
 func (r *CenterHolidayRepository) BulkCreateWithSkipDuplicate(ctx context.Context, holidays []models.CenterHoliday) ([]models.CenterHoliday, int64, error) {
@@ -86,12 +51,12 @@ func (r *CenterHolidayRepository) BulkCreateWithSkipDuplicate(ctx context.Contex
 	err := r.app.MySQL.WDB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		for i := range holidays {
 			var existing int64
-			tx.Model(&models.CenterHoliday{}).
+			r.app.MySQL.RDB.WithContext(ctx).Model(&models.CenterHoliday{}).
 				Where("center_id = ? AND date = ?", holidays[i].CenterID, holidays[i].Date.Format("2006-01-02")).
 				Count(&existing)
 
 			if existing == 0 {
-				if err := tx.Create(&holidays[i]).Error; err != nil {
+				if err := r.app.MySQL.WDB.WithContext(ctx).Create(&holidays[i]).Error; err != nil {
 					return err
 				}
 				createdHolidays = append(createdHolidays, holidays[i])
@@ -102,6 +67,14 @@ func (r *CenterHolidayRepository) BulkCreateWithSkipDuplicate(ctx context.Contex
 	})
 
 	return createdHolidays, created, err
+}
+
+func (r *CenterHolidayRepository) Delete(ctx context.Context, id uint) error {
+	return r.GenericRepository.DeleteByID(ctx, id)
+}
+
+func (r *CenterHolidayRepository) ListByCenterID(ctx context.Context, centerID uint) ([]models.CenterHoliday, error) {
+	return r.FindWithCenterScope(ctx, centerID)
 }
 
 type CenterHolidayRepositoryInterface interface {

@@ -7,61 +7,27 @@ import (
 )
 
 type CourseRepository struct {
-	BaseRepository
-	app   *app.App
-	model *models.Course
+	GenericRepository[models.Course]
+	app *app.App
 }
 
 func NewCourseRepository(app *app.App) *CourseRepository {
 	return &CourseRepository{
-		app: app,
+		GenericRepository: NewGenericRepository[models.Course](app.MySQL.RDB, app.MySQL.WDB),
+		app:               app,
 	}
 }
 
-func (rp *CourseRepository) GetByID(ctx context.Context, id uint) (models.Course, error) {
-	var data models.Course
-	err := rp.app.MySQL.RDB.WithContext(ctx).Where("id = ?", id).First(&data).Error
-	return data, err
-}
-
-func (rp *CourseRepository) GetByIDAndCenterID(ctx context.Context, id uint, centerID uint) (models.Course, error) {
-	var data models.Course
-	err := rp.app.MySQL.RDB.WithContext(ctx).Where("id = ? AND center_id = ?", id, centerID).First(&data).Error
-	return data, err
-}
-
 func (rp *CourseRepository) ListByCenterID(ctx context.Context, centerID uint) ([]models.Course, error) {
-	var data []models.Course
-	err := rp.app.MySQL.RDB.WithContext(ctx).Where("center_id = ?", centerID).Find(&data).Error
-	return data, err
+	return rp.FindWithCenterScope(ctx, centerID)
 }
 
 func (rp *CourseRepository) ListActiveByCenterID(ctx context.Context, centerID uint) ([]models.Course, error) {
-	var data []models.Course
-	err := rp.app.MySQL.RDB.WithContext(ctx).Where("center_id = ? AND is_active = ?", centerID, true).Find(&data).Error
-	return data, err
+	return rp.FindWithCenterScope(ctx, centerID, "is_active = ?", true)
 }
 
 func (rp *CourseRepository) ToggleActive(ctx context.Context, id uint, centerID uint, isActive bool) error {
-	result := rp.app.MySQL.WDB.WithContext(ctx).
-		Model(&models.Course{}).
-		Where("id = ? AND center_id = ?", id, centerID).
-		Update("is_active", isActive)
-
-	return result.Error
-}
-
-func (rp *CourseRepository) Create(ctx context.Context, data models.Course) (models.Course, error) {
-	err := rp.app.MySQL.WDB.WithContext(ctx).Create(&data).Error
-	return data, err
-}
-
-func (rp *CourseRepository) Update(ctx context.Context, data models.Course) error {
-	return rp.app.MySQL.WDB.WithContext(ctx).Save(&data).Error
-}
-
-func (rp *CourseRepository) DeleteByID(ctx context.Context, id uint, centerID uint) error {
-	return rp.app.MySQL.WDB.WithContext(ctx).
-		Where("id = ? AND center_id = ?", id, centerID).
-		Delete(&models.Course{}).Error
+	return rp.UpdateFieldsWithCenterScope(ctx, id, centerID, map[string]interface{}{
+		"is_active": isActive,
+	})
 }

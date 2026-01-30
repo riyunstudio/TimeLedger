@@ -8,19 +8,36 @@ import (
 )
 
 type AuditLogRepository struct {
+	GenericRepository[models.AuditLog]
 	app *app.App
 }
 
 func NewAuditLogRepository(app *app.App) *AuditLogRepository {
 	return &AuditLogRepository{
-		app: app,
+		GenericRepository: NewGenericRepository[models.AuditLog](app.MySQL.RDB, app.MySQL.WDB),
+		app:               app,
 	}
 }
 
 func (r *AuditLogRepository) Create(ctx context.Context, log models.AuditLog) (models.AuditLog, error) {
 	log.Timestamp = time.Now()
-	err := r.app.MySQL.WDB.WithContext(ctx).Create(&log).Error
-	return log, err
+	return r.GenericRepository.Create(ctx, log)
+}
+
+func (r *AuditLogRepository) GetByID(ctx context.Context, id uint) (models.AuditLog, error) {
+	return r.GenericRepository.GetByID(ctx, id)
+}
+
+func (r *AuditLogRepository) Delete(ctx context.Context, id uint) error {
+	return r.GenericRepository.DeleteByID(ctx, id)
+}
+
+func (r *AuditLogRepository) ListByDateRange(ctx context.Context, centerID uint, start, end time.Time) ([]models.AuditLog, error) {
+	return r.Find(ctx, "center_id = ? AND timestamp >= ? AND timestamp <= ?", centerID, start, end)
+}
+
+func (r *AuditLogRepository) CountByCenter(ctx context.Context, centerID uint) (int64, error) {
+	return r.Count(ctx, "center_id = ?", centerID)
 }
 
 func (r *AuditLogRepository) ListByCenterID(ctx context.Context, centerID uint, limit, offset int) ([]models.AuditLog, error) {
@@ -46,40 +63,13 @@ func (r *AuditLogRepository) ListByActor(ctx context.Context, actorType string, 
 	return logs, err
 }
 
-func (r *AuditLogRepository) ListByDateRange(ctx context.Context, centerID uint, start, end time.Time) ([]models.AuditLog, error) {
-	var logs []models.AuditLog
-	err := r.app.MySQL.RDB.WithContext(ctx).
-		Where("center_id = ? AND timestamp >= ? AND timestamp <= ?", centerID, start, end).
-		Order("timestamp DESC").
-		Find(&logs).Error
-	return logs, err
-}
-
-func (r *AuditLogRepository) GetByID(ctx context.Context, id uint) (models.AuditLog, error) {
-	var log models.AuditLog
-	err := r.app.MySQL.RDB.WithContext(ctx).First(&log, id).Error
-	return log, err
-}
-
-func (r *AuditLogRepository) Delete(ctx context.Context, id uint) error {
-	return r.app.MySQL.WDB.WithContext(ctx).Delete(&models.AuditLog{}, id).Error
-}
-
-func (r *AuditLogRepository) CountByCenter(ctx context.Context, centerID uint) (int64, error) {
-	var count int64
-	err := r.app.MySQL.RDB.WithContext(ctx).Model(&models.AuditLog{}).
-		Where("center_id = ?", centerID).
-		Count(&count).Error
-	return count, err
-}
-
 type AuditLogRepositoryInterface interface {
 	Create(ctx context.Context, log models.AuditLog) (models.AuditLog, error)
+	GetByID(ctx context.Context, id uint) (models.AuditLog, error)
+	Delete(ctx context.Context, id uint) error
 	ListByCenterID(ctx context.Context, centerID uint, limit, offset int) ([]models.AuditLog, error)
 	ListByActor(ctx context.Context, actorType string, actorID uint, limit int) ([]models.AuditLog, error)
 	ListByDateRange(ctx context.Context, centerID uint, start, end time.Time) ([]models.AuditLog, error)
-	GetByID(ctx context.Context, id uint) (models.AuditLog, error)
-	Delete(ctx context.Context, id uint) error
 	CountByCenter(ctx context.Context, centerID uint) (int64, error)
 }
 

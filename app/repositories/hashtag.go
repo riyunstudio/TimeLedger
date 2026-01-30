@@ -7,45 +7,27 @@ import (
 )
 
 type HashtagRepository struct {
-	BaseRepository
+	GenericRepository[models.Hashtag]
 	app *app.App
 }
 
 func NewHashtagRepository(app *app.App) *HashtagRepository {
-	return &HashtagRepository{app: app}
-}
-
-func (r *HashtagRepository) GetByID(ctx context.Context, id uint) (*models.Hashtag, error) {
-	var hashtag models.Hashtag
-	err := r.app.MySQL.RDB.WithContext(ctx).First(&hashtag, id).Error
-	return &hashtag, err
+	return &HashtagRepository{
+		GenericRepository: NewGenericRepository[models.Hashtag](app.MySQL.RDB, app.MySQL.WDB),
+		app:               app,
+	}
 }
 
 func (r *HashtagRepository) GetByName(ctx context.Context, name string) (*models.Hashtag, error) {
-	var hashtag models.Hashtag
-	err := r.app.MySQL.RDB.WithContext(ctx).Where("name = ?", name).First(&hashtag).Error
-	return &hashtag, err
-}
-
-func (r *HashtagRepository) Create(ctx context.Context, hashtag *models.Hashtag) error {
-	return r.app.MySQL.WDB.WithContext(ctx).Create(hashtag).Error
-}
-
-func (r *HashtagRepository) List(ctx context.Context) ([]models.Hashtag, error) {
-	var hashtags []models.Hashtag
-	err := r.app.MySQL.RDB.WithContext(ctx).Order("usage_count DESC").Find(&hashtags).Error
-	return hashtags, err
+	data, err := r.First(ctx, "name = ?", name)
+	if err != nil {
+		return nil, err
+	}
+	return &data, nil
 }
 
 func (r *HashtagRepository) Search(ctx context.Context, query string) ([]models.Hashtag, error) {
-	var hashtags []models.Hashtag
-	searchQuery := "%" + query + "%"
-	err := r.app.MySQL.RDB.WithContext(ctx).
-		Where("name LIKE ?", searchQuery).
-		Order("usage_count DESC").
-		Limit(10).
-		Find(&hashtags).Error
-	return hashtags, err
+	return r.Find(ctx, "name LIKE ?", "%"+query+"%")
 }
 
 func (r *HashtagRepository) IncrementUsage(ctx context.Context, name string) error {
