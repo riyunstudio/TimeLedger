@@ -5,6 +5,8 @@ import (
 	"time"
 	"timeLedger/app"
 	"timeLedger/app/models"
+
+	"gorm.io/gorm"
 )
 
 type ScheduleRuleRepository struct {
@@ -17,6 +19,38 @@ func NewScheduleRuleRepository(app *app.App) *ScheduleRuleRepository {
 		GenericRepository: NewGenericRepository[models.ScheduleRule](app.MySQL.RDB, app.MySQL.WDB),
 		app:               app,
 	}
+}
+
+// Transaction executes a function within a database transaction.
+// This method creates a NEW ScheduleRuleRepository instance with transaction connections
+// to avoid race conditions in concurrent requests.
+//
+// Usage Example:
+//
+//	result, err := rp.Transaction(ctx, func(txRepo *ScheduleRuleRepository) error {
+//	    // All operations using txRepo will be within the same transaction
+//	    // Custom methods like BulkCreate, ListByTeacherID are available
+//	    if _, err := txRepo.BulkCreate(ctx, rules); err != nil {
+//	        return err
+//	    }
+//	    if _, err := txRepo.DeleteByIDAndCenterID(ctx, oldRuleID, centerID); err != nil {
+//	        return err
+//	    }
+//	    return nil
+//	})
+func (rp *ScheduleRuleRepository) Transaction(ctx context.Context, fn func(txRepo *ScheduleRuleRepository) error) error {
+	return rp.dbWrite.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// Create a new ScheduleRuleRepository instance with transaction connections
+		txRepo := &ScheduleRuleRepository{
+			GenericRepository: GenericRepository[models.ScheduleRule]{
+				dbRead:  tx.WithContext(ctx),
+				dbWrite: tx.WithContext(ctx),
+				table:   rp.table,
+			},
+			app: rp.app,
+		}
+		return fn(txRepo)
+	})
 }
 
 func (rp *ScheduleRuleRepository) GetByIDAndCenterID(ctx context.Context, id uint, centerID uint) (models.ScheduleRule, error) {

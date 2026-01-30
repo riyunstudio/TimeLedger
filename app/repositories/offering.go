@@ -5,6 +5,8 @@ import (
 	"time"
 	"timeLedger/app"
 	"timeLedger/app/models"
+
+	"gorm.io/gorm"
 )
 
 type OfferingRepository struct {
@@ -17,6 +19,38 @@ func NewOfferingRepository(app *app.App) *OfferingRepository {
 		GenericRepository: NewGenericRepository[models.Offering](app.MySQL.RDB, app.MySQL.WDB),
 		app:               app,
 	}
+}
+
+// Transaction executes a function within a database transaction.
+// This method creates a NEW OfferingRepository instance with transaction connections
+// to avoid race conditions in concurrent requests.
+//
+// Usage Example:
+//
+//	result, err := rp.Transaction(ctx, func(txRepo *OfferingRepository) error {
+//	    // All operations using txRepo will be within the same transaction
+//	    // Custom methods like Copy and ListActiveByCenterID are available
+//	    if _, err := txRepo.Create(ctx, offering1); err != nil {
+//	        return err
+//	    }
+//	    if _, err := txRepo.Create(ctx, offering2); err != nil {
+//	        return err
+//	    }
+//	    return nil
+//	})
+func (rp *OfferingRepository) Transaction(ctx context.Context, fn func(txRepo *OfferingRepository) error) error {
+	return rp.dbWrite.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// Create a new OfferingRepository instance with transaction connections
+		txRepo := &OfferingRepository{
+			GenericRepository: GenericRepository[models.Offering]{
+				dbRead:  tx.WithContext(ctx),
+				dbWrite: tx.WithContext(ctx),
+				table:   rp.table,
+			},
+			app: rp.app,
+		}
+		return fn(txRepo)
+	})
 }
 
 func (rp *OfferingRepository) ListActiveByCenterID(ctx context.Context, centerID uint) ([]models.Offering, error) {

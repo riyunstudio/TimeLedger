@@ -472,20 +472,20 @@ func (rp *GenericRepository[T]) PluckWithCenterScope(ctx context.Context, center
 //
 // Usage Example (in Service layer):
 //
-//	txErr := s.app.MySQL.WDB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-//	    // Use tx directly for DB operations within the transaction
-//	    if err := tx.Create(&rule).Error; err != nil {
+//	txErr := rp.Transaction(ctx, func(txCtx context.Context, txDB *gorm.DB) error {
+//	    // Use txDB directly for DB operations within the transaction
+//	    if err := txDB.WithContext(txCtx).Table("courses").Create(&course).Error; err != nil {
 //	        return err
 //	    }
-//	    if err := tx.Create(&auditLog).Error; err != nil {
+//	    if err := txDB.WithContext(txCtx).Table("audit_logs").Create(&auditLog).Error; err != nil {
 //	        return err
 //	    }
 //	    return nil
 //	})
 //
-// Note: For complex transactions with multiple operations, prefer controlling
-// transactions at the Service layer (see ScheduleService pattern) rather than
-// using this repository method.
+// Note: For transactions that need to use repository methods, use TransactionWithRepo() instead.
+// For domain repositories with custom methods, implement a dedicated Transaction method
+// (see CourseRepository.Transaction as example).
 func (rp *GenericRepository[T]) Transaction(ctx context.Context, fn func(txCtx context.Context, txDB *gorm.DB) error) error {
 	return rp.dbWrite.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		// Pass the transaction DB connection to the callback function
@@ -493,35 +493,113 @@ func (rp *GenericRepository[T]) Transaction(ctx context.Context, fn func(txCtx c
 	})
 }
 
+// TransactionCapable is an interface that repositories can implement
+// to provide transaction-aware method access within transactions.
+// This allows custom methods to be used with transaction connections.
+//
+// Usage:
+//
+//	func (rp *CourseRepository) Transaction(ctx context.Context, fn func(txRepo *CourseRepository) error) error {
+//	    return rp.GenericRepository.TransactionWithRepo(ctx, txDB, func(txRepo GenericRepository[models.Course]) error {
+//	        // Create domain repo wrapper for custom methods
+//	        domainRepo := &CourseRepository{
+//	            GenericRepository: txRepo,
+//	            app:               rp.app,
+//	        }
+//	        return fn(domainRepo)
+//	    })
+//	}
+type TransactionCapable[T models.IModel] interface {
+	Transaction(ctx context.Context, fn func(txRepo interface{}) error) error
+	TransactionWithRepo(ctx context.Context, txDB *gorm.DB, fn func(txRepo GenericRepository[T]) error) error
+}
+
 // TransactionWithRepo executes a function with a transaction-aware repository.
 // This is the preferred pattern for transactions that need repository methods.
 //
 // Parameters:
-//   - fn: Function that receives a transaction-aware repository and returns an error
+//   - ctx: Context for the transaction
+//   - txDB: The transaction DB connection (from WDB.Transaction)
+//   - fn: Function that receives a transaction-aware generic repository and returns an error
 //
 // Returns:
 //   - error: Any error from the function or transaction handling
 //
 // Usage Example:
 //
-//	result, err := rp.TransactionWithRepo(ctx, func(txRepo *GenericRepository[T]) error {
+//	result, err := rp.TransactionWithRepo(ctx, txDB, func(txRepo GenericRepository[models.Course]) error {
 //	    // All operations using txRepo will be within the same transaction
-//	    if err := txRepo.Create(ctx, data1).Error; err != nil {
+//	    if _, err := txRepo.Create(ctx, data1); err != nil {
 //	        return err
 //	    }
-//	    if err := txRepo.Create(ctx, data2).Error; err != nil {
+//	    if _, err := txRepo.Create(ctx, data2); err != nil {
 //	        return err
 //	    }
 //	    return nil
 //	})
-func (rp *GenericRepository[T]) TransactionWithRepo(ctx context.Context, fn func(txRepo *GenericRepository[T]) error) error {
-	return rp.dbWrite.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		// Create a new repository instance with transaction connections
-		txRepo := GenericRepository[T]{
-			dbRead:  tx.WithContext(ctx),
-			dbWrite: tx.WithContext(ctx),
-			table:   rp.table,
-		}
-		return fn(&txRepo)
-	})
+//
+// Note: For domain repositories with custom methods, use the domain-specific
+// Transaction method instead (see CourseRepository.Transaction).
+func (rp *GenericRepository[T]) TransactionWithRepo(ctx context.Context, txDB *gorm.DB, fn func(txRepo GenericRepository[T]) error) error {
+	// Create a new repository instance with transaction connections
+	txRepo := GenericRepository[T]{
+		dbRead:  txDB.WithContext(ctx),
+		dbWrite: txDB.WithContext(ctx),
+		table:   rp.table,
+	}
+	return fn(txRepo)
+}
+
+// WithTransaction creates a transaction-aware repository instance.
+// This helper is used by domain repositories to implement their Transaction methods.
+//
+// Usage in domain repository:
+//
+//	func (rp *CourseRepository) Transaction(ctx context.Context, fn func(txRepo *CourseRepository) error) error {
+//	    return rp.GenericRepository.Transactional(ctx, rp.dbWrite, func(txDB *gorm.DB) error {
+//	        txCourseRepo := &CourseRepository{
+//	            GenericRepository: GenericRepository[models.Course]{
+//	                dbRead:  txDB.WithContext(ctx),
+//	                dbWrite: txDB.WithContext(ctx),
+//	                table:   rp.table,
+//	            },
+//	            app: rp.app,
+//	        }
+//	        return fn(txCourseRepo)
+//	    })
+//	}
+func (rp *GenericRepository[T]) Transactional(ctx context.Context, txDB *gorm.DB, fn func(txDB *gorm.DB) error) error {
+	return txDB.WithContext(ctx).Transaction(fn)
+}
+
+// NewTransactionRepo creates a new repository instance with transaction connections.
+// This is a convenience function for creating transaction-aware repository instances
+// to be used within Transaction callbacks.
+//
+// Parameters:
+//   - ctx: Context for the transaction
+//   - txDB: The transaction DB connection
+//   - tableName: The table name for this repository
+//
+// Returns:
+//   - GenericRepository[T]: A new repository instance configured for the transaction
+//
+// Usage:
+//
+//	func (rp *CourseRepository) Transaction(ctx context.Context, fn func(txRepo *CourseRepository) error) error {
+//	    return rp.dbWrite.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+//	        txRepo := NewTransactionRepo[models.Course](ctx, tx, rp.table)
+//	        domainRepo := &CourseRepository{
+//	            GenericRepository: txRepo,
+//	            app: rp.app,
+//	        }
+//	        return fn(domainRepo)
+//	    })
+//	}
+func NewTransactionRepo[T models.IModel](ctx context.Context, txDB *gorm.DB, tableName string) GenericRepository[T] {
+	return GenericRepository[T]{
+		dbRead:  txDB.WithContext(ctx),
+		dbWrite: txDB.WithContext(ctx),
+		table:   tableName,
+	}
 }
