@@ -373,6 +373,7 @@ type ScheduleExceptionServiceImpl struct {
 	validationService ScheduleValidationService
 	notificationSvc   NotificationService
 	notificationQueue NotificationQueueService
+	cacheSvc          *CacheService
 }
 
 func NewScheduleExceptionService(app *app.App) ScheduleExceptionService {
@@ -387,6 +388,7 @@ func NewScheduleExceptionService(app *app.App) ScheduleExceptionService {
 		validationService: NewScheduleValidationService(app),
 		notificationSvc:   NewNotificationService(app),
 		notificationQueue: NewNotificationQueueService(app),
+		cacheSvc:          NewCacheService(app),
 	}
 	return svc
 }
@@ -498,6 +500,9 @@ func (s *ScheduleExceptionServiceImpl) CreateException(ctx context.Context, cent
 		_ = s.notificationQueue.NotifyExceptionSubmittedSync(ctx, &createdException, teacherName, centerName)
 	}
 
+	// 建立例外單後，使相關課表快取失效
+	s.invalidateRelatedCaches(ctx, &createdException)
+
 	return createdException, nil
 }
 
@@ -525,6 +530,9 @@ func (s *ScheduleExceptionServiceImpl) RevokeException(ctx context.Context, exce
 		TargetID:   exceptionID,
 		Payload:    models.AuditPayload{Before: "PENDING", After: "REVOKED"},
 	})
+
+	// 撤回例外單後，使相關課表快取失效
+	s.invalidateRelatedCaches(ctx, &exception)
 
 	return nil
 }
@@ -654,6 +662,9 @@ func (s *ScheduleExceptionServiceImpl) ReviewException(ctx context.Context, exce
 			}
 		}
 	}
+
+	// 審核例外單後，使相關課表快取失效
+	s.invalidateRelatedCaches(ctx, &exception)
 
 	return nil
 }
@@ -843,6 +854,37 @@ func (s *ScheduleExceptionServiceImpl) GetAllExceptions(ctx context.Context, cen
 	return exceptions, err
 }
 
+// invalidateRelatedCaches 使例外相關的課表快取失效
+func (s *ScheduleExceptionServiceImpl) invalidateRelatedCaches(ctx context.Context, exception *models.ScheduleException) {
+	// 取得例外相關的規則
+	rule, err := s.ruleRepo.GetByID(ctx, exception.RuleID)
+	if err != nil {
+		s.Logger.Warn("failed to get rule for cache invalidation", "error", err, "exception_id", exception.ID)
+		return
+	}
+
+	// 清除中心課表快取
+	pattern := fmt.Sprintf("schedule:expand:center:%d:*", exception.CenterID)
+	_ = s.cacheSvc.DeleteByPattern(ctx, CacheCategorySchedule, pattern)
+
+	// 清除老師課表快取
+	if rule.ID != 0 && rule.TeacherID != nil {
+		teacherPattern := fmt.Sprintf("schedule:expand:teacher:%d:center:%d:*", *rule.TeacherID, exception.CenterID)
+		_ = s.cacheSvc.DeleteByPattern(ctx, CacheCategorySchedule, teacherPattern)
+	}
+
+	s.Logger.Info("exception-related cache invalidated",
+		"center_id", exception.CenterID,
+		"exception_id", exception.ID,
+		"rule_id", exception.RuleID,
+		"teacher_id", func() uint {
+			if rule.ID != 0 && rule.TeacherID != nil {
+				return *rule.TeacherID
+			}
+			return 0
+		}())
+}
+
 type ScheduleRecurrenceServiceImpl struct {
 	BaseService
 	app           *app.App
@@ -851,6 +893,7 @@ type ScheduleRecurrenceServiceImpl struct {
 	expansionSvc  ScheduleExpansionService
 	auditLogRepo  *repositories.AuditLogRepository
 	offeringRepo  *repositories.OfferingRepository
+	cacheSvc      *CacheService
 }
 
 func NewScheduleRecurrenceService(app *app.App) ScheduleRecurrenceService {
@@ -861,6 +904,7 @@ func NewScheduleRecurrenceService(app *app.App) ScheduleRecurrenceService {
 		expansionSvc:  NewScheduleExpansionService(app),
 		auditLogRepo:  repositories.NewAuditLogRepository(app),
 		offeringRepo:  repositories.NewOfferingRepository(app),
+		cacheSvc:      NewCacheService(app),
 	}
 	return svc
 }
@@ -988,6 +1032,9 @@ func (s *ScheduleRecurrenceServiceImpl) EditRecurringSchedule(ctx context.Contex
 		preview, _ := s.PreviewAffectedSessions(ctx, req.RuleID, req.EditDate, RecurrenceEditAll)
 		result.AffectedCount = preview.AffectedCount
 	}
+
+	// 編輯循環課表後，使相關課表快取失效
+	s.invalidateRelatedCaches(ctx, centerID, req.RuleID)
 
 	return result, nil
 }
@@ -1318,5 +1365,38 @@ func (s *ScheduleRecurrenceServiceImpl) DeleteRecurringSchedule(ctx context.Cont
 		return RecurrenceEditResult{}, txErr
 	}
 
+	// 刪除循環課表後，使相關課表快取失效
+	s.invalidateRelatedCaches(ctx, centerID, ruleID)
+
 	return result, nil
+}
+
+// invalidateRelatedCaches 使循環編輯相關的課表快取失效
+func (s *ScheduleRecurrenceServiceImpl) invalidateRelatedCaches(ctx context.Context, centerID, ruleID uint) {
+	// 取得規則以獲取老師ID
+	rule, err := s.ruleRepo.GetByID(ctx, ruleID)
+	if err != nil {
+		s.Logger.Warn("failed to get rule for cache invalidation", "error", err, "rule_id", ruleID)
+		return
+	}
+
+	// 清除中心課表快取
+	pattern := fmt.Sprintf("schedule:expand:center:%d:*", centerID)
+	_ = s.cacheSvc.DeleteByPattern(ctx, CacheCategorySchedule, pattern)
+
+	// 清除老師課表快取
+	if rule.ID != 0 && rule.TeacherID != nil {
+		teacherPattern := fmt.Sprintf("schedule:expand:teacher:%d:center:%d:*", *rule.TeacherID, centerID)
+		_ = s.cacheSvc.DeleteByPattern(ctx, CacheCategorySchedule, teacherPattern)
+	}
+
+	s.Logger.Info("recurrence-edit cache invalidated",
+		"center_id", centerID,
+		"rule_id", ruleID,
+		"teacher_id", func() uint {
+			if rule.ID != 0 && rule.TeacherID != nil {
+				return *rule.TeacherID
+			}
+			return 0
+		}())
 }

@@ -35,9 +35,16 @@ type ScheduleServiceInterface interface {
 
 	// 展開與摘要
 	ExpandRules(ctx context.Context, centerID uint, req *ExpandRulesRequest) ([]ExpandedSchedule, error)
+	GetCachedExpandedSchedules(ctx context.Context, centerID uint, req *ExpandRulesRequest) ([]ExpandedSchedule, error)
+	GetCachedTeacherSchedule(ctx context.Context, teacherID, centerID uint, startDate, endDate time.Time) ([]ExpandedSchedule, error)
 	GetTodaySummary(ctx context.Context, centerID uint) (*TodaySummary, error)
 	DetectPhaseTransitions(ctx context.Context, centerID, offeringID uint, startDate, endDate time.Time) ([]PhaseTransition, error)
 	CheckRuleLockStatus(ctx context.Context, centerID, ruleID uint, exceptionDate time.Time) (*RuleLockStatus, error)
+
+	// 快取管理
+	InvalidateCenterScheduleCache(ctx context.Context, centerID uint) error
+	InvalidateTeacherScheduleCache(ctx context.Context, teacherID, centerID uint) error
+	InvalidateExceptionRelatedCache(ctx context.Context, centerID uint, exception *models.ScheduleException) error
 }
 
 // CreateScheduleRuleRequest 建立排課規則請求
@@ -167,39 +174,41 @@ const (
 // ScheduleService 排課服務實現
 type ScheduleService struct {
 	BaseService
-	ruleRepo         *repositories.ScheduleRuleRepository
-	exceptionRepo    *repositories.ScheduleExceptionRepository
-	offeringRepo     *repositories.OfferingRepository
-	courseRepo       *repositories.CourseRepository
-	centerRepo       *repositories.CenterRepository
-	auditLogRepo     *repositories.AuditLogRepository
-	holidayRepo      *repositories.CenterHolidayRepository
-	teacherRepo      *repositories.TeacherRepository
-	validationSvc    ScheduleValidationService
-	expansionSvc     ScheduleExpansionService
-	exceptionSvc     ScheduleExceptionService
-	notificationSvc  NotificationService
+	ruleRepo          *repositories.ScheduleRuleRepository
+	exceptionRepo     *repositories.ScheduleExceptionRepository
+	offeringRepo      *repositories.OfferingRepository
+	courseRepo        *repositories.CourseRepository
+	centerRepo        *repositories.CenterRepository
+	auditLogRepo      *repositories.AuditLogRepository
+	holidayRepo       *repositories.CenterHolidayRepository
+	teacherRepo       *repositories.TeacherRepository
+	validationSvc     ScheduleValidationService
+	expansionSvc      ScheduleExpansionService
+	exceptionSvc      ScheduleExceptionService
+	notificationSvc   NotificationService
 	notificationQueue NotificationQueueService
+	cacheSvc          *CacheService
 }
 
 // NewScheduleService 建立排課服務
 func NewScheduleService(app *app.App) ScheduleServiceInterface {
 	baseSvc := NewBaseService(app, "ScheduleService")
 	svc := &ScheduleService{
-		BaseService:      *baseSvc,
-		ruleRepo:         repositories.NewScheduleRuleRepository(app),
-		exceptionRepo:    repositories.NewScheduleExceptionRepository(app),
-		offeringRepo:     repositories.NewOfferingRepository(app),
-		courseRepo:       repositories.NewCourseRepository(app),
-		centerRepo:       repositories.NewCenterRepository(app),
-		auditLogRepo:     repositories.NewAuditLogRepository(app),
-		holidayRepo:      repositories.NewCenterHolidayRepository(app),
-		teacherRepo:      repositories.NewTeacherRepository(app),
-		validationSvc:    NewScheduleValidationService(app),
-		expansionSvc:     NewScheduleExpansionService(app),
-		exceptionSvc:     NewScheduleExceptionService(app),
-		notificationSvc:  NewNotificationService(app),
+		BaseService:       *baseSvc,
+		ruleRepo:          repositories.NewScheduleRuleRepository(app),
+		exceptionRepo:     repositories.NewScheduleExceptionRepository(app),
+		offeringRepo:      repositories.NewOfferingRepository(app),
+		courseRepo:        repositories.NewCourseRepository(app),
+		centerRepo:        repositories.NewCenterRepository(app),
+		auditLogRepo:      repositories.NewAuditLogRepository(app),
+		holidayRepo:       repositories.NewCenterHolidayRepository(app),
+		teacherRepo:       repositories.NewTeacherRepository(app),
+		validationSvc:     NewScheduleValidationService(app),
+		expansionSvc:      NewScheduleExpansionService(app),
+		exceptionSvc:      NewScheduleExceptionService(app),
+		notificationSvc:   NewNotificationService(app),
 		notificationQueue: NewNotificationQueueService(app),
+		cacheSvc:          NewCacheService(app),
 	}
 	return svc
 }
@@ -334,6 +343,9 @@ func (s *ScheduleService) CreateRule(ctx context.Context, centerID, adminID uint
 	if txErr != nil {
 		return nil, s.App.Err.New(errInfos.ERR_TX_FAILED), txErr
 	}
+
+	// 建立規則後，使相關課表快取失效
+	_ = s.InvalidateCenterScheduleCache(ctx, centerID)
 
 	return createdRules, nil, nil
 }
@@ -596,6 +608,9 @@ func (s *ScheduleService) UpdateRule(ctx context.Context, centerID, adminID, rul
 		return nil, s.App.Err.New(errInfos.ERR_TX_FAILED), txErr
 	}
 
+	// 更新規則後，使相關課表快取失效
+	_ = s.InvalidateCenterScheduleCache(ctx, centerID)
+
 	return resultRules, nil, nil
 }
 
@@ -827,6 +842,9 @@ func (s *ScheduleService) createSingleRule(centerID uint, existingRule models.Sc
 
 // DeleteRule 刪除排課規則
 func (s *ScheduleService) DeleteRule(ctx context.Context, centerID, adminID, ruleID uint) error {
+	// 取得規則以獲取老師ID（用於清除老師課表快取）
+	rule, _ := s.ruleRepo.GetByID(ctx, ruleID)
+
 	if err := s.ruleRepo.DeleteByIDAndCenterID(ctx, ruleID, centerID); err != nil {
 		return fmt.Errorf("failed to delete rule: %w", err)
 	}
@@ -844,6 +862,12 @@ func (s *ScheduleService) DeleteRule(ctx context.Context, centerID, adminID, rul
 			},
 		},
 	})
+
+	// 刪除規則後，使相關課表快取失效
+	_ = s.InvalidateCenterScheduleCache(ctx, centerID)
+	if rule.ID != 0 && rule.TeacherID != nil {
+		_ = s.InvalidateTeacherScheduleCache(ctx, *rule.TeacherID, centerID)
+	}
 
 	return nil
 }
@@ -1118,6 +1142,155 @@ func (s *ScheduleService) GetPendingExceptions(ctx context.Context, centerID uin
 
 func (s *ScheduleService) GetAllExceptions(ctx context.Context, centerID uint, status string) ([]models.ScheduleException, error) {
 	return s.exceptionSvc.GetAllExceptions(ctx, centerID, status)
+}
+
+// =====================================================
+// 課表快取方法 (Schedule Expansion Caching)
+// =====================================================
+
+// scheduleCacheKey 產生課表展開快取鍵
+// 格式: schedule:expand:center:{center_id}:start:{start_date}:end:{end_date}
+func (s *ScheduleService) scheduleCacheKey(centerID uint, startDate, endDate time.Time) string {
+	return fmt.Sprintf("schedule:expand:center:%d:start:%s:end:%s",
+		centerID, startDate.Format("2006-01-02"), endDate.Format("2006-01-02"))
+}
+
+// teacherScheduleCacheKey 產生老師課表快取鍵
+// 格式: schedule:expand:teacher:{teacher_id}:center:{center_id}:start:{start_date}:end:{end_date}
+func (s *ScheduleService) teacherScheduleCacheKey(teacherID, centerID uint, startDate, endDate time.Time) string {
+	return fmt.Sprintf("schedule:expand:teacher:%d:center:%d:start:%s:end:%s",
+		teacherID, centerID, startDate.Format("2006-01-02"), endDate.Format("2006-01-02"))
+}
+
+// GetCachedExpandedSchedules 取得帶快取的課表展開結果
+// 先檢查快取，若未命中則展開後快取
+func (s *ScheduleService) GetCachedExpandedSchedules(ctx context.Context, centerID uint, req *ExpandRulesRequest) ([]ExpandedSchedule, error) {
+	cacheKey := s.scheduleCacheKey(centerID, req.StartDate, req.EndDate)
+
+	// 嘗試從快取取得
+	var cachedResult []ExpandedSchedule
+	err := s.cacheSvc.GetJSON(ctx, &cachedResult, CacheCategorySchedule, cacheKey)
+	if err == nil {
+		s.Logger.Debug("cache hit for expanded schedules", "center_id", centerID, "start", req.StartDate.Format("2006-01-02"), "end", req.EndDate.Format("2006-01-02"))
+		return cachedResult, nil
+	}
+
+	// 快取未命中，執行展開
+	s.Logger.Debug("cache miss, expanding schedules", "center_id", centerID, "start", req.StartDate.Format("2006-01-02"), "end", req.EndDate.Format("2006-01-02"))
+
+	result, err := s.ExpandRules(ctx, centerID, req)
+	if err != nil {
+		return nil, err
+	}
+
+	// 非同步寫入快取（不影響主要流程）
+	go func() {
+		cacheCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		// 快取 10 分鐘
+		_ = s.cacheSvc.SetWithTTL(cacheCtx, 10*time.Minute, CacheCategorySchedule, result, cacheKey)
+	}()
+
+	return result, nil
+}
+
+// GetCachedTeacherSchedule 取得帶快取的老師課表
+func (s *ScheduleService) GetCachedTeacherSchedule(ctx context.Context, teacherID, centerID uint, startDate, endDate time.Time) ([]ExpandedSchedule, error) {
+	cacheKey := s.teacherScheduleCacheKey(teacherID, centerID, startDate, endDate)
+
+	// 嘗試從快取取得
+	var cachedResult []ExpandedSchedule
+	err := s.cacheSvc.GetJSON(ctx, &cachedResult, CacheCategorySchedule, cacheKey)
+	if err == nil {
+		s.Logger.Debug("cache hit for teacher schedule", "teacher_id", teacherID, "center_id", centerID)
+		return cachedResult, nil
+	}
+
+	// 快取未命中，執行展開
+	s.Logger.Debug("cache miss, expanding teacher schedule", "teacher_id", teacherID, "center_id", centerID)
+
+	// 取得該老師的規則
+	rules, err := s.ruleRepo.ListByCenterID(ctx, centerID)
+	if err != nil {
+		return nil, err
+	}
+
+	var teacherRules []models.ScheduleRule
+	for _, rule := range rules {
+		if rule.TeacherID != nil && *rule.TeacherID == teacherID {
+			teacherRules = append(teacherRules, rule)
+		}
+	}
+
+	result := s.expansionSvc.ExpandRules(ctx, teacherRules, startDate, endDate, centerID)
+
+	// 非同步寫入快取
+	go func() {
+		cacheCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = s.cacheSvc.SetWithTTL(cacheCtx, 10*time.Minute, CacheCategorySchedule, result, cacheKey)
+	}()
+
+	return result, nil
+}
+
+// InvalidateScheduleCache 使課表快取失效
+// 當 ScheduleRule 異動時呼叫，精準清除受影響的快取
+func (s *ScheduleService) InvalidateScheduleCache(ctx context.Context, centerID uint, ruleIDs []uint, startDate, endDate time.Time) error {
+	// 清除指定中心的課表快取
+	cacheKey := s.scheduleCacheKey(centerID, startDate, endDate)
+	if err := s.cacheSvc.Delete(ctx, CacheCategorySchedule, cacheKey); err != nil {
+		s.Logger.Warn("failed to delete schedule cache", "error", err)
+	}
+
+	s.Logger.Info("schedule cache invalidated", "center_id", centerID, "rule_ids", ruleIDs)
+	return nil
+}
+
+// InvalidateCenterScheduleCache 使中心所有課表快取失效
+// 用於大規模異動（如刪除課程、調整時間表）
+func (s *ScheduleService) InvalidateCenterScheduleCache(ctx context.Context, centerID uint) error {
+	pattern := fmt.Sprintf("schedule:expand:center:%d:*", centerID)
+	if err := s.cacheSvc.DeleteByPattern(ctx, CacheCategorySchedule, pattern); err != nil {
+		s.Logger.Warn("failed to delete center schedule cache pattern", "error", err)
+	}
+
+	s.Logger.Info("center schedule cache invalidated", "center_id", centerID)
+	return nil
+}
+
+// InvalidateTeacherScheduleCache 使老師課表快取失效
+// 當老師代課或異動時呼叫
+func (s *ScheduleService) InvalidateTeacherScheduleCache(ctx context.Context, teacherID, centerID uint) error {
+	pattern := fmt.Sprintf("schedule:expand:teacher:%d:center:%d:*", teacherID, centerID)
+	if err := s.cacheSvc.DeleteByPattern(ctx, CacheCategorySchedule, pattern); err != nil {
+		s.Logger.Warn("failed to delete teacher schedule cache pattern", "error", err)
+	}
+
+	s.Logger.Info("teacher schedule cache invalidated", "teacher_id", teacherID, "center_id", centerID)
+	return nil
+}
+
+// InvalidateExceptionRelatedCache 使例外相關快取失效
+// 當 ScheduleException 異動時呼叫
+func (s *ScheduleService) InvalidateExceptionRelatedCache(ctx context.Context, centerID uint, exception *models.ScheduleException) error {
+	// 取得例外相關的規則
+	rule, err := s.ruleRepo.GetByID(ctx, exception.RuleID)
+	if err != nil {
+		s.Logger.Warn("failed to get rule for cache invalidation", "error", err)
+		return nil
+	}
+
+	// 清除中心課表快取
+	_ = s.InvalidateCenterScheduleCache(ctx, centerID)
+
+	// 清除老師課表快取
+	if rule.ID != 0 && rule.TeacherID != nil {
+		_ = s.InvalidateTeacherScheduleCache(ctx, *rule.TeacherID, centerID)
+	}
+
+	s.Logger.Info("exception-related cache invalidated", "center_id", centerID, "exception_id", exception.ID, "rule_id", exception.RuleID)
+	return nil
 }
 
 // ScheduleResource 排課資源轉換

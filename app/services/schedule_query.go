@@ -10,22 +10,27 @@ import (
 )
 
 type scheduleQueryService struct {
+	BaseService
 	app              *app.App
 	membershipRepo   *repositories.CenterMembershipRepository
 	centerRepo       *repositories.CenterRepository
 	scheduleRuleRepo *repositories.ScheduleRuleRepository
 	exceptionRepo    *repositories.ScheduleExceptionRepository
 	expansionService ScheduleExpansionService
+	scheduleService  ScheduleServiceInterface
 }
 
 func NewScheduleQueryService(app *app.App) ScheduleQueryService {
+	baseSvc := NewBaseService(app, "ScheduleQueryService")
 	return &scheduleQueryService{
+		BaseService:      *baseSvc,
 		app:              app,
 		membershipRepo:   repositories.NewCenterMembershipRepository(app),
 		centerRepo:       repositories.NewCenterRepository(app),
 		scheduleRuleRepo: repositories.NewScheduleRuleRepository(app),
 		exceptionRepo:    repositories.NewScheduleExceptionRepository(app),
 		expansionService: NewScheduleExpansionService(app),
+		scheduleService:  NewScheduleService(app),
 	}
 }
 
@@ -41,31 +46,47 @@ func (s *scheduleQueryService) GetTeacherSchedule(ctx context.Context, teacherID
 		center, _ := s.centerRepo.GetByID(ctx, m.CenterID)
 		centerName := center.Name
 
-		rules, _ := s.scheduleRuleRepo.ListByTeacherID(ctx, teacherID, m.CenterID)
-
-		// Create a map of rule ID to rule for quick lookup
-		ruleMap := make(map[uint]*models.ScheduleRule)
-		for i := range rules {
-			ruleMap[rules[i].ID] = &rules[i]
+		// 使用帶快取的老師課表查詢（消除了 N+1 查詢問題）
+		expanded, err := s.scheduleService.GetCachedTeacherSchedule(ctx, teacherID, m.CenterID, fromDate, toDate)
+		if err != nil {
+			s.Logger.Warn("failed to get cached teacher schedule, falling back", "error", err, "center_id", m.CenterID)
+			// 如果快取失敗，回退到直接展開
+			rules, _ := s.scheduleRuleRepo.ListByTeacherID(ctx, teacherID, m.CenterID)
+			expanded = s.expansionService.ExpandRules(ctx, rules, fromDate, toDate, m.CenterID)
 		}
 
-		expanded := s.expansionService.ExpandRules(ctx, rules, fromDate, toDate, m.CenterID)
+		// 建立規則 Map 用於查找課程名稱（使用值類型，因為 GetByID 返回值而非指針）
+		ruleMap := make(map[uint]models.ScheduleRule)
+		for i := range expanded {
+			if expanded[i].OfferingID != 0 {
+				// 需要獲取規則來取得課程名稱
+				rule, _ := s.scheduleRuleRepo.GetByID(ctx, expanded[i].RuleID)
+				if rule.ID != 0 {
+					ruleMap[rule.ID] = rule
+				}
+			}
+		}
 
 		for _, item := range expanded {
+			// 使用 ExpandedSchedule 中已包含的例外資訊（來自 ExpandRules 批次查詢）
+			// 不再進行額外的資料庫查詢
 			status := "NORMAL"
-			exceptions, _ := s.exceptionRepo.GetByRuleAndDate(ctx, item.RuleID, item.Date)
-			for _, exc := range exceptions {
-				if exc.Status == "PENDING" {
-					status = "PENDING_" + exc.ExceptionType
-				} else if exc.Status == "APPROVED" && exc.ExceptionType == "CANCEL" {
-					status = "CANCELLED"
-				} else if exc.Status == "APPROVED" && exc.ExceptionType == "RESCHEDULE" {
-					status = "RESCHEDULED"
+
+			// 從 ExceptionInfo 判斷狀態（來自 ExpandRules 預載入的資料）
+			if item.ExceptionInfo != nil {
+				if item.ExceptionInfo.Status == "PENDING" {
+					status = "PENDING_" + item.ExceptionInfo.Type
+				} else if item.ExceptionInfo.Status == "APPROVED" {
+					if item.ExceptionInfo.Type == "CANCEL" {
+						status = "CANCELLED"
+					} else if item.ExceptionInfo.Type == "RESCHEDULE" {
+						status = "RESCHEDULED"
+					}
 				}
 			}
 
 			if status != "CANCELLED" {
-				// Get offering name from the rule
+				// 從 ruleMap 獲取課程名稱
 				offeringName := ""
 				if rule, exists := ruleMap[item.RuleID]; exists && rule.OfferingID != 0 {
 					offeringName = rule.Offering.Name
