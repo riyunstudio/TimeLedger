@@ -21,6 +21,18 @@ func NewCenterHolidayRepository(app *app.App) *CenterHolidayRepository {
 	}
 }
 
+// Transaction executes a function within a database transaction.
+// This method creates a NEW CenterHolidayRepository instance with transaction connections.
+func (r *CenterHolidayRepository) Transaction(ctx context.Context, fn func(txRepo *CenterHolidayRepository) error) error {
+	return r.dbWrite.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		txRepo := &CenterHolidayRepository{
+			GenericRepository: NewTransactionRepo[models.CenterHoliday](ctx, tx, r.table),
+			app:               r.app,
+		}
+		return fn(txRepo)
+	})
+}
+
 func (r *CenterHolidayRepository) GetByCenterAndDate(ctx context.Context, centerID uint, date time.Time) (models.CenterHoliday, error) {
 	return r.First(ctx, "center_id = ? AND date = ?", centerID, date.Format("2006-01-02"))
 }
@@ -48,15 +60,15 @@ func (r *CenterHolidayRepository) BulkCreateWithSkipDuplicate(ctx context.Contex
 	var created int64
 	var createdHolidays []models.CenterHoliday
 
-	err := r.app.MySQL.WDB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := r.dbWrite.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		for i := range holidays {
 			var existing int64
-			r.app.MySQL.RDB.WithContext(ctx).Model(&models.CenterHoliday{}).
+			tx.Model(&models.CenterHoliday{}).
 				Where("center_id = ? AND date = ?", holidays[i].CenterID, holidays[i].Date.Format("2006-01-02")).
 				Count(&existing)
 
 			if existing == 0 {
-				if err := r.app.MySQL.WDB.WithContext(ctx).Create(&holidays[i]).Error; err != nil {
+				if err := tx.Create(&holidays[i]).Error; err != nil {
 					return err
 				}
 				createdHolidays = append(createdHolidays, holidays[i])

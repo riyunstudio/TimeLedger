@@ -16,10 +16,10 @@ import (
 // OfferingService 班別相關業務邏輯
 type OfferingService struct {
 	BaseService
-	app           *app.App
-	offeringRepo  *repositories.OfferingRepository
-	courseRepo    *repositories.CourseRepository
-	auditLogRepo  *repositories.AuditLogRepository
+	app          *app.App
+	offeringRepo *repositories.OfferingRepository
+	courseRepo   *repositories.CourseRepository
+	auditLogRepo *repositories.AuditLogRepository
 }
 
 // NewOfferingService 建立 OfferingService 實例
@@ -258,10 +258,10 @@ func (s *OfferingService) DeleteOffering(ctx context.Context, input *DeleteOffer
 
 // CopyOfferingInput 複製班別的輸入參數
 type CopyOfferingInput struct {
-	CenterID   uint
-	AdminID    uint
-	OfferingID uint
-	NewName    string
+	CenterID    uint
+	AdminID     uint
+	OfferingID  uint
+	NewName     string
 	CopyTeacher bool
 }
 

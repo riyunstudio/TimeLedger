@@ -6,6 +6,7 @@ import (
 	"timeLedger/app/models"
 
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
 type AdminUserRepository struct {
@@ -18,6 +19,18 @@ func NewAdminUserRepository(app *app.App) *AdminUserRepository {
 		GenericRepository: NewGenericRepository[models.AdminUser](app.MySQL.RDB, app.MySQL.WDB),
 		app:               app,
 	}
+}
+
+// Transaction executes a function within a database transaction.
+// This method creates a NEW AdminUserRepository instance with transaction connections.
+func (rp *AdminUserRepository) Transaction(ctx context.Context, fn func(txRepo *AdminUserRepository) error) error {
+	return rp.dbWrite.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		txRepo := &AdminUserRepository{
+			GenericRepository: NewTransactionRepo[models.AdminUser](ctx, tx, rp.table),
+			app:               rp.app,
+		}
+		return fn(txRepo)
+	})
 }
 
 func (rp *AdminUserRepository) GetByEmail(ctx context.Context, email string) (models.AdminUser, error) {

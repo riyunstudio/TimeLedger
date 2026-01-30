@@ -5,6 +5,8 @@ import (
 	"time"
 	"timeLedger/app"
 	"timeLedger/app/models"
+
+	"gorm.io/gorm"
 )
 
 type ScheduleExceptionRepository struct {
@@ -17,6 +19,26 @@ func NewScheduleExceptionRepository(app *app.App) *ScheduleExceptionRepository {
 		GenericRepository: NewGenericRepository[models.ScheduleException](app.MySQL.RDB, app.MySQL.WDB),
 		app:               app,
 	}
+}
+
+// Transaction executes a function within a database transaction.
+// This method creates a NEW ScheduleExceptionRepository instance with transaction connections.
+func (rp *ScheduleExceptionRepository) Transaction(ctx context.Context, fn func(txRepo *ScheduleExceptionRepository) error) error {
+	return rp.dbWrite.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		txRepo := &ScheduleExceptionRepository{
+			GenericRepository: NewTransactionRepo[models.ScheduleException](ctx, tx, rp.table),
+			app:               rp.app,
+		}
+		return fn(txRepo)
+	})
+}
+
+// CreateWithDB creates a new record using the provided database connection (for transaction support).
+func (rp *ScheduleExceptionRepository) CreateWithDB(ctx context.Context, db *gorm.DB, exception models.ScheduleException) (models.ScheduleException, error) {
+	if err := db.WithContext(ctx).Table("schedule_exceptions").Create(&exception).Error; err != nil {
+		return models.ScheduleException{}, err
+	}
+	return exception, nil
 }
 
 func (rp *ScheduleExceptionRepository) GetByRuleAndDate(ctx context.Context, ruleID uint, date time.Time) ([]models.ScheduleException, error) {

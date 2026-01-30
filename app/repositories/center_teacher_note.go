@@ -12,6 +12,10 @@ type CenterTeacherNoteRepository struct {
 }
 
 func NewCenterTeacherNoteRepository(app *app.App) *CenterTeacherNoteRepository {
+	// 如果 app 為 nil，返回一個基礎結構（用於測試）
+	if app == nil {
+		return &CenterTeacherNoteRepository{}
+	}
 	return &CenterTeacherNoteRepository{
 		GenericRepository: NewGenericRepository[models.CenterTeacherNote](app.MySQL.RDB, app.MySQL.WDB),
 		app:               app,

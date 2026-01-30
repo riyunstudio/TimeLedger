@@ -26,7 +26,7 @@ type ValidationConflict struct {
 type ScheduleValidationService interface {
 	// CheckOverlap 檢查時段重疊
 	// 檢查指定時段是否與現有排課衝突
-	CheckOverlap(ctx context.Context, centerID uint, teacherID *uint, roomID uint, startTime, endTime time.Time, excludeRuleID *uint) (ValidationResult, error)
+	CheckOverlap(ctx context.Context, centerID uint, teacherID *uint, roomID uint, startTime, endTime time.Time, weekday int, excludeRuleID *uint) (ValidationResult, error)
 
 	// CheckTeacherBuffer 檢查老師轉場緩衝
 	// 檢查老師連續課程是否滿足課程的轉場緩衝時間

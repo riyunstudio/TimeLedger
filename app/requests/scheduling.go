@@ -4,11 +4,12 @@ import "time"
 
 // CheckOverlapRequest 衝突檢查請求
 type CheckOverlapRequest struct {
-	TeacherID     *uint    `json:"teacher_id"`
-	RoomID        uint     `json:"room_id" binding:"required"`
+	TeacherID     *uint     `json:"teacher_id"`
+	RoomID        uint      `json:"room_id" binding:"required"`
 	StartTime     time.Time `json:"start_time" binding:"required"`
 	EndTime       time.Time `json:"end_time" binding:"required"`
-	ExcludeRuleID *uint    `json:"exclude_rule_id"`
+	Weekday       int       `json:"weekday"` // 可選，如果未提供則從 StartTime 推算
+	ExcludeRuleID *uint     `json:"exclude_rule_id"`
 }
 
 // CheckBufferRequest 緩衝時間檢查請求

@@ -109,13 +109,54 @@
 ---
 
 ### 指令 11：Repository 交易安全性加固
-> **CONTEXT: @app/repositories/generic.go**
+> **CONTEXT: @app/repositories/generic.go @app/repositories/[target_repo].go**
 > 
-> 請修正 `GenericRepository` 的交易設計：
-> 1. 修改 `Transaction` 方法，確保在交易閉包中回傳一個「全新的 Repo 實例」而非修改現有實例，以避免並發爭用 (Race Condition)。
-> 2. 為領域 Repository (如 `CourseRepository`) 實作專屬交易入口，確保在交易中仍能調用自定義方法。
+> 請修正 Repository 的交易設計：
+> 1. 修改 `Transaction` 方法，確保在交易閉包中回傳一個「全新的 Repo 實例」而非修改現有實例。
+> 2. 為領域 Repository (如 `ScheduleRuleRepository`) 實作專屬交易入口，確保在交易中仍能調用自定義方法。
+> 3. 參考 `offering.go` 的交易模式進行重構。
+
+
+### 指令 12：課表展開深度快取 (Schedule Expansion Caching)
+> **CONTEXT: @app/services/scheduling_expansion.go @app/services/cache.go**
+> 
+> 請完成課表展開效能優化：
+> 1. 在 `ScheduleService` (或相關擴展服務) 導入課表快取。
+> 2. 快取鍵設計需包含 `center_id` 或 `teacher_id` 以及日期範圍。
+> 3. 實施衝突觸發 (In-place Invalidation)：當 `ScheduleRule` 或 `ScheduleException` 異動時，精準清除受影響的快取。
 
 ---
+
+### 指令 13：DTO 與 Resource 映射層 (DTO & Resource Separation)
+> **CONTEXT: @app/models/ [target_model].go @app/controllers/ [target_controller].go**
+> 
+> 請實施數據傳輸對象 (DTO) 模式：
+> 1. 在 `app/resources` 建立對應領域的 Resource 結構 (如 `RoomResource`)。
+> 2. 移除 Controller 直接返回 DB Model 的行為。
+> 3. 在 Service 或映射層處理欄位過濾與格式轉換 (如時間格式化)。
+
+---
+
+### 指令 14：AdminResource 控制器終極解耦 (Final Controller Cleanup)
+> **CONTEXT: @app/controllers/admin_resource.go**
+> 
+> 請完成最後的關注點分離：
+> 1. 將 `Invitation` 統計與列表 API 遷移至 `AdminInvitationController`。
+> 2. 將 `TeacherNote` 相關 API 遷移至 `AdminTeacherController`。
+> 3. 確保所有路由配置同步更新，維持 API 不變。
+
+---
+
+### 指令 15：Repository 代碼大掃除 (Repository Code Refinement)
+> **CONTEXT: @app/repositories/ [target_repo].go**
+> 
+> 根據「極簡化原則」優化 Repository：
+> 1. 凡是 `GenericRepository` 已有的標準 CRUD (GetByID, List, Delete) 手寫實作，必須 **100% 移除**。
+> 2. 子類 Repo 僅保留具備特殊業務邏輯或複雜查詢的方法。
+> 3. 驗證所有 Service 對 Repo 的調用是否依然正確。
+
+---
+
 
 ### 💡 如何高效協作？
 1. **先 Service 後 Controller**：要求 AI 先產生 Service，再修改 Controller。

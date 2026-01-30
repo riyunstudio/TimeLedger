@@ -20,27 +20,30 @@ type route struct {
 }
 
 type actions struct {
-	user               *controllers.UserController
-	auth               *controllers.AuthController
-	teacher            *controllers.TeacherController
-	adminTeacher       *controllers.AdminTeacherController
-	adminCenter        *controllers.AdminCenterController
-	teacherProfile     *controllers.TeacherProfileController
-	teacherSchedule    *controllers.TeacherScheduleController
-	teacherSession     *controllers.TeacherSessionController
-	teacherEvent       *controllers.TeacherEventController
-	teacherException   *controllers.TeacherExceptionController
-	teacherInvitation  *controllers.TeacherInvitationController
-	geo                *controllers.GeoController
-	adminResource      *controllers.AdminResourceController
-	offering           *controllers.OfferingController
-	timetableTemplate  *controllers.TimetableTemplateController
-	adminUser          *controllers.AdminUserController
-	scheduling         *controllers.SchedulingController
-	smartMatching      *controllers.SmartMatchingController
-	notification       *controllers.NotificationController
-	export             *controllers.ExportController
-	lineBot            *controllers.LineBotController
+	user              *controllers.UserController
+	auth              *controllers.AuthController
+	teacher           *controllers.TeacherController
+	adminTeacher      *controllers.AdminTeacherController
+	adminCenter       *controllers.AdminCenterController
+	adminRoom         *controllers.AdminRoomController
+	adminCourse       *controllers.AdminCourseController
+	adminHoliday      *controllers.AdminHolidayController
+	teacherProfile    *controllers.TeacherProfileController
+	teacherSchedule   *controllers.TeacherScheduleController
+	teacherSession    *controllers.TeacherSessionController
+	teacherEvent      *controllers.TeacherEventController
+	teacherException  *controllers.TeacherExceptionController
+	teacherInvitation *controllers.TeacherInvitationController
+	geo               *controllers.GeoController
+	adminResource     *controllers.AdminResourceController
+	offering          *controllers.OfferingController
+	timetableTemplate *controllers.TimetableTemplateController
+	adminUser         *controllers.AdminUserController
+	scheduling        *controllers.SchedulingController
+	smartMatching     *controllers.SmartMatchingController
+	notification      *controllers.NotificationController
+	export            *controllers.ExportController
+	lineBot           *controllers.LineBotController
 }
 
 // 載入路由
@@ -180,20 +183,21 @@ func (s *Server) LoadRoutes() {
 		{http.MethodPost, "/api/v1/admin/detect-phase-transitions", s.action.scheduling.DetectPhaseTransitions, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodPost, "/api/v1/admin/scheduling/check-rule-lock", s.action.scheduling.CheckRuleLockStatus, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 
-		// Admin - Resources
-		{http.MethodGet, "/api/v1/admin/rooms", s.action.adminResource.GetRooms, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
-		{http.MethodPost, "/api/v1/admin/rooms", s.action.adminResource.CreateRoom, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
-		{http.MethodPut, "/api/v1/admin/rooms/:room_id", s.action.adminResource.UpdateRoom, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
-		{http.MethodGet, "/api/v1/admin/rooms/active", s.action.adminResource.GetActiveRooms, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
-		{http.MethodPatch, "/api/v1/admin/rooms/:room_id/toggle-active", s.action.adminResource.ToggleRoomActive, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
-		{http.MethodGet, "/api/v1/admin/courses", s.action.adminResource.GetCourses, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
-		{http.MethodPost, "/api/v1/admin/courses", s.action.adminResource.CreateCourse, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
-		{http.MethodPut, "/api/v1/admin/courses/:course_id", s.action.adminResource.UpdateCourse, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
-		{http.MethodDelete, "/api/v1/admin/courses/:course_id", s.action.adminResource.DeleteCourse, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
-		{http.MethodGet, "/api/v1/admin/courses/active", s.action.adminResource.GetActiveCourses, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
-		{http.MethodPatch, "/api/v1/admin/courses/:course_id/toggle-active", s.action.adminResource.ToggleCourseActive, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
-		{http.MethodGet, "/api/v1/admin/offerings/active", s.action.adminResource.GetActiveOfferings, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
-		{http.MethodPatch, "/api/v1/admin/offerings/:offering_id/toggle-active", s.action.adminResource.ToggleOfferingActive, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		// Admin - Rooms
+		{http.MethodGet, "/api/v1/admin/rooms", s.action.adminRoom.GetRooms, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodPost, "/api/v1/admin/rooms", s.action.adminRoom.CreateRoom, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodPut, "/api/v1/admin/rooms/:room_id", s.action.adminRoom.UpdateRoom, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodGet, "/api/v1/admin/rooms/active", s.action.adminRoom.GetActiveRooms, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodPatch, "/api/v1/admin/rooms/:room_id/toggle-active", s.action.adminRoom.ToggleRoomActive, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		// Admin - Resources (非 Room/Course 路由)
+		{http.MethodGet, "/api/v1/admin/courses", s.action.adminCourse.GetCourses, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodPost, "/api/v1/admin/courses", s.action.adminCourse.CreateCourse, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodPut, "/api/v1/admin/courses/:course_id", s.action.adminCourse.UpdateCourse, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodDelete, "/api/v1/admin/courses/:course_id", s.action.adminCourse.DeleteCourse, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodGet, "/api/v1/admin/courses/active", s.action.adminCourse.GetActiveCourses, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodPatch, "/api/v1/admin/courses/:course_id/toggle-active", s.action.adminCourse.ToggleCourseActive, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodGet, "/api/v1/admin/offerings/active", s.action.offering.GetActiveOfferings, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodPatch, "/api/v1/admin/offerings/:offering_id/toggle-active", s.action.offering.ToggleOfferingActive, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 
 		// Admin - Invitations
 		{http.MethodGet, "/api/v1/admin/centers/:id/invitations", s.action.adminResource.GetInvitations, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
@@ -207,10 +211,10 @@ func (s *Server) LoadRoutes() {
 		{http.MethodPost, "/api/v1/invitations/:token/accept", s.action.teacherInvitation.AcceptInvitationByLink, []gin.HandlerFunc{}},
 
 		// Admin - Holidays
-		{http.MethodGet, "/api/v1/admin/centers/:id/holidays", s.action.adminResource.GetHolidays, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
-		{http.MethodPost, "/api/v1/admin/centers/:id/holidays", s.action.adminResource.CreateHoliday, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
-		{http.MethodDelete, "/api/v1/admin/centers/:id/holidays/:holiday_id", s.action.adminResource.DeleteHoliday, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
-		{http.MethodPost, "/api/v1/admin/centers/:id/holidays/bulk", s.action.adminResource.BulkCreateHolidays, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodGet, "/api/v1/admin/centers/:id/holidays", s.action.adminHoliday.GetHolidays, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodPost, "/api/v1/admin/centers/:id/holidays", s.action.adminHoliday.CreateHoliday, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodDelete, "/api/v1/admin/centers/:id/holidays/:holiday_id", s.action.adminHoliday.DeleteHoliday, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodPost, "/api/v1/admin/centers/:id/holidays/bulk", s.action.adminHoliday.BulkCreateHolidays, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 
 		// Admin - Teacher Notes (評分與備註)
 		{http.MethodGet, "/api/v1/admin/teachers/:teacher_id/note", s.action.adminResource.GetTeacherNote, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
@@ -314,6 +318,9 @@ func (s *Server) NewControllers() {
 	s.action.teacher = controllers.NewTeacherController(s.app)
 	s.action.adminTeacher = controllers.NewAdminTeacherController(s.app)
 	s.action.adminCenter = controllers.NewAdminCenterController(s.app)
+	s.action.adminRoom = controllers.NewAdminRoomController(s.app)
+	s.action.adminCourse = controllers.NewAdminCourseController(s.app)
+	s.action.adminHoliday = controllers.NewAdminHolidayController(s.app)
 	s.action.teacherProfile = controllers.NewTeacherProfileController(s.app)
 	s.action.teacherSchedule = controllers.NewTeacherScheduleController(s.app)
 	s.action.teacherSession = controllers.NewTeacherSessionController(s.app)

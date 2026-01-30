@@ -4,6 +4,8 @@ import (
 	"context"
 	"timeLedger/app"
 	"timeLedger/app/models"
+
+	"gorm.io/gorm"
 )
 
 type RoomRepository struct {
@@ -16,6 +18,18 @@ func NewRoomRepository(app *app.App) *RoomRepository {
 		GenericRepository: NewGenericRepository[models.Room](app.MySQL.RDB, app.MySQL.WDB),
 		app:               app,
 	}
+}
+
+// Transaction executes a function within a database transaction.
+// This method creates a NEW RoomRepository instance with transaction connections.
+func (rp *RoomRepository) Transaction(ctx context.Context, fn func(txRepo *RoomRepository) error) error {
+	return rp.dbWrite.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		txRepo := &RoomRepository{
+			GenericRepository: NewTransactionRepo[models.Room](ctx, tx, rp.table),
+			app:               rp.app,
+		}
+		return fn(txRepo)
+	})
 }
 
 func (rp *RoomRepository) ListActiveByCenterID(ctx context.Context, centerID uint) ([]models.Room, error) {

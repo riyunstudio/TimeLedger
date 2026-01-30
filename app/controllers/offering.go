@@ -10,7 +10,7 @@ import (
 
 // OfferingController 班別管理控制器
 type OfferingController struct {
-	app            *app.App
+	app             *app.App
 	offeringService *services.OfferingService
 }
 
@@ -306,6 +306,11 @@ func (c *OfferingController) GetActiveOfferings(ctx *gin.Context) {
 	}
 
 	helper.Success(offerings)
+}
+
+// ToggleActiveRequest 切換狀態請求
+type ToggleActiveRequest struct {
+	IsActive bool `json:"is_active"`
 }
 
 // ToggleOfferingActive 切換班別啟用狀態

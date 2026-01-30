@@ -47,7 +47,7 @@ func (rp *CenterInvitationRepository) ExpireOldInvitations(ctx context.Context, 
 	return result.RowsAffected, result.Error
 }
 
-func (rp *CenterInvitationRepository) CountByCenter(ctx context.Context, centerID uint) (pending, accepted, expired int64, err error) {
+func (rp *CenterInvitationRepository) CountByCenter(ctx context.Context, centerID uint) (pending, accepted, declined int64, err error) {
 	// Count pending
 	pending, err = rp.Count(ctx, "center_id = ? AND status = ?", centerID, models.InvitationStatusPending)
 	if err != nil {
@@ -60,19 +60,27 @@ func (rp *CenterInvitationRepository) CountByCenter(ctx context.Context, centerI
 		return 0, 0, 0, err
 	}
 
-	// Count expired
-	expired, err = rp.Count(ctx, "center_id = ? AND status = ?", centerID, models.InvitationStatusExpired)
+	// Count declined
+	declined, err = rp.Count(ctx, "center_id = ? AND status = ?", centerID, models.InvitationStatusDeclined)
 	if err != nil {
 		return 0, 0, 0, err
 	}
 
-	return pending, accepted, expired, nil
+	return pending, accepted, declined, nil
 }
 
 func (rp *CenterInvitationRepository) UpdateStatus(ctx context.Context, id uint, status models.InvitationStatus) error {
-	return rp.UpdateFields(ctx, id, map[string]interface{}{
+	now := time.Now()
+	fields := map[string]interface{}{
 		"status": status,
-	})
+	}
+
+	// 當狀態變更為 ACCEPTED 或 DECLINED 時，設定 RespondedAt
+	if status == models.InvitationStatusAccepted || status == models.InvitationStatusDeclined {
+		fields["responded_at"] = now
+	}
+
+	return rp.UpdateFields(ctx, id, fields)
 }
 
 func (rp *CenterInvitationRepository) UpdateWithFields(ctx context.Context, id uint, fields map[string]interface{}) error {

@@ -81,7 +81,16 @@ func (ctl *SchedulingController) CheckOverlap(ctx *gin.Context) {
 		return
 	}
 
-	result, err := ctl.scheduleSvc.CheckOverlap(ctx.Request.Context(), centerID, req.TeacherID, req.RoomID, req.StartTime, req.EndTime, req.ExcludeRuleID)
+	// 計算 weekday（如果未提供則從 StartTime 推算）
+	checkWeekday := req.Weekday
+	if checkWeekday == 0 {
+		checkWeekday = int(req.StartTime.Weekday())
+		if checkWeekday == 0 {
+			checkWeekday = 7
+		}
+	}
+
+	result, err := ctl.scheduleSvc.CheckOverlap(ctx.Request.Context(), centerID, req.TeacherID, req.RoomID, req.StartTime, req.EndTime, checkWeekday, req.ExcludeRuleID)
 	if err != nil {
 		helper.InternalError(err.Error())
 		return

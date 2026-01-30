@@ -25,13 +25,26 @@ import (
 )
 
 // setupServiceTestApp 建立測試應用程式
-func setupServiceTestApp() *app.App {
+func setupServiceTestApp() (*app.App, *gorm.DB, func()) {
 	gin.SetMode(gin.TestMode)
 
 	dsn := "root:timeledger_root_2026@tcp(127.0.0.1:3306)/timeledger?charset=utf8mb4&parseTime=True&loc=Local"
 	mysqlDB, err := gorm.Open(gormMysql.Open(dsn), &gorm.Config{})
 	if err != nil {
 		panic(fmt.Sprintf("MySQL init error: %s", err.Error()))
+	}
+
+	// AutoMigrate required tables for service tests
+	if err := mysqlDB.AutoMigrate(
+		&models.Center{},
+		&models.Teacher{},
+		&models.Course{},
+		&models.Room{},
+		&models.Offering{},
+		&models.ScheduleRule{},
+		&models.CenterHoliday{},
+	); err != nil {
+		panic(fmt.Sprintf("AutoMigrate error: %s", err.Error()))
 	}
 
 	rdb, mr, err := mockRedis.Initialize()
@@ -62,13 +75,35 @@ func setupServiceTestApp() *app.App {
 		Rpc:   nil,
 	}
 
-	_ = mr
-	return appInstance
+	cleanup := func() {
+		// 清理測試資料庫表格，確保測試隔離
+		tables := []string{
+			"schedule_rules",
+			"center_holidays",
+			"center_memberships",
+			"center_teacher_notes",
+			"personal_events",
+			"offerings",
+			"courses",
+			"rooms",
+			"teachers",
+			"centers",
+		}
+		for _, table := range tables {
+			mysqlDB.Exec(fmt.Sprintf("SET FOREIGN_KEY_CHECKS=0"))
+			mysqlDB.Exec(fmt.Sprintf("TRUNCATE TABLE %s", table))
+			mysqlDB.Exec(fmt.Sprintf("SET FOREIGN_KEY_CHECKS=1"))
+		}
+		mr.Close()
+	}
+
+	return appInstance, mysqlDB, cleanup
 }
 
 // TestScheduleValidationService_OverlapCheck 測試重疊檢查功能
 func TestScheduleValidationService_OverlapCheck(t *testing.T) {
-	testApp := setupServiceTestApp()
+	testApp, _, cleanup := setupServiceTestApp()
+	defer cleanup()
 	ctx := context.Background()
 
 	// 取得測試資料
@@ -97,8 +132,12 @@ func TestScheduleValidationService_OverlapCheck(t *testing.T) {
 		// 測試兩個不重疊的時段
 		startTime := time.Date(2026, 1, 20, 14, 0, 0, 0, time.UTC)
 		endTime := time.Date(2026, 1, 20, 15, 0, 0, 0, time.UTC)
+		weekday := int(startTime.Weekday())
+		if weekday == 0 {
+			weekday = 7
+		}
 
-		result, err := validationService.CheckOverlap(ctx, center.ID, nil, room.ID, startTime, endTime, nil)
+		result, err := validationService.CheckOverlap(ctx, center.ID, nil, room.ID, startTime, endTime, weekday, nil)
 		if err != nil {
 			t.Fatalf("CheckOverlap 發生錯誤: %v", err)
 		}
@@ -136,8 +175,12 @@ func TestScheduleValidationService_OverlapCheck(t *testing.T) {
 		// 測試完全重疊的時段
 		startTime := time.Date(2026, 1, 21, 14, 30, 0, 0, time.UTC) // 週三 14:30
 		endTime := time.Date(2026, 1, 21, 15, 30, 0, 0, time.UTC)
+		weekday := int(startTime.Weekday())
+		if weekday == 0 {
+			weekday = 7
+		}
 
-		result, err := validationService.CheckOverlap(ctx, center.ID, &teacherID, room.ID, startTime, endTime, nil)
+		result, err := validationService.CheckOverlap(ctx, center.ID, &teacherID, room.ID, startTime, endTime, weekday, nil)
 		if err != nil {
 			t.Fatalf("CheckOverlap 發生錯誤: %v", err)
 		}
@@ -154,7 +197,8 @@ func TestScheduleValidationService_OverlapCheck(t *testing.T) {
 
 // TestScheduleValidationService_CheckTeacherBuffer 測試老師緩衝時間檢查
 func TestScheduleValidationService_CheckTeacherBuffer(t *testing.T) {
-	testApp := setupServiceTestApp()
+	testApp, _, cleanup := setupServiceTestApp()
+	defer cleanup()
 	ctx := context.Background()
 
 	var center models.Center
@@ -211,7 +255,8 @@ func TestScheduleValidationService_CheckTeacherBuffer(t *testing.T) {
 
 // TestScheduleValidationService_CheckRoomBuffer 測試教室緩衝時間檢查
 func TestScheduleValidationService_CheckRoomBuffer(t *testing.T) {
-	testApp := setupServiceTestApp()
+	testApp, _, cleanup := setupServiceTestApp()
+	defer cleanup()
 	ctx := context.Background()
 
 	var center models.Center
@@ -265,7 +310,8 @@ func TestScheduleValidationService_CheckRoomBuffer(t *testing.T) {
 
 // TestScheduleValidationService_ValidateFull 測試完整驗證流程
 func TestScheduleValidationService_ValidateFull(t *testing.T) {
-	testApp := setupServiceTestApp()
+	testApp, _, cleanup := setupServiceTestApp()
+	defer cleanup()
 	ctx := context.Background()
 
 	var center models.Center
@@ -306,7 +352,8 @@ func TestScheduleValidationService_ValidateFull(t *testing.T) {
 
 // TestNotificationService 測試通知服務
 func TestNotificationService(t *testing.T) {
-	testApp := setupServiceTestApp()
+	testApp, _, cleanup := setupServiceTestApp()
+	defer cleanup()
 	ctx := context.Background()
 
 	notificationService := services.NewNotificationService(testApp)
@@ -378,7 +425,8 @@ func TestNotificationService(t *testing.T) {
 
 // TestRedisQueueService 測試 Redis 佇列服務
 func TestRedisQueueService(t *testing.T) {
-	testApp := setupServiceTestApp()
+	testApp, _, cleanup := setupServiceTestApp()
+	defer cleanup()
 	ctx := context.Background()
 
 	queueService := services.NewRedisQueueService(testApp)
@@ -487,7 +535,8 @@ func TestRedisQueueService(t *testing.T) {
 
 // TestNotificationQueueService 測試通知佇列服務
 func TestNotificationQueueService(t *testing.T) {
-	testApp := setupServiceTestApp()
+	testApp, _, cleanup := setupServiceTestApp()
+	defer cleanup()
 	ctx := context.Background()
 
 	queueService := services.NewNotificationQueueService(testApp)
@@ -544,7 +593,8 @@ func TestNotificationQueueService(t *testing.T) {
 
 // TestCrossDayValidation 測試跨日課程驗證
 func TestCrossDayValidation(t *testing.T) {
-	testApp := setupServiceTestApp()
+	testApp, _, cleanup := setupServiceTestApp()
+	defer cleanup()
 	ctx := context.Background()
 
 	var center models.Center
@@ -669,7 +719,8 @@ func TestCrossDayValidation(t *testing.T) {
 
 // TestIntegrationWorkflow 測試完整整合工作流程
 func TestIntegrationWorkflow(t *testing.T) {
-	testApp := setupServiceTestApp()
+	testApp, _, cleanup := setupServiceTestApp()
+	defer cleanup()
 	ctx := context.Background()
 
 	// 使用工廠建立測試資料

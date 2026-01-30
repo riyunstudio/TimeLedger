@@ -13,6 +13,7 @@ import (
 	"timeLedger/app/controllers"
 	"timeLedger/app/models"
 	"timeLedger/app/repositories"
+	"timeLedger/app/requests"
 	"timeLedger/app/services"
 	"timeLedger/configs"
 	"timeLedger/database/mysql"
@@ -31,6 +32,9 @@ import (
 
 func setupIntegrationTestAppWithMigrations() (*app.App, *gorm.DB, func()) {
 	gin.SetMode(gin.TestMode)
+
+	// 初始化自訂驗證器（解決 time_format 等問題）
+	requests.InitValidators()
 
 	dsn := "root:timeledger_root_2026@tcp(127.0.0.1:3306)/timeledger?charset=utf8mb4&parseTime=True&loc=Local"
 	mysqlDB, err := gorm.Open(gormMysql.Open(dsn), &gorm.Config{})
@@ -152,8 +156,12 @@ func TestIntegration_CenterAdminFullWorkflow(t *testing.T) {
 
 	authService := services.NewAuthService(appInstance)
 	adminResourceController := controllers.NewAdminResourceController(appInstance)
+	adminRoomController := controllers.NewAdminRoomController(appInstance)
+	adminCourseController := controllers.NewAdminCourseController(appInstance)
 	_ = authService
 	_ = adminResourceController
+	_ = adminRoomController
+	_ = adminCourseController
 
 	t.Run("Step1_AdminLogin", func(t *testing.T) {
 		authController := controllers.NewAuthController(appInstance, authService)
@@ -195,7 +203,10 @@ func TestIntegration_CenterAdminFullWorkflow(t *testing.T) {
 		c.Set(global.UserIDKey, createdAdmin.ID)
 		c.Set(global.CenterIDKey, createdCenter.ID)
 
-		reqBody := controllers.CreateRoomRequest{
+		reqBody := struct {
+			Name     string `json:"name"`
+			Capacity int    `json:"capacity"`
+		}{
 			Name:     fmt.Sprintf("Test Room %d", now.UnixNano()),
 			Capacity: 20,
 		}
@@ -203,7 +214,7 @@ func TestIntegration_CenterAdminFullWorkflow(t *testing.T) {
 		c.Request = httptest.NewRequest("POST", "/api/v1/admin/rooms", bytes.NewBuffer(body))
 		c.Request.Header.Set("Content-Type", "application/json")
 
-		adminResourceController.CreateRoom(c)
+		adminRoomController.CreateRoom(c)
 
 		if w.Code != http.StatusOK {
 			t.Fatalf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())
@@ -225,7 +236,13 @@ func TestIntegration_CenterAdminFullWorkflow(t *testing.T) {
 		c.Set(global.UserIDKey, createdAdmin.ID)
 		c.Set(global.CenterIDKey, createdCenter.ID)
 
-		reqBody := controllers.CreateCourseRequest{
+		reqBody := struct {
+			Name             string `json:"name"`
+			Duration         int    `json:"duration"`
+			ColorHex         string `json:"color_hex"`
+			RoomBufferMin    int    `json:"room_buffer_min"`
+			TeacherBufferMin int    `json:"teacher_buffer_min"`
+		}{
 			Name:             fmt.Sprintf("Piano Class %d", now.UnixNano()),
 			Duration:         60,
 			ColorHex:         "#FF5733",
@@ -236,7 +253,7 @@ func TestIntegration_CenterAdminFullWorkflow(t *testing.T) {
 		c.Request = httptest.NewRequest("POST", "/api/v1/admin/courses", bytes.NewBuffer(body))
 		c.Request.Header.Set("Content-Type", "application/json")
 
-		adminResourceController.CreateCourse(c)
+		adminCourseController.CreateCourse(c)
 
 		if w.Code != http.StatusOK {
 			t.Fatalf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())
@@ -259,7 +276,7 @@ func TestIntegration_CenterAdminFullWorkflow(t *testing.T) {
 		c.Set(global.CenterIDKey, createdCenter.ID)
 		c.Request = httptest.NewRequest("GET", "/api/v1/admin/rooms", nil)
 
-		adminResourceController.GetRooms(c)
+		adminRoomController.GetRooms(c)
 
 		if w.Code != http.StatusOK {
 			t.Fatalf("Expected status 200 for GetRooms, got %d. Body: %s", w.Code, w.Body.String())
@@ -271,7 +288,7 @@ func TestIntegration_CenterAdminFullWorkflow(t *testing.T) {
 		c2.Set(global.CenterIDKey, createdCenter.ID)
 		c2.Request = httptest.NewRequest("GET", "/api/v1/admin/courses", nil)
 
-		adminResourceController.GetCourses(c2)
+		adminCourseController.GetCourses(c2)
 
 		if w2.Code != http.StatusOK {
 			t.Fatalf("Expected status 200 for GetCourses, got %d. Body: %s", w2.Code, w2.Body.String())
@@ -665,6 +682,8 @@ func TestIntegration_ResourceToggleAndInvitationStats(t *testing.T) {
 	invitationRepo.Create(ctx, invitation)
 
 	adminResourceController := controllers.NewAdminResourceController(appInstance)
+	adminRoomController := controllers.NewAdminRoomController(appInstance)
+	adminCourseController := controllers.NewAdminCourseController(appInstance)
 
 	t.Run("Step1_GetActiveRooms", func(t *testing.T) {
 		w := httptest.NewRecorder()
@@ -673,7 +692,7 @@ func TestIntegration_ResourceToggleAndInvitationStats(t *testing.T) {
 		c.Set(global.CenterIDKey, createdCenter.ID)
 		c.Request = httptest.NewRequest("GET", "/api/v1/admin/rooms/active", nil)
 
-		adminResourceController.GetActiveRooms(c)
+		adminRoomController.GetActiveRooms(c)
 
 		if w.Code != http.StatusOK {
 			t.Fatalf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())
@@ -689,7 +708,9 @@ func TestIntegration_ResourceToggleAndInvitationStats(t *testing.T) {
 		c.Set(global.UserTypeKey, "ADMIN")
 		c.Params = gin.Params{{Key: "course_id", Value: fmt.Sprintf("%d", createdCourse.ID)}}
 
-		reqBody := controllers.ToggleActiveRequest{
+		reqBody := struct {
+			IsActive bool `json:"is_active"`
+		}{
 			IsActive: false,
 		}
 		body, _ := json.Marshal(reqBody)
@@ -697,7 +718,7 @@ func TestIntegration_ResourceToggleAndInvitationStats(t *testing.T) {
 		req.Header.Set("Content-Type", "application/json")
 		c.Request = req
 
-		adminResourceController.ToggleCourseActive(c)
+		adminCourseController.ToggleCourseActive(c)
 
 		if w.Code != http.StatusOK {
 			t.Fatalf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())
@@ -1548,7 +1569,6 @@ func TestIntegration_OfferingManagement(t *testing.T) {
 	createdCourse, _ := courseRepo.Create(ctx, course)
 
 	offeringController := controllers.NewOfferingController(appInstance)
-	adminResourceController := controllers.NewAdminResourceController(appInstance)
 
 	t.Run("Step1_CreateOffering", func(t *testing.T) {
 		w := httptest.NewRecorder()
@@ -1620,7 +1640,7 @@ func TestIntegration_OfferingManagement(t *testing.T) {
 		c.Request = httptest.NewRequest("PATCH", "/api/v1/admin/offerings/"+fmt.Sprintf("%d", createdOffering.ID)+"/toggle-active", bytes.NewBuffer(body))
 		c.Request.Header.Set("Content-Type", "application/json")
 
-		adminResourceController.ToggleOfferingActive(c)
+		offeringController.ToggleOfferingActive(c)
 
 		if w.Code != http.StatusOK {
 			t.Fatalf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())
@@ -1720,7 +1740,7 @@ func TestIntegration_HolidayManagement(t *testing.T) {
 	}
 	createdAdmin, _ := adminUserRepo.Create(ctx, adminUser)
 
-	adminResourceController := controllers.NewAdminResourceController(appInstance)
+	adminHolidayController := controllers.NewAdminHolidayController(appInstance)
 
 	t.Run("Step1_CreateHoliday", func(t *testing.T) {
 		w := httptest.NewRecorder()
@@ -1741,7 +1761,7 @@ func TestIntegration_HolidayManagement(t *testing.T) {
 		c.Request = httptest.NewRequest("POST", "/api/v1/admin/centers/"+fmt.Sprintf("%d", createdCenter.ID)+"/holidays", bytes.NewBuffer(body))
 		c.Request.Header.Set("Content-Type", "application/json")
 
-		adminResourceController.CreateHoliday(c)
+		adminHolidayController.CreateHoliday(c)
 
 		if w.Code != http.StatusOK {
 			t.Fatalf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())
@@ -1758,7 +1778,7 @@ func TestIntegration_HolidayManagement(t *testing.T) {
 		c.Params = gin.Params{{Key: "id", Value: fmt.Sprintf("%d", createdCenter.ID)}}
 		c.Request = httptest.NewRequest("GET", "/api/v1/admin/centers/"+fmt.Sprintf("%d", createdCenter.ID)+"/holidays", nil)
 
-		adminResourceController.GetHolidays(c)
+		adminHolidayController.GetHolidays(c)
 
 		if w.Code != http.StatusOK {
 			t.Fatalf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())
@@ -1794,7 +1814,7 @@ func TestIntegration_HolidayManagement(t *testing.T) {
 		c.Request = httptest.NewRequest("POST", "/api/v1/admin/centers/"+fmt.Sprintf("%d", createdCenter.ID)+"/holidays/bulk", bytes.NewBuffer(body))
 		c.Request.Header.Set("Content-Type", "application/json")
 
-		adminResourceController.BulkCreateHolidays(c)
+		adminHolidayController.BulkCreateHolidays(c)
 
 		if w.Code != http.StatusOK {
 			t.Fatalf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())
@@ -2287,7 +2307,8 @@ func TestIntegration_AdminResourceCentersAndDelete(t *testing.T) {
 	createdAdmin, _ := adminUserRepo.Create(ctx, adminUser)
 
 	adminCenterController := controllers.NewAdminCenterController(appInstance)
-	adminResourceController := controllers.NewAdminResourceController(appInstance)
+	adminCourseController := controllers.NewAdminCourseController(appInstance)
+	adminHolidayController := controllers.NewAdminHolidayController(appInstance)
 
 	t.Run("Step1_GetCenters", func(t *testing.T) {
 		w := httptest.NewRecorder()
@@ -2348,7 +2369,7 @@ func TestIntegration_AdminResourceCentersAndDelete(t *testing.T) {
 		c.Params = gin.Params{{Key: "course_id", Value: fmt.Sprintf("%d", createdCourse.ID)}}
 		c.Request = httptest.NewRequest("DELETE", "/api/v1/admin/courses/"+fmt.Sprintf("%d", createdCourse.ID), nil)
 
-		adminResourceController.DeleteCourse(c)
+		adminCourseController.DeleteCourse(c)
 
 		if w.Code != http.StatusOK {
 			t.Fatalf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())
@@ -2374,7 +2395,7 @@ func TestIntegration_AdminResourceCentersAndDelete(t *testing.T) {
 		c.Params = gin.Params{{Key: "id", Value: fmt.Sprintf("%d", createdCenter.ID)}, {Key: "holiday_id", Value: fmt.Sprintf("%d", createdHoliday.ID)}}
 		c.Request = httptest.NewRequest("DELETE", "/api/v1/admin/centers/"+fmt.Sprintf("%d", createdCenter.ID)+"/holidays/"+fmt.Sprintf("%d", createdHoliday.ID), nil)
 
-		adminResourceController.DeleteHoliday(c)
+		adminHolidayController.DeleteHoliday(c)
 
 		if w.Code != http.StatusOK {
 			t.Fatalf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())

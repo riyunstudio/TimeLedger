@@ -10,11 +10,12 @@ import (
 	"timeLedger/app"
 	"timeLedger/app/models"
 	"timeLedger/app/repositories"
+
+	"gorm.io/gorm"
 )
 
 type ScheduleExpansionServiceImpl struct {
 	BaseService
-	app              *app.App
 	scheduleRuleRepo *repositories.ScheduleRuleRepository
 	exceptionRepo    *repositories.ScheduleExceptionRepository
 	auditLogRepo     *repositories.AuditLogRepository
@@ -23,8 +24,9 @@ type ScheduleExpansionServiceImpl struct {
 }
 
 func NewScheduleExpansionService(app *app.App) ScheduleExpansionService {
+	baseSvc := NewBaseService(app, "ScheduleExpansionService")
 	return &ScheduleExpansionServiceImpl{
-		app:              app,
+		BaseService:      *baseSvc,
 		scheduleRuleRepo: repositories.NewScheduleRuleRepository(app),
 		exceptionRepo:    repositories.NewScheduleExceptionRepository(app),
 		auditLogRepo:     repositories.NewAuditLogRepository(app),
@@ -210,7 +212,7 @@ func (s *ScheduleExpansionServiceImpl) ExpandRules(ctx context.Context, rules []
 
 func (s *ScheduleExpansionServiceImpl) GetEffectiveRuleForDate(ctx context.Context, offeringID uint, date time.Time) (*models.ScheduleRule, error) {
 	var rules []models.ScheduleRule
-	err := s.app.MySQL.RDB.WithContext(ctx).
+	err := s.App.MySQL.RDB.WithContext(ctx).
 		Where("offering_id = ?", offeringID).
 		Where("weekday = ?", func() int {
 			weekday := int(date.Weekday())
@@ -338,7 +340,7 @@ func (s *ScheduleExpansionServiceImpl) DetectPhaseTransitions(ctx context.Contex
 
 func (s *ScheduleExpansionServiceImpl) GetRulesByEffectiveDateRange(ctx context.Context, centerID uint, offeringID uint, startDate, endDate time.Time) ([]models.ScheduleRule, error) {
 	var rules []models.ScheduleRule
-	err := s.app.MySQL.RDB.WithContext(ctx).
+	err := s.App.MySQL.RDB.WithContext(ctx).
 		Where("center_id = ?", centerID).
 		Where("offering_id = ?", offeringID).
 		Where("JSON_EXTRACT(effective_range, '$.start_date') <= ?", endDate.Format("2006-01-02")).
@@ -363,7 +365,6 @@ func ptrEqual(a, b *uint) bool {
 
 type ScheduleExceptionServiceImpl struct {
 	BaseService
-	app               *app.App
 	exceptionRepo     *repositories.ScheduleExceptionRepository
 	ruleRepo          *repositories.ScheduleRuleRepository
 	auditLogRepo      *repositories.AuditLogRepository
@@ -375,8 +376,9 @@ type ScheduleExceptionServiceImpl struct {
 }
 
 func NewScheduleExceptionService(app *app.App) ScheduleExceptionService {
+	baseSvc := NewBaseService(app, "ScheduleExceptionService")
 	svc := &ScheduleExceptionServiceImpl{
-		app:               app,
+		BaseService:       *baseSvc,
 		exceptionRepo:     repositories.NewScheduleExceptionRepository(app),
 		ruleRepo:          repositories.NewScheduleRuleRepository(app),
 		auditLogRepo:      repositories.NewAuditLogRepository(app),
@@ -445,31 +447,48 @@ func (s *ScheduleExceptionServiceImpl) CreateException(ctx context.Context, cent
 		exception.Reason = fmt.Sprintf("[代課老師：%s] %s", newTeacherName, reason)
 	}
 
-	createdException, err := s.exceptionRepo.Create(ctx, exception)
-	if err != nil {
-		return models.ScheduleException{}, err
-	}
+	// 使用交易確保建立例外單和審核日誌的原子性
+	var createdException models.ScheduleException
+	var teacherName, centerName string
 
-	s.auditLogRepo.Create(ctx, models.AuditLog{
-		CenterID:   centerID,
-		ActorType:  "TEACHER",
-		ActorID:    teacherID,
-		Action:     "CREATE_EXCEPTION",
-		TargetType: "ScheduleException",
-		TargetID:   createdException.ID,
-		Payload:    models.AuditPayload{After: exception},
+	txErr := s.App.MySQL.WDB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// 在交易中建立例外單
+		var createErr error
+		createdException, createErr = s.exceptionRepo.CreateWithDB(ctx, tx, exception)
+		if createErr != nil {
+			return fmt.Errorf("failed to create exception: %w", createErr)
+		}
+
+		// 在交易中記錄審核日誌
+		auditLog := models.AuditLog{
+			CenterID:   centerID,
+			ActorType:  "TEACHER",
+			ActorID:    teacherID,
+			Action:     "CREATE_EXCEPTION",
+			TargetType: "ScheduleException",
+			TargetID:   createdException.ID,
+			Payload:    models.AuditPayload{After: exception},
+		}
+		if err := tx.Create(&auditLog).Error; err != nil {
+			return fmt.Errorf("failed to create audit log: %w", err)
+		}
+
+		return nil
 	})
 
-	// 發送 LINE 通知給所有管理員（同步發送）
+	if txErr != nil {
+		return models.ScheduleException{}, txErr
+	}
+
+	// 取得老師和中心名稱用於 LINE 通知（交易外執行）
 	teacher, _ := s.teacherRepo.GetByID(ctx, teacherID)
-	teacherName := teacher.Name
+	teacherName = teacher.Name
 	if teacherName == "" {
 		teacherName = "老師"
 	}
 
-	// 取得中心名稱
 	center, _ := s.centerRepo.GetByID(ctx, centerID)
-	centerName := center.Name
+	centerName = center.Name
 
 	// 更新 exception 的 ExceptionType 欄位（用於 LINE 通知）
 	createdException.ExceptionType = exceptionType
@@ -536,68 +555,93 @@ func (s *ScheduleExceptionServiceImpl) ReviewException(ctx context.Context, exce
 	exception.ReviewedAt = &now
 	exception.ReviewNote = reason
 
-	if status == "APPROVED" {
-		rule, err := s.ruleRepo.GetByID(ctx, exception.RuleID)
-		if err != nil {
-			return err
-		}
+	// 使用交易確保審核操作的原子性
+	txErr := s.App.MySQL.WDB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// 如果核准，執行驗證和課程變更
+		if status == "APPROVED" {
+			rule, err := s.ruleRepo.GetByID(ctx, exception.RuleID)
+			if err != nil {
+				return fmt.Errorf("failed to get rule: %w", err)
+			}
 
-		var startAt, endAt time.Time
-		if exception.ExceptionType == "RESCHEDULE" && exception.NewStartAt != nil {
-			startAt = *exception.NewStartAt
-			endAt = *exception.NewEndAt
-		} else {
-			startAt = exception.OriginalDate
-			endAt = exception.OriginalDate
-		}
+			var startAt, endAt time.Time
+			if exception.ExceptionType == "RESCHEDULE" && exception.NewStartAt != nil {
+				startAt = *exception.NewStartAt
+				endAt = *exception.NewEndAt
+			} else {
+				startAt = exception.OriginalDate
+				endAt = exception.OriginalDate
+			}
 
-		validateResult, err := s.validationService.ValidateFull(
-			ctx,
-			exception.CenterID,
-			exception.NewTeacherID,
-			rule.RoomID,
-			rule.OfferingID,
-			startAt,
-			endAt,
-			nil,
-			overrideBuffer,
-		)
-		if err != nil {
-			return err
-		}
+			validateResult, err := s.validationService.ValidateFull(
+				ctx,
+				exception.CenterID,
+				exception.NewTeacherID,
+				rule.RoomID,
+				rule.OfferingID,
+				startAt,
+				endAt,
+				nil,
+				overrideBuffer,
+			)
+			if err != nil {
+				return fmt.Errorf("validation failed: %w", err)
+			}
 
-		if !validateResult.Valid {
-			var hasHardOverlap bool
-			var hasBufferConflict bool
-			for _, c := range validateResult.Conflicts {
-				if c.Type == "OVERLAP" || c.Type == "TEACHER_OVERLAP" || c.Type == "ROOM_OVERLAP" {
-					hasHardOverlap = true
+			if !validateResult.Valid {
+				var hasHardOverlap bool
+				var hasBufferConflict bool
+				for _, c := range validateResult.Conflicts {
+					if c.Type == "OVERLAP" || c.Type == "TEACHER_OVERLAP" || c.Type == "ROOM_OVERLAP" {
+						hasHardOverlap = true
+					}
+					if c.Type == "TEACHER_BUFFER" || c.Type == "ROOM_BUFFER" {
+						hasBufferConflict = true
+					}
 				}
-				if c.Type == "TEACHER_BUFFER" || c.Type == "ROOM_BUFFER" {
-					hasBufferConflict = true
+
+				if hasHardOverlap {
+					return errors.New("approval rejected: new time slot has hard overlap with existing schedule")
+				}
+
+				if hasBufferConflict && !overrideBuffer {
+					return errors.New("approval rejected: new time slot has buffer conflict and override is not allowed")
 				}
 			}
 
-			if hasHardOverlap {
-				return errors.New("approval rejected: new time slot has hard overlap with existing schedule")
-			}
-
-			if hasBufferConflict && !overrideBuffer {
-				return errors.New("approval rejected: new time slot has buffer conflict and override is not allowed")
+			// 在交易中執行課程變更
+			if err := s.applyExceptionChangesWithTx(ctx, tx, &exception, &rule); err != nil {
+				return fmt.Errorf("failed to apply exception changes: %w", err)
 			}
 		}
 
-		// 審核通過，同步執行課程變更
-		if err := s.applyExceptionChanges(ctx, &exception, &rule); err != nil {
-			return fmt.Errorf("failed to apply exception changes: %w", err)
+		// 在交易中更新例外狀態
+		if err := tx.Save(&exception).Error; err != nil {
+			return fmt.Errorf("failed to update exception: %w", err)
 		}
+
+		// 在交易中記錄審核日誌
+		auditLog := models.AuditLog{
+			CenterID:   exception.CenterID,
+			ActorType:  "ADMIN",
+			ActorID:    adminID,
+			Action:     "REVIEW_EXCEPTION_" + action,
+			TargetType: "ScheduleException",
+			TargetID:   exceptionID,
+			Payload:    models.AuditPayload{Before: oldStatus, After: action},
+		}
+		if err := tx.Create(&auditLog).Error; err != nil {
+			return fmt.Errorf("failed to create audit log: %w", err)
+		}
+
+		return nil
+	})
+
+	if txErr != nil {
+		return txErr
 	}
 
-	if err := s.exceptionRepo.Update(ctx, exception); err != nil {
-		return err
-	}
-
-	// 發送 LINE 通知給老師（同步發送）
+	// 發送 LINE 通知給老師（同步發送，交易外執行）
 	// 取得老師資料
 	if s.notificationQueue != nil {
 		rule, _ := s.ruleRepo.GetByID(ctx, exception.RuleID)
@@ -610,16 +654,6 @@ func (s *ScheduleExceptionServiceImpl) ReviewException(ctx context.Context, exce
 			}
 		}
 	}
-
-	s.auditLogRepo.Create(ctx, models.AuditLog{
-		CenterID:   exception.CenterID,
-		ActorType:  "ADMIN",
-		ActorID:    adminID,
-		Action:     "REVIEW_EXCEPTION_" + action,
-		TargetType: "ScheduleException",
-		TargetID:   exceptionID,
-		Payload:    models.AuditPayload{Before: oldStatus, After: action},
-	})
 
 	return nil
 }
@@ -684,6 +718,66 @@ func (s *ScheduleExceptionServiceImpl) applyExceptionChanges(ctx context.Context
 	return nil
 }
 
+// applyExceptionChangesWithTx 審核通過時同步執行課程變更（交易版本）
+func (s *ScheduleExceptionServiceImpl) applyExceptionChangesWithTx(ctx context.Context, tx *gorm.DB, exception *models.ScheduleException, rule *models.ScheduleRule) error {
+	switch exception.ExceptionType {
+	case "CANCEL":
+		// 停課：不修改規則本身，由 ExpandRules 根據已核准的例外狀態跳過該日期
+		// 這樣只會影響特定的停課日期，不會影響未來的課程
+		// 規則保持不變，ExpandRules 會在處理時檢查例外狀態
+
+	case "RESCHEDULE":
+		// 調課：分兩步驟
+		// 1. 截斷原規則到前一天（確保原日期不再產生 sessions）
+		// 2. 創建新規則段，從新日期開始
+		cutoffDate := exception.OriginalDate.AddDate(0, 0, -1)
+		rule.EffectiveRange.EndDate = cutoffDate
+		if err := tx.Save(rule).Error; err != nil {
+			return fmt.Errorf("failed to truncate original rule: %w", err)
+		}
+
+		// 轉換 weekday：Go 的 Weekday() 返回週日=0，但系統使用週日=7
+		newWeekday := int(exception.NewStartAt.Weekday())
+		if newWeekday == 0 {
+			newWeekday = 7
+		}
+
+		// 創建新規則段
+		newRule := models.ScheduleRule{
+			CenterID:   rule.CenterID,
+			OfferingID: rule.OfferingID,
+			TeacherID:  rule.TeacherID,
+			RoomID:     rule.RoomID,
+			Name:       rule.Name,
+			Weekday:    newWeekday,
+			StartTime:  exception.NewStartAt.Format("15:04"),
+			EndTime:    exception.NewEndAt.Format("15:04"),
+			Duration:   int(exception.NewEndAt.Sub(*exception.NewStartAt).Minutes()),
+			EffectiveRange: models.DateRange{
+				StartDate: *exception.NewStartAt,
+				EndDate:   rule.EffectiveRange.EndDate,
+			},
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+		}
+		if err := tx.Create(&newRule).Error; err != nil {
+			return fmt.Errorf("failed to create reschedule rule: %w", err)
+		}
+
+	case "REPLACE_TEACHER":
+		// 代課：更新原規則的老師為代課老師
+		if exception.NewTeacherID != nil {
+			rule.TeacherID = exception.NewTeacherID
+			rule.UpdatedAt = time.Now()
+			if err := tx.Save(rule).Error; err != nil {
+				return fmt.Errorf("failed to update teacher for substitution: %w", err)
+			}
+		}
+	}
+
+	return nil
+}
+
 func (s *ScheduleExceptionServiceImpl) GetExceptionsByRule(ctx context.Context, ruleID uint) ([]models.ScheduleException, error) {
 	exceptions, err := s.exceptionRepo.GetByRuleAndDate(ctx, ruleID, time.Time{})
 	if err != nil {
@@ -700,7 +794,7 @@ func (s *ScheduleExceptionServiceImpl) GetExceptionsByRule(ctx context.Context, 
 
 func (s *ScheduleExceptionServiceImpl) GetExceptionsByDateRange(ctx context.Context, centerID uint, startDate, endDate time.Time) ([]models.ScheduleException, error) {
 	var exceptions []models.ScheduleException
-	err := s.app.MySQL.RDB.WithContext(ctx).
+	err := s.App.MySQL.RDB.WithContext(ctx).
 		Where("center_id = ?", centerID).
 		Where("original_date >= ?", startDate).
 		Where("original_date <= ?", endDate).
@@ -712,7 +806,7 @@ func (s *ScheduleExceptionServiceImpl) GetExceptionsByDateRange(ctx context.Cont
 
 func (s *ScheduleExceptionServiceImpl) GetPendingExceptions(ctx context.Context, centerID uint) ([]models.ScheduleException, error) {
 	var exceptions []models.ScheduleException
-	err := s.app.MySQL.RDB.WithContext(ctx).
+	err := s.App.MySQL.RDB.WithContext(ctx).
 		Preload("Rule").
 		Preload("Rule.Teacher").
 		Preload("Rule.Room").
@@ -727,7 +821,7 @@ func (s *ScheduleExceptionServiceImpl) GetPendingExceptions(ctx context.Context,
 // GetAllExceptions 取得所有例外單，可依狀態篩選
 func (s *ScheduleExceptionServiceImpl) GetAllExceptions(ctx context.Context, centerID uint, status string) ([]models.ScheduleException, error) {
 	var exceptions []models.ScheduleException
-	query := s.app.MySQL.RDB.WithContext(ctx).
+	query := s.App.MySQL.RDB.WithContext(ctx).
 		Preload("Rule").
 		Preload("Rule.Teacher").
 		Preload("Rule.Room").
@@ -907,10 +1001,6 @@ func (s *ScheduleRecurrenceServiceImpl) editSingle(ctx context.Context, centerID
 		Status:        "PENDING",
 		Reason:        req.Reason,
 	}
-	createdCancel, err := s.exceptionRepo.Create(ctx, cancelExc)
-	if err != nil {
-		return models.ScheduleException{}, models.ScheduleException{}, err
-	}
 
 	newStartAt := time.Date(req.EditDate.Year(), req.EditDate.Month(), req.EditDate.Day(), 0, 0, 0, 0, time.UTC)
 	newEndAt := time.Date(req.EditDate.Year(), req.EditDate.Month(), req.EditDate.Day(), 0, 0, 0, 0, time.UTC)
@@ -938,20 +1028,44 @@ func (s *ScheduleRecurrenceServiceImpl) editSingle(ctx context.Context, centerID
 		NewRoomID:     req.NewRoomID,
 		Reason:        req.Reason,
 	}
-	createdAdd, err := s.exceptionRepo.Create(ctx, addExc)
-	if err != nil {
-		return createdCancel, models.ScheduleException{}, err
-	}
 
-	s.auditLogRepo.Create(ctx, models.AuditLog{
-		CenterID:   centerID,
-		ActorType:  "TEACHER",
-		ActorID:    teacherID,
-		Action:     "EDIT_SINGLE_OCCURRENCE",
-		TargetType: "ScheduleException",
-		TargetID:   createdCancel.ID,
-		Payload:    models.AuditPayload{After: fmt.Sprintf("Edit single occurrence for rule %d on %s", req.RuleID, req.EditDate.Format("2006-01-02"))},
+	// 使用交易確保建立例外單和審核日誌的原子性
+	var createdCancel, createdAdd models.ScheduleException
+
+	txErr := s.App.MySQL.WDB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// 在交易中建立取消例外單
+		var createErr error
+		createdCancel, createErr = s.exceptionRepo.CreateWithDB(ctx, tx, cancelExc)
+		if createErr != nil {
+			return fmt.Errorf("failed to create cancel exception: %w", createErr)
+		}
+
+		// 在交易中建立新增例外單
+		createdAdd, createErr = s.exceptionRepo.CreateWithDB(ctx, tx, addExc)
+		if createErr != nil {
+			return fmt.Errorf("failed to create add exception: %w", createErr)
+		}
+
+		// 在交易中記錄審核日誌
+		auditLog := models.AuditLog{
+			CenterID:   centerID,
+			ActorType:  "TEACHER",
+			ActorID:    teacherID,
+			Action:     "EDIT_SINGLE_OCCURRENCE",
+			TargetType: "ScheduleException",
+			TargetID:   createdCancel.ID,
+			Payload:    models.AuditPayload{After: fmt.Sprintf("Edit single occurrence for rule %d on %s", req.RuleID, req.EditDate.Format("2006-01-02"))},
+		}
+		if err := tx.Create(&auditLog).Error; err != nil {
+			return fmt.Errorf("failed to create audit log: %w", err)
+		}
+
+		return nil
 	})
+
+	if txErr != nil {
+		return models.ScheduleException{}, models.ScheduleException{}, txErr
+	}
 
 	return createdCancel, createdAdd, nil
 }
@@ -965,109 +1079,126 @@ func (s *ScheduleRecurrenceServiceImpl) editFuture(ctx context.Context, centerID
 	var cancelExcs []models.ScheduleException
 	var addExcs []models.ScheduleException
 
-	for _, date := range preview.AffectedDates {
-		cancelExc := models.ScheduleException{
-			CenterID:      centerID,
-			RuleID:        req.RuleID,
-			OriginalDate:  date,
-			ExceptionType: "CANCEL",
-			Status:        "PENDING",
-			Reason:        req.Reason,
+	// 使用交易確保所有操作的原子性
+	var createdRule *models.ScheduleRule
+
+	txErr := s.App.MySQL.WDB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// 在交易中建立所有取消和新增例外單
+		for _, date := range preview.AffectedDates {
+			cancelExc := models.ScheduleException{
+				CenterID:      centerID,
+				RuleID:        req.RuleID,
+				OriginalDate:  date,
+				ExceptionType: "CANCEL",
+				Status:        "PENDING",
+				Reason:        req.Reason,
+			}
+			createdCancel, createErr := s.exceptionRepo.CreateWithDB(ctx, tx, cancelExc)
+			if createErr != nil {
+				return fmt.Errorf("failed to create cancel exception: %w", createErr)
+			}
+			cancelExcs = append(cancelExcs, createdCancel)
+
+			newStartAt := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.UTC)
+			newEndAt := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.UTC)
+
+			startTime := req.NewStartTime
+			if startTime == "" {
+				startTime = rule.StartTime
+			}
+			endTime := req.NewEndTime
+			if endTime == "" {
+				endTime = rule.EndTime
+			}
+
+			parsedStart, _ := time.Parse("15:04:05", startTime)
+			newStartAt = time.Date(date.Year(), date.Month(), date.Day(),
+				parsedStart.Hour(), parsedStart.Minute(), 0, 0, time.UTC)
+			parsedEnd, _ := time.Parse("15:04:05", endTime)
+			newEndAt = time.Date(date.Year(), date.Month(), date.Day(),
+				parsedEnd.Hour(), parsedEnd.Minute(), 0, 0, time.UTC)
+
+			newTeacherID := req.NewTeacherID
+			if newTeacherID == nil {
+				newTeacherID = rule.TeacherID
+			}
+			newRoomID := req.NewRoomID
+			if newRoomID == nil {
+				newRoomIDVal := rule.RoomID
+				newRoomID = &newRoomIDVal
+			}
+
+			addExc := models.ScheduleException{
+				CenterID:      centerID,
+				RuleID:        req.RuleID,
+				OriginalDate:  date,
+				ExceptionType: "ADD",
+				Status:        "PENDING",
+				NewStartAt:    &newStartAt,
+				NewEndAt:      &newEndAt,
+				NewTeacherID:  newTeacherID,
+				NewRoomID:     newRoomID,
+				Reason:        req.Reason,
+			}
+			createdAdd, createErr := s.exceptionRepo.CreateWithDB(ctx, tx, addExc)
+			if createErr != nil {
+				return fmt.Errorf("failed to create add exception: %w", createErr)
+			}
+			addExcs = append(addExcs, createdAdd)
 		}
-		createdCancel, err := s.exceptionRepo.Create(ctx, cancelExc)
-		if err != nil {
-			return nil, nil, nil, err
-		}
-		cancelExcs = append(cancelExcs, createdCancel)
 
-		newStartAt := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.UTC)
-		newEndAt := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.UTC)
-
-		startTime := req.NewStartTime
-		if startTime == "" {
-			startTime = rule.StartTime
-		}
-		endTime := req.NewEndTime
-		if endTime == "" {
-			endTime = rule.EndTime
+		// 在交易中建立新規則
+		newRule := models.ScheduleRule{
+			CenterID:       centerID,
+			OfferingID:     rule.OfferingID,
+			TeacherID:      req.NewTeacherID,
+			RoomID:         *req.NewRoomID,
+			Weekday:        rule.Weekday,
+			StartTime:      req.NewStartTime,
+			EndTime:        req.NewEndTime,
+			EffectiveRange: models.DateRange{StartDate: req.EditDate, EndDate: rule.EffectiveRange.EndDate},
 		}
 
-		parsedStart, _ := time.Parse("15:04:05", startTime)
-		newStartAt = time.Date(date.Year(), date.Month(), date.Day(),
-			parsedStart.Hour(), parsedStart.Minute(), 0, 0, time.UTC)
-		parsedEnd, _ := time.Parse("15:04:05", endTime)
-		newEndAt = time.Date(date.Year(), date.Month(), date.Day(),
-			parsedEnd.Hour(), parsedEnd.Minute(), 0, 0, time.UTC)
-
-		newTeacherID := req.NewTeacherID
-		if newTeacherID == nil {
-			newTeacherID = rule.TeacherID
+		if req.NewTeacherID == nil {
+			newRule.TeacherID = rule.TeacherID
 		}
-		newRoomID := req.NewRoomID
-		if newRoomID == nil {
-			newRoomIDVal := rule.RoomID
-			newRoomID = &newRoomIDVal
+		if req.NewStartTime == "" {
+			newRule.StartTime = rule.StartTime
+		}
+		if req.NewEndTime == "" {
+			newRule.EndTime = rule.EndTime
+		}
+		if req.NewRoomID == nil {
+			newRule.RoomID = rule.RoomID
 		}
 
-		addExc := models.ScheduleException{
-			CenterID:      centerID,
-			RuleID:        req.RuleID,
-			OriginalDate:  date,
-			ExceptionType: "ADD",
-			Status:        "PENDING",
-			NewStartAt:    &newStartAt,
-			NewEndAt:      &newEndAt,
-			NewTeacherID:  newTeacherID,
-			NewRoomID:     newRoomID,
-			Reason:        req.Reason,
+		if err := tx.Create(&newRule).Error; err != nil {
+			return fmt.Errorf("failed to create new rule: %w", err)
 		}
-		createdAdd, err := s.exceptionRepo.Create(ctx, addExc)
-		if err != nil {
-			return nil, cancelExcs, nil, err
+		createdRule = &newRule
+
+		// 在交易中記錄審核日誌
+		auditLog := models.AuditLog{
+			CenterID:   centerID,
+			ActorType:  "TEACHER",
+			ActorID:    teacherID,
+			Action:     "EDIT_FUTURE_OCCURRENCES",
+			TargetType: "ScheduleRule",
+			TargetID:   newRule.ID,
+			Payload:    models.AuditPayload{After: fmt.Sprintf("Create new rule %d for future occurrences from %s", newRule.ID, req.EditDate.Format("2006-01-02"))},
 		}
-		addExcs = append(addExcs, createdAdd)
-	}
+		if err := tx.Create(&auditLog).Error; err != nil {
+			return fmt.Errorf("failed to create audit log: %w", err)
+		}
 
-	newRule := models.ScheduleRule{
-		CenterID:       centerID,
-		OfferingID:     rule.OfferingID,
-		TeacherID:      req.NewTeacherID,
-		RoomID:         *req.NewRoomID,
-		Weekday:        rule.Weekday,
-		StartTime:      req.NewStartTime,
-		EndTime:        req.NewEndTime,
-		EffectiveRange: models.DateRange{StartDate: req.EditDate, EndDate: rule.EffectiveRange.EndDate},
-	}
-
-	if req.NewTeacherID == nil {
-		newRule.TeacherID = rule.TeacherID
-	}
-	if req.NewStartTime == "" {
-		newRule.StartTime = rule.StartTime
-	}
-	if req.NewEndTime == "" {
-		newRule.EndTime = rule.EndTime
-	}
-	if req.NewRoomID == nil {
-		newRule.RoomID = rule.RoomID
-	}
-
-	createdRule, err := s.ruleRepo.Create(ctx, newRule)
-	if err != nil {
-		return nil, cancelExcs, addExcs, err
-	}
-
-	s.auditLogRepo.Create(ctx, models.AuditLog{
-		CenterID:   centerID,
-		ActorType:  "TEACHER",
-		ActorID:    teacherID,
-		Action:     "EDIT_FUTURE_OCCURRENCES",
-		TargetType: "ScheduleRule",
-		TargetID:   createdRule.ID,
-		Payload:    models.AuditPayload{After: fmt.Sprintf("Create new rule %d for future occurrences from %s", createdRule.ID, req.EditDate.Format("2006-01-02"))},
+		return nil
 	})
 
-	return &createdRule, cancelExcs, addExcs, nil
+	if txErr != nil {
+		return nil, cancelExcs, addExcs, txErr
+	}
+
+	return createdRule, cancelExcs, addExcs, nil
 }
 
 func (s *ScheduleRecurrenceServiceImpl) editAll(ctx context.Context, centerID uint, teacherID uint, rule models.ScheduleRule, req RecurrenceEditRequest) (*models.ScheduleRule, error) {
@@ -1109,60 +1240,83 @@ func (s *ScheduleRecurrenceServiceImpl) DeleteRecurringSchedule(ctx context.Cont
 		AffectedCount:    0,
 	}
 
-	switch mode {
-	case RecurrenceEditSingle:
-		cancelExc := models.ScheduleException{
-			CenterID:      centerID,
-			RuleID:        ruleID,
-			OriginalDate:  editDate,
-			ExceptionType: "CANCEL",
-			Status:        "PENDING",
-			Reason:        reason,
-		}
-		created, err := s.exceptionRepo.Create(ctx, cancelExc)
-		if err != nil {
-			return RecurrenceEditResult{}, err
-		}
-		result.CancelExceptions = append(result.CancelExceptions, created)
-		result.AffectedCount = 1
+	var affectedCount int
+	var preview RecurrenceEditPreview
+	var ruleDeletionID uint
 
-	case RecurrenceEditFuture:
-		preview, _ := s.PreviewAffectedSessions(ctx, ruleID, editDate, RecurrenceEditFuture)
-		for _, date := range preview.AffectedDates {
+	// 使用交易確保所有操作的原子性
+	txErr := s.App.MySQL.WDB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		switch mode {
+		case RecurrenceEditSingle:
 			cancelExc := models.ScheduleException{
 				CenterID:      centerID,
 				RuleID:        ruleID,
-				OriginalDate:  date,
+				OriginalDate:  editDate,
 				ExceptionType: "CANCEL",
 				Status:        "PENDING",
 				Reason:        reason,
 			}
-			created, err := s.exceptionRepo.Create(ctx, cancelExc)
-			if err != nil {
-				return RecurrenceEditResult{}, err
+			created, createErr := s.exceptionRepo.CreateWithDB(ctx, tx, cancelExc)
+			if createErr != nil {
+				return fmt.Errorf("failed to create cancel exception: %w", createErr)
 			}
 			result.CancelExceptions = append(result.CancelExceptions, created)
-		}
-		result.AffectedCount = preview.AffectedCount
+			result.AffectedCount = 1
+			affectedCount = 1
 
-	case RecurrenceEditAll:
-		err := s.ruleRepo.DeleteByID(ctx, ruleID)
-		if err != nil {
-			return RecurrenceEditResult{}, err
-		}
-		preview, _ := s.PreviewAffectedSessions(ctx, ruleID, editDate, RecurrenceEditAll)
-		result.AffectedCount = preview.AffectedCount
-	}
+		case RecurrenceEditFuture:
+			preview, _ = s.PreviewAffectedSessions(ctx, ruleID, editDate, RecurrenceEditFuture)
+			for _, date := range preview.AffectedDates {
+				cancelExc := models.ScheduleException{
+					CenterID:      centerID,
+					RuleID:        ruleID,
+					OriginalDate:  date,
+					ExceptionType: "CANCEL",
+					Status:        "PENDING",
+					Reason:        reason,
+				}
+				created, createErr := s.exceptionRepo.CreateWithDB(ctx, tx, cancelExc)
+				if createErr != nil {
+					return fmt.Errorf("failed to create cancel exception: %w", createErr)
+				}
+				result.CancelExceptions = append(result.CancelExceptions, created)
+			}
+			result.AffectedCount = preview.AffectedCount
+			affectedCount = preview.AffectedCount
 
-	s.auditLogRepo.Create(ctx, models.AuditLog{
-		CenterID:   centerID,
-		ActorType:  "TEACHER",
-		ActorID:    teacherID,
-		Action:     "DELETE_RECURRING_SCHEDULE",
-		TargetType: "ScheduleRule",
-		TargetID:   ruleID,
-		Payload:    models.AuditPayload{After: fmt.Sprintf("Delete recurring schedule mode=%s, affected=%d", mode, result.AffectedCount)},
+		case RecurrenceEditAll:
+			preview, _ = s.PreviewAffectedSessions(ctx, ruleID, editDate, RecurrenceEditAll)
+			// 獲取規則ID用於審核日誌
+			rule, _ := s.ruleRepo.GetByID(ctx, ruleID)
+			ruleDeletionID = rule.ID
+
+			if err := tx.Unscoped().Where("id = ?", ruleID).Delete(&models.ScheduleRule{}).Error; err != nil {
+				return fmt.Errorf("failed to delete rule: %w", err)
+			}
+			result.AffectedCount = preview.AffectedCount
+			affectedCount = preview.AffectedCount
+		}
+
+		// 在交易中記錄審核日誌
+		auditLog := models.AuditLog{
+			CenterID:   centerID,
+			ActorType:  "TEACHER",
+			ActorID:    teacherID,
+			Action:     "DELETE_RECURRING_SCHEDULE",
+			TargetType: "ScheduleRule",
+			TargetID:   ruleDeletionID,
+			Payload:    models.AuditPayload{After: fmt.Sprintf("Delete recurring schedule mode=%s, affected=%d", mode, affectedCount)},
+		}
+		if err := tx.Create(&auditLog).Error; err != nil {
+			return fmt.Errorf("failed to create audit log: %w", err)
+		}
+
+		return nil
 	})
+
+	if txErr != nil {
+		return RecurrenceEditResult{}, txErr
+	}
 
 	return result, nil
 }

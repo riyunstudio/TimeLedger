@@ -45,3 +45,11 @@ func (ap AuditPayload) Value() (driver.Value, error) {
 func (AuditLog) TableName() string {
 	return "audit_logs"
 }
+
+// BeforeCreate鉤子確保timestamp始終有有效值，解決MySQL 8.0的'0000-00-00'無效日期問題
+func (al *AuditLog) BeforeCreate(tx *gorm.DB) error {
+	if al.Timestamp.IsZero() {
+		al.Timestamp = time.Now()
+	}
+	return nil
+}

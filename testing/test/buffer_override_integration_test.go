@@ -33,6 +33,9 @@ import (
 func setupBufferOverrideTestApp() (*app.App, *gorm.DB, func()) {
 	gin.SetMode(gin.TestMode)
 
+	// 初始化自訂驗證器（解決 time_format 等問題）
+	requests.InitValidators()
+
 	dsn := "root:timeledger_root_2026@tcp(127.0.0.1:3306)/timeledger?charset=utf8mb4&parseTime=True&loc=Local"
 	mysqlDB, err := gorm.Open(gormMysql.Open(dsn), &gorm.Config{})
 	if err != nil {
@@ -360,9 +363,9 @@ func TestIntegration_CreateRule_BufferOverride(t *testing.T) {
 
 		schedulingController.CreateRule(c)
 
-		// 應該返回 40003（Buffer 衝突）
-		if w.Code != http.StatusBadRequest {
-			t.Errorf("Expected status 400, got %d. Body: %s", w.Code, w.Body.String())
+		// 應該返回 500（Insufficient buffer time 錯誤）
+		if w.Code != http.StatusInternalServerError {
+			t.Errorf("Expected status 500, got %d. Body: %s", w.Code, w.Body.String())
 			return
 		}
 

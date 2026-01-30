@@ -75,7 +75,7 @@ func (rp *OfferingRepository) Copy(ctx context.Context, original models.Offering
 		CreatedAt:           time.Now(),
 		UpdatedAt:           time.Now(),
 	}
-	err := rp.app.MySQL.WDB.WithContext(ctx).Create(&newOffering).Error
+	err := rp.dbWrite.WithContext(ctx).Create(&newOffering).Error
 	return newOffering, err
 }
 

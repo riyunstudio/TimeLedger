@@ -13,25 +13,26 @@ import (
 
 type ScheduleValidationServiceImpl struct {
 	BaseService
-	app              *app.App
 	scheduleRuleRepo *repositories.ScheduleRuleRepository
 	roomRepo         *repositories.RoomRepository
 	courseRepo       *repositories.CourseRepository
 }
 
 func NewScheduleValidationService(app *app.App) ScheduleValidationService {
+	baseSvc := NewBaseService(app, "ScheduleValidationService")
 	return &ScheduleValidationServiceImpl{
-		app:              app,
+		BaseService:      *baseSvc,
 		scheduleRuleRepo: repositories.NewScheduleRuleRepository(app),
 		roomRepo:         repositories.NewRoomRepository(app),
 		courseRepo:       repositories.NewCourseRepository(app),
 	}
 }
 
-func (s *ScheduleValidationServiceImpl) CheckOverlap(ctx context.Context, centerID uint, teacherID *uint, roomID uint, startTime, endTime time.Time, excludeRuleID *uint) (ValidationResult, error) {
+func (s *ScheduleValidationServiceImpl) CheckOverlap(ctx context.Context, centerID uint, teacherID *uint, roomID uint, startTime, endTime time.Time, weekday int, excludeRuleID *uint) (ValidationResult, error) {
 	result := ValidationResult{Valid: true}
 
-	weekday := startTime.Weekday()
+	// 確保 weekday 正確轉換（Go 的 Weekday: Sunday=0, Monday=1, ..., Saturday=6）
+	// 資料庫使用: Monday=1, Tuesday=2, ..., Sunday=7
 	if weekday == 0 {
 		weekday = 7
 	}
@@ -39,7 +40,7 @@ func (s *ScheduleValidationServiceImpl) CheckOverlap(ctx context.Context, center
 	startTimeStr := startTime.Format("15:04:05")
 	endTimeStr := endTime.Format("15:04:05")
 
-	query := s.app.MySQL.RDB.WithContext(ctx).Model(&models.ScheduleRule{}).
+	query := s.App.MySQL.RDB.WithContext(ctx).Model(&models.ScheduleRule{}).
 		Where("center_id = ?", centerID).
 		Where("weekday = ?", weekday).
 		Where("start_time < ?", endTimeStr).
@@ -158,7 +159,13 @@ func (s *ScheduleValidationServiceImpl) CheckRoomBuffer(ctx context.Context, cen
 func (s *ScheduleValidationServiceImpl) ValidateFull(ctx context.Context, centerID uint, teacherID *uint, roomID uint, courseID uint, startTime, endTime time.Time, excludeRuleID *uint, allowBufferOverride bool) (ValidationResult, error) {
 	result := ValidationResult{Valid: true}
 
-	overlapResult, err := s.CheckOverlap(ctx, centerID, teacherID, roomID, startTime, endTime, excludeRuleID)
+	// 計算 weekday
+	weekday := int(startTime.Weekday())
+	if weekday == 0 {
+		weekday = 7
+	}
+
+	overlapResult, err := s.CheckOverlap(ctx, centerID, teacherID, roomID, startTime, endTime, weekday, excludeRuleID)
 	if err != nil {
 		return ValidationResult{}, err
 	}
@@ -222,7 +229,7 @@ func (s *ScheduleValidationServiceImpl) getPreviousSessionEndTime(ctx context.Co
 	startTimeStr := beforeTime.Format("15:04:05")
 
 	var rule models.ScheduleRule
-	err := s.app.MySQL.RDB.WithContext(ctx).
+	err := s.App.MySQL.RDB.WithContext(ctx).
 		Where("center_id = ?", centerID).
 		Where("teacher_id = ?", teacherID).
 		Where("weekday = ?", weekday).
@@ -267,7 +274,7 @@ func (s *ScheduleValidationServiceImpl) getPreviousSessionEndTimeByRoom(ctx cont
 	startTimeStr := beforeTime.Format("15:04:05")
 
 	var rule models.ScheduleRule
-	err := s.app.MySQL.RDB.WithContext(ctx).
+	err := s.App.MySQL.RDB.WithContext(ctx).
 		Where("center_id = ?", centerID).
 		Where("room_id = ?", roomID).
 		Where("weekday = ?", weekday).

@@ -10,6 +10,7 @@ import (
 
 	"timeLedger/app"
 	"timeLedger/app/console"
+	"timeLedger/app/requests"
 	"timeLedger/app/servers"
 	"timeLedger/app/services"
 	"timeLedger/global/logger"
@@ -52,6 +53,9 @@ func main() {
 
 	// 初始化 App
 	appInstance := app.Initialize()
+
+	// 初始化自訂驗證器
+	requests.InitValidators()
 
 	// 排程（輕量級，佔用極少資源）
 	scheduler := console.Initialize(appInstance)

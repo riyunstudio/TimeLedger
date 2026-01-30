@@ -5,6 +5,8 @@ import (
 	"time"
 	"timeLedger/app"
 	"timeLedger/app/models"
+
+	"gorm.io/gorm"
 )
 
 type AuditLogRepository struct {
@@ -20,8 +22,24 @@ func NewAuditLogRepository(app *app.App) *AuditLogRepository {
 }
 
 func (r *AuditLogRepository) Create(ctx context.Context, log models.AuditLog) (models.AuditLog, error) {
-	log.Timestamp = time.Now()
+	// 確保 timestamp 始終有有效值，解決 MySQL 8.0 的 '0000-00-00' 無效日期問題
+	if log.Timestamp.IsZero() {
+		log.Timestamp = time.Now()
+	}
 	return r.GenericRepository.Create(ctx, log)
+}
+
+// CreateWithTxDB creates an audit log using the provided transaction database connection.
+// This is used when the audit log needs to be created within an external transaction.
+func (r *AuditLogRepository) CreateWithTxDB(ctx context.Context, txDB *gorm.DB, log models.AuditLog) (models.AuditLog, error) {
+	// 確保 timestamp 始終有有效值
+	if log.Timestamp.IsZero() {
+		log.Timestamp = time.Now()
+	}
+	if err := txDB.WithContext(ctx).Table("audit_logs").Create(&log).Error; err != nil {
+		return models.AuditLog{}, err
+	}
+	return log, nil
 }
 
 func (r *AuditLogRepository) GetByID(ctx context.Context, id uint) (models.AuditLog, error) {
@@ -65,6 +83,7 @@ func (r *AuditLogRepository) ListByActor(ctx context.Context, actorType string, 
 
 type AuditLogRepositoryInterface interface {
 	Create(ctx context.Context, log models.AuditLog) (models.AuditLog, error)
+	CreateWithTxDB(ctx context.Context, txDB *gorm.DB, log models.AuditLog) (models.AuditLog, error)
 	GetByID(ctx context.Context, id uint) (models.AuditLog, error)
 	Delete(ctx context.Context, id uint) error
 	ListByCenterID(ctx context.Context, centerID uint, limit, offset int) ([]models.AuditLog, error)

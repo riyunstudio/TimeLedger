@@ -59,6 +59,19 @@ func setupCenterInvitationTestApp() (*app.App, *gorm.DB, func()) {
 	}
 
 	cleanup := func() {
+		// 清理測試資料庫表格，確保測試隔離
+		tables := []string{
+			"center_invitations",
+			"center_memberships",
+			"center_teacher_notes",
+			"teachers",
+			"centers",
+		}
+		for _, table := range tables {
+			mysqlDB.Exec(fmt.Sprintf("SET FOREIGN_KEY_CHECKS=0"))
+			mysqlDB.Exec(fmt.Sprintf("TRUNCATE TABLE %s", table))
+			mysqlDB.Exec(fmt.Sprintf("SET FOREIGN_KEY_CHECKS=1"))
+		}
 		mr.Close()
 	}
 
@@ -395,12 +408,6 @@ func TestCenterInvitationRepository_CRUD(t *testing.T) {
 				t.Fatalf("建立邀請 %d 失敗: %v", i, err)
 			}
 		}
-
-		defer func() {
-			db.WithContext(ctx).Where("id = ?", teacher.ID).Delete(&models.Teacher{})
-			db.WithContext(ctx).Where("id = ?", center.ID).Delete(&models.Center{})
-			db.WithContext(ctx).Where("center_id = ?", center.ID).Delete(&models.CenterInvitation{})
-		}()
 
 		repo := repositories.NewCenterInvitationRepository(appInstance)
 

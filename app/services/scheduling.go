@@ -9,14 +9,12 @@ import (
 	"timeLedger/app/repositories"
 	"timeLedger/app/resources"
 	"timeLedger/global/errInfos"
-
-	"gorm.io/gorm"
 )
 
 // ScheduleServiceInterface 排課服務接口
 type ScheduleServiceInterface interface {
 	// 衝突檢查
-	CheckOverlap(ctx context.Context, centerID uint, teacherID *uint, roomID uint, startTime, endTime time.Time, excludeRuleID *uint) (*OverlapCheckResult, error)
+	CheckOverlap(ctx context.Context, centerID uint, teacherID *uint, roomID uint, startTime, endTime time.Time, weekday int, excludeRuleID *uint) (*OverlapCheckResult, error)
 	CheckTeacherBuffer(ctx context.Context, centerID, teacherID uint, prevEndTime, nextStartTime time.Time, courseID uint) (*BufferCheckResult, error)
 	CheckRoomBuffer(ctx context.Context, centerID, roomID uint, prevEndTime, nextStartTime time.Time, courseID uint) (*BufferCheckResult, error)
 	ValidateFull(ctx context.Context, centerID uint, teacherID *uint, roomID, courseID uint, startTime, endTime time.Time, excludeRuleID *uint, allowBufferOverride bool) (*FullValidationResult, error)
@@ -169,7 +167,6 @@ const (
 // ScheduleService 排課服務實現
 type ScheduleService struct {
 	BaseService
-	app              *app.App
 	ruleRepo         *repositories.ScheduleRuleRepository
 	exceptionRepo    *repositories.ScheduleExceptionRepository
 	offeringRepo     *repositories.OfferingRepository
@@ -187,8 +184,9 @@ type ScheduleService struct {
 
 // NewScheduleService 建立排課服務
 func NewScheduleService(app *app.App) ScheduleServiceInterface {
+	baseSvc := NewBaseService(app, "ScheduleService")
 	svc := &ScheduleService{
-		app:              app,
+		BaseService:      *baseSvc,
 		ruleRepo:         repositories.NewScheduleRuleRepository(app),
 		exceptionRepo:    repositories.NewScheduleExceptionRepository(app),
 		offeringRepo:     repositories.NewOfferingRepository(app),
@@ -220,14 +218,14 @@ func (s *ScheduleService) CreateRule(ctx context.Context, centerID, adminID uint
 	// 解析日期
 	startDate, err := time.Parse("2006-01-02", req.StartDate)
 	if err != nil {
-		return nil, s.app.Err.New(errInfos.PARAMS_VALIDATE_ERROR), fmt.Errorf("invalid start_date format: %w", err)
+		return nil, s.App.Err.New(errInfos.PARAMS_VALIDATE_ERROR), fmt.Errorf("invalid start_date format: %w", err)
 	}
 
 	var endDate time.Time
 	if req.EndDate != nil && *req.EndDate != "" {
 		endDate, err = time.Parse("2006-01-02", *req.EndDate)
 		if err != nil {
-			return nil, s.app.Err.New(errInfos.PARAMS_VALIDATE_ERROR), fmt.Errorf("invalid end_date format: %w", err)
+			return nil, s.App.Err.New(errInfos.PARAMS_VALIDATE_ERROR), fmt.Errorf("invalid end_date format: %w", err)
 		}
 	} else {
 		endDate = time.Date(2099, 12, 31, 0, 0, 0, 0, time.UTC)
@@ -237,25 +235,36 @@ func (s *ScheduleService) CreateRule(ctx context.Context, centerID, adminID uint
 	startTimeParsed, _ := time.Parse("15:04", req.StartTime)
 	endTimeParsed, _ := time.Parse("15:04", req.EndTime)
 
-	validationResult, err := s.validationSvc.CheckOverlap(ctx, centerID, &req.TeacherID, req.RoomID, startTimeParsed, endTimeParsed, nil)
+	// 使用請求中的第一個 weekday 進行重疊檢查
+	var checkWeekday int
+	if len(req.Weekdays) > 0 {
+		checkWeekday = req.Weekdays[0]
+	} else {
+		checkWeekday = int(startTimeParsed.Weekday())
+		if checkWeekday == 0 {
+			checkWeekday = 7
+		}
+	}
+
+	validationResult, err := s.validationSvc.CheckOverlap(ctx, centerID, &req.TeacherID, req.RoomID, startTimeParsed, endTimeParsed, checkWeekday, nil)
 	if err != nil {
-		return nil, s.app.Err.New(errInfos.SQL_ERROR), fmt.Errorf("failed to check overlap: %w", err)
+		return nil, s.App.Err.New(errInfos.SQL_ERROR), fmt.Errorf("failed to check overlap: %w", err)
 	}
 
 	if !validationResult.Valid {
-		return nil, s.app.Err.New(errInfos.SCHED_OVERLAP), fmt.Errorf("time slot conflict with existing rules or personal events")
+		return nil, s.App.Err.New(errInfos.SCHED_OVERLAP), fmt.Errorf("time slot conflict with existing rules or personal events")
 	}
 
 	// 取得課程設定
 	offering, err := s.offeringRepo.GetByID(ctx, req.OfferingID)
 	if err != nil {
-		return nil, s.app.Err.New(errInfos.NOT_FOUND), fmt.Errorf("failed to get offering: %w", err)
+		return nil, s.App.Err.New(errInfos.NOT_FOUND), fmt.Errorf("failed to get offering: %w", err)
 	}
 
 	// 檢查 Buffer
 	bufferConflicts, err := s.checkBufferConflicts(ctx, centerID, req, &offering, startDate)
 	if err != nil {
-		return nil, s.app.Err.New(errInfos.SCHED_BUFFER), err
+		return nil, s.App.Err.New(errInfos.SCHED_BUFFER), err
 	}
 
 	if len(bufferConflicts) > 0 {
@@ -268,15 +277,16 @@ func (s *ScheduleService) CreateRule(ctx context.Context, centerID, adminID uint
 		}
 
 		if !req.OverrideBuffer || !allOverridable {
-			return nil, s.app.Err.New(errInfos.SCHED_BUFFER), fmt.Errorf("insufficient buffer time")
+			return nil, s.App.Err.New(errInfos.SCHED_BUFFER), fmt.Errorf("insufficient buffer time")
 		}
 	}
 
 	// 使用交易建立規則和審核日誌
 	var createdRules []models.ScheduleRule
 
-	txErr := s.app.MySQL.WDB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		// 在交易中建立規則
+	// 使用 Repository 的 Transaction 方法，確保所有操作都在同一交易中
+	txErr := s.ruleRepo.Transaction(ctx, func(txRepo *repositories.ScheduleRuleRepository) error {
+		// 在交易中建立規則（使用 txRepo，它擁有交易連接）
 		for _, weekday := range req.Weekdays {
 			rule := models.ScheduleRule{
 				CenterID:   centerID,
@@ -293,13 +303,15 @@ func (s *ScheduleService) CreateRule(ctx context.Context, centerID, adminID uint
 				},
 			}
 
-			if err := tx.Create(&rule).Error; err != nil {
+			if _, err := txRepo.Create(ctx, rule); err != nil {
 				return fmt.Errorf("failed to create schedule rule: %w", err)
 			}
 			createdRules = append(createdRules, rule)
 		}
 
 		// 在交易中記錄審核日誌
+		// 從 txRepo 取得交易連接並傳遞給 auditLogRepo
+		txDB := txRepo.GetDBWrite()
 		auditLog := models.AuditLog{
 			CenterID:   centerID,
 			ActorType:  "ADMIN",
@@ -312,7 +324,7 @@ func (s *ScheduleService) CreateRule(ctx context.Context, centerID, adminID uint
 				},
 			},
 		}
-		if err := tx.Create(&auditLog).Error; err != nil {
+		if _, err := s.auditLogRepo.CreateWithTxDB(ctx, txDB, auditLog); err != nil {
 			return fmt.Errorf("failed to create audit log: %w", err)
 		}
 
@@ -320,7 +332,7 @@ func (s *ScheduleService) CreateRule(ctx context.Context, centerID, adminID uint
 	})
 
 	if txErr != nil {
-		return nil, s.app.Err.New(errInfos.ERR_TX_FAILED), txErr
+		return nil, s.App.Err.New(errInfos.ERR_TX_FAILED), txErr
 	}
 
 	return createdRules, nil, nil
@@ -499,7 +511,7 @@ func (s *ScheduleService) UpdateRule(ctx context.Context, centerID, adminID, rul
 	// 檢查規則是否存在
 	existingRule, err := s.ruleRepo.GetByIDAndCenterID(ctx, ruleID, centerID)
 	if err != nil {
-		return nil, s.app.Err.New(errInfos.NOT_FOUND), fmt.Errorf("rule not found")
+		return nil, s.App.Err.New(errInfos.NOT_FOUND), fmt.Errorf("rule not found")
 	}
 
 	// 解析日期
@@ -507,21 +519,21 @@ func (s *ScheduleService) UpdateRule(ctx context.Context, centerID, adminID, rul
 	if req.StartDate != "" {
 		startDate, err = time.Parse("2006-01-02", req.StartDate)
 		if err != nil {
-			return nil, s.app.Err.New(errInfos.PARAMS_VALIDATE_ERROR), fmt.Errorf("invalid start_date format")
+			return nil, s.App.Err.New(errInfos.PARAMS_VALIDATE_ERROR), fmt.Errorf("invalid start_date format")
 		}
 	}
 
 	if req.EndDate != nil && *req.EndDate != "" {
 		endDate, err = time.Parse("2006-01-02", *req.EndDate)
 		if err != nil {
-			return nil, s.app.Err.New(errInfos.PARAMS_VALIDATE_ERROR), fmt.Errorf("invalid end_date format")
+			return nil, s.App.Err.New(errInfos.PARAMS_VALIDATE_ERROR), fmt.Errorf("invalid end_date format")
 		}
 	}
 
 	// 取得所有相關規則
 	allRules, err := s.ruleRepo.ListByCenterID(ctx, centerID)
 	if err != nil {
-		return nil, s.app.Err.New(errInfos.SQL_ERROR), fmt.Errorf("failed to fetch rules: %w", err)
+		return nil, s.App.Err.New(errInfos.SQL_ERROR), fmt.Errorf("failed to fetch rules: %w", err)
 	}
 
 	var relatedRules []models.ScheduleRule
@@ -537,18 +549,19 @@ func (s *ScheduleService) UpdateRule(ctx context.Context, centerID, adminID, rul
 	// 使用交易處理更新操作
 	var resultRules []models.ScheduleRule
 
-	txErr := s.app.MySQL.WDB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	// 使用 Repository 的 Transaction 方法，確保所有操作都在同一交易中
+	txErr := s.ruleRepo.Transaction(ctx, func(txRepo *repositories.ScheduleRuleRepository) error {
 		var handlerErr error
 		var rules []models.ScheduleRule
 
 		// 根據 update_mode 處理
 		switch req.UpdateMode {
 		case UpdateModeFuture:
-			rules, handlerErr = s.handleFutureUpdateWithTx(tx, ctx, centerID, existingRule, relatedRules, req, startDate, endDate)
+			rules, handlerErr = s.handleFutureUpdateWithTx(txRepo, ctx, centerID, existingRule, relatedRules, req, startDate, endDate)
 		case UpdateModeSingle:
-			rules, handlerErr = s.handleSingleUpdateWithTx(tx, ctx, centerID, existingRule, req, startDate)
+			rules, handlerErr = s.handleSingleUpdateWithTx(txRepo, ctx, centerID, existingRule, req, startDate)
 		default:
-			rules, handlerErr = s.handleAllUpdateWithTx(tx, ctx, centerID, existingRule, relatedRules, req, startDate, endDate)
+			rules, handlerErr = s.handleAllUpdateWithTx(txRepo, ctx, centerID, existingRule, relatedRules, req, startDate, endDate)
 		}
 
 		if handlerErr != nil {
@@ -557,6 +570,7 @@ func (s *ScheduleService) UpdateRule(ctx context.Context, centerID, adminID, rul
 		resultRules = rules
 
 		// 在交易中記錄審核日誌
+		txDB := txRepo.GetDBWrite()
 		auditLog := models.AuditLog{
 			CenterID:   centerID,
 			ActorType:  "ADMIN",
@@ -571,7 +585,7 @@ func (s *ScheduleService) UpdateRule(ctx context.Context, centerID, adminID, rul
 				},
 			},
 		}
-		if err := tx.Create(&auditLog).Error; err != nil {
+		if _, err := s.auditLogRepo.CreateWithTxDB(ctx, txDB, auditLog); err != nil {
 			return fmt.Errorf("failed to create audit log: %w", err)
 		}
 
@@ -579,14 +593,14 @@ func (s *ScheduleService) UpdateRule(ctx context.Context, centerID, adminID, rul
 	})
 
 	if txErr != nil {
-		return nil, s.app.Err.New(errInfos.ERR_TX_FAILED), txErr
+		return nil, s.App.Err.New(errInfos.ERR_TX_FAILED), txErr
 	}
 
 	return resultRules, nil, nil
 }
 
 // handleFutureUpdateWithTx 處理 FUTURE 模式（交易版本）
-func (s *ScheduleService) handleFutureUpdateWithTx(tx *gorm.DB, ctx context.Context, centerID uint, existingRule models.ScheduleRule, relatedRules []models.ScheduleRule, req *UpdateScheduleRuleRequest, startDate, endDate time.Time) ([]models.ScheduleRule, error) {
+func (s *ScheduleService) handleFutureUpdateWithTx(txRepo *repositories.ScheduleRuleRepository, ctx context.Context, centerID uint, existingRule models.ScheduleRule, relatedRules []models.ScheduleRule, req *UpdateScheduleRuleRequest, startDate, endDate time.Time) ([]models.ScheduleRule, error) {
 	if startDate.IsZero() {
 		return nil, fmt.Errorf("start_date is required for FUTURE update mode")
 	}
@@ -597,7 +611,7 @@ func (s *ScheduleService) handleFutureUpdateWithTx(tx *gorm.DB, ctx context.Cont
 	// 更新現有規則
 	for _, rule := range append(relatedRules, existingRule) {
 		rule.EffectiveRange.EndDate = cutoffDate
-		if err := tx.Save(&rule).Error; err != nil {
+		if err := txRepo.Update(ctx, rule); err != nil {
 			return nil, err
 		}
 		result = append(result, rule)
@@ -606,7 +620,7 @@ func (s *ScheduleService) handleFutureUpdateWithTx(tx *gorm.DB, ctx context.Cont
 	// 建立新規則段
 	newRules := s.createNewRuleSegment(centerID, existingRule, relatedRules, req, startDate, endDate)
 	for _, newRule := range newRules {
-		if err := tx.Create(&newRule).Error; err != nil {
+		if _, err := txRepo.Create(ctx, newRule); err != nil {
 			return nil, err
 		}
 		result = append(result, newRule)
@@ -616,10 +630,13 @@ func (s *ScheduleService) handleFutureUpdateWithTx(tx *gorm.DB, ctx context.Cont
 }
 
 // handleSingleUpdateWithTx 處理 SINGLE 模式（交易版本）
-func (s *ScheduleService) handleSingleUpdateWithTx(tx *gorm.DB, ctx context.Context, centerID uint, existingRule models.ScheduleRule, req *UpdateScheduleRuleRequest, targetDate time.Time) ([]models.ScheduleRule, error) {
+func (s *ScheduleService) handleSingleUpdateWithTx(txRepo *repositories.ScheduleRuleRepository, ctx context.Context, centerID uint, existingRule models.ScheduleRule, req *UpdateScheduleRuleRequest, targetDate time.Time) ([]models.ScheduleRule, error) {
 	now := time.Now()
 
-	// 建立取消例外單
+	// 取得交易連接以在交易中建立例外單
+	txDB := txRepo.GetDBWrite()
+
+	// 建立取消例外單（使用交易連接）
 	cancelException := models.ScheduleException{
 		CenterID:      centerID,
 		RuleID:        existingRule.ID,
@@ -630,7 +647,7 @@ func (s *ScheduleService) handleSingleUpdateWithTx(tx *gorm.DB, ctx context.Cont
 		ReviewedAt:    &now,
 	}
 
-	if _, err := s.exceptionRepo.Create(ctx, cancelException); err != nil {
+	if _, err := s.exceptionRepo.CreateWithDB(ctx, txDB, cancelException); err != nil {
 		return nil, fmt.Errorf("failed to create cancel exception: %w", err)
 	}
 
@@ -656,7 +673,7 @@ func (s *ScheduleService) handleSingleUpdateWithTx(tx *gorm.DB, ctx context.Cont
 		},
 	}
 
-	if err := tx.Create(&newRule).Error; err != nil {
+	if _, err := txRepo.Create(ctx, newRule); err != nil {
 		return nil, fmt.Errorf("failed to create new rule: %w", err)
 	}
 
@@ -664,7 +681,7 @@ func (s *ScheduleService) handleSingleUpdateWithTx(tx *gorm.DB, ctx context.Cont
 }
 
 // handleAllUpdateWithTx 處理 ALL 模式（交易版本）
-func (s *ScheduleService) handleAllUpdateWithTx(tx *gorm.DB, ctx context.Context, centerID uint, existingRule models.ScheduleRule, relatedRules []models.ScheduleRule, req *UpdateScheduleRuleRequest, startDate, endDate time.Time) ([]models.ScheduleRule, error) {
+func (s *ScheduleService) handleAllUpdateWithTx(txRepo *repositories.ScheduleRuleRepository, ctx context.Context, centerID uint, existingRule models.ScheduleRule, relatedRules []models.ScheduleRule, req *UpdateScheduleRuleRequest, startDate, endDate time.Time) ([]models.ScheduleRule, error) {
 	newWeekdayMap := make(map[int]bool)
 	for _, w := range req.Weekdays {
 		newWeekdayMap[w] = true
@@ -677,7 +694,7 @@ func (s *ScheduleService) handleAllUpdateWithTx(tx *gorm.DB, ctx context.Context
 	for _, rule := range append(relatedRules, existingRule) {
 		if newWeekdayMap[rule.Weekday] {
 			updatedRule := s.applyUpdateToRule(rule, req, startDate, endDate)
-			if err := tx.Save(&updatedRule).Error; err != nil {
+			if err := txRepo.Update(ctx, updatedRule); err != nil {
 				return nil, err
 			}
 			updatedRules = append(updatedRules, updatedRule)
@@ -691,15 +708,16 @@ func (s *ScheduleService) handleAllUpdateWithTx(tx *gorm.DB, ctx context.Context
 	var createdRules []models.ScheduleRule
 	for weekday := range newWeekdayMap {
 		newRule := s.createSingleRule(centerID, existingRule, req, weekday, startDate, endDate)
-		if err := tx.Create(newRule).Error; err != nil {
+		if _, err := txRepo.Create(ctx, *newRule); err != nil {
 			return nil, err
 		}
 		createdRules = append(createdRules, *newRule)
 	}
 
-	// 執行刪除
+	// 執行硬刪除（使用交易連接）
+	txDB := txRepo.GetDBWrite()
 	for _, id := range deletedRuleIDs {
-		if err := tx.Unscoped().Where("id = ?", id).Delete(&models.ScheduleRule{}).Error; err != nil {
+		if err := txDB.WithContext(ctx).Unscoped().Where("id = ?", id).Delete(&models.ScheduleRule{}).Error; err != nil {
 			return nil, err
 		}
 	}
@@ -1045,8 +1063,8 @@ func intToString(n int) string {
 }
 
 // 衝突檢查方法 - 代理到 validationService
-func (s *ScheduleService) CheckOverlap(ctx context.Context, centerID uint, teacherID *uint, roomID uint, startTime, endTime time.Time, excludeRuleID *uint) (*OverlapCheckResult, error) {
-	result, err := s.validationSvc.CheckOverlap(ctx, centerID, teacherID, roomID, startTime, endTime, excludeRuleID)
+func (s *ScheduleService) CheckOverlap(ctx context.Context, centerID uint, teacherID *uint, roomID uint, startTime, endTime time.Time, weekday int, excludeRuleID *uint) (*OverlapCheckResult, error) {
+	result, err := s.validationSvc.CheckOverlap(ctx, centerID, teacherID, roomID, startTime, endTime, weekday, excludeRuleID)
 	if err != nil {
 		return nil, err
 	}

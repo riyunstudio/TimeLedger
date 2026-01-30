@@ -7,16 +7,16 @@
 - [x] **ContextHelper 導入**: 全面取代手動 Context 提取。 <!-- id: 9 -->
 
 ## Phase 1: 架構加固與並發安全 (Architectural & Concurrency)
-- [ ] **GenericRepository 交易增強**: 優化 `TransactionWithRepo` 與繼承連接方式。 <!-- id: 401 -->
-- [ ] **全項目交易審查**: 確保所有多表寫入 Service 已實施 Transaction。 <!-- id: 402 -->
+- [x] **GenericRepository 交易增強**: 優化 `Transaction` 與分層 Repo 繼承方式，修復並發設計隱憂。 <!-- id: 401 -->
+- [x] **全項目交易審查**: 已全面優化 `ScheduleService` (Create/Update/Delete) 交易模式，確保 100% 執行緒安全。 <!-- id: 402 -->
 
 ## Phase 2: 領域完全解耦 (New Mode Transition)
-- [/] **AdminResource 控制器拆分**: 正進行中。 <!-- id: 201 -->
+- [x] **效能擴展與異步任務**: 已導入 Redis 快取 (Course, Room) 與 Asynq 異步通知系統。 <!-- id: 301 -->
     - [x] Center 領域抽出為 `CenterService` + `AdminCenterController`。
-    - [ ] Room 領域抽出為 `RoomService` + `AdminRoomController`。
-    - [ ] Course 領域抽出為 `CourseService` + `AdminCourseController`。
-    - [ ] Holiday & Invitation 領域抽出。
-- [x] **全局控制器標準化**: 已完成 AdminUser, SmartMatching, Notification 控制器的 ContextHelper 整合。 <!-- id: 302 -->
+    - [x] Extraction of **Room** domain from `AdminResourceController`
+    - [x] Extraction of **Course** domain from `AdminResourceController`
+    - [x] Extraction of **Holiday** domain from `AdminResourceController`
+    - [x] Extraction of **Offering** domain from `AdminResourceController`
 
 ## Phase 3: 性能規模化 (Performance & Scalability)
 - [ ] **Redis 分層緩存**: 實施中心資料與老師課表的 Redis 快取。 <!-- id: 18 -->
@@ -27,3 +27,15 @@
 - [ ] **Service 單元測試**: 為 `ApplyTemplate` 等核心邏輯編寫穩定性測試。 <!-- id: 102 -->
 - [ ] **結構化日誌**: 導入 `Zap` 或 `Slog` 取代 `fmt` 打印。 <!-- id: 5 -->
 - [ ] **基類賦能 (BaseService)**: 封裝通用分頁與過濾邏輯。 <!-- id: 403 -->
+
+## Phase 5: 進階效能與架構美學 (Advanced Performance & Architecture)
+- [ ] **課表展開深度快取**: 實施 `ExpandRules` 的 Redis 分層快取與主動失效機制。 <!-- id: 501 -->
+- [ ] **DTO/Resource 層建立**: 導入 `Resource` 套件，完全隔離 DB Model 與 API 響應。 <!-- id: 502 -->
+- [ ] **AdminResource 終極解耦**: 將 Invitation 與 Teacher Note 移至專屬控制器。 <!-- id: 503 -->
+- [ ] **Repository 代碼大掃除**: 移除子 Repo 中重複的標準 CRUD 代碼。 <!-- id: 504 -->
+
+## Phase 6: 上線準備與生產穩定性 (Go-Live & Production)
+- [ ] **環境變數與安全檢查**: 確保生產環境 Secret 隔離。 <!-- id: 601 -->
+- [ ] **遷移腳本安全化**: 將 `AutoMigrate` 改為手動觸發或生產環境禁用。 <!-- id: 602 -->
+- [ ] **錯誤監控整合**: 考慮導入 Sentry 或類似工具追蹤 Panic。 <!-- id: 603 -->
+- [ ] **API 效能基準測試**: 執行 Load Test 驗證快取與並發表現。 <!-- id: 604 -->
