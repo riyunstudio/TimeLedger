@@ -16,7 +16,7 @@ export default defineEventHandler(async (event) => {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
       },
-      body: event.method !== 'GET' && event.method !== 'HEAD' ? await readBody(event) : undefined,
+      body: event.method !== 'GET' && event.method !== 'HEAD' ? JSON.stringify(await readBody(event)) : undefined,
     })
 
     const data = await response.json()
