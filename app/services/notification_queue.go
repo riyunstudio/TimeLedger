@@ -18,6 +18,9 @@ type NotificationQueueService interface {
 	ProcessQueue(ctx context.Context) error
 	GetQueueStats(ctx context.Context) map[string]string
 
+	// Asynq 異步佇列
+	PushToAsynq(ctx context.Context, item *models.NotificationQueue) error
+
 	// 便捷方法 - 發送例外通知給所有管理員
 	NotifyExceptionSubmitted(ctx context.Context, exception *models.ScheduleException, teacherName string, centerName string) error
 	NotifyExceptionResult(ctx context.Context, exception *models.ScheduleException, teacher *models.Teacher, approved bool, reason string) error
@@ -40,6 +43,7 @@ type NotificationQueueServiceImpl struct {
 	lineBotService  LineBotService
 	templateService LineBotTemplateService
 	redisQueue      *RedisQueueService
+	asynqService    *AsynqNotificationService
 	log             *logger.Logger
 }
 
@@ -61,6 +65,7 @@ func NewNotificationQueueService(app *app.App) NotificationQueueService {
 		lineBotService:  NewLineBotService(app),
 		templateService: NewLineBotTemplateService(app.Env.FrontendBaseURL),
 		redisQueue:      NewRedisQueueService(app),
+		asynqService:    NewAsynqNotificationService(app, nil),
 		log:             log,
 	}
 }
@@ -86,7 +91,12 @@ func (s *NotificationQueueServiceImpl) logError(msg string, keysAndValues ...int
 	}
 }
 
-// PushNotification 將通知加入 Redis 佇列
+// PushToAsynq 將通知加入 Asynq 佇列（異步處理）
+func (s *NotificationQueueServiceImpl) PushToAsynq(ctx context.Context, item *models.NotificationQueue) error {
+	return s.asynqService.EnqueueNotification(ctx, item)
+}
+
+// PushNotification 將通知加入 Redis 佇列（保留向後兼容）
 func (s *NotificationQueueServiceImpl) PushNotification(ctx context.Context, item *models.NotificationQueue) error {
 	queueItem := &NotificationItem{
 		ID:            item.ID,
@@ -177,12 +187,20 @@ func (s *NotificationQueueServiceImpl) processRedisNotification(ctx context.Cont
 	return s.lineBotService.PushMessage(ctx, lineUserID, payload)
 }
 
-// GetQueueStats 取得佇列統計
+// GetQueueStats 取得佇列統計（包含 Redis 和 Asynq）
 func (s *NotificationQueueServiceImpl) GetQueueStats(ctx context.Context) map[string]string {
-	return s.redisQueue.GetStats(ctx)
+	stats := s.redisQueue.GetStats(ctx)
+
+	// 嘗試獲取 Asynq 統計（如果可用）
+	asynqStats := s.asynqService.GetQueueStats(ctx)
+	for k, v := range asynqStats {
+		stats["asynq_"+k] = v
+	}
+
+	return stats
 }
 
-// NotifyExceptionSubmitted 通知管理員有新的例外申請（加入 Redis 佇列）
+// NotifyExceptionSubmitted 通知管理員有新的例外申請（使用 Asynq 異步處理）
 func (s *NotificationQueueServiceImpl) NotifyExceptionSubmitted(ctx context.Context, exception *models.ScheduleException, teacherName string, centerName string) error {
 	// 取得中心的所有管理員
 	admins, err := s.adminRepo.GetByCenterID(ctx, exception.CenterID)
@@ -198,7 +216,7 @@ func (s *NotificationQueueServiceImpl) NotifyExceptionSubmitted(ctx context.Cont
 		"contents": flexContent,
 	})
 
-	// 為每個已綁定的管理員建立佇列項目
+	// 為每個已綁定的管理員加入 Asynq 佇列
 	for _, admin := range admins {
 		if !admin.LineNotifyEnabled || admin.LineUserID == "" {
 			continue
@@ -213,8 +231,8 @@ func (s *NotificationQueueServiceImpl) NotifyExceptionSubmitted(ctx context.Cont
 			ScheduledAt:   time.Now(),
 		}
 
-		if err := s.PushNotification(ctx, queueItem); err != nil {
-			s.logError("Failed to queue notification for admin",
+		if err := s.PushToAsynq(ctx, queueItem); err != nil {
+			s.logError("Failed to enqueue notification to Asynq for admin",
 				"admin_id", admin.ID,
 				"error", err,
 			)
@@ -250,7 +268,7 @@ func (s *NotificationQueueServiceImpl) NotifyExceptionSubmittedSync(ctx context.
 	return nil
 }
 
-// NotifyExceptionResult 通知老師例外審核結果（加入 Redis 佇列）
+// NotifyExceptionResult 通知老師例外審核結果（使用 Asynq 異步處理）
 func (s *NotificationQueueServiceImpl) NotifyExceptionResult(ctx context.Context, exception *models.ScheduleException, teacher *models.Teacher, approved bool, reason string) error {
 	if teacher.LineUserID == "" {
 		return nil
@@ -282,7 +300,7 @@ func (s *NotificationQueueServiceImpl) NotifyExceptionResult(ctx context.Context
 		ScheduledAt:   time.Now(),
 	}
 
-	return s.PushNotification(ctx, queueItem)
+	return s.PushToAsynq(ctx, queueItem)
 }
 
 // NotifyExceptionResultSync 同步發送例外審核結果給老師（直接發送，不經佇列）
@@ -306,7 +324,7 @@ func (s *NotificationQueueServiceImpl) NotifyExceptionResultSync(ctx context.Con
 	return s.lineBotService.PushFlexMessage(ctx, teacher.LineUserID, altText, flexContent)
 }
 
-// NotifyWelcomeTeacher 發送老師歡迎訊息（加入 Redis 佇列）
+// NotifyWelcomeTeacher 發送老師歡迎訊息（使用 Asynq 異步處理）
 func (s *NotificationQueueServiceImpl) NotifyWelcomeTeacher(ctx context.Context, teacher *models.Teacher, centerName string) error {
 	if teacher.LineUserID == "" {
 		return nil
@@ -328,10 +346,10 @@ func (s *NotificationQueueServiceImpl) NotifyWelcomeTeacher(ctx context.Context,
 		ScheduledAt:   time.Now(),
 	}
 
-	return s.PushNotification(ctx, queueItem)
+	return s.PushToAsynq(ctx, queueItem)
 }
 
-// NotifyWelcomeAdmin 發送管理員歡迎訊息（加入 Redis 佇列）
+// NotifyWelcomeAdmin 發送管理員歡迎訊息（使用 Asynq 異步處理）
 func (s *NotificationQueueServiceImpl) NotifyWelcomeAdmin(ctx context.Context, admin *models.AdminUser, centerName string) error {
 	if admin.LineUserID == "" {
 		return nil
@@ -353,7 +371,7 @@ func (s *NotificationQueueServiceImpl) NotifyWelcomeAdmin(ctx context.Context, a
 		ScheduledAt:   time.Now(),
 	}
 
-	return s.PushNotification(ctx, queueItem)
+	return s.PushToAsynq(ctx, queueItem)
 }
 
 // ProcessQueueHandler 處理佇列的定時任務（可由 cron 或 worker 呼叫）

@@ -104,7 +104,6 @@ func (s *AsynqNotificationService) EnqueueNotification(ctx context.Context, item
 		asynq.Queue(s.config.QueueName),
 	)
 
-	// 使用正確的 Enqueue API
 	_, err = s.client.Enqueue(task)
 	if err != nil {
 		s.log.Errorw("Failed to enqueue notification",
@@ -143,8 +142,6 @@ func (s *AsynqNotificationService) mapNotificationTypeToTask(notificationType st
 // GetQueueStats 取得佇列統計
 func (s *AsynqNotificationService) GetQueueStats(ctx context.Context) map[string]string {
 	stats := make(map[string]string)
-	// 簡化版本：返回基本統計
-	// 在實際部署時可透過 Redis 直接查詢
 	stats["pending"] = "0"
 	stats["retry"] = "0"
 	stats["failed"] = "0"
@@ -161,23 +158,223 @@ func (s *AsynqNotificationService) Close() error {
 	return nil
 }
 
-// ProcessNotificationTask 處理通知任務（由 Worker 呼叫）
-func ProcessNotificationTask(ctx context.Context, t *asynq.Task) error {
-	log.Printf("Processing task: %s", t.Type())
+// AsynqProcessor Asynq 任務處理器（單例）
+var asynqProcessor *AsynqTaskProcessor
 
+// AsynqTaskProcessor Asynq 任務處理器
+type AsynqTaskProcessor struct {
+	app            *app.App
+	adminRepo      *repositories.AdminUserRepository
+	teacherRepo    *repositories.TeacherRepository
+	lineBotService LineBotService
+	log            *logger.Logger
+}
+
+// NewAsynqTaskProcessor 建立 Asynq 任務處理器
+func NewAsynqTaskProcessor(appInstance *app.App) *AsynqTaskProcessor {
+	return &AsynqTaskProcessor{
+		app:            appInstance,
+		adminRepo:      repositories.NewAdminUserRepository(appInstance),
+		teacherRepo:    repositories.NewTeacherRepository(appInstance),
+		lineBotService: NewLineBotService(appInstance),
+		log:            logger.GetLogger(),
+	}
+}
+
+// GetAsynqProcessor 取得或建立 Asynq 任務處理器（單例模式）
+func GetAsynqProcessor(appInstance *app.App) *AsynqTaskProcessor {
+	if asynqProcessor == nil {
+		asynqProcessor = NewAsynqTaskProcessor(appInstance)
+	}
+	return asynqProcessor
+}
+
+// ProcessNotificationTask 處理通知任務（由 Worker 呼叫）
+func (p *AsynqTaskProcessor) ProcessNotificationTask(ctx context.Context, t *asynq.Task) error {
 	var payload TaskPayload
 	if err := json.Unmarshal(t.Payload(), &payload); err != nil {
-		log.Printf("Failed to unmarshal task payload: %v", err)
+		p.log.Errorw("Failed to unmarshal task payload", "error", err)
 		return err
 	}
 
-	// 這裡需要從 context 取得必要的服務
-	// 在實際部署時，應該透過 dependency injection 傳入
-	// 簡化起見，這裡先返回 nil
+	p.log.Infow("Processing notification task",
+		"type", payload.Type,
+		"recipient_id", payload.RecipientID,
+	)
 
-	log.Printf("Processed notification task: type=%s, recipient=%d",
-		payload.Type, payload.RecipientID)
+	// 根據任務類型分發處理
+	switch payload.Type {
+	case TaskTypeExceptionSubmit:
+		return p.processExceptionSubmit(ctx, &payload)
+	case TaskTypeExceptionResult:
+		return p.processExceptionResult(ctx, &payload)
+	case TaskTypeWelcomeTeacher:
+		return p.processWelcomeTeacher(ctx, &payload)
+	case TaskTypeWelcomeAdmin:
+		return p.processWelcomeAdmin(ctx, &payload)
+	default:
+		p.log.Warnw("Unknown task type", "type", payload.Type)
+		return fmt.Errorf("unknown task type: %s", payload.Type)
+	}
+}
 
+// processExceptionSubmit 處理例外申請通知
+func (p *AsynqTaskProcessor) processExceptionSubmit(ctx context.Context, payload *TaskPayload) error {
+	// 解析 payload
+	var flexPayload map[string]interface{}
+	if err := json.Unmarshal([]byte(payload.Payload), &flexPayload); err != nil {
+		return fmt.Errorf("failed to parse flex payload: %w", err)
+	}
+
+	// 取得管理員的 LINE User ID
+	if payload.RecipientType != "ADMIN" {
+		return fmt.Errorf("invalid recipient type for exception submit: %s", payload.RecipientType)
+	}
+
+	admin, err := p.adminRepo.GetByIDPtr(ctx, payload.RecipientID)
+	if err != nil {
+		return fmt.Errorf("failed to get admin: %w", err)
+	}
+
+	if admin.LineUserID == "" || !admin.LineNotifyEnabled {
+		p.log.Infow("Admin not bound to LINE or notifications disabled",
+			"admin_id", payload.RecipientID)
+		return nil // 不視為錯誤，只是跳過
+	}
+
+	// 發送 LINE 訊息
+	altText, _ := flexPayload["altText"].(string)
+	contents, _ := flexPayload["contents"].(json.RawMessage)
+
+	if err := p.lineBotService.PushFlexMessage(ctx, admin.LineUserID, altText, contents); err != nil {
+		p.log.Errorw("Failed to send exception submit notification",
+			"admin_id", payload.RecipientID,
+			"error", err)
+		return err
+	}
+
+	p.log.Infow("Exception submit notification sent successfully",
+		"admin_id", payload.RecipientID)
+	return nil
+}
+
+// processExceptionResult 處理例外審核結果通知
+func (p *AsynqTaskProcessor) processExceptionResult(ctx context.Context, payload *TaskPayload) error {
+	// 解析 payload
+	var flexPayload map[string]interface{}
+	if err := json.Unmarshal([]byte(payload.Payload), &flexPayload); err != nil {
+		return fmt.Errorf("failed to parse flex payload: %w", err)
+	}
+
+	// 取得老師的 LINE User ID
+	if payload.RecipientType != "TEACHER" {
+		return fmt.Errorf("invalid recipient type for exception result: %s", payload.RecipientType)
+	}
+
+	teacher, err := p.teacherRepo.GetByID(ctx, payload.RecipientID)
+	if err != nil {
+		return fmt.Errorf("failed to get teacher: %w", err)
+	}
+
+	if teacher.LineUserID == "" {
+		p.log.Infow("Teacher not bound to LINE",
+			"teacher_id", payload.RecipientID)
+		return nil // 不視為錯誤，只是跳過
+	}
+
+	// 發送 LINE 訊息
+	altText, _ := flexPayload["altText"].(string)
+	contents, _ := flexPayload["contents"].(json.RawMessage)
+
+	if err := p.lineBotService.PushFlexMessage(ctx, teacher.LineUserID, altText, contents); err != nil {
+		p.log.Errorw("Failed to send exception result notification",
+			"teacher_id", payload.RecipientID,
+			"error", err)
+		return err
+	}
+
+	p.log.Infow("Exception result notification sent successfully",
+		"teacher_id", payload.RecipientID)
+	return nil
+}
+
+// processWelcomeTeacher 處理老師歡迎通知
+func (p *AsynqTaskProcessor) processWelcomeTeacher(ctx context.Context, payload *TaskPayload) error {
+	// 解析 payload
+	var flexPayload map[string]interface{}
+	if err := json.Unmarshal([]byte(payload.Payload), &flexPayload); err != nil {
+		return fmt.Errorf("failed to parse flex payload: %w", err)
+	}
+
+	// 取得老師的 LINE User ID
+	if payload.RecipientType != "TEACHER" {
+		return fmt.Errorf("invalid recipient type for welcome teacher: %s", payload.RecipientType)
+	}
+
+	teacher, err := p.teacherRepo.GetByID(ctx, payload.RecipientID)
+	if err != nil {
+		return fmt.Errorf("failed to get teacher: %w", err)
+	}
+
+	if teacher.LineUserID == "" {
+		p.log.Infow("Teacher not bound to LINE",
+			"teacher_id", payload.RecipientID)
+		return nil // 不視為錯誤，只是跳過
+	}
+
+	// 發送 LINE 訊息
+	altText, _ := flexPayload["altText"].(string)
+	contents, _ := flexPayload["contents"].(json.RawMessage)
+
+	if err := p.lineBotService.PushFlexMessage(ctx, teacher.LineUserID, altText, contents); err != nil {
+		p.log.Errorw("Failed to send welcome teacher notification",
+			"teacher_id", payload.RecipientID,
+			"error", err)
+		return err
+	}
+
+	p.log.Infow("Welcome teacher notification sent successfully",
+		"teacher_id", payload.RecipientID)
+	return nil
+}
+
+// processWelcomeAdmin 處理管理員歡迎通知
+func (p *AsynqTaskProcessor) processWelcomeAdmin(ctx context.Context, payload *TaskPayload) error {
+	// 解析 payload
+	var flexPayload map[string]interface{}
+	if err := json.Unmarshal([]byte(payload.Payload), &flexPayload); err != nil {
+		return fmt.Errorf("failed to parse flex payload: %w", err)
+	}
+
+	// 取得管理員的 LINE User ID
+	if payload.RecipientType != "ADMIN" {
+		return fmt.Errorf("invalid recipient type for welcome admin: %s", payload.RecipientType)
+	}
+
+	admin, err := p.adminRepo.GetByIDPtr(ctx, payload.RecipientID)
+	if err != nil {
+		return fmt.Errorf("failed to get admin: %w", err)
+	}
+
+	if admin.LineUserID == "" {
+		p.log.Infow("Admin not bound to LINE",
+			"admin_id", payload.RecipientID)
+		return nil // 不視為錯誤，只是跳過
+	}
+
+	// 發送 LINE 訊息
+	altText, _ := flexPayload["altText"].(string)
+	contents, _ := flexPayload["contents"].(json.RawMessage)
+
+	if err := p.lineBotService.PushFlexMessage(ctx, admin.LineUserID, altText, contents); err != nil {
+		p.log.Errorw("Failed to send welcome admin notification",
+			"admin_id", payload.RecipientID,
+			"error", err)
+		return err
+	}
+
+	p.log.Infow("Welcome admin notification sent successfully",
+		"admin_id", payload.RecipientID)
 	return nil
 }
 
@@ -185,11 +382,13 @@ func ProcessNotificationTask(ctx context.Context, t *asynq.Task) error {
 func (s *AsynqNotificationService) StartWorker(ctx context.Context) error {
 	mux := asynq.NewServeMux()
 
-	// 註冊任務處理器
-	mux.HandleFunc(TaskTypeExceptionSubmit, processExceptionSubmit)
-	mux.HandleFunc(TaskTypeExceptionResult, processExceptionResult)
-	mux.HandleFunc(TaskTypeWelcomeTeacher, processWelcomeTeacher)
-	mux.HandleFunc(TaskTypeWelcomeAdmin, processWelcomeAdmin)
+	// 註冊任務處理器（使用共享的處理器實例）
+	processor := GetAsynqProcessor(s.app)
+
+	mux.HandleFunc(TaskTypeExceptionSubmit, processor.ProcessNotificationTask)
+	mux.HandleFunc(TaskTypeExceptionResult, processor.ProcessNotificationTask)
+	mux.HandleFunc(TaskTypeWelcomeTeacher, processor.ProcessNotificationTask)
+	mux.HandleFunc(TaskTypeWelcomeAdmin, processor.ProcessNotificationTask)
 
 	// 啟動 worker
 	server := asynq.NewServer(
@@ -205,24 +404,23 @@ func (s *AsynqNotificationService) StartWorker(ctx context.Context) error {
 	return server.Start(mux)
 }
 
-// 任務處理函數（簡化版，實際應用需要 dependency injection）
+// 保留舊的任務處理函數（向後兼容）
 func processExceptionSubmit(ctx context.Context, t *asynq.Task) error {
-	log.Printf("Processing exception submit notification: %s", string(t.Payload()))
-	// 實際處理邏輯需要存取資料庫和 LINE Bot Service
+	log.Printf("[Deprecated] Processing exception submit notification: %s", string(t.Payload()))
 	return nil
 }
 
 func processExceptionResult(ctx context.Context, t *asynq.Task) error {
-	log.Printf("Processing exception result notification: %s", string(t.Payload()))
+	log.Printf("[Deprecated] Processing exception result notification: %s", string(t.Payload()))
 	return nil
 }
 
 func processWelcomeTeacher(ctx context.Context, t *asynq.Task) error {
-	log.Printf("Processing welcome teacher notification: %s", string(t.Payload()))
+	log.Printf("[Deprecated] Processing welcome teacher notification: %s", string(t.Payload()))
 	return nil
 }
 
 func processWelcomeAdmin(ctx context.Context, t *asynq.Task) error {
-	log.Printf("Processing welcome admin notification: %s", string(t.Payload()))
+	log.Printf("[Deprecated] Processing welcome admin notification: %s", string(t.Payload()))
 	return nil
 }

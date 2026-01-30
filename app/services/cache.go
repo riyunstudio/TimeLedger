@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 	"timeLedger/app"
+	"timeLedger/app/models"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -316,3 +317,172 @@ type ScheduleItem struct {
 	Color      string `json:"color"`
 	Status     string `json:"status"`
 }
+
+// =====================================================
+// Center 快取方法
+// =====================================================
+
+// GetCenterSettings 取得中心設置（快取）
+func (s *CacheService) GetCenterSettings(ctx context.Context, centerID uint) (*models.CenterSettings, error) {
+	var settings models.CenterSettings
+	err := s.GetJSON(ctx, &settings, CacheCategoryCenter, fmt.Sprintf("settings:%d", centerID))
+	return &settings, err
+}
+
+// SetCenterSettings 設定中心設置（快取）
+func (s *CacheService) SetCenterSettings(ctx context.Context, centerID uint, settings *models.CenterSettings) error {
+	return s.SetWithTTL(ctx, CacheDurationLong, CacheCategoryCenter, settings, fmt.Sprintf("settings:%d", centerID))
+}
+
+// InvalidateCenterSettings 使中心設置快取失效
+func (s *CacheService) InvalidateCenterSettings(ctx context.Context, centerID uint) error {
+	return s.Delete(ctx, CacheCategoryCenter, fmt.Sprintf("settings:%d", centerID))
+}
+
+// GetCenterBasic 取得中心基本資訊（快取）
+func (s *CacheService) GetCenterBasic(ctx context.Context, centerID uint) (*CenterBasicInfo, error) {
+	var info CenterBasicInfo
+	err := s.GetJSON(ctx, &info, CacheCategoryCenter, fmt.Sprintf("basic:%d", centerID))
+	return &info, err
+}
+
+// SetCenterBasic 設定中心基本資訊（快取）
+func (s *CacheService) SetCenterBasic(ctx context.Context, centerID uint, info *CenterBasicInfo) error {
+	return s.SetWithTTL(ctx, CacheDurationMedium, CacheCategoryCenter, info, fmt.Sprintf("basic:%d", centerID))
+}
+
+// InvalidateCenterBasic 使中心基本資訊快取失效
+func (s *CacheService) InvalidateCenterBasic(ctx context.Context, centerID uint) error {
+	return s.Delete(ctx, CacheCategoryCenter, fmt.Sprintf("basic:%d", centerID))
+}
+
+// CenterBasicInfo 中心基本資訊（用於快取）
+type CenterBasicInfo struct {
+	ID        uint   `json:"id"`
+	Name      string `json:"name"`
+	PlanLevel string `json:"plan_level"`
+	IsActive  bool   `json:"is_active"`
+}
+
+// =====================================================
+// Course 快取方法
+// =====================================================
+
+// GetCourseList 取得課程列表（快取）
+func (s *CacheService) GetCourseList(ctx context.Context, centerID uint) ([]CourseCacheItem, error) {
+	var courses []CourseCacheItem
+	err := s.GetJSON(ctx, &courses, CacheCategoryCourse, fmt.Sprintf("list:%d", centerID))
+	return courses, err
+}
+
+// SetCourseList 設定課程列表（快取）
+func (s *CacheService) SetCourseList(ctx context.Context, centerID uint, courses []CourseCacheItem) error {
+	return s.SetWithTTL(ctx, CacheDurationMedium, CacheCategoryCourse, courses, fmt.Sprintf("list:%d", centerID))
+}
+
+// InvalidateCourseList 使課程列表快取失效
+func (s *CacheService) InvalidateCourseList(ctx context.Context, centerID uint) error {
+	return s.DeleteByPattern(ctx, CacheCategoryCourse, fmt.Sprintf("%d:*", centerID))
+}
+
+// CourseCacheItem 課程快取項目
+type CourseCacheItem struct {
+	ID               uint   `json:"id"`
+	Name             string `json:"name"`
+	DefaultDuration  int    `json:"default_duration"`
+	ColorHex         string `json:"color_hex"`
+	RoomBufferMin    int    `json:"room_buffer_min"`
+	TeacherBufferMin int    `json:"teacher_buffer_min"`
+	IsActive         bool   `json:"is_active"`
+}
+
+// =====================================================
+// Room 快取方法
+// =====================================================
+
+// GetRoomList 取得教室列表（快取）
+func (s *CacheService) GetRoomList(ctx context.Context, centerID uint) ([]RoomCacheItem, error) {
+	var rooms []RoomCacheItem
+	err := s.GetJSON(ctx, &rooms, CacheCategoryRoom, fmt.Sprintf("list:%d", centerID))
+	return rooms, err
+}
+
+// SetRoomList 設定教室列表（快取）
+func (s *CacheService) SetRoomList(ctx context.Context, centerID uint, rooms []RoomCacheItem) error {
+	return s.SetWithTTL(ctx, CacheDurationMedium, CacheCategoryRoom, rooms, fmt.Sprintf("list:%d", centerID))
+}
+
+// InvalidateRoomList 使教室列表快取失效
+func (s *CacheService) InvalidateRoomList(ctx context.Context, centerID uint) error {
+	return s.DeleteByPattern(ctx, CacheCategoryRoom, fmt.Sprintf("%d:*", centerID))
+}
+
+// RoomCacheItem 教室快取項目
+type RoomCacheItem struct {
+	ID       uint   `json:"id"`
+	Name     string `json:"name"`
+	Capacity int    `json:"capacity"`
+	IsActive bool   `json:"is_active"`
+}
+
+// =====================================================
+// Today Schedule 快取方法
+// =====================================================
+
+// GetTodaySchedule 取得今日排課（快取）
+func (s *CacheService) GetTodaySchedule(ctx context.Context, centerID uint, date string) (*TodayScheduleCache, error) {
+	var schedule TodayScheduleCache
+	err := s.GetJSON(ctx, &schedule, CacheCategorySchedule, fmt.Sprintf("today:%d:%s", centerID, date))
+	return &schedule, err
+}
+
+// SetTodaySchedule 設定今日排課（快取）
+func (s *CacheService) SetTodaySchedule(ctx context.Context, centerID uint, date string, schedule *TodayScheduleCache) error {
+	return s.SetWithTTL(ctx, CacheDurationShort, CacheCategorySchedule, schedule, fmt.Sprintf("today:%d:%s", centerID, date))
+}
+
+// InvalidateTodaySchedule 使今日排課快取失效
+func (s *CacheService) InvalidateTodaySchedule(ctx context.Context, centerID uint, date string) error {
+	return s.Delete(ctx, CacheCategorySchedule, fmt.Sprintf("today:%d:%s", centerID, date))
+}
+
+// InvalidateAllTodaySchedules 使某中心所有今日排課快取失效
+func (s *CacheService) InvalidateAllTodaySchedules(ctx context.Context, centerID uint) error {
+	return s.DeleteByPattern(ctx, CacheCategorySchedule, fmt.Sprintf("today:%d:*", centerID))
+}
+
+// TodayScheduleCache 今日排課快取結構
+type TodayScheduleCache struct {
+	Date       string              `json:"date"`
+	CenterID   uint                `json:"center_id"`
+	Sessions   []SessionCacheItem  `json:"sessions"`
+	TotalCount int                 `json:"total_count"`
+	CachedAt   time.Time           `json:"cached_at"`
+}
+
+// SessionCacheItem 課堂快取項目
+type SessionCacheItem struct {
+	ID         uint   `json:"id"`
+	RuleID     uint   `json:"rule_id"`
+	CourseName string `json:"course_name"`
+	StartTime  string `json:"start_time"`
+	EndTime    string `json:"end_time"`
+	RoomID     uint   `json:"room_id"`
+	RoomName   string `json:"room_name"`
+	TeacherID  uint   `json:"teacher_id"`
+	TeacherName string `json:"teacher_name"`
+	Status     string `json:"status"`
+	Color      string `json:"color"`
+}
+
+// =====================================================
+// Teacher Profile 快取方法
+// =====================================================
+
+// 注意：TeacherProfile 快取方法已在前面的區塊定義
+
+// =====================================================
+// Exception Stats 快取方法
+// =====================================================
+
+// 注意：ExceptionStats 快取方法已在前面的區塊定義
