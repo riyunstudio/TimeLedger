@@ -1,2 +1,4 @@
 {"level":"info","time":"2026-01-30T00:41:26.644+0800","message":"Starting TimeLedger application..."}
 {"level":"info","time":"2026-01-30T00:41:27.249+0800","message":"Notification worker disabled (set NOTIFICATION_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-01-31T01:14:58.090+0800","message":"Application shutting down gracefully"}
+{"level":"info","time":"2026-01-31T01:14:58.090+0800","message":"Application exited"}

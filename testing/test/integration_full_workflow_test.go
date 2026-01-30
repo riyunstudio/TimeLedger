@@ -158,10 +158,12 @@ func TestIntegration_CenterAdminFullWorkflow(t *testing.T) {
 	adminResourceController := controllers.NewAdminResourceController(appInstance)
 	adminRoomController := controllers.NewAdminRoomController(appInstance)
 	adminCourseController := controllers.NewAdminCourseController(appInstance)
+	teacherInvitationController := controllers.NewTeacherInvitationController(appInstance)
 	_ = authService
 	_ = adminResourceController
 	_ = adminRoomController
 	_ = adminCourseController
+	_ = teacherInvitationController
 
 	t.Run("Step1_AdminLogin", func(t *testing.T) {
 		authController := controllers.NewAuthController(appInstance, authService)
@@ -681,9 +683,9 @@ func TestIntegration_ResourceToggleAndInvitationStats(t *testing.T) {
 	}
 	invitationRepo.Create(ctx, invitation)
 
-	adminResourceController := controllers.NewAdminResourceController(appInstance)
 	adminRoomController := controllers.NewAdminRoomController(appInstance)
 	adminCourseController := controllers.NewAdminCourseController(appInstance)
+	teacherInvitationController := controllers.NewTeacherInvitationController(appInstance)
 
 	t.Run("Step1_GetActiveRooms", func(t *testing.T) {
 		w := httptest.NewRecorder()
@@ -733,7 +735,7 @@ func TestIntegration_ResourceToggleAndInvitationStats(t *testing.T) {
 		c.Set(global.CenterIDKey, createdCenter.ID)
 		c.Request = httptest.NewRequest("GET", "/api/v1/admin/centers/"+fmt.Sprintf("%d", createdCenter.ID)+"/invitations/stats", nil)
 
-		adminResourceController.GetInvitationStats(c)
+		teacherInvitationController.GetInvitationStats(c)
 
 		if w.Code != http.StatusOK {
 			t.Fatalf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())
@@ -765,7 +767,7 @@ func TestIntegration_ResourceToggleAndInvitationStats(t *testing.T) {
 		c.Set(global.CenterIDKey, createdCenter.ID)
 		c.Request = httptest.NewRequest("GET", "/api/v1/admin/centers/"+fmt.Sprintf("%d", createdCenter.ID)+"/invitations?page=1&limit=10", nil)
 
-		adminResourceController.GetInvitations(c)
+		teacherInvitationController.GetInvitations(c)
 
 		if w.Code != http.StatusOK {
 			t.Fatalf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())
@@ -1044,7 +1046,7 @@ func TestIntegration_InvitationFlow(t *testing.T) {
 	})
 
 	t.Run("Step2_GetInvitations", func(t *testing.T) {
-		adminResourceController := controllers.NewAdminResourceController(appInstance)
+		teacherInvitationController := controllers.NewTeacherInvitationController(appInstance)
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -1053,7 +1055,7 @@ func TestIntegration_InvitationFlow(t *testing.T) {
 		c.Set(global.UserTypeKey, "ADMIN")
 		c.Request = httptest.NewRequest("GET", "/api/v1/admin/centers/"+fmt.Sprintf("%d", createdCenter.ID)+"/invitations?page=1&limit=10", nil)
 
-		adminResourceController.GetInvitations(c)
+		teacherInvitationController.GetInvitations(c)
 
 		if w.Code != http.StatusOK {
 			t.Fatalf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())

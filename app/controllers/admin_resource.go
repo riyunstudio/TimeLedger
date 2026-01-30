@@ -1,9 +1,10 @@
 package controllers
 
 import (
-	"time"
 	"timeLedger/app"
+	"timeLedger/app/models"
 	"timeLedger/app/repositories"
+	"timeLedger/app/resources"
 
 	"github.com/gin-gonic/gin"
 )
@@ -12,26 +13,28 @@ import (
 // 處理中心老師列表等資源管理功能
 type AdminResourceController struct {
 	BaseController
-	app                *app.App
-	offeringRepository *repositories.OfferingRepository
-	holidayRepository  *repositories.CenterHolidayRepository
-	auditLogRepo       *repositories.AuditLogRepository
-	membershipRepo     *repositories.CenterMembershipRepository
-	teacherRepository  *repositories.TeacherRepository
-	skillRepository    *repositories.TeacherSkillRepository
-	certificateRepo    *repositories.TeacherCertificateRepository
+	app                  *app.App
+	offeringRepository   *repositories.OfferingRepository
+	holidayRepository    *repositories.CenterHolidayRepository
+	auditLogRepo         *repositories.AuditLogRepository
+	membershipRepo       *repositories.CenterMembershipRepository
+	teacherRepository    *repositories.TeacherRepository
+	skillRepository      *repositories.TeacherSkillRepository
+	certificateRepo      *repositories.TeacherCertificateRepository
+	adminTeacherResource *resources.AdminTeacherResource
 }
 
 func NewAdminResourceController(app *app.App) *AdminResourceController {
 	return &AdminResourceController{
-		app:                app,
-		offeringRepository: repositories.NewOfferingRepository(app),
-		holidayRepository:  repositories.NewCenterHolidayRepository(app),
-		auditLogRepo:       repositories.NewAuditLogRepository(app),
-		membershipRepo:     repositories.NewCenterMembershipRepository(app),
-		teacherRepository:  repositories.NewTeacherRepository(app),
-		skillRepository:    repositories.NewTeacherSkillRepository(app),
-		certificateRepo:    repositories.NewTeacherCertificateRepository(app),
+		app:                  app,
+		offeringRepository:  repositories.NewOfferingRepository(app),
+		holidayRepository:   repositories.NewCenterHolidayRepository(app),
+		auditLogRepo:        repositories.NewAuditLogRepository(app),
+		membershipRepo:      repositories.NewCenterMembershipRepository(app),
+		teacherRepository:   repositories.NewTeacherRepository(app),
+		skillRepository:     repositories.NewTeacherSkillRepository(app),
+		certificateRepo:     repositories.NewTeacherCertificateRepository(app),
+		adminTeacherResource: resources.NewAdminTeacherResource(),
 	}
 }
 
@@ -41,7 +44,7 @@ func NewAdminResourceController(app *app.App) *AdminResourceController {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Success 200 {object} global.ApiResponse{data=[]TeacherResponse}
+// @Success 200 {object} global.ApiResponse{data=[]resources.AdminTeacherResponse}
 // @Router /api/v1/admin/teachers [get]
 func (ctl *AdminResourceController) GetTeachers(ctx *gin.Context) {
 	helper := NewContextHelper(ctx)
@@ -60,88 +63,38 @@ func (ctl *AdminResourceController) GetTeachers(ctx *gin.Context) {
 	}
 
 	if len(teacherIDs) == 0 {
-		helper.Success([]TeacherResponse{})
+		helper.Success([]resources.AdminTeacherResponse{})
 		return
 	}
 
-	// 取得老師詳細資料
-	teachers := make([]TeacherResponse, 0, len(teacherIDs))
-	for _, teacherID := range teacherIDs {
-		teacher, err := ctl.teacherRepository.GetByID(ctx, teacherID)
-		if err != nil {
-			continue
-		}
-
-		// 取得技能
-		skills, _ := ctl.skillRepository.ListByTeacherID(ctx, teacherID)
-		var skillResponses []TeacherSkillResponse
-		for _, skill := range skills {
-			skillResponses = append(skillResponses, TeacherSkillResponse{
-				ID:        skill.ID,
-				SkillName: skill.SkillName,
-				Category:  skill.Category,
-				Level:     skill.Level,
-			})
-		}
-
-		// 取得證照
-		certificates, _ := ctl.certificateRepo.ListByTeacherID(ctx, teacherID)
-		var certResponses []CertificateResponse
-		for _, cert := range certificates {
-			certResponses = append(certResponses, CertificateResponse{
-				ID:        cert.ID,
-				Name:      cert.Name,
-				FileURL:   cert.FileURL,
-				IssuedAt:  cert.IssuedAt,
-				CreatedAt: cert.CreatedAt,
-			})
-		}
-
-		teachers = append(teachers, TeacherResponse{
-			ID:           teacher.ID,
-			Name:         teacher.Name,
-			Email:        teacher.Email,
-			City:         teacher.City,
-			District:     teacher.District,
-			Bio:          teacher.Bio,
-			IsActive:     teacher.IsOpenToHiring,
-			CreatedAt:    teacher.CreatedAt,
-			Skills:       skillResponses,
-			Certificates: certResponses,
-		})
+	// 批次查詢老師資料
+	teachersMap, err := ctl.teacherRepository.BatchGetByIDs(ctx, teacherIDs)
+	if err != nil {
+		helper.InternalError("Failed to get teachers")
+		return
 	}
 
-	helper.Success(teachers)
-}
+	if len(teachersMap) == 0 {
+		helper.Success([]resources.AdminTeacherResponse{})
+		return
+	}
 
-// TeacherResponse 老師回應結構
-type TeacherResponse struct {
-	ID           uint                   `json:"id"`
-	Name         string                 `json:"name"`
-	Email        string                 `json:"email"`
-	Phone        string                 `json:"phone,omitempty"`
-	City         string                 `json:"city,omitempty"`
-	District     string                 `json:"district,omitempty"`
-	Bio          string                 `json:"bio,omitempty"`
-	IsActive     bool                   `json:"is_active"`
-	CreatedAt    time.Time              `json:"created_at"`
-	Skills       []TeacherSkillResponse `json:"skills,omitempty"`
-	Certificates []CertificateResponse  `json:"certificates,omitempty"`
-}
+	// 按原始順序重建 slice
+	teachers := make([]models.Teacher, 0, len(teacherIDs))
+	for _, id := range teacherIDs {
+		if teacher, ok := teachersMap[id]; ok {
+			teachers = append(teachers, teacher)
+		}
+	}
 
-// TeacherSkillResponse 老師技能回應結構
-type TeacherSkillResponse struct {
-	ID        uint   `json:"id"`
-	SkillName string `json:"skill_name"`
-	Category  string `json:"category,omitempty"`
-	Level     string `json:"level,omitempty"`
-}
+	// 批次查詢技能
+	skillsMap, _ := ctl.skillRepository.BatchListByTeacherIDs(ctx, teacherIDs)
 
-// CertificateResponse 證照回應結構
-type CertificateResponse struct {
-	ID        uint      `json:"id"`
-	Name      string    `json:"name"`
-	FileURL   string    `json:"file_url,omitempty"`
-	IssuedAt  time.Time `json:"issued_at"`
-	CreatedAt time.Time `json:"created_at"`
+	// 批次查詢證照
+	certificatesMap, _ := ctl.certificateRepo.BatchListByTeacherIDs(ctx, teacherIDs)
+
+	// 使用 Resource 轉換
+	responses := ctl.adminTeacherResource.ToAdminTeacherResponses(teachers, skillsMap, certificatesMap)
+
+	helper.Success(responses)
 }

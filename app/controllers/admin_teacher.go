@@ -5,6 +5,7 @@ import (
 	"timeLedger/app"
 	"timeLedger/app/models"
 	"timeLedger/app/repositories"
+	"timeLedger/app/resources"
 
 	"github.com/gin-gonic/gin"
 )
@@ -17,6 +18,8 @@ type AdminTeacherController struct {
 	membershipRepo        *repositories.CenterMembershipRepository
 	auditLogRepo          *repositories.AuditLogRepository
 	centerTeacherNoteRepo *repositories.CenterTeacherNoteRepository
+	adminTeacherResource  *resources.AdminTeacherResource
+	teacherNoteResource   *resources.TeacherNoteResource
 }
 
 func NewAdminTeacherController(app *app.App) *AdminTeacherController {
@@ -26,6 +29,8 @@ func NewAdminTeacherController(app *app.App) *AdminTeacherController {
 		membershipRepo:        repositories.NewCenterMembershipRepository(app),
 		auditLogRepo:          repositories.NewAuditLogRepository(app),
 		centerTeacherNoteRepo: repositories.NewCenterTeacherNoteRepository(app),
+		adminTeacherResource:  resources.NewAdminTeacherResource(),
+		teacherNoteResource:   resources.NewTeacherNoteResource(),
 	}
 }
 
@@ -35,7 +40,7 @@ func NewAdminTeacherController(app *app.App) *AdminTeacherController {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Success 200 {object} global.ApiResponse{data=[]TeacherResponse}
+// @Success 200 {object} global.ApiResponse{data=[]resources.AdminTeacherResponse}
 // @Router /api/v1/teachers [get]
 func (ctl *AdminTeacherController) ListTeachers(ctx *gin.Context) {
 	helper := NewContextHelper(ctx)
@@ -53,30 +58,29 @@ func (ctl *AdminTeacherController) ListTeachers(ctx *gin.Context) {
 	}
 
 	if len(teacherIDs) == 0 {
-		helper.Success([]TeacherResponse{})
+		helper.Success([]resources.AdminTeacherResponse{})
 		return
 	}
 
-	// 取得老師詳細資料
-	teachers := make([]TeacherResponse, 0, len(teacherIDs))
-	for _, teacherID := range teacherIDs {
-		teacher, err := ctl.teacherRepository.GetByID(ctx, teacherID)
-		if err != nil {
-			continue
-		}
-
-		teachers = append(teachers, TeacherResponse{
-			ID:        teacher.ID,
-			Name:      teacher.Name,
-			Email:     teacher.Email,
-			City:      teacher.City,
-			District:  teacher.District,
-			Bio:       teacher.Bio,
-			CreatedAt: teacher.CreatedAt,
-		})
+	// 批次查詢老師資料
+	teachersMap, err := ctl.teacherRepository.BatchGetByIDs(ctx, teacherIDs)
+	if err != nil {
+		helper.InternalError("Failed to get teachers")
+		return
 	}
 
-	helper.Success(teachers)
+	// 按原始順序重建 slice
+	teachers := make([]models.Teacher, 0, len(teacherIDs))
+	for _, id := range teacherIDs {
+		if teacher, ok := teachersMap[id]; ok {
+			teachers = append(teachers, teacher)
+		}
+	}
+
+	// 使用 Resource 轉換（無技能和證照）
+	responses := ctl.adminTeacherResource.ToAdminTeacherResponses(teachers, make(map[uint][]models.TeacherSkill), make(map[uint][]models.TeacherCertificate))
+
+	helper.Success(responses)
 }
 
 // DeleteTeacher 刪除老師
@@ -137,16 +141,6 @@ func (ctl *AdminTeacherController) DeleteTeacher(ctx *gin.Context) {
 	helper.Success(nil)
 }
 
-// CenterTeacherNoteResponse 老師評分與備註回應結構
-type CenterTeacherNoteResponse struct {
-	ID           uint      `json:"id"`
-	TeacherID    uint      `json:"teacher_id"`
-	Rating       int       `json:"rating"`
-	InternalNote string    `json:"internal_note"`
-	CreatedAt    time.Time `json:"created_at,omitempty"`
-	UpdatedAt    time.Time `json:"updated_at,omitempty"`
-}
-
 // UpsertTeacherNoteRequest 新增或更新老師評分與備註請求結構
 type UpsertTeacherNoteRequest struct {
 	Rating       int    `json:"rating" binding:"required,min=0,max=5"`
@@ -160,7 +154,7 @@ type UpsertTeacherNoteRequest struct {
 // @Produce json
 // @Security BearerAuth
 // @Param teacher_id path int true "Teacher ID"
-// @Success 200 {object} global.ApiResponse{data=CenterTeacherNoteResponse}
+// @Success 200 {object} global.ApiResponse{data=resources.TeacherNoteResponse}
 // @Router /api/v1/admin/teachers/{teacher_id}/note [get]
 func (ctl *AdminTeacherController) GetTeacherNote(ctx *gin.Context) {
 	helper := NewContextHelper(ctx)
@@ -179,25 +173,14 @@ func (ctl *AdminTeacherController) GetTeacherNote(ctx *gin.Context) {
 	note, err := ctl.centerTeacherNoteRepo.GetByCenterAndTeacher(ctx, centerID, teacherID)
 	if err != nil {
 		if err.Error() == "record not found" {
-			helper.Success(CenterTeacherNoteResponse{
-				TeacherID:    teacherID,
-				Rating:       0,
-				InternalNote: "",
-			})
+			helper.Success(ctl.teacherNoteResource.ToEmptyTeacherNoteResponse(teacherID))
 			return
 		}
 		helper.InternalError("Failed to get teacher note")
 		return
 	}
 
-	helper.Success(CenterTeacherNoteResponse{
-		ID:           note.ID,
-		TeacherID:    note.TeacherID,
-		Rating:       note.Rating,
-		InternalNote: note.InternalNote,
-		CreatedAt:    note.CreatedAt,
-		UpdatedAt:    note.UpdatedAt,
-	})
+	helper.Success(ctl.teacherNoteResource.ToTeacherNoteResponse(&note))
 }
 
 // UpsertTeacherNote 新增或更新老師評分與備註
@@ -208,7 +191,7 @@ func (ctl *AdminTeacherController) GetTeacherNote(ctx *gin.Context) {
 // @Security BearerAuth
 // @Param teacher_id path int true "Teacher ID"
 // @Param request body UpsertTeacherNoteRequest true "評分與備註"
-// @Success 200 {object} global.ApiResponse{data=CenterTeacherNoteResponse}
+// @Success 200 {object} global.ApiResponse{data=resources.TeacherNoteResponse}
 // @Router /api/v1/admin/teachers/{teacher_id}/note [put]
 func (ctl *AdminTeacherController) UpsertTeacherNote(ctx *gin.Context) {
 	helper := NewContextHelper(ctx)
@@ -274,13 +257,7 @@ func (ctl *AdminTeacherController) UpsertTeacherNote(ctx *gin.Context) {
 			},
 		})
 
-		helper.Success(CenterTeacherNoteResponse{
-			ID:           existingNote.ID,
-			TeacherID:    existingNote.TeacherID,
-			Rating:       existingNote.Rating,
-			InternalNote: existingNote.InternalNote,
-			UpdatedAt:    existingNote.UpdatedAt,
-		})
+		helper.Success(ctl.teacherNoteResource.ToTeacherNoteResponse(&existingNote))
 		return
 	}
 
@@ -317,14 +294,7 @@ func (ctl *AdminTeacherController) UpsertTeacherNote(ctx *gin.Context) {
 		},
 	})
 
-	helper.Success(CenterTeacherNoteResponse{
-		ID:           newNote.ID,
-		TeacherID:    newNote.TeacherID,
-		Rating:       newNote.Rating,
-		InternalNote: newNote.InternalNote,
-		CreatedAt:    newNote.CreatedAt,
-		UpdatedAt:    newNote.UpdatedAt,
-	})
+	helper.Success(ctl.teacherNoteResource.ToTeacherNoteResponse(&newNote))
 }
 
 // DeleteTeacherNote 刪除老師評分與備註

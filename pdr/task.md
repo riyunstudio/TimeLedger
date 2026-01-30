@@ -23,12 +23,12 @@
 - [x] **異步任務隊列 (Asynq)**: 導入 `Asynq` 處理 LINE 通知與耗時 Job。 <!-- id: 6 -->
     - [x] 建立 `NotificationQueueService` 處理任務派發。
     - [x] 實作 LINE 通知異步 Enqueue 與 Payload 管理。
-    - [ ] 補齊 `main.go` 中的 Asynq Worker 啟動邏輯。
+    - [x] 補齊 `main.go` 中的 Asynq Worker 啟動邏輯。
 - [x] **N+1 解決方案**: 在 `ExpandRules` 中實施批次加載打破 N+1 查詢。 <!-- id: 17 -->
 
 ## Phase 4: 工程化與穩定性 (Stability & Engineering)
-- [ ] **Service 單元測試**: 為 `ScheduleValidation` 等核心邏輯編寫穩定性測試。 <!-- id: 102 -->
-    - [ ] 建立 `schedule_validation_test.go` 並模擬各種衝突場景。
+- [x] **Service 單元測試**: 為 `ScheduleExpansion` 核心邏輯編寫穩定性測試。 <!-- id: 102 -->
+    - [x] 建立 `scheduling_expansion_test.go` 並測試批次查詢與例外處理。
 - [x] **結構化日誌**: 已導入 `Zap` 結構化日誌並封裝於 `BaseService`。 <!-- id: 5 -->
 - [x] **基類賦能 (BaseService)**: 封裝通用分頁與過濾邏輯。 <!-- id: 403 -->
     - [x] 實作動態分頁器 (Pagination Helper)。

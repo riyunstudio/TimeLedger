@@ -625,3 +625,358 @@ func TestValidationResult_Structure(t *testing.T) {
 	assert.Equal(t, 15, result.Conflicts[1].RequiredMinutes)
 	assert.Equal(t, 10, result.Conflicts[1].DiffMinutes)
 }
+
+// TestScheduleValidationService_AdditionalCases 補齊測試案例
+func TestScheduleValidationService_AdditionalCases(t *testing.T) {
+	// 初始化測試資料庫
+	db, err := InitializeTestDB()
+	if err != nil {
+		t.Skipf("跳過測試 - 資料庫連線失敗: %v", err)
+		return
+	}
+	defer CloseDB(db)
+
+	// 建立 App 實例
+	appInstance := &app.App{
+		MySQL: &mysql.DB{WDB: db, RDB: db},
+	}
+
+	// 建立驗證服務
+	validationService := services.NewScheduleValidationService(appInstance)
+
+	// 取得測試資料
+	var center models.Center
+	if err := db.Order("id DESC").First(&center).Error; err != nil {
+		t.Skipf("跳過測試 - 無可用中心資料: %v", err)
+		return
+	}
+
+	var teacher models.User
+	if err := db.Where("user_type = ?", "TEACHER").Order("id ASC").First(&teacher).Error; err != nil {
+		t.Skipf("跳過測試 - 無可用老師資料: %v", err)
+		return
+	}
+
+	var offering models.Offering
+	if err := db.Where("center_id = ?", center.ID).Order("id DESC").First(&offering).Error; err != nil {
+		t.Skipf("跳過測試 - 無可用課程資料: %v", err)
+		return
+	}
+
+	teacherID := teacher.ID
+	loc := app.GetTaiwanLocation()
+
+	// ============================================
+	// CheckOverlap 補齊測試案例
+	// ============================================
+
+	t.Run("CheckOverlap_BothTeacherAndRoomOverlap", func(t *testing.T) {
+		// 測試時段：老師和教室同時重疊
+		startTime := time.Date(2026, 1, 27, 8, 0, 0, 0, loc)  // Monday 08:00
+		endTime := time.Date(2026, 1, 27, 9, 0, 0, 0, loc)    // Monday 09:00
+
+		result, err := validationService.CheckOverlap(
+			context.Background(),
+			center.ID,
+			&teacherID,
+			1,
+			startTime,
+			endTime,
+			1,
+			nil,
+		)
+
+		assert.NoError(t, err)
+		assert.NotNil(t, result)
+		t.Logf("老師和教室重疊測試結果: Valid=%v, Conflicts=%d", result.Valid, len(result.Conflicts))
+
+		// 應該有兩個衝突：TEACHER_OVERLAP 和 ROOM_OVERLAP
+		hasTeacherOverlap := false
+		hasRoomOverlap := false
+		for _, conflict := range result.Conflicts {
+			if conflict.Type == "TEACHER_OVERLAP" {
+				hasTeacherOverlap = true
+			}
+			if conflict.Type == "ROOM_OVERLAP" {
+				hasRoomOverlap = true
+			}
+		}
+		assert.True(t, hasTeacherOverlap, "應該有老師重疊衝突")
+		assert.True(t, hasRoomOverlap, "應該有教室重疊衝突")
+	})
+
+	t.Run("CheckOverlap_WithExcludeRuleID", func(t *testing.T) {
+		// 測試時段：排除特定規則
+		startTime := time.Date(2026, 1, 27, 14, 0, 0, 0, loc) // Monday 14:00
+		endTime := time.Date(2026, 1, 27, 15, 0, 0, 0, loc)   // Monday 15:00
+
+		// 排除不存在的規則 ID（應該正常運行）
+		excludeID := uint(99999)
+		result, err := validationService.CheckOverlap(
+			context.Background(),
+			center.ID,
+			&teacherID,
+			1,
+			startTime,
+			endTime,
+			1,
+			&excludeID,
+		)
+
+		assert.NoError(t, err)
+		assert.NotNil(t, result)
+		t.Logf("排除規則測試結果: Valid=%v, Conflicts=%d", result.Valid, len(result.Conflicts))
+	})
+
+	t.Run("CheckOverlap_EmptyTeacherIDs", func(t *testing.T) {
+		// 測試時段：空的 teacherIDs 列表
+		startTime := time.Date(2026, 1, 27, 14, 0, 0, 0, loc)
+		endTime := time.Date(2026, 1, 27, 15, 0, 0, 0, loc)
+
+		var emptyTeacherID *uint = nil
+		result, err := validationService.CheckOverlap(
+			context.Background(),
+			center.ID,
+			emptyTeacherID,
+			1,
+			startTime,
+			endTime,
+			1,
+			nil,
+		)
+
+		assert.NoError(t, err)
+		assert.NotNil(t, result)
+		t.Logf("空老師ID測試結果: Valid=%v, Conflicts=%d", result.Valid, len(result.Conflicts))
+	})
+
+	// ============================================
+	// CheckTeacherBuffer 補齊測試案例
+	// ============================================
+
+	t.Run("CheckTeacherBuffer_ZeroBuffer", func(t *testing.T) {
+		// 測試緩衝：緩衝時間為 0（應該直接通過）
+		prevEndTime := time.Date(2026, 1, 27, 10, 0, 0, 0, loc)
+		nextStartTime := time.Date(2026, 1, 27, 10, 0, 0, 0, loc) // 剛好銜接
+
+		// 這個測試需要一個緩衝時間為 0 的課程
+		// 我們使用現有的 offering，但如果它的緩衝不是 0，可能會失敗
+		result, err := validationService.CheckTeacherBuffer(
+			context.Background(),
+			center.ID,
+			teacherID,
+			prevEndTime,
+			nextStartTime,
+			offering.ID,
+		)
+
+		assert.NoError(t, err)
+		assert.NotNil(t, result)
+		t.Logf("零緩衝測試結果: Valid=%v, Conflicts=%d", result.Valid, len(result.Conflicts))
+	})
+
+	// ============================================
+	// CheckRoomBuffer 補齊測試案例
+	// ============================================
+
+	t.Run("CheckRoomBuffer_ZeroBuffer", func(t *testing.T) {
+		// 測試緩衝：緩衝時間為 0
+		prevEndTime := time.Date(2026, 1, 27, 10, 0, 0, 0, loc)
+		nextStartTime := time.Date(2026, 1, 27, 10, 0, 0, 0, loc)
+
+		result, err := validationService.CheckRoomBuffer(
+			context.Background(),
+			center.ID,
+			1,
+			prevEndTime,
+			nextStartTime,
+			offering.ID,
+		)
+
+		assert.NoError(t, err)
+		assert.NotNil(t, result)
+		t.Logf("教室零緩衝測試結果: Valid=%v, Conflicts=%d", result.Valid, len(result.Conflicts))
+	})
+
+	// ============================================
+	// ValidateFull 補齊測試案例
+	// ============================================
+
+	t.Run("ValidateFull_NoPreviousSession", func(t *testing.T) {
+		// 測試完整驗證：沒有前一堂課（早上第一堂課）
+		startTime := time.Date(2026, 1, 27, 8, 0, 0, 0, loc) // Monday 08:00
+		endTime := time.Date(2026, 1, 27, 9, 0, 0, 0, loc)   // Monday 09:00
+
+		result, err := validationService.ValidateFull(
+			context.Background(),
+			center.ID,
+			&teacherID,
+			1,
+			offering.ID,
+			startTime,
+			endTime,
+			nil,
+			false,
+		)
+
+		assert.NoError(t, err)
+		assert.NotNil(t, result)
+		t.Logf("無前一堂課測試結果: Valid=%v, Conflicts=%d", result.Valid, len(result.Conflicts))
+	})
+
+	t.Run("ValidateFull_NoPreviousRoomSession", func(t *testing.T) {
+		// 測試完整驗證：教室沒有前一堂課
+		startTime := time.Date(2026, 1, 27, 14, 0, 0, 0, loc) // Monday 14:00
+		endTime := time.Date(2026, 1, 27, 15, 0, 0, 0, loc)   // Monday 15:00
+
+		// 使用一個在測試資料中沒有使用的教室 ID
+		result, err := validationService.ValidateFull(
+			context.Background(),
+			center.ID,
+			&teacherID,
+			999, // 不存在的教室 ID
+			offering.ID,
+			startTime,
+			endTime,
+			nil,
+			false,
+		)
+
+		assert.NoError(t, err)
+		assert.NotNil(t, result)
+		t.Logf("教室無前一堂課測試結果: Valid=%v, Conflicts=%d", result.Valid, len(result.Conflicts))
+	})
+
+	t.Run("ValidateFull_BothOverlapAndBuffer", func(t *testing.T) {
+		// 測試完整驗證：同時有重疊和緩衝問題
+		// 08:00-09:00 有課程，測試 08:30-09:30
+		startTime := time.Date(2026, 1, 27, 8, 30, 0, 0, loc) // Monday 08:30
+		endTime := time.Date(2026, 1, 27, 9, 30, 0, 0, loc)   // Monday 09:30
+
+		result, err := validationService.ValidateFull(
+			context.Background(),
+			center.ID,
+			&teacherID,
+			1,
+			offering.ID,
+			startTime,
+			endTime,
+			nil,
+			false,
+		)
+
+		assert.NoError(t, err)
+		assert.NotNil(t, result)
+		t.Logf("同時有重疊和緩衝測試結果: Valid=%v, Conflicts=%d", result.Valid, len(result.Conflicts))
+
+		// 重疊衝突不應該可覆寫
+		for _, conflict := range result.Conflicts {
+			if conflict.Type == "TEACHER_OVERLAP" || conflict.Type == "ROOM_OVERLAP" {
+				assert.False(t, conflict.CanOverride, "重疊衝突不應可覆寫")
+			}
+		}
+	})
+
+	// ============================================
+	// 邊界情況補齊測試
+	// ============================================
+
+	t.Run("Boundary_ExactOverlap", func(t *testing.T) {
+		// 邊界：完全重疊（同一時間區間）
+		// 假設 08:00-09:00 有課程
+		startTime := time.Date(2026, 1, 27, 8, 0, 0, 0, loc)  // Monday 08:00
+		endTime := time.Date(2026, 1, 27, 9, 0, 0, 0, loc)    // Monday 09:00
+
+		result, err := validationService.CheckOverlap(
+			context.Background(),
+			center.ID,
+			&teacherID,
+			1,
+			startTime,
+			endTime,
+			1,
+			nil,
+		)
+
+		assert.NoError(t, err)
+		assert.NotNil(t, result)
+		t.Logf("完全重疊測試結果: Valid=%v, Conflicts=%d", result.Valid, len(result.Conflicts))
+		assert.False(t, result.Valid, "完全重疊應該無效")
+	})
+
+	t.Run("Boundary_AdjacentButNotOverlapping", func(t *testing.T) {
+		// 邊界：相鄰但不重疊（09:00-10:00 與 08:00-09:00）
+		startTime := time.Date(2026, 1, 27, 9, 0, 0, 0, loc)  // Monday 09:00
+		endTime := time.Date(2026, 1, 27, 10, 0, 0, 0, loc)   // Monday 10:00
+
+		result, err := validationService.CheckOverlap(
+			context.Background(),
+			center.ID,
+			&teacherID,
+			1,
+			startTime,
+			endTime,
+			1,
+			nil,
+		)
+
+		assert.NoError(t, err)
+		assert.NotNil(t, result)
+		t.Logf("相鄰不重疊測試結果: Valid=%v, Conflicts=%d", result.Valid, len(result.Conflicts))
+	})
+
+	t.Run("Boundary_DifferentRooms", func(t *testing.T) {
+		// 邊界：不同教室不應該有 room overlap
+		startTime := time.Date(2026, 1, 27, 8, 0, 0, 0, loc)  // Monday 08:00
+		endTime := time.Date(2026, 1, 27, 9, 0, 0, 0, loc)    // Monday 09:00
+
+		// 使用不同的教室 ID（假設 room_id=2）
+		result, err := validationService.CheckOverlap(
+			context.Background(),
+			center.ID,
+			&teacherID,
+			2, // 不同的教室
+			startTime,
+			endTime,
+			1,
+			nil,
+		)
+
+		assert.NoError(t, err)
+		assert.NotNil(t, result)
+		t.Logf("不同教室測試結果: Valid=%v, Conflicts=%d", result.Valid, len(result.Conflicts))
+
+		// 應該沒有 room overlap
+		for _, conflict := range result.Conflicts {
+			assert.NotEqual(t, "ROOM_OVERLAP", conflict.Type, "不同教室不應該有 room overlap")
+		}
+	})
+
+	t.Run("Boundary_DifferentTeachers", func(t *testing.T) {
+		// 邊界：不同老師不應該有 teacher overlap
+		startTime := time.Date(2026, 1, 27, 8, 0, 0, 0, loc)  // Monday 08:00
+		endTime := time.Date(2026, 1, 27, 9, 0, 0, 0, loc)    // Monday 09:00
+
+		// 使用不同的老師 ID（假設 teacher_id=99999）
+		var differentTeacherID uint = 99999
+		result, err := validationService.CheckOverlap(
+			context.Background(),
+			center.ID,
+			&differentTeacherID,
+			1,
+			startTime,
+			endTime,
+			1,
+			nil,
+		)
+
+		assert.NoError(t, err)
+		assert.NotNil(t, result)
+		t.Logf("不同老師測試結果: Valid=%v, Conflicts=%d", result.Valid, len(result.Conflicts))
+
+		// 應該沒有 teacher overlap
+		for _, conflict := range result.Conflicts {
+			assert.NotEqual(t, "TEACHER_OVERLAP", conflict.Type, "不同老師不應該有 teacher overlap")
+		}
+	})
+}
