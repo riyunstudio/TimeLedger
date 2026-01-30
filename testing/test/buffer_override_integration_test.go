@@ -13,6 +13,7 @@ import (
 	"timeLedger/app/controllers"
 	"timeLedger/app/models"
 	"timeLedger/app/repositories"
+	"timeLedger/app/requests"
 	"timeLedger/configs"
 	"timeLedger/database/mysql"
 	"timeLedger/database/redis"
@@ -341,7 +342,7 @@ func TestIntegration_CreateRule_BufferOverride(t *testing.T) {
 		c.Set(global.CenterIDKey, center.ID)
 
 		// 嘗試在 09:00-10:00 建立規則（沒有緩衝時間）
-		reqBody := controllers.CreateRuleRequest{
+		reqBody := requests.CreateRuleRequest{
 			Name:           fmt.Sprintf("Test Rule %d", time.Now().UnixNano()),
 			OfferingID:     offering.ID,
 			TeacherID:      teacher.ID,
@@ -379,7 +380,7 @@ func TestIntegration_CreateRule_BufferOverride(t *testing.T) {
 		c.Set(global.CenterIDKey, center.ID)
 
 		// 使用 override_buffer = true
-		reqBody := controllers.CreateRuleRequest{
+		reqBody := requests.CreateRuleRequest{
 			Name:           fmt.Sprintf("Override Test Rule %d", time.Now().UnixNano()),
 			OfferingID:     offering.ID,
 			TeacherID:      teacher.ID,
@@ -453,7 +454,7 @@ func TestIntegration_OverlapConflict_CannotOverride(t *testing.T) {
 		c.Set(global.CenterIDKey, center.ID)
 
 		// 嘗試在完全相同的時間建立規則（完全重疊）
-		reqBody := controllers.CreateRuleRequest{
+		reqBody := requests.CreateRuleRequest{
 			Name:           fmt.Sprintf("Overlap Rule %d", time.Now().UnixNano()),
 			OfferingID:     offering.ID,
 			TeacherID:      teacher.ID,

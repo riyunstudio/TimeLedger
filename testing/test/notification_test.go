@@ -104,7 +104,7 @@ func TestNotificationService_SendTalentInvitationNotification(t *testing.T) {
 
 		// 3. 驗證通知記錄已建立
 		notificationRepo := repositories.NewNotificationRepository(appInstance)
-		notifications, err := notificationRepo.List(ctx, teacher.ID, "TEACHER", 10, 0)
+		notifications, err := notificationRepo.Find(ctx, "user_id = ? AND user_type = ?", teacher.ID, "TEACHER")
 		if err != nil {
 			t.Fatalf("取得通知列表失敗: %v", err)
 		}
@@ -191,7 +191,15 @@ func TestNotificationRepository_CRUD(t *testing.T) {
 		}
 
 		notificationRepo := repositories.NewNotificationRepository(appInstance)
-		err := notificationRepo.Create(ctx, &notification)
+		notification, err := notificationRepo.Create(ctx, models.Notification{
+			UserID:    teacher.ID,
+			UserType:  "TEACHER",
+			Title:     "測試通知",
+			Message:   "這是測試通知內容",
+			Type:      "TEST",
+			IsRead:    false,
+			CreatedAt: time.Now(),
+		})
 		if err != nil {
 			t.Fatalf("建立通知失敗: %v", err)
 		}
@@ -201,7 +209,7 @@ func TestNotificationRepository_CRUD(t *testing.T) {
 		}
 
 		// 取得通知列表
-		notifications, err := notificationRepo.List(ctx, teacher.ID, "TEACHER", 10, 0)
+		notifications, err := notificationRepo.Find(ctx, "user_id = ? AND user_type = ?", teacher.ID, "TEACHER")
 		if err != nil {
 			t.Fatalf("取得通知列表失敗: %v", err)
 		}

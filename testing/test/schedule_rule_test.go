@@ -105,8 +105,13 @@ func TestScheduleRuleRepository_ListByOfferingIDWithPreload_PreloadVerification(
 		return
 	}
 
-	// Skip if no rules exist
-	if len(offering.ScheduleRules) == 0 {
+	// Skip if no rules exist (use raw query to check)
+	var count int64
+	if err := db.Table("schedule_rules").Where("offering_id = ?", offering.ID).Count(&count).Error; err != nil {
+		t.Skipf("Skipping - cannot check rule count: %v", err)
+		return
+	}
+	if count == 0 {
 		t.Skipf("Skipping - offering has no rules: %d", offering.ID)
 		return
 	}

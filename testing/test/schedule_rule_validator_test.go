@@ -259,11 +259,6 @@ func TestScheduleRuleValidator_ValidationSummary_Structure(t *testing.T) {
 	t.Logf("ValidationSummary structure test passed")
 }
 
-// Helper function to create uint pointer
-func uintPtr(v uint) *uint {
-	return &v
-}
-
 // SetupTestApp creates a test app instance with the given database connection
 func SetupTestApp(db *gorm.DB) *app.App {
 	return &app.App{

@@ -182,7 +182,7 @@ func TestIntegration_AdminLoginAndCRUD(t *testing.T) {
 	// t.Run("Step4_GetAdminUsers_WithoutAuth", ...)
 
 	t.Run("Step5_CreateCenter_WithAuth", func(t *testing.T) {
-		adminResourceController := controllers.NewAdminResourceController(appInstance)
+		adminCenterController := controllers.NewAdminCenterController(appInstance)
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -198,7 +198,7 @@ func TestIntegration_AdminLoginAndCRUD(t *testing.T) {
 		c.Request = httptest.NewRequest("POST", "/api/v1/admin/centers", bytes.NewBuffer(body))
 		c.Request.Header.Set("Content-Type", "application/json")
 
-		adminResourceController.CreateCenter(c)
+		adminCenterController.CreateCenter(c)
 
 		if w.Code != http.StatusOK {
 			t.Errorf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())

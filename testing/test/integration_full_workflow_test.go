@@ -2286,6 +2286,7 @@ func TestIntegration_AdminResourceCentersAndDelete(t *testing.T) {
 	}
 	createdAdmin, _ := adminUserRepo.Create(ctx, adminUser)
 
+	adminCenterController := controllers.NewAdminCenterController(appInstance)
 	adminResourceController := controllers.NewAdminResourceController(appInstance)
 
 	t.Run("Step1_GetCenters", func(t *testing.T) {
@@ -2295,7 +2296,7 @@ func TestIntegration_AdminResourceCentersAndDelete(t *testing.T) {
 		c.Set(global.CenterIDKey, createdCenter.ID)
 		c.Request = httptest.NewRequest("GET", "/api/v1/admin/centers", nil)
 
-		adminResourceController.GetCenters(c)
+		adminCenterController.GetCenters(c)
 
 		if w.Code != http.StatusOK {
 			t.Fatalf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())
@@ -2317,7 +2318,7 @@ func TestIntegration_AdminResourceCentersAndDelete(t *testing.T) {
 		c.Request = httptest.NewRequest("POST", "/api/v1/admin/centers", bytes.NewBuffer(body))
 		c.Request.Header.Set("Content-Type", "application/json")
 
-		adminResourceController.CreateCenter(c)
+		adminCenterController.CreateCenter(c)
 
 		if w.Code != http.StatusOK {
 			t.Fatalf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())
