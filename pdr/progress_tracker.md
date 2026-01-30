@@ -1891,6 +1891,293 @@ $ go build ./app/services/
 
 ---
 
+
+
+---
+
+## 31. 全局控制器標準化（Global Controller Standardization）- 2026/01/30
+
+### 31.1 開發摘要
+
+本階段完成了三個核心控制器的標準化重構，使用 ContextHelper 統一取值與響應格式，提升程式碼一致性與可維護性。
+
+### 31.2 完成項目
+
+#### 31.2.1 admin_user.go 標準化
+
+| 指標 | 重構前 | 重構後 |
+|:---|:---:|:---:|
+| 通用方法提取 | 無 | requireAdminID() |
+| ContextHelper 使用 | 無 | 全面採用 |
+| 未使用 import | 2 個 (net/http, models) | 0 個 |
+| 程式碼行數 | 597 | 456 |
+
+**重構範例：**
+```go
+// 重構前（52 行重複程式碼）
+adminIDVal, exists := ctx.Get(global.UserIDKey)
+if !exists {
+    ctx.JSON(http.StatusUnauthorized, global.ApiResponse{...})
+    return
+}
+adminID := adminIDVal.(uint)
+
+// 重構後（3 行）
+helper := NewContextHelper(ctx)
+adminID := ctl.requireAdminID(helper)
+if adminID == 0 {
+    return
+}
+```
+
+#### 31.2.2 smart_matching.go 標準化
+
+| 指標 | 重構前 | 重構後 |
+|:---|:---:|:---:|
+| centerID 提取 | 12 行 switch case | 1 行 helper.MustCenterID() |
+| ContextHelper 使用 | 無 | 全面採用 |
+| 通用方法 | 無 | requireCenterID() |
+| 程式碼行數 | 525 | 441 |
+
+**簡化的類型轉換：**
+```go
+// 重構前（12 行）
+centerID := ctx.GetUint(global.CenterIDKey)
+if centerID == 0 {
+    if val, exists := ctx.Get(global.CenterIDKey); exists {
+        switch v := val.(type) {
+        case uint: centerID = v
+        case uint64: centerID = uint(v)
+        case int: centerID = uint(v)
+        case float64: centerID = uint(v)
+        }
+    }
+}
+
+// 重構後（1 行）
+centerID := helper.MustCenterID()
+```
+
+#### 31.2.3 notification.go 標準化
+
+| 指標 | 重構前 | 重構後 |
+|:---|:---:|:---:|
+| ContextHelper 使用 | 無 | 全面採用 |
+| 通用方法 | 無 | requireUserID() |
+| 程式碼行數 | 227 | 237 |
+
+**Service 層擴展：**
+```go
+type NotificationService interface {
+    GetUnreadCount(ctx context.Context, userID uint, userType string) (int, error)
+    SetNotifyToken(ctx context.Context, teacherID uint, token string) error
+}
+```
+
+**DB 操作移至 Service 層：**
+```go
+// 重構前（Controller 直接操作 Repository）
+teacherRepo := repositories.NewTeacherRepository(ctl.app)
+teacher, err := teacherRepo.GetByID(ctx, userID)
+teacher.LineNotifyToken = req.Token
+teacherRepo.Update(ctx, teacher)
+
+// 重構後（透過 Service 處理）
+errInfo := ctl.notificationService.SetNotifyToken(ctx.Request.Context(), userID, req.Token)
+if errInfo != nil {
+    helper.ErrorWithInfo(errInfo)
+    return
+}
+```
+
+### 31.3 程式碼變更總覽
+
+| 檔案 | 原始行數 | 標準化後行數 | 變化 |
+|:---|:---:|:---:|:---:|
+| admin_user.go | 597 | 456 | -141 行 (-24%) |
+| smart_matching.go | 525 | 441 | -84 行 (-16%) |
+| notification.go | 227 | 237 | +10 行 |
+| notification_interface.go | 42 | 52 | +10 行 |
+| notification.go (service) | 207 | 225 | +18 行 |
+
+### 31.4 分層架構改善
+
+**重構前架構：** Controller 直接操作 ctx.Get()、手動建構 JSON 響應、直接操作 Repository、重複的錯誤處理程式碼
+
+**重構後架構：** Controller (Standard) 使用 ContextHelper 取值與 helper.* 響應格式化，透過 Service Layer 處理業務邏輯
+
+### 31.5 建置驗證
+
+$ go build ./app/controllers/...
+# 通過 - 無編譯錯誤
+
+### 31.6 累積標準化成效（自 2026-01-27 起）
+
+| 指標 | 數值 |
+|:---|:---:|
+| 標準化控制器數量 | 8 個（含本次 3 個） |
+| 提取通用方法 | 12 個 |
+| 平均程式碼減少 | 20-30% |
+| ContextHelper 方法呼叫 | 100+ 次 |
+| go build 驗證 | 全部通過 |
+
+### 31.7 下一步建議
+
+| 優先順序 | 工作項目 |
+|:---:|:---|
+| 高 | 繼續標準化剩餘控制器 |
+| 高 | 為新增的 Service 方法撰寫單元測試 |
+| 中 | 更新 CLAUDE.md 中的 ContextHelper 範例 |
+| 低 | 建立標準化檢查清單自動化腳本 |
+
+
+## 第 32 章：Service 原子性與事務性優化（2026/01/30）
+
+### 32.1 開發摘要
+
+針對涉及多個 Repository 寫入的操作，導入資料庫交易（Transaction）機制，確保資料操作的原子性。同時定義精細化錯誤常量，使 Controller 能夠根據錯誤類型回傳適當的 HTTP 狀態碼（400/409）。
+
+### 32.2 完成項目
+
+#### 32.2.1 錯誤常量定義
+
+**新增檔案：** `global/errInfos/code.go` 和 `global/errInfos/message.go`
+
+| 錯誤碼 | 名稱 | 說明 | HTTP 狀態 |
+|:---:|:---|:---|:---:|
+| 110001 | `ERR_RESOURCE_LOCKED` | 資源正在被其他操作修改 | 409 Conflict |
+| 110002 | `ERR_CONCURRENT_MODIFIED` | 資源已被其他請求修改 | 409 Conflict |
+| 110003 | `ERR_TX_FAILED` | 交易執行失敗 | 409 Conflict |
+
+#### 32.2.2 ContextHelper 錯誤映射更新
+
+**修改檔案：** `app/controllers/context_helper.go`
+
+更新 `ErrorWithInfo` 方法，新增以下錯誤碼的 HTTP 狀態映射：
+
+```go
+case errInfos.SCHED_OVERLAP, errInfos.SCHED_BUFFER,
+    errInfos.SCHED_RULE_CONFLICT, errInfos.ERR_RESOURCE_LOCKED,
+    errInfos.ERR_CONCURRENT_MODIFIED, errInfos.ERR_TX_FAILED:
+    status = http.StatusConflict
+```
+
+#### 32.2.3 ScheduleService 交易重構
+
+**修改檔案：** `app/services/scheduling.go`
+
+| 方法 | 重構內容 |
+|:---|:---|
+| `CreateRule` | 使用 `db.Transaction` 包裝規則建立與審核日誌記錄 |
+| `UpdateRule` | 使用 `db.Transaction` 包裝更新操作與審核日誌記錄 |
+| `handleFutureUpdateWithTx` | 新增交易版本處理函數 |
+| `handleSingleUpdateWithTx` | 新增交易版本處理函數 |
+| `handleAllUpdateWithTx` | 新增交易版本處理函數 |
+
+#### 32.2.4 TeacherProfileService 交易重構
+
+**修改檔案：** `app/services/teacher_profile.go`
+
+| 方法 | 重構內容 |
+|:---|:---|
+| `UpdateProfile` | 使用 `db.Transaction` 包裝個人資料更新、個人標籤更新與審核日誌記錄 |
+| `CreateSkill` | 使用 `db.Transaction` 包裝技能建立與標籤關聯建立 |
+| `updatePersonalHashtagsWithTx` | 新增交易版本標籤更新函數 |
+
+#### 32.2.5 Controller 響應更新
+
+**修改檔案：** `app/controllers/scheduling.go`
+
+更新 `CreateRule` 和 `UpdateRule` 方法，使用 `helper.ErrorWithInfo` 替代 `helper.InternalError`：
+
+```go
+rules, errInfo, err := ctl.scheduleSvc.CreateRule(ctx.Request.Context(), centerID, adminID, svcReq)
+if err != nil {
+    if errInfo != nil {
+        helper.ErrorWithInfo(errInfo)
+    } else {
+        helper.InternalError(err.Error())
+    }
+    return
+}
+```
+
+#### 32.2.6 Service Interface 更新
+
+**修改檔案：** `app/services/scheduling.go`
+
+更新 `ScheduleServiceInterface` 介面定義，反映新的錯誤回傳類型：
+
+```go
+CreateRule(ctx context.Context, centerID, adminID uint, req *CreateScheduleRuleRequest) ([]models.ScheduleRule, *errInfos.Res, error)
+UpdateRule(ctx context.Context, centerID, adminID, ruleID uint, req *UpdateScheduleRuleRequest) ([]models.ScheduleRule, *errInfos.Res, error)
+```
+
+### 32.3 程式碼變更總覽
+
+| 檔案 | 變更類型 | 說明 |
+|:---|:---:|:---|
+| `global/errInfos/code.go` | 新增 | 新增 3 個交易相關錯誤碼 |
+| `global/errInfos/message.go` | 新增 | 新增錯誤碼對應的多語系訊息 |
+| `app/controllers/context_helper.go` | 修改 | 更新 `ErrorWithInfo` 錯誤碼映射 |
+| `app/services/scheduling.go` | 重構 | `CreateRule` 和 `UpdateRule` 導入交易 |
+| `app/services/teacher_profile.go` | 重構 | `UpdateProfile` 和 `CreateSkill` 導入交易 |
+| `app/controllers/scheduling.go` | 修改 | 使用 `ErrorWithInfo` 處理錯誤 |
+
+### 32.4 建置驗證
+
+```bash
+$ go build ./app/...
+# 通過 - 無編譯錯誤
+
+$ go build ./app/controllers/...
+# 通過 - 無編譯錯誤
+```
+
+### 32.5 架構改善
+
+**重構前：** 多筆資料庫寫入操作分散執行，若中途失敗會導致資料不一致
+
+**重構後：** 使用 GORM Transaction 包裝多筆操作，確保全部成功或全部回滾
+
+```go
+txErr := s.app.MySQL.WDB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+    // 規則建立
+    if err := tx.Create(&rule).Error; err != nil {
+        return err
+    }
+    // 審核日誌
+    if err := tx.Create(&auditLog).Error; err != nil {
+        return err
+    }
+    return nil
+})
+
+if txErr != nil {
+    return nil, s.app.Err.New(errInfos.ERR_TX_FAILED), txErr
+}
+```
+
+### 32.6 HTTP 狀態碼對照表
+
+| 錯誤類型 | HTTP 狀態碼 | 範例 |
+|:---|:---:|:---|
+| 參數驗證錯誤 | 400 Bad Request | `PARAMS_VALIDATE_ERROR` |
+| 資源不存在 | 404 Not Found | `NOT_FOUND` |
+| 權限不足 | 403 Forbidden | `FORBIDDEN` |
+| 衝突錯誤（時段重疊、交易失敗） | 409 Conflict | `SCHED_OVERLAP`, `ERR_TX_FAILED` |
+| 系統錯誤 | 500 Internal Server Error | `SQL_ERROR`, `SYSTEM_ERROR` |
+
+### 32.7 下一步建議
+
+| 優先順序 | 工作項目 |
+|:---:|:---|
+| 高 | 為新增的交易方法撰寫單元測試 |
+| 高 | 將剩餘涉及多筆寫入的 Service 方法導入交易 |
+| 中 | 評估並優化交易重試機制 |
+| 低 | 建立交易監控指標（如交易成功率、平均執行時間） |
+
+
 ## Git 提交紀錄總覽
 
 ```

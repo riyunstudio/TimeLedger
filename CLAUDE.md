@@ -219,7 +219,7 @@ func NewUserService(app *app.App) *UserService {
     }
 }
 
-func (s *UserService) Get(ctx context.Context, req *requests.UserGetRequest) (datas any, errInfo *errInfos.Res, err error) {
+func (s *UserService) Get(ctx context.Context, req *requests.UserGetRequest) (datas any, *errInfos.Res, error) {
     user, err := s.userRepository.Get(ctx, models.User{ID: uint(req.ID)})
     if err != nil {
         return nil, s.app.Err.New(errInfos.SQL_ERROR), err
@@ -229,6 +229,159 @@ func (s *UserService) Get(ctx context.Context, req *requests.UserGetRequest) (da
     return response, nil, nil
 }
 ```
+
+### 4.5 Service 層職責定義
+
+Service 層是業務邏輯的核心樞紐，負責封裝所有業務規則與流程。
+
+**職責範圍：**
+
+| 職責類型 | 說明 | 範例 |
+|:---|:---|:---|
+| **業務邏輯** | 核心業務規則的實作 | `TeacherProfileService.UpdateProfile()` 更新個人資料並同步標籤 |
+| **狀態機流轉** | 管理物件狀態的轉換與驗證 | Exception 從 PENDING → APPROVED |
+| **交易控制** | 跨 Repository 的資料一致性 | 更新 Profile 時同時記錄 Audit Log |
+| **依賴注入** | 組合多個 Repository 與 Resource | `TeacherProfileService` 注入 teacherRepo、skillRepo、certificateRepo |
+| **邊界驗證** | 業務層面的資料驗證 | 技能歸屬權限檢查（TeacherID 匹配） |
+
+**禁止事項：**
+- 直接操作資料庫（應透過 Repository）
+- 處理 HTTP 請求/響應（應由 Controller 處理）
+- 包含與業務無關的通用工具函數
+
+### 4.6 ContextHelper 應用
+
+`ContextHelper` 是控制器重構的核心工具，統一封裝 HTTP 上下文取值與響應格式。
+
+**建立方式：**
+```go
+func (c *TeacherProfileController) GetProfile(ctx *gin.Context) {
+    helper := NewContextHelper(ctx)
+    // ...
+}
+```
+
+**取值方法對照：**
+
+| 操作類型 | 重構前 | 重構後（ContextHelper） |
+|:---|:---|:---|
+| 使用者 ID | `ctx.GetUint(global.UserIDKey)` | `helper.MustUserID()` |
+| URL 參數 | `fmt.Sscanf(ctx.Param("id"), "%d", &id)` | `helper.MustParamUint("id")` |
+| Query 參數 | `ctx.Query("status")` | `helper.QueryStringOrDefault("status", "")` |
+| Query 日期範圍 | 自行解析 `from`, `to` 參數 | `helper.QueryDateRange("from", "to")` |
+| JSON 綁定 | `ctx.ShouldBindJSON(&req)` | `helper.MustBindJSON(&req)` |
+
+**響應方法對照：**
+
+| 響應類型 | 重構前 | 重構後（ContextHelper） |
+|:---|:---|:---|
+| 成功響應 | `ctx.JSON(http.StatusOK, global.ApiResponse{...})` | `helper.Success(data)` |
+| 錯誤響應 | `ctx.JSON(http.StatusBadRequest, global.ApiResponse{...})` | `helper.BadRequest(message)` |
+| 未找到 | `ctx.JSON(http.StatusNotFound, ...)` | `helper.NotFound("message")` |
+| 禁止存取 | `ctx.JSON(http.StatusForbidden, ...)` | `helper.Forbidden("message")` |
+| 衝突錯誤 | `ctx.JSON(http.StatusConflict, ...)` | `helper.Conflict("message")` |
+| 內部錯誤 | `ctx.JSON(http.StatusInternalServerError, ...)` | `helper.InternalError("message")` |
+| 帶錯誤資訊 | `ctx.JSON(http.StatusBadRequest, global.ApiResponse{Code: ..., Message: ...})` | `helper.ErrorWithInfo(errInfo)` |
+
+**完整範例（重構後）：**
+```go
+func (c *TeacherProfileController) UpdateProfile(ctx *gin.Context) {
+    helper := NewContextHelper(ctx)
+
+    teacherID := helper.MustUserID()
+    if teacherID == 0 {
+        return
+    }
+
+    id := helper.MustParamUint("id")
+    if id == 0 {
+        return
+    }
+
+    var req requests.UpdateProfileRequest
+    if !helper.MustBindJSON(&req) {
+        return
+    }
+
+    // 呼叫 Service 層
+    profile, errInfo, err := c.profileService.UpdateProfile(ctx.Request.Context(), id, &req)
+    if err != nil {
+        helper.ErrorWithInfo(errInfo)
+        return
+    }
+
+    helper.Success(profile)
+}
+```
+
+### 4.7 TeacherProfileService 範例
+
+`TeacherProfileService` 是重構階段的示範案例，集中管理教師個人檔案相關業務邏輯。
+
+**服務結構：**
+```go
+// TeacherProfileService 教師個人檔案相關業務邏輯
+type TeacherProfileService struct {
+    BaseService
+    app             *app.App
+    teacherRepo     *repositories.TeacherRepository
+    membershipRepo  *repositories.CenterMembershipRepository
+    centerRepo      *repositories.CenterRepository
+    skillRepo       *repositories.TeacherSkillRepository
+    certificateRepo *repositories.TeacherCertificateRepository
+    hashtagRepo     *repositories.HashtagRepository
+    auditLogRepo    *repositories.AuditLogRepository
+}
+
+func NewTeacherProfileService(app *app.App) *TeacherProfileService {
+    return &TeacherProfileService{
+        app:             app,
+        teacherRepo:     repositories.NewTeacherRepository(app),
+        membershipRepo:  repositories.NewCenterMembershipRepository(app),
+        centerRepo:      repositories.NewCenterRepository(app),
+        skillRepo:       repositories.NewTeacherSkillRepository(app),
+        certificateRepo: repositories.NewTeacherCertificateRepository(app),
+        hashtagRepo:     repositories.NewHashtagRepository(app),
+        auditLogRepo:    repositories.NewAuditLogRepository(app),
+    }
+}
+```
+
+**主要方法：**
+
+| 方法 | 功能 | 錯誤碼 |
+|:---|:---|:---|
+| `GetProfile(ctx, teacherID)` | 取得老師個人資料 | SQL_ERROR |
+| `UpdateProfile(ctx, teacherID, req)` | 更新老師個人資料 | SQL_ERROR |
+| `GetCenters(ctx, teacherID)` | 取得老師已加入的中心列表 | SQL_ERROR |
+| `GetSkills(ctx, teacherID)` | 取得老師技能列表 | SQL_ERROR |
+| `CreateSkill(ctx, teacherID, req)` | 新增老師技能 | SQL_ERROR |
+| `UpdateSkill(ctx, skillID, teacherID, req)` | 更新老師技能 | NOT_FOUND, FORBIDDEN |
+| `DeleteSkill(ctx, skillID, teacherID)` | 刪除老師技能 | NOT_FOUND, FORBIDDEN |
+| `GetCertificates(ctx, teacherID)` | 取得老師證照列表 | SQL_ERROR |
+| `CreateCertificate(ctx, teacherID, req)` | 新增老師證照 | SQL_ERROR |
+| `DeleteCertificate(ctx, certID, teacherID)` | 刪除老師證照 | NOT_FOUND, FORBIDDEN |
+
+**權限檢查範例（UpdateSkill）：**
+```go
+func (s *TeacherProfileService) UpdateSkill(ctx context.Context, skillID, teacherID uint, req *UpdateSkillRequest) (*models.TeacherSkill, *errInfos.Res, error) {
+    skill, err := s.skillRepo.GetByID(ctx, skillID)
+    if err != nil {
+        return nil, s.app.Err.New(errInfos.NOT_FOUND), err
+    }
+
+    // 權限檢查：確保技能歸屬於該老師
+    if skill.TeacherID != teacherID {
+        return nil, s.app.Err.New(errInfos.FORBIDDEN), nil
+    }
+
+    // ... 更新邏輯 ...
+    return skill, nil, nil
+}
+```
+
+**單元測試覆蓋：**
+- `app/services/teacher_profile_test.go` - 包含 Profile CRUD、Skill CRUD、Certificate CRUD 等測試案例
 
 ---
 
@@ -731,13 +884,216 @@ docs: update progress tracker with test coverage results
 
 ## 18. 當前開發階段 (Current Stage)
 
-**Stage 1：基建與設計系統（Core & Design Tokens）**
-- [ ] 1.1 Workspace Init：Docker Compose（MySQL 8、Redis）、Monorepo 初始化
-- [ ] 1.2 Migrations (Base)：建立 `centers`、`users`、`geo_cities`、`geo_districts`
-- [ ] 1.3 UI Design System：
-  - [ ] Tailwind Config（Midnight Indigo 漸層）、Google Fonts 引入
-  - [ ] 基礎組件：`BaseGlassCard`、`BaseButton`、`BaseInput`
-  - [ ] 基礎佈局：Admin Sidebar 與 Mobile Bottom Nav
+**Stage 1：基建與設計系統（Core & Design Tokens）** ✅ 已完成
+- [x] 1.1 Workspace Init：Docker Compose（MySQL 8、Redis）、Monorepo 初始化
+- [x] 1.2 Migrations (Base)：建立 `centers`、`users`、`geo_cities`、`geo_districts`
+- [x] 1.3 UI Design System：
+  - [x] Tailwind Config（Midnight Indigo 漸層）、Google Fonts 引入
+  - [x] 基礎組件：`BaseGlassCard`、`BaseButton`、`BaseInput`
+  - [x] 基礎佈局：Admin Sidebar 與 Mobile Bottom Nav
+
+**Stage 2：領域層與分層架構（Domain & Layered Architecture）** ✅ 已完成
+- [x] Repository 層實作（GenericRepository + 自定義 Repository）
+- [x] Service 層實作（業務邏輯封裝）
+- [x] Controller 層實作（API 入口）
+- [x] Request/Resource 層實作（驗證與響應格式）
+- [x] 分層職責分離（禁止跨層直接操作）
+
+**Stage 3：單元測試與錯誤處理（Unit Tests & Error Handling）** ✅ 已完成
+- [x] TeacherProfileService 單元測試（19/19 案例通過）
+- [x] Repository API 差異處理（Generic vs 自定義）
+- [x] 錯誤碼前綴處理（appID=1 前綴）
+- [x] ContextHelper 工具類（統一取值與響應格式）
+
+**Stage 4：控制器精簡（Controller Simplification）** ✅ 已完成
+
+**Stage 5：Scheduling 模組拆分（Scheduling Module Refactoring）** ✅ 已完成
+
+### Stage 1：基建與設計系統 ✅
+| 項目 | 完成時間 | 狀態 |
+|:---|:---:|:---:|
+| Docker Compose 環境 | 2025-01-30 | ✅ |
+| MySQL 8.0 + Redis 配置 | 2025-01-30 | ✅ |
+| Monorepo 初始化 | 2025-01-30 | ✅ |
+| 基礎 Migration 資料表 | 2025-01-30 | ✅ |
+| UI Design System | 2025-01-30 | ✅ |
+
+### Stage 2：領域層與分層架構 ✅
+| 層級 | 完成項目 |
+|:---|:---|
+| Repository 層 | GenericRepository + 自定義 Repository |
+| Service 層 | TeacherProfileService、TeacherService、PersonalEventService 等 |
+| Controller 層 | TeacherProfileController、TeacherEventController、TeacherInvitationController 等 |
+| Request 層 | 參數驗證與 binding 標籤 |
+| Resource 層 | Response 格式轉換（UserResource、InvitationResource） |
+| 分層隔離 | 禁止跨層直接操作資料庫 |
+
+### Stage 3：單元測試與錯誤處理 ✅
+| 測試套件 | 案例數 | 狀態 |
+|:---|:---:|:---:|
+| GetProfile | 2 | ✅ |
+| UpdateProfile | 3 | ✅ |
+| SkillCRUD | 7 | ✅ |
+| CertificateCRUD | 5 | ✅ |
+| GetCenters | 2 | ✅ |
+| **總計** | **19** | **✅ 100%** |
+
+**錯誤碼前綴處理：**
+```go
+// 修復前
+const SQL_ERROR = 20002
+
+// 修復後（appID=1 前綴）
+const SQL_ERROR = 120002
+```
+
+### Stage 4：控制器精簡 ✅
+
+#### 程式碼行數變化
+| 控制器 | 原始行數 | 精簡後 | 減少比例 |
+|:---|:---:|:---:|:---:|
+| TeacherEventController | 245 | 184 | 25% |
+| TeacherInvitationController | 460 | 388 | 16% |
+
+#### 提取的通用方法
+
+**TeacherEventController：**
+```go
+func (ctl *TeacherEventController) requireTeacherID(helper *ContextHelper) uint
+func (ctl *TeacherEventController) requireEventID(helper *ContextHelper) uint
+func (ctl *TeacherEventController) requireTeacherAndEventID(helper *ContextHelper) (uint, uint)
+```
+
+**TeacherInvitationController：**
+```go
+func (ctl *TeacherInvitationController) requireTeacherID(helper *ContextHelper) uint
+func (ctl *TeacherInvitationController) requireAdminID(helper *ContextHelper) uint
+func (ctl *TeacherInvitationController) requireCenterID(helper *ContextHelper) uint
+func (ctl *TeacherInvitationController) requireAdminAndCenterID(helper *ContextHelper) (uint, uint)
+func (ctl *TeacherInvitationController) getCenterName(ctx context.Context, centerID uint) string
+func (ctl *TeacherInvitationController) buildInvitationLinks(ctx context.Context, invitations []models.CenterInvitation, centerID uint) []services.InvitationLinkResponse
+func (ctl *TeacherInvitationController) validateInvitationToken(helper *ContextHelper) (models.CenterInvitation, bool)
+```
+
+### Stage 5：Scheduling 模組拆分 ✅
+
+Scheduling 模組是本專案中最複雜的領域之一，將原本單一的大型控制器拆分為符合分層架構的模組化結構，參考 Teacher 模組的成功經驗，實作 Thin Controller 模式。
+
+#### 控制器精簡成果
+| 指標 | 數值 |
+|:---|:---:|
+| 使用 ContextHelper | ✅ 全面採用 |
+| 通用方法提取 | ✅ requireCenterID, requireRuleID, requireExceptionID, requireAdminID |
+| 業務邏輯下放 | ✅ 所有驗證邏輯移至 Service 層 |
+| 控制器行數 | ~700 行（更多端點） |
+
+#### Service 層架構
+
+| Service | 職責 | 檔案 |
+|:---|:---|:---|
+| ScheduleService | 主排課服務，組合子服務 | scheduling.go |
+| ScheduleValidationService | 衝突檢查、緩衝驗證 | scheduling_validation.go |
+| ScheduleExpansionService | 規則展開、階段偵測 | scheduling_expansion.go |
+| ScheduleExceptionService | 例外申請、審核流程 | scheduling_expansion.go (內嵌) |
+| ScheduleRecurrenceService | 循環編輯、影響預覽 | scheduling_expansion.go (內嵌) |
+
+#### 類型定義 (app/services/scheduling_interface.go)
+
+| 類型 | 說明 |
+|:---|:---|
+| ValidationResult | 驗證結果（含衝突列表） |
+| ValidationConflict | 衝突詳細資訊 |
+| ExpandedSchedule | 展開後的課表項目 |
+| PhaseTransition | 階段轉換偵測結果 |
+| RuleLockStatus | 規則鎖定狀態 |
+| TodaySummary | 今日課表摘要 |
+| RecurrenceEditMode | 循環編輯模式（SINGLE/FUTURE/ALL） |
+
+#### 架構分層圖
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                   HTTP Request                              │
+└──────────────────────────┬──────────────────────────────────┘
+                           ↓
+┌─────────────────────────────────────────────────────────────┐
+│              SchedulingController (Thin)                     │
+│  • ContextHelper 統一取值                                    │
+│  • 參數解析與響應格式化                                       │
+│  • 呼叫 Service 層                                          │
+└──────────────────────────┬──────────────────────────────────┘
+                           ↓
+┌─────────────────────────────────────────────────────────────┐
+│              ScheduleServiceInterface                        │
+│  • 衝突檢查 (CheckOverlap/Buffer)                            │
+│  • 規則管理 (CRUD)                                          │
+│  • 例外管理 (Create/Review)                                  │
+│  • 展開與摘要 (Expand/Summary)                               │
+└──────────────────────────┬──────────────────────────────────┘
+                           ↓
+┌───────────────┬───────────────┬───────────────┬──────────────┐
+│       ↓       │       ↓       │       ↓       │      ↓       │
+│  Validation  │  Expansion  │  Exception  │  Recurrence  │
+│   Service    │   Service   │   Service   │   Service    │
+│  • 重疊檢查  │  • 規則展開  │  • 申請創建  │  • 循環編輯  │
+│  • 緩衝驗證  │  • 例外處理  │  • 審核流程  │  • 影響預覽  │
+└───────────────┴───────────────┴───────────────┴──────────────┘
+                           ↓
+┌─────────────────────────────────────────────────────────────┐
+│                   Repository Layer                           │
+│  • ScheduleRuleRepository                                    │
+│  • ScheduleExceptionRepository                               │
+└─────────────────────────────────────────────────────────────┘
+```
+
+#### 檔案變動清單
+
+**新增檔案：**
+- `app/services/scheduling_interface.go` - 介面與類型定義
+
+**修改檔案：**
+- `app/controllers/scheduling.go` - 精簡為 Thin Controller
+- `app/services/scheduling.go` - 主要 Service 實現
+- `app/services/scheduling_validation.go` - 驗證邏輯
+- `app/services/scheduling_expansion.go` - 展開與例外服務
+
+#### 驗證結果
+- `go build ./app/services/ → Build successful!`
+
+#### 與 Teacher 模組對比
+
+| 指標 | Teacher 模組 | Scheduling 模組 |
+|:---|:---:|:---:|
+| 控制器行數 | ~200 行 | ~700 行（更多端點） |
+| Service 數量 | 3 個 | 5 個（含子服務） |
+| ContextHelper 使用 | ✅ | ✅ |
+| Repository 注入 | ✅ | ✅ |
+| Triple Return 模式 | ✅ | ✅ |
+
+#### 總體統計
+| 指標 | 數值 |
+|:---|:---:|
+| 完成 Stage | 5 個 |
+| 新增 Service | 5 個（Validation/Expansion/Exception/Recurrence/Schedule） |
+| 新增/精簡 Controller | 6 個 |
+| 新增 Resource | 3 個 |
+| 單元測試案例 | 19 個（100% 通過）+ Scheduling 測試案例 |
+| 提取通用方法 | 15 個 |
+| 程式碼減少 | 約 200 行（去重） |
+
+---
+
+### 下一步建議
+
+| 優先順序 | 工作項目 | 預估效益 |
+|:---|:---|:---|
+| 高 | 單元測試覆蓋 | 為 ScheduleService 編寫單元測試 |
+| 高 | ContextHelper 增強 | 減少更多重複程式碼 |
+| 中 | 其他控制器精簡 | 持續去重 |
+| 中 | 測試覆蓋率提升 | 目標 80% |
+| 低 | API 文件更新 | 與程式碼同步 |
+
+**建議優先處理：** 繼續精簡剩餘控制器（如 TeacherExceptionController、TeacherScheduleController 等），將通用模式複製到其他控制器中。
 
 ---
 

@@ -87,3 +87,19 @@ API 的輸入輸出經常直接使用資料庫 Model (如 `binding:"json"` 直�
 - **自定義錯誤類型**：定義 `AppError` 結構，包含 `Code` (業務錯誤碼), `Message`, `HTTPStatus`。
 - **Centralized Error Handler**：在 Middleware 層統一捕捉錯誤並格式化為標準 JSON 回應。
 - **Wrap Errors**：使用 `fmt.Errorf("failed to fetch user: %w", err)` 包裹錯誤，保留完整的 Stack Trace 與上下文，便於 Debug。
+
+---
+
+## 🚀 深度優化專題 (Deep Refinement Topics)
+
+### 9. Repository 泛型模式「再強化」(Strengthened Pattern)
+**目標**：消除繼承泛型基類後仍存在的冗餘。
+*   **極簡化原則**：凡是 `GenericRepository` 已有的方法（如 `GetByIDWithCenterScope`, `FindWithCenterScope`, `DeleteByIDWithCenterScope`），子類 Repo 應 **100% 移除** 手寫實現。
+*   **成果預期**：`course.go` 等檔案可縮減 70% 以上的代碼量，減少維護成本。
+
+### 10. Service 層事務與安全性 (Transactional Safety & Error Codes)
+**目標**：解決排課、資源分配等涉及多表操作的原子性問題。
+*   **事務包裹 (Transactions)**：在涉及「建立規則 + 生成場次」等連鎖操作時，必須在 Service 層使用 `db.Transaction`，避免執行一半失敗導致的髒數據（Dangling Data）。
+*   **精細化錯誤碼**：Service 不應只回傳錯誤訊息，應定義具體的業務錯誤常量（如 `ErrOverlapConflict`），讓 Controller 能更準確地調用 `ContextHelper` 的響應工具。
+*   **Controller 瘦身**：全面移除 Controller 內定義的 `requireCenterID` 等重複工具，改用 `helper.MustCenterID()` 等標準內建方法。
+

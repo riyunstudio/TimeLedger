@@ -1,92 +1,123 @@
-# Cursor Agent 優化實作指令集
+# Cursor Agent 優化指令集 (Command Sheet)
 
-以下指令設計用於引導 Cursor Agent 逐步完成 `pdr/task.md` 中的優化任務。考慮到 200k token 限制，建議**分段執行**，每一段落完成後請要求 Agent 提供總結。
-
----
-
-## 任務 1：解決 ExpandRules 中的 N+1 查詢問題 (Task ID: 17)
-
-**指令：**
-> 請分析 `app/services/scheduling_expansion.go` 中的 `ExpandRules` 方法。
->
-> **目標：** 消除迴圈中的 `s.exceptionRepo.GetByRuleIDAndDateStr` 呼叫。
->
-> **步驟：**
-> 1. 在 `ExpandRules` 進入日期迴圈前，收集所有傳入 `rules` 的 ID。
-> 2. 呼叫 `exceptionRepo` 批次取得該範圍內 (`startDate` 到 `endDate`) 所有相關的例外資料。 (可能需要新增 Repository 方法 `GetByRuleIDsAndDateRange`)。
-> 3. 將取得的結果建立成 `map[uint]map[string][]models.ScheduleException` (RuleID -> DateString -> Exceptions)。
-> 4. 修改日期迴圈，改從 map 中讀取例外資料。
-> 5. 確保邏輯與原先一致（處理 PENDING/APPROVED 狀態），並進行單元測試（若有提供）。
->
-> **完成後：** 請提供修改前後的效能預期差異總結。
+複製以下指令貼入 Cursor (Cmd+K 或 Chat)，即可驅動 AI 自動執行優化。
 
 ---
 
-## 任務 2：重構 TeacherController 為多個領域 Controller (Task ID: 20)
-
-**指令：**
-> `app/controllers/teacher.go` 目前過於龐大，請進行拆分重構。
->
-> **目標：** 將 `TeacherController` 職責拆分為 `Profile`, `Schedule`, `Exception` 三個部分。
->
-> **步驟：**
-> 1. **建立新檔案：** `teacher_profile.go`, `teacher_schedule.go`, `teacher_exception.go`。
-> 2. **搬移邏輯：**
->    - `Profile`: 搬移 `GetProfile`, `UpdateProfile`, `SearchHashtags`, `CreateHashtag`, `GetCenters`, `GetSkills`, `GetCertificates` 相關方法。
->    - `Schedule`: 搬移 `GetSchedule`, `GetSchedules`, `GetCenterScheduleRules` 相關方法。
->    - `Exception`: 搬移 `CreateException`, `RevokeException` 相關方法。
-> 3. **清理 `NewTeacherController`：** 確保每個子 Controller 只初始化其必要的依賴。
-> 4. **更新路由：** 在 `apis/base.go` 或相關路由註冊處，更新對應的路由綁定。
->
-> **注意：** 由於檔案極大，請一次處理一個 sub-controller，完成後向我確認再進行下一個。
+### 指令 1：拆分 Scheduling 模組 (當前首選)
+> **CONTEXT: @pdr/task.md @pdr/ARCHITECTURAL_OPTIMIZATION_GUIDE.md @app/controllers/scheduling.go**
+> 
+> 請參考 Teacher 模組的成功經驗，將 `app/controllers/scheduling.go` 進行深度重構。
+> 1. 建立 `app/services/scheduling.go` (ScheduleService)。
+> 2. 將控制器中的「衝突檢查」、「排課邏輯」、「例外處理」搬移至 Service。
+> 3. 將 `SchedulingController` 改為 Thin Controller，並使用 `@controllers/context_helper.go` 管理上下文。
+> 4. 注意：這是一個大檔案，請先從「建立 Service 基礎結構」開始。
 
 ---
 
-## 任務 3：實作 DTO 模式與領域邏輯封裝 (Task ID: 13, 14)
-
-**指令：**
-> 請針對 `TeacherProfile` 相關的功能實作 DTO 模式，並將邏輯移至 Model。
->
-> **目標：** 讓 API 傳輸資料 (`resources`) 與資料庫模型 (`models`) 完全分離。
->
-> **步驟：**
-> 1. 在 `app/resources/teacher.go` 中定義 `TeacherProfileResponse`。
-> 2. 將 `TeacherController` 中手動拼湊 JSON map 的邏輯，改為呼叫 `teacher.ToResource()` 方法。
-> 3. 在 `models/teacher.go` 中實作業務邏輯，例如 `CanEditProfile()`。
-> 4. 在 `app/requests/teacher.go` 定義專用的 `UpdateProfileRequest`，並使用 `ShouldBindJSON`。
->
-> **完成後：** 總結 DTO 帶來的安全性（防止 Mass Assignment）效益。
+### 指令 2：效能優化 - 解決 N+1 查詢
+> **CONTEXT: @app/services/scheduling_expansion.go @app/repositories/schedule_exception.go**
+> 
+> 請優化 `scheduling_expansion.go` 中的 `ExpandRules` 方法，解決 N+1 查詢問題。
+> 1. 識別迴圈中的 DB 查詢動作。
+> 2. 在進入日期迴圈前，利用 ID 列表進行 `In` 查詢批次抓取。
+> 3. 使用 `map` 在內存中進行數據組裝。
+> 4. 提供重構後的效能比較預測。
 
 ---
 
-## 任務 4：統一錯誤處理與 AppError (Task ID: 15)
-
-**指令：**
-> 請為專案建立統一的錯誤處理架構。
->
-> **目標：** 消除 Controller 中重複的 `global.ApiResponse` 拼湊，改用全域 Middleware 處理。
->
-> **步驟：**
-> 1. 在 `global/errors` 建立 `AppError` 結構（包含 Code, Message, HTTPStatus）。
-> 2. 在 `app/middleware` 建立 `ErrorHandlerMiddleware`，捕捉 `ctx.Error` 並統一輸出 JSON。
-> 3. 修改 `TeacherController` 中的一個方法作為範例，將 `ctx.JSON(500, ...)` 改為 `ctx.Error(errors.NewSystemError(...))`。
->
-> **完成後：** 說明如何新增一個新的業務錯誤碼。
+### 指令 3：Repository 泛型「極簡化」遷移
+> **CONTEXT: @app/repositories/generic.go @app/repositories/[target_repo].go**
+> 
+> 請執行 Repository 泛型遷移與「極簡化」清理：
+> 1. 使 `[Target]Repository` 繼承 `GenericRepository[models.Target]`。
+> 2. **關鍵精簡**：刪除檔案中所有 `GenericRepository` 已內建的標準方法（如 `GetByID`, `ListByCenterID`, `DeleteByID` 等帶有 CenterScope 的版本）。
+> 3. 對於特定查詢（如 `ListActive`），利用基類的 `FindWithCenterScope` 加過濾條件重構。
+> 4. 確保 `New` 構造函數正確初始化。
 
 ---
 
-## 任務 5：Redis 快取與事件驅動架構 (Task ID: 18, 19)
+### 指令 4：領域資源拆分 (Domain Decomposition)
+> **CONTEXT: @pdr/task.md @app/controllers/admin_resource.go**
+> 
+> 請執行 AdminResource 的「[領域名稱，如 Room/Course/Holiday]」領域拆分：
+> 1. 建立 `app/services/[domain].go` 與 `app/controllers/admin_[domain].go`。
+> 2. 將 `AdminResourceController` 中所有關於該領域的方法移至新 Service/Controller。
+> 3. 確保 Service 層實作時包裝了 `AuditLog` 記錄。
+> 4. 在 `apis/base.go` 或 `route.go` 更新路由，並刪除舊代碼。
 
-**指令：**
-> 這是一個較大的架構變動，請分兩步執行：
->
-> **第一步 (Cache)：**
-> 1. 為 `ScheduleQueryService` 實作 Redis 快取邏輯。
-> 2. 確保在 `GetTeacherSchedule` 時優先查詢 Redis。
->
-> **第二步 (Event Bus)：**
-> 1. 在 `libs` 建立一個簡單的 `InternalEventBus`。
-> 2. 修改 `ExceptionService`，在申請成功後發布 `EVENT_EXCEPTION_CREATED`。
-> 3. 建立訂閱者來處理原本的 LINE 通知發送。
->
-> **注意：** 每個步驟完成後請提供代碼片段與重構後的依賴圖概括。
+---
+
+### 指令 5：Offering 模組現代化 (Service + Generic Repo)
+> **CONTEXT: @app/controllers/offering.go @app/repositories/offering.go**
+> 
+> 請對 Offering 模組進行架構升級：
+> 1. 使 `OfferingRepository` 繼承 `GenericRepository[models.Offering]` 並刪除冗餘 CRUD。
+> 2. 建立 `app/services/offering.go` 並搬移 Controller 中的複雜邏輯 (如 CopyOffering)。
+> 3. 重構 `OfferingController` 為 Thin Controller 模式。
+
+---
+
+### 指令 6：排課模板服務化 (Logic Extraction)
+> **CONTEXT: @app/controllers/timetable_template.go**
+> 
+> 請執行 `TimetableTemplate` 邏輯抽離：
+> 1. 建立 `app/services/timetable_template.go`。
+> 2. 將 `ApplyTemplate` 的核心流程（日期計算、規則生成）移至 Service。
+> 3. 使用 `ContextHelper` 標準化控制器中的參數提取。
+
+---
+
+### 指令 7：全局控制器標準化 (Standardization Sweep)
+> **CONTEXT: @app/controllers/admin_user.go @app/controllers/smart_matching.go @app/controllers/notification.go**
+> 
+> 請對這些控制器執行「Teacher 模式標準化」：
+> 1. 將所有手動提取 `centerID`, `userID` 的 `if exists` 塊替換為 `ctl.getCenterID(ctx)` (來自 ContextHelper)。
+> 2. 統一錯誤回傳格式為 `ctl.respondError(ctx, code, msg)` 或 `helper.ErrorWithInfo`。
+> 3. 確保所有 DB 操作都透過對應的 Service 進行。
+
+---
+
+### 指令 8：Service 原子性與事務性優化
+> **CONTEXT: @app/services/[target_service].go @app/repositories/generic.go**
+> 
+> 請優化 Service 的原子性與錯誤處理：
+> 1. 對於涉及多個 Repository 寫入的操作，導入 `db.Transaction`。
+> 2. 定義精細化錯誤常量（如 `errInfos.SCHED_OVERLAP`）。
+> 3. 重構 Controller 響應，根據錯誤碼回傳 400 或 409 狀態碼（使用 `helper.ErrorWithInfo`）。
+
+---
+
+### 指令 9：性能規模化 (Performance Scaling)
+> **CONTEXT: @app/services/[target_service].go @global/redis**
+> 
+> 請進行性能優化：
+> 1. 為高頻讀取資源 (如 Center 設置、今日排課) 導入 Redis 快取。
+> 2. 實施「寫入時清除 (Cache Aside)」策略。
+> 3. 將耗時通知 (LINE/Email) 或檔案生成動作改為 `Asynq` 異步任務。
+
+---
+
+### 指令 10：工程化與穩定性 (Stability & Engineering)
+> **CONTEXT: @app/services/base.go @app/services/[target_service].go**
+> 
+> 請提升代碼工程化品質：
+> 1. 在 `BaseService` 封裝通用的分頁 (Pagination) 與動態過濾邏輯。
+> 2. 使用 `Testify` 為核心業務函數 (如排課衝突檢查) 撰寫單元測試。
+> 3. 將 `fmt.Println` 替換為結構化日誌記錄。
+
+---
+
+### 指令 11：Repository 交易安全性加固
+> **CONTEXT: @app/repositories/generic.go**
+> 
+> 請修正 `GenericRepository` 的交易設計：
+> 1. 修改 `Transaction` 方法，確保在交易閉包中回傳一個「全新的 Repo 實例」而非修改現有實例，以避免並發爭用 (Race Condition)。
+> 2. 為領域 Repository (如 `CourseRepository`) 實作專屬交易入口，確保在交易中仍能調用自定義方法。
+
+---
+
+### 💡 如何高效協作？
+1. **先 Service 後 Controller**：要求 AI 先產生 Service，再修改 Controller。
+2. **小步快跑**：一次只執行一個「指令」，完成後驗證通過再進行下一個。
+3. **提及上下文**：務必使用 `@` 提及對應的 `task.md` 與目標代碼檔案。
