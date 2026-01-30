@@ -13,7 +13,7 @@ import (
 )
 
 // TeacherInvitationController 教師邀請控制器
-// 處理老師邀請、邀請連結管理、公開邀請等功能
+// 處理老師邀請、邀請連結管理、公開邀請、管理員邀請管理等功能
 type TeacherInvitationController struct {
 	BaseController
 	app            *app.App
@@ -34,6 +34,115 @@ func NewTeacherInvitationController(app *app.App) *TeacherInvitationController {
 		centerRepo:     repositories.NewCenterRepository(app),
 		invitationRes:  resources.NewInvitationResource(),
 	}
+}
+
+// ========== 管理員端邀請管理 API ==========
+
+// InvitationStatsResponse 邀請統計回應結構
+type InvitationStatsResponse struct {
+	Total         int64 `json:"total"`
+	Pending       int64 `json:"pending"`
+	Accepted      int64 `json:"accepted"`
+	Expired       int64 `json:"expired"`
+	Rejected      int64 `json:"rejected"`
+	RecentPending int64 `json:"recent_pending"`
+}
+
+// GetInvitationStats 取得邀請統計資料
+// @Summary 取得邀請統計資料
+// @Tags Admin - Invitations
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "Center ID"
+// @Success 200 {object} global.ApiResponse{data=InvitationStatsResponse}
+// @Router /api/v1/admin/centers/{id}/invitations/stats [get]
+func (ctl *TeacherInvitationController) GetInvitationStats(ctx *gin.Context) {
+	helper := NewContextHelper(ctx)
+
+	centerID := helper.MustParamUint("id")
+	if centerID == 0 {
+		return
+	}
+
+	now := time.Now()
+	thirtyDaysAgo := now.AddDate(0, 0, -30)
+
+	total, _ := ctl.invitationRepo.CountByCenterID(ctx, centerID)
+	pending, _ := ctl.invitationRepo.CountByStatus(ctx, centerID, "PENDING")
+	accepted, _ := ctl.invitationRepo.CountByStatus(ctx, centerID, "ACCEPTED")
+	expired, _ := ctl.invitationRepo.CountByStatus(ctx, centerID, "EXPIRED")
+	rejected, _ := ctl.invitationRepo.CountByStatus(ctx, centerID, "REJECTED")
+	recentPending, _ := ctl.invitationRepo.CountByDateRange(ctx, centerID, thirtyDaysAgo, now)
+
+	stats := InvitationStatsResponse{
+		Total:         total,
+		Pending:       pending,
+		Accepted:      accepted,
+		Expired:       expired,
+		Rejected:      rejected,
+		RecentPending: recentPending,
+	}
+
+	helper.Success(stats)
+}
+
+// PaginationRequest 分頁請求結構
+type PaginationRequest struct {
+	Page  int `form:"page"`
+	Limit int `form:"limit"`
+}
+
+// PaginationResponse 分頁回應結構
+type PaginationResponse struct {
+	Data       interface{} `json:"data"`
+	Total      int64       `json:"total"`
+	Page       int         `json:"page"`
+	Limit      int         `json:"limit"`
+	TotalPages int64       `json:"total_pages"`
+}
+
+// GetInvitations 取得邀請列表
+// @Summary 取得邀請列表
+// @Tags Admin - Invitations
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "Center ID"
+// @Param status query string false "篩選狀態 (PENDING/ACCEPTED/DECLINED/EXPIRED)"
+// @Param page query int false "頁碼"
+// @Param limit query int false "每頁筆數"
+// @Success 200 {object} global.ApiResponse{data=PaginationResponse}
+// @Router /api/v1/admin/centers/{id}/invitations [get]
+func (ctl *TeacherInvitationController) GetInvitations(ctx *gin.Context) {
+	helper := NewContextHelper(ctx)
+
+	centerID := helper.MustParamUint("id")
+	if centerID == 0 {
+		return
+	}
+
+	var req PaginationRequest
+	if err := ctx.ShouldBindQuery(&req); err != nil {
+		req.Page = 1
+		req.Limit = 20
+	}
+
+	status := helper.QueryStringOrDefault("status", "")
+
+	invitations, total, err := ctl.invitationRepo.ListByCenterIDPaginated(ctx, centerID, int(req.Page), int(req.Limit), status)
+	if err != nil {
+		helper.InternalError("Failed to get invitations")
+		return
+	}
+
+	helper.Success(PaginationResponse{
+		Data:       invitations,
+		Total:      total,
+		Page:       req.Page,
+		Limit:      req.Limit,
+		TotalPages: (total + int64(req.Limit) - 1) / int64(req.Limit),
+	})
 }
 
 // ========== 通用輔助方法 ==========

@@ -200,8 +200,8 @@ func (s *Server) LoadRoutes() {
 		{http.MethodPatch, "/api/v1/admin/offerings/:offering_id/toggle-active", s.action.offering.ToggleOfferingActive, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 
 		// Admin - Invitations
-		{http.MethodGet, "/api/v1/admin/centers/:id/invitations", s.action.adminResource.GetInvitations, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
-		{http.MethodGet, "/api/v1/admin/centers/:id/invitations/stats", s.action.adminResource.GetInvitationStats, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodGet, "/api/v1/admin/centers/:id/invitations", s.action.teacherInvitation.GetInvitations, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodGet, "/api/v1/admin/centers/:id/invitations/stats", s.action.teacherInvitation.GetInvitationStats, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		// Admin - Invitation Links
 		{http.MethodPost, "/api/v1/admin/centers/:id/invitations/generate-link", s.action.teacherInvitation.GenerateInvitationLink, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodGet, "/api/v1/admin/centers/:id/invitations/links", s.action.teacherInvitation.GetInvitationLinks, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
@@ -217,9 +217,9 @@ func (s *Server) LoadRoutes() {
 		{http.MethodPost, "/api/v1/admin/centers/:id/holidays/bulk", s.action.adminHoliday.BulkCreateHolidays, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 
 		// Admin - Teacher Notes (評分與備註)
-		{http.MethodGet, "/api/v1/admin/teachers/:teacher_id/note", s.action.adminResource.GetTeacherNote, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
-		{http.MethodPut, "/api/v1/admin/teachers/:teacher_id/note", s.action.adminResource.UpsertTeacherNote, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
-		{http.MethodDelete, "/api/v1/admin/teachers/:teacher_id/note", s.action.adminResource.DeleteTeacherNote, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodGet, "/api/v1/admin/teachers/:teacher_id/note", s.action.adminTeacher.GetTeacherNote, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodPut, "/api/v1/admin/teachers/:teacher_id/note", s.action.adminTeacher.UpsertTeacherNote, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodDelete, "/api/v1/admin/teachers/:teacher_id/note", s.action.adminTeacher.DeleteTeacherNote, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 
 		// Smart Matching
 		{http.MethodPost, "/api/v1/admin/smart-matching/matches", s.action.smartMatching.FindMatches, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
