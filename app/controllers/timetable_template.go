@@ -1,125 +1,113 @@
 package controllers
 
 import (
-	"fmt"
 	"net/http"
 	"time"
 	"timeLedger/app"
 	"timeLedger/app/models"
 	"timeLedger/app/repositories"
-	"timeLedger/app/requests"
 	"timeLedger/app/services"
 	"timeLedger/global"
 
 	"github.com/gin-gonic/gin"
 )
 
+// TimetableTemplateController 課表模板控制器
 type TimetableTemplateController struct {
-	BaseController
-	templateRepository    *repositories.TimetableTemplateRepository
-	cellRepository        *repositories.TimetableCellRepository
-	scheduleRuleRepo      *repositories.ScheduleRuleRepository
-	personalEventRepo     *repositories.PersonalEventRepository
-	auditLogRepo          *repositories.AuditLogRepository
-	ruleValidator         *services.ScheduleRuleValidator
+	app            *app.App
+	templateRepo   *repositories.TimetableTemplateRepository
+	cellRepo       *repositories.TimetableCellRepository
+	auditLogRepo   *repositories.AuditLogRepository
+	templateService *services.TimetableTemplateService
 }
 
-func NewTimetableTemplateController(app *app.App) *TimetableTemplateController {
+// NewTimetableTemplateController 建立 TimetableTemplateController 實例
+func NewTimetableTemplateController(appInstance *app.App) *TimetableTemplateController {
 	return &TimetableTemplateController{
-		templateRepository: repositories.NewTimetableTemplateRepository(app),
-		cellRepository:     repositories.NewTimetableCellRepository(app),
-		scheduleRuleRepo:   repositories.NewScheduleRuleRepository(app),
-		personalEventRepo:  repositories.NewPersonalEventRepository(app),
-		auditLogRepo:       repositories.NewAuditLogRepository(app),
-		ruleValidator:      services.NewScheduleRuleValidator(app),
+		app:              appInstance,
+		templateRepo:     repositories.NewTimetableTemplateRepository(appInstance),
+		cellRepo:         repositories.NewTimetableCellRepository(appInstance),
+		auditLogRepo:     repositories.NewAuditLogRepository(appInstance),
+		templateService:  services.NewTimetableTemplateService(appInstance),
 	}
 }
 
-// getCenterID 從 JWT Token 取得 center_id
-// 如果找不到或為 0，回傳錯誤
-func (ctl *TimetableTemplateController) getCenterID(ctx *gin.Context) (uint, bool) {
-	centerID, exists := ctx.Get(global.CenterIDKey)
-	if !exists {
-		ctx.JSON(http.StatusUnauthorized, global.ApiResponse{
-			Code:    global.UNAUTHORIZED,
-			Message: "Center ID not found in token",
-		})
-		return 0, false
-	}
+// GetTemplates 取得課表模板列表
+// @Summary 取得課表模板列表
+// @Tags Admin
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} global.ApiResponse{data=[]models.TimetableTemplate}
+// @Router /api/v1/admin/templates [get]
+func (c *TimetableTemplateController) GetTemplates(ctx *gin.Context) {
+	helper := NewContextHelper(ctx)
 
-	centerIDUint := centerID.(uint)
-	if centerIDUint == 0 {
-		ctx.JSON(http.StatusForbidden, global.ApiResponse{
-			Code:    global.FORBIDDEN,
-			Message: "Center ID is required",
-		})
-		return 0, false
-	}
-
-	return centerIDUint, true
-}
-
-func (ctl *TimetableTemplateController) GetTemplates(ctx *gin.Context) {
-	centerID, ok := ctl.getCenterID(ctx)
-	if !ok {
+	centerID := helper.MustCenterID()
+	if centerID == 0 {
 		return
 	}
 
-	templates, err := ctl.templateRepository.ListByCenterID(ctl.makeCtx(ctx), centerID)
+	templates, err := c.templateRepo.ListByCenterID(ctx.Request.Context(), centerID)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-			Code:    500,
-			Message: "Failed to get templates",
-		})
+		helper.InternalError("Failed to get templates")
 		return
 	}
 
-	ctx.JSON(http.StatusOK, global.ApiResponse{
-		Code:    0,
-		Message: "Success",
-		Datas:   templates,
-	})
+	helper.Success(templates)
 }
 
-func (ctl *TimetableTemplateController) CreateTemplate(ctx *gin.Context) {
-	centerID, ok := ctl.getCenterID(ctx)
-	if !ok {
+// CreateTemplateRequest 建立模板請求
+type CreateTemplateRequest struct {
+	Name    string `json:"name" binding:"required"`
+	RowType string `json:"row_type"`
+}
+
+// CreateTemplate 新增課表模板
+// @Summary 新增課表模板
+// @Tags Admin
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param request body CreateTemplateRequest true "模板資訊"
+// @Success 201 {object} global.ApiResponse{data=models.TimetableTemplate}
+// @Router /api/v1/admin/templates [post]
+func (c *TimetableTemplateController) CreateTemplate(ctx *gin.Context) {
+	helper := NewContextHelper(ctx)
+
+	centerID := helper.MustCenterID()
+	if centerID == 0 {
 		return
 	}
 
-	var req requests.CreateTemplateRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid request body: " + err.Error(),
-		})
+	adminID := helper.MustUserID()
+	if adminID == 0 {
 		return
 	}
 
-	req.CenterID = centerID
+	var req CreateTemplateRequest
+	if !helper.MustBindJSON(&req) {
+		return
+	}
 
 	template := models.TimetableTemplate{
-		CenterID:  req.CenterID,
+		CenterID:  centerID,
 		Name:      req.Name,
 		RowType:   req.RowType,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
 
-	createdTemplate, err := ctl.templateRepository.Create(ctl.makeCtx(ctx), template)
+	createdTemplate, err := c.templateRepo.Create(ctx.Request.Context(), template)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-			Code:    500,
-			Message: "Failed to create template",
-		})
+		helper.InternalError("Failed to create template")
 		return
 	}
 
-	actorID := ctx.GetUint(global.UserIDKey)
-	ctl.auditLogRepo.Create(ctx, models.AuditLog{
-		CenterID:   req.CenterID,
+	c.auditLogRepo.Create(ctx, models.AuditLog{
+		CenterID:   centerID,
 		ActorType:  "ADMIN",
-		ActorID:    actorID,
+		ActorID:    adminID,
 		Action:     "TEMPLATE_CREATE",
 		TargetType: "TimetableTemplate",
 		TargetID:   createdTemplate.ID,
@@ -131,50 +119,44 @@ func (ctl *TimetableTemplateController) CreateTemplate(ctx *gin.Context) {
 		},
 	})
 
-	ctx.JSON(http.StatusOK, global.ApiResponse{
-		Code:    0,
-		Message: "Template created",
-		Datas:   createdTemplate,
-	})
+	helper.Created(createdTemplate)
 }
 
-func (ctl *TimetableTemplateController) UpdateTemplate(ctx *gin.Context) {
-	centerID, ok := ctl.getCenterID(ctx)
-	if !ok {
+// UpdateTemplateRequest 更新模板請求
+type UpdateTemplateRequest struct {
+	Name string `json:"name"`
+}
+
+// UpdateTemplate 更新課表模板
+// @Summary 更新課表模板
+// @Tags Admin
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param template_id path int true "Template ID"
+// @Param request body UpdateTemplateRequest true "模板資訊"
+// @Success 200 {object} global.ApiResponse{data=models.TimetableTemplate}
+// @Router /api/v1/admin/templates/{template_id} [put]
+func (c *TimetableTemplateController) UpdateTemplate(ctx *gin.Context) {
+	helper := NewContextHelper(ctx)
+
+	centerID := helper.MustCenterID()
+	if centerID == 0 {
 		return
 	}
 
-	allParams := make(map[string]string)
-	for _, param := range ctx.Params {
-		allParams[param.Key] = param.Value
-	}
-
-	templateIDStr := ctx.Param("templateId")
-
-	if templateIDStr == "" {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Template ID required",
-			Datas:   allParams,
-		})
+	adminID := helper.MustUserID()
+	if adminID == 0 {
 		return
 	}
 
-	var templateID uint
-	if _, err := fmt.Sscanf(templateIDStr, "%d", &templateID); err != nil || templateID == 0 {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid template ID format",
-		})
+	templateID := helper.MustParamUint("templateId")
+	if templateID == 0 {
 		return
 	}
 
-	var req requests.UpdateTemplateRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid request body",
-		})
+	var req UpdateTemplateRequest
+	if !helper.MustBindJSON(&req) {
 		return
 	}
 
@@ -185,19 +167,15 @@ func (ctl *TimetableTemplateController) UpdateTemplate(ctx *gin.Context) {
 		UpdatedAt: time.Now(),
 	}
 
-	if err := ctl.templateRepository.UpdateByIDAndCenterID(ctl.makeCtx(ctx), templateID, centerID, template); err != nil {
-		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-			Code:    500,
-			Message: "Failed to update template",
-		})
+	if err := c.templateRepo.Update(ctx.Request.Context(), template); err != nil {
+		helper.InternalError("Failed to update template")
 		return
 	}
 
-	actorID := ctx.GetUint(global.UserIDKey)
-	ctl.auditLogRepo.Create(ctx, models.AuditLog{
+	c.auditLogRepo.Create(ctx, models.AuditLog{
 		CenterID:   centerID,
 		ActorType:  "ADMIN",
-		ActorID:    actorID,
+		ActorID:    adminID,
 		Action:     "TEMPLATE_UPDATE",
 		TargetType: "TimetableTemplate",
 		TargetID:   templateID,
@@ -208,80 +186,75 @@ func (ctl *TimetableTemplateController) UpdateTemplate(ctx *gin.Context) {
 		},
 	})
 
-	ctx.JSON(http.StatusOK, global.ApiResponse{
-		Code:    0,
-		Message: "Template updated",
-		Datas:   template,
-	})
+	helper.Success(template)
 }
 
-func (ctl *TimetableTemplateController) GetCells(ctx *gin.Context) {
-	templateIDStr := ctx.Param("templateId")
+// GetCells 取得模板中的格子
+// @Summary 取得模板中的格子
+// @Tags Admin
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param template_id path int true "Template ID"
+// @Success 200 {object} global.ApiResponse{data=[]models.TimetableCell}
+// @Router /api/v1/admin/templates/{template_id}/cells [get]
+func (c *TimetableTemplateController) GetCells(ctx *gin.Context) {
+	helper := NewContextHelper(ctx)
 
-	if templateIDStr == "" {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Template ID required",
-		})
+	templateID := helper.MustParamUint("templateId")
+	if templateID == 0 {
 		return
 	}
 
-	var templateID uint
-	if _, err := fmt.Sscanf(templateIDStr, "%d", &templateID); err != nil || templateID == 0 {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid template ID format",
-		})
-		return
-	}
-
-	cells, err := ctl.cellRepository.ListByTemplateID(ctl.makeCtx(ctx), templateID)
+	cells, err := c.cellRepo.ListByTemplateID(ctx.Request.Context(), templateID)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-			Code:    500,
-			Message: "Failed to get cells",
-		})
+		helper.InternalError("Failed to get cells")
 		return
 	}
 
-	ctx.JSON(http.StatusOK, global.ApiResponse{
-		Code:    0,
-		Message: "Success",
-		Datas:   cells,
-	})
+	helper.Success(cells)
 }
 
-func (ctl *TimetableTemplateController) CreateCells(ctx *gin.Context) {
-	centerID, ok := ctl.getCenterID(ctx)
-	if !ok {
+// CreateCellRequest 建立格子請求
+type CreateCellRequest struct {
+	RowNo     int     `json:"row_no"`
+	ColNo     int     `json:"col_no"`
+	StartTime string  `json:"start_time"`
+	EndTime   string  `json:"end_time"`
+	RoomID    *uint   `json:"room_id"`
+	TeacherID *uint   `json:"teacher_id"`
+}
+
+// CreateCells 新增模板中的格子
+// @Summary 新增模板中的格子
+// @Tags Admin
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param template_id path int true "Template ID"
+// @Param request body []CreateCellRequest true "格子資訊"
+// @Success 201 {object} global.ApiResponse{data=[]models.TimetableCell}
+// @Router /api/v1/admin/templates/{template_id}/cells [post]
+func (c *TimetableTemplateController) CreateCells(ctx *gin.Context) {
+	helper := NewContextHelper(ctx)
+
+	centerID := helper.MustCenterID()
+	if centerID == 0 {
 		return
 	}
 
-	templateIDStr := ctx.Param("templateId")
-
-	if templateIDStr == "" {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Template ID required",
-		})
+	adminID := helper.MustUserID()
+	if adminID == 0 {
 		return
 	}
 
-	var templateID uint
-	if _, err := fmt.Sscanf(templateIDStr, "%d", &templateID); err != nil || templateID == 0 {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid template ID format",
-		})
+	templateID := helper.MustParamUint("templateId")
+	if templateID == 0 {
 		return
 	}
 
-	var req []requests.CreateCellRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid request body",
-		})
+	var req []CreateCellRequest
+	if !helper.MustBindJSON(&req) {
 		return
 	}
 
@@ -304,22 +277,18 @@ func (ctl *TimetableTemplateController) CreateCells(ctx *gin.Context) {
 	// 批次建立所有格子
 	var createdCells []models.TimetableCell
 	for _, cell := range cells {
-		createdCell, err := ctl.cellRepository.Create(ctl.makeCtx(ctx), cell)
+		createdCell, err := c.cellRepo.Create(ctx.Request.Context(), cell)
 		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-				Code:    500,
-				Message: "Failed to create cell: " + err.Error(),
-			})
+			helper.InternalError("Failed to create cell: " + err.Error())
 			return
 		}
 		createdCells = append(createdCells, createdCell)
 	}
 
-	actorID := ctx.GetUint(global.UserIDKey)
-	ctl.auditLogRepo.Create(ctx, models.AuditLog{
+	c.auditLogRepo.Create(ctx, models.AuditLog{
 		CenterID:   centerID,
 		ActorType:  "ADMIN",
-		ActorID:    actorID,
+		ActorID:    adminID,
 		Action:     "TIMETABLE_CELLS_CREATE",
 		TargetType: "TimetableCell",
 		TargetID:   0,
@@ -331,62 +300,54 @@ func (ctl *TimetableTemplateController) CreateCells(ctx *gin.Context) {
 		},
 	})
 
-	ctx.JSON(http.StatusOK, global.ApiResponse{
-		Code:    0,
-		Message: "Cells created",
-		Datas:   createdCells,
-	})
+	helper.Created(createdCells)
 }
 
-func (ctl *TimetableTemplateController) DeleteCell(ctx *gin.Context) {
-	centerID, ok := ctl.getCenterID(ctx)
-	if !ok {
+// DeleteCell 刪除格子
+// @Summary 刪除格子
+// @Tags Admin
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param template_id path int true "Template ID"
+// @Param cell_id path int true "Cell ID"
+// @Success 200 {object} global.ApiResponse
+// @Router /api/v1/admin/templates/{template_id}/cells/{cell_id} [delete]
+func (c *TimetableTemplateController) DeleteCell(ctx *gin.Context) {
+	helper := NewContextHelper(ctx)
+
+	centerID := helper.MustCenterID()
+	if centerID == 0 {
 		return
 	}
 
-	cellIDStr := ctx.Param("cellId")
-
-	if cellIDStr == "" {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Cell ID required",
-		})
+	adminID := helper.MustUserID()
+	if adminID == 0 {
 		return
 	}
 
-	var cellID uint
-	if _, err := fmt.Sscanf(cellIDStr, "%d", &cellID); err != nil || cellID == 0 {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid cell ID format",
-		})
+	cellID := helper.MustParamUint("cellId")
+	if cellID == 0 {
 		return
 	}
 
 	// 取得 cell 來確認存在
-	cell, err := ctl.cellRepository.GetByID(ctl.makeCtx(ctx), cellID)
+	cell, err := c.cellRepo.GetByID(ctx.Request.Context(), cellID)
 	if err != nil {
-		ctx.JSON(http.StatusNotFound, global.ApiResponse{
-			Code:    http.StatusNotFound,
-			Message: "Cell not found",
-		})
+		helper.NotFound("Cell not found")
 		return
 	}
 
 	// 刪除格子
-	if err := ctl.cellRepository.Delete(ctl.makeCtx(ctx), cellID); err != nil {
-		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-			Code:    500,
-			Message: "Failed to delete cell: " + err.Error(),
-		})
+	if err := c.cellRepo.Delete(ctx.Request.Context(), cellID); err != nil {
+		helper.InternalError("Failed to delete cell: " + err.Error())
 		return
 	}
 
-	actorID := ctx.GetUint(global.UserIDKey)
-	ctl.auditLogRepo.Create(ctx, models.AuditLog{
+	c.auditLogRepo.Create(ctx, models.AuditLog{
 		CenterID:   centerID,
 		ActorType:  "ADMIN",
-		ActorID:    actorID,
+		ActorID:    adminID,
 		Action:     "TIMETABLE_CELL_DELETE",
 		TargetType: "TimetableCell",
 		TargetID:   cellID,
@@ -399,50 +360,45 @@ func (ctl *TimetableTemplateController) DeleteCell(ctx *gin.Context) {
 		},
 	})
 
-	ctx.JSON(http.StatusOK, global.ApiResponse{
-		Code:    0,
-		Message: "Cell deleted",
-	})
+	helper.Success(nil)
 }
 
-func (ctl *TimetableTemplateController) DeleteTemplate(ctx *gin.Context) {
-	centerID, ok := ctl.getCenterID(ctx)
-	if !ok {
+// DeleteTemplate 刪除課表模板
+// @Summary 刪除課表模板
+// @Tags Admin
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param template_id path int true "Template ID"
+// @Success 200 {object} global.ApiResponse
+// @Router /api/v1/admin/templates/{template_id} [delete]
+func (c *TimetableTemplateController) DeleteTemplate(ctx *gin.Context) {
+	helper := NewContextHelper(ctx)
+
+	centerID := helper.MustCenterID()
+	if centerID == 0 {
 		return
 	}
 
-	templateIDStr := ctx.Param("templateId")
-
-	if templateIDStr == "" {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Template ID required",
-		})
+	adminID := helper.MustUserID()
+	if adminID == 0 {
 		return
 	}
 
-	var templateID uint
-	if _, err := fmt.Sscanf(templateIDStr, "%d", &templateID); err != nil || templateID == 0 {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid template ID format",
-		})
+	templateID := helper.MustParamUint("templateId")
+	if templateID == 0 {
 		return
 	}
 
-	if err := ctl.templateRepository.DeleteByIDAndCenterID(ctl.makeCtx(ctx), templateID, centerID); err != nil {
-		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-			Code:    500,
-			Message: "Failed to delete template",
-		})
+	if err := c.templateRepo.DeleteByIDAndCenterID(ctx.Request.Context(), templateID, centerID); err != nil {
+		helper.InternalError("Failed to delete template")
 		return
 	}
 
-	actorID := ctx.GetUint(global.UserIDKey)
-	ctl.auditLogRepo.Create(ctx, models.AuditLog{
+	c.auditLogRepo.Create(ctx, models.AuditLog{
 		CenterID:   centerID,
 		ActorType:  "ADMIN",
-		ActorID:    actorID,
+		ActorID:    adminID,
 		Action:     "TEMPLATE_DELETE",
 		TargetType: "TimetableTemplate",
 		TargetID:   templateID,
@@ -453,250 +409,174 @@ func (ctl *TimetableTemplateController) DeleteTemplate(ctx *gin.Context) {
 		},
 	})
 
-	ctx.JSON(http.StatusOK, global.ApiResponse{
-		Code:    0,
-		Message: "Template deleted",
-	})
+	helper.Success(nil)
 }
 
+// ApplyTemplateRequest 套用模板請求
 type ApplyTemplateRequest struct {
 	OfferingID     uint     `json:"offering_id" binding:"required"`
 	StartDate      string   `json:"start_date" binding:"required"`
 	EndDate        string   `json:"end_date" binding:"required"`
 	Weekdays       []int    `json:"weekdays" binding:"required"`
 	Duration       int      `json:"duration"`
-	OverrideBuffer bool     `json:"override_buffer"` // 允許覆蓋 Buffer 衝突
+	OverrideBuffer bool     `json:"override_buffer"`
 }
 
-// ApplyTemplateConflictInfo 套用模板衝突資訊（向前相容）
+// ApplyTemplateConflictInfo 套用模板衝突資訊
 type ApplyTemplateConflictInfo struct {
 	Weekday      int    `json:"weekday"`
 	StartTime    string `json:"start_time"`
 	EndTime      string `json:"end_time"`
-	ConflictType string `json:"conflict_type"` // "ROOM_OVERLAP", "TEACHER_OVERLAP", "PERSONAL_EVENT", "TEACHER_BUFFER", "ROOM_BUFFER"
+	ConflictType string `json:"conflict_type"`
 	Message      string `json:"message"`
 	RuleID       uint   `json:"rule_id,omitempty"`
 	CanOverride  bool   `json:"can_override,omitempty"`
 }
 
-func (ctl *TimetableTemplateController) ApplyTemplate(ctx *gin.Context) {
-	centerID, ok := ctl.getCenterID(ctx)
-	if !ok {
+// ApplyTemplate 套用課表模板
+// @Summary 套用課表模板
+// @Tags Admin
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param template_id path int true "Template ID"
+// @Param request body ApplyTemplateRequest true "套用資訊"
+// @Success 200 {object} global.ApiResponse
+// @Router /api/v1/admin/templates/{template_id}/apply [post]
+func (c *TimetableTemplateController) ApplyTemplate(ctx *gin.Context) {
+	helper := NewContextHelper(ctx)
+
+	centerID := helper.MustCenterID()
+	if centerID == 0 {
 		return
 	}
 
-	templateIDStr := ctx.Param("templateId")
-
-	if templateIDStr == "" {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Template ID required",
-		})
+	adminID := helper.MustUserID()
+	if adminID == 0 {
 		return
 	}
 
-	var templateID uint
-	if _, err := fmt.Sscanf(templateIDStr, "%d", &templateID); err != nil || templateID == 0 {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid template ID format",
-		})
+	templateID := helper.MustParamUint("templateId")
+	if templateID == 0 {
 		return
 	}
 
-	// 解析請求
 	var req ApplyTemplateRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid request body: " + err.Error(),
-		})
+	if !helper.MustBindJSON(&req) {
 		return
 	}
 
-	// 解析日期
-	startDate, err := time.Parse("2006-01-02", req.StartDate)
+	// 呼叫 Service 層
+	result, errInfo, err := c.templateService.ApplyTemplate(ctx.Request.Context(), &services.ApplyTemplateInput{
+		TemplateID:     templateID,
+		CenterID:       centerID,
+		AdminID:        adminID,
+		OfferingID:     req.OfferingID,
+		StartDate:      req.StartDate,
+		EndDate:        req.EndDate,
+		Weekdays:       req.Weekdays,
+		Duration:       req.Duration,
+		OverrideBuffer: req.OverrideBuffer,
+	})
+
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid start_date format",
-		})
-		return
-	}
-	endDate, err := time.Parse("2006-01-02", req.EndDate)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid end_date format",
-		})
+		helper.ErrorWithInfo(errInfo)
 		return
 	}
 
-	// 取得模板
-	template, err := ctl.templateRepository.GetByID(ctl.makeCtx(ctx), templateID)
-	if err != nil || template.CenterID != centerID {
-		ctx.JSON(http.StatusNotFound, global.ApiResponse{
-			Code:    http.StatusNotFound,
-			Message: "Template not found",
-		})
-		return
-	}
-
-	// 取得模板中的 cells
-	cells, err := ctl.cellRepository.ListByTemplateID(ctl.makeCtx(ctx), templateID)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-			Code:    500,
-			Message: "Failed to get template cells",
-		})
-		return
-	}
-
-	// 使用 ScheduleRuleValidator 進行完整驗證（Overlap + Buffer）
-	// 如果請求中指定了 override_buffer，則允許覆蓋 Buffer 衝突
-	validationSummary, err := ctl.ruleValidator.ValidateForApplyTemplate(
-		ctl.makeCtx(ctx),
-		centerID,
-		req.OfferingID,
-		req.Weekdays,
-		cells,
-		req.StartDate,
-		req.EndDate,
-		req.OverrideBuffer,
-	)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-			Code:    500,
-			Message: "Failed to validate template: " + err.Error(),
-		})
-		return
-	}
-
-	// 如果有不可覆蓋的衝突，回傳衝突資訊
-	if !validationSummary.Valid {
-		// 計算不可覆蓋的衝突數量
+	// 檢查衝突
+	if !result.Valid {
 		nonOverrideConflicts := 0
-		for _, conflict := range validationSummary.AllConflicts {
+		for _, conflict := range result.Conflicts {
 			if !conflict.CanOverride {
 				nonOverrideConflicts++
 			}
 		}
 
-		// 如果還有不可覆蓋的衝突，才回傳錯誤
+		// 如果有不可覆蓋的衝突
 		if nonOverrideConflicts > 0 {
-			// 轉換衝突格式以維持向前相容
-			var allConflicts []ApplyTemplateConflictInfo
-			for _, conflict := range validationSummary.AllConflicts {
-				allConflicts = append(allConflicts, ApplyTemplateConflictInfo{
-					Weekday:      conflict.Weekday,
-					StartTime:    conflict.StartTime,
-					EndTime:      conflict.EndTime,
-					ConflictType: conflict.ConflictType,
-					Message:      conflict.Message,
-					RuleID:       conflict.RuleID,
-					CanOverride:  conflict.CanOverride,
-				})
-			}
-
-			ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			helper.ctx.JSON(http.StatusBadRequest, global.ApiResponse{
 				Code:    40002, // OVERLAP error code
 				Message: "套用模板會產生時間衝突，請先解決衝突後再嘗試",
 				Datas: map[string]interface{}{
-					"conflicts":      allConflicts,
-					"conflict_count": len(allConflicts),
+					"conflicts":      result.Conflicts,
+					"conflict_count": len(result.Conflicts),
 				},
 			})
 			return
 		}
 
-		// 如果只有可覆蓋的衝突，但管理員選擇覆蓋，則繼續執行
-		// 否則回傳警告資訊
-		if !req.OverrideBuffer {
-			var allConflicts []ApplyTemplateConflictInfo
-			for _, conflict := range validationSummary.AllConflicts {
-				allConflicts = append(allConflicts, ApplyTemplateConflictInfo{
-					Weekday:      conflict.Weekday,
-					StartTime:    conflict.StartTime,
-					EndTime:      conflict.EndTime,
-					ConflictType: conflict.ConflictType,
-					Message:      conflict.Message,
-					RuleID:       conflict.RuleID,
-					CanOverride:  conflict.CanOverride,
-				})
-			}
-
-			ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-				Code:    40003, // BUFFER_CONFLICT warning code
-				Message: "套用模板會產生緩衝時間衝突，是否繼續？",
-				Datas: map[string]interface{}{
-					"conflicts":      allConflicts,
-					"conflict_count": len(allConflicts),
-					"can_override":   true,
-				},
-			})
-			return
-		}
-	}
-
-	// 為每個 weekday 和每個 cell 建立 schedule rule
-	var rules []models.ScheduleRule
-	for _, weekday := range req.Weekdays {
-		for _, cell := range cells {
-			rule := models.ScheduleRule{
-				CenterID:    centerID,
-				OfferingID:  req.OfferingID,
-				TeacherID:   cell.TeacherID,
-				RoomID:      *cell.RoomID,
-				Weekday:     weekday,
-				StartTime:   cell.StartTime,
-				EndTime:     cell.EndTime,
-				EffectiveRange: models.DateRange{
-					StartDate: startDate,
-					EndDate:   endDate,
-				},
-				CreatedAt: time.Now(),
-				UpdatedAt: time.Now(),
-			}
-			rules = append(rules, rule)
-		}
-	}
-
-	// 建立 schedule rules
-	createdRules, err := ctl.scheduleRuleRepo.BulkCreate(ctl.makeCtx(ctx), rules)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-			Code:    500,
-			Message: "Failed to create schedule rules: " + err.Error(),
+		// 只有可覆蓋的衝突（Buffer 衝突）
+		helper.ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+			Code:    40003, // BUFFER_CONFLICT warning code
+			Message: "套用模板會產生緩衝時間衝突，是否繼續？",
+			Datas: map[string]interface{}{
+				"conflicts":      result.Conflicts,
+				"conflict_count": len(result.Conflicts),
+				"can_override":   true,
+			},
 		})
 		return
 	}
 
-	actorID := ctx.GetUint(global.UserIDKey)
-	ctl.auditLogRepo.Create(ctx, models.AuditLog{
-		CenterID:   centerID,
-		ActorType:  "ADMIN",
-		ActorID:    actorID,
-		Action:     "TEMPLATE_APPLY",
-		TargetType: "ScheduleRule",
-		TargetID:   0,
-		Payload: models.AuditPayload{
-			After: map[string]interface{}{
-				"template_id":   templateID,
-				"offering_id":   req.OfferingID,
-				"start_date":    req.StartDate,
-				"end_date":      req.EndDate,
-				"weekdays":      req.Weekdays,
-				"rules_created": len(createdRules),
-			},
-		},
+	helper.Success(result.Output)
+}
+
+// ValidateApplyTemplateRequest 驗證套用模板請求
+type ValidateApplyTemplateRequest struct {
+	OfferingID     uint     `json:"offering_id" binding:"required"`
+	StartDate      string   `json:"start_date" binding:"required"`
+	EndDate        string   `json:"end_date" binding:"required"`
+	Weekdays       []int    `json:"weekdays" binding:"required"`
+	OverrideBuffer bool     `json:"override_buffer"`
+}
+
+// ValidateApplyTemplate 驗證套用模板（不實際產生規則）
+// @Summary 驗證套用模板
+// @Tags Admin
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param template_id path int true "Template ID"
+// @Param request body ValidateApplyTemplateRequest true "驗證資訊"
+// @Success 200 {object} global.ApiResponse
+// @Router /api/v1/admin/templates/{template_id}/validate-apply [post]
+func (c *TimetableTemplateController) ValidateApplyTemplate(ctx *gin.Context) {
+	helper := NewContextHelper(ctx)
+
+	centerID := helper.MustCenterID()
+	if centerID == 0 {
+		return
+	}
+
+	templateID := helper.MustParamUint("templateId")
+	if templateID == 0 {
+		return
+	}
+
+	var req ValidateApplyTemplateRequest
+	if !helper.MustBindJSON(&req) {
+		return
+	}
+
+	// 呼叫 Service 層進行驗證
+	result, errInfo, err := c.templateService.ValidateApplyTemplate(ctx.Request.Context(), &services.ApplyTemplateValidateInput{
+		TemplateID:     templateID,
+		CenterID:       centerID,
+		OfferingID:     req.OfferingID,
+		StartDate:      req.StartDate,
+		EndDate:        req.EndDate,
+		Weekdays:       req.Weekdays,
+		OverrideBuffer: req.OverrideBuffer,
 	})
 
-	ctx.JSON(http.StatusOK, global.ApiResponse{
-		Code:    0,
-		Message: "Template applied successfully",
-		Datas: map[string]interface{}{
-			"rules_created": len(createdRules),
-			"template_name": template.Name,
-		},
+	if err != nil {
+		helper.ErrorWithInfo(errInfo)
+		return
+	}
+
+	helper.Success(map[string]interface{}{
+		"valid":     result.Valid,
+		"conflicts": result.Conflicts,
 	})
 }

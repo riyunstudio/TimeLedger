@@ -1,8 +1,6 @@
 package controllers
 
 import (
-	"fmt"
-	"net/http"
 	"strings"
 	"time"
 	"timeLedger/app"
@@ -10,7 +8,6 @@ import (
 	"timeLedger/app/repositories"
 	"timeLedger/app/requests"
 	"timeLedger/app/services"
-	"timeLedger/global"
 
 	"github.com/gin-gonic/gin"
 )
@@ -47,52 +44,45 @@ func NewSmartMatchingController(app *app.App) *SmartMatchingController {
 	}
 }
 
+// requireCenterID 取得並驗證中心 ID（通用模式）
+func (ctl *SmartMatchingController) requireCenterID(helper *ContextHelper) uint {
+	centerID := helper.MustCenterID()
+	if centerID == 0 {
+		return 0
+	}
+	return centerID
+}
+
+// FindMatches 智慧媒合搜尋
+// @Summary 智慧媒合搜尋
+// @Description 根據條件搜尋可配合的老師
+// @Tags Smart Matching
+// @Accept json
+// @Produce json
+// @Param request body FindMatchesRequest true "搜尋條件"
+// @Success 200 {object} global.ApiResponse
+// @Router /admin/smart-matching/matches [post]
 func (ctl *SmartMatchingController) FindMatches(ctx *gin.Context) {
+	helper := NewContextHelper(ctx)
+
 	var req FindMatchesRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid request parameters",
-		})
+	if !helper.MustBindJSON(&req) {
 		return
 	}
 
-	// 從 JWT token 取得 center_id
-	centerID := ctx.GetUint(global.CenterIDKey)
+	centerID := ctl.requireCenterID(helper)
 	if centerID == 0 {
-		if val, exists := ctx.Get(global.CenterIDKey); exists {
-			switch v := val.(type) {
-			case uint:
-				centerID = v
-			case uint64:
-				centerID = uint(v)
-			case int:
-				centerID = uint(v)
-			case float64:
-				centerID = uint(v)
-			}
-		}
-	}
-
-	if centerID == 0 {
-		ctx.JSON(http.StatusUnauthorized, global.ApiResponse{
-			Code:    global.UNAUTHORIZED,
-			Message: "Center ID not found in token",
-		})
 		return
 	}
 
 	// 直接同步處理（Go 處理速度很快，不需要 WebSocket）
-	matches, err := ctl.smartMatchingSvc.FindMatches(ctx, centerID, req.TeacherID, req.RoomID, req.StartTime, req.EndTime, req.RequiredSkills, req.ExcludeTeacherIDs)
+	matches, err := ctl.smartMatchingSvc.FindMatches(ctx.Request.Context(), centerID, req.TeacherID, req.RoomID, req.StartTime, req.EndTime, req.RequiredSkills, req.ExcludeTeacherIDs)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-			Code:    500,
-			Message: err.Error(),
-		})
+		helper.InternalError(err.Error())
 		return
 	}
 
-	actorID := ctx.GetUint(global.UserIDKey)
+	actorID := helper.MustUserID()
 	ctl.auditLogRepo.Create(ctx, models.AuditLog{
 		CenterID:   centerID,
 		ActorType:  "ADMIN",
@@ -111,38 +101,34 @@ func (ctl *SmartMatchingController) FindMatches(ctx *gin.Context) {
 		},
 	})
 
-	ctx.JSON(http.StatusOK, global.ApiResponse{
-		Code:    0,
-		Message: "OK",
-		Datas:   matches,
-	})
+	helper.Success(matches)
 }
 
+// SearchTalent 人才庫搜尋
+// @Summary 人才庫搜尋
+// @Description 搜尋符合條件的人才
+// @Tags Smart Matching
+// @Accept json
+// @Produce json
+// @Param city query string false "縣市"
+// @Param district query string false "區域"
+// @Param keyword query string false "關鍵字"
+// @Param skills query string false "技能（逗號分隔）"
+// @Param hashtags query string false "標籤（逗號分隔）"
+// @Param page query int false "頁碼"
+// @Param limit query int false "每頁筆數"
+// @Success 200 {object} global.ApiResponse
+// @Router /admin/smart-matching/talent/search [get]
 func (ctl *SmartMatchingController) SearchTalent(ctx *gin.Context) {
+	helper := NewContextHelper(ctx)
+	centerID := ctl.requireCenterID(helper)
+	if centerID == 0 {
+		return
+	}
+
 	uriReq, err := requests.ValidateTalentSearch(ctx)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: err.Error(),
-		})
-		return
-	}
-
-	centerIDVal, exists := ctx.Get(global.CenterIDKey)
-	if !exists {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Center ID required",
-		})
-		return
-	}
-
-	centerID, ok := centerIDVal.(uint)
-	if !ok {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid center ID format",
-		})
+		helper.BadRequest(err.Error())
 		return
 	}
 
@@ -175,18 +161,15 @@ func (ctl *SmartMatchingController) SearchTalent(ctx *gin.Context) {
 		SortOrder:  uriReq.SortOrder,
 	}
 
-	result, err := ctl.smartMatchingSvc.SearchTalent(ctx, searchParams)
+	result, err := ctl.smartMatchingSvc.SearchTalent(ctx.Request.Context(), searchParams)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-			Code:    500,
-			Message: err.Error(),
-		})
+		helper.InternalError(err.Error())
 		return
 	}
 
-	actorID := ctx.GetUint(global.UserIDKey)
+	actorID := helper.MustUserID()
 	ctl.auditLogRepo.Create(ctx, models.AuditLog{
-		CenterID:   uriReq.CenterID,
+		CenterID:   centerID,
 		ActorType:  "ADMIN",
 		ActorID:    actorID,
 		Action:     "TALENT_SEARCH",
@@ -209,11 +192,7 @@ func (ctl *SmartMatchingController) SearchTalent(ctx *gin.Context) {
 		},
 	})
 
-	ctx.JSON(http.StatusOK, global.ApiResponse{
-		Code:    0,
-		Message: "OK",
-		Datas:   result,
-	})
+	helper.Success(result)
 }
 
 // TalentStatsRequest - 人才庫統計請求
@@ -224,17 +203,17 @@ type TalentStatsRequest struct {
 
 // TalentStatsResponse - 人才庫統計回應
 type TalentStatsResponse struct {
-	TotalCount       int                      `json:"total_count"`
-	OpenHiringCount  int                      `json:"open_hiring_count"`
-	MemberCount      int                      `json:"member_count"`
-	AverageRating    float64                  `json:"average_rating"`
-	MonthlyChange    int                      `json:"monthly_change"`
-	MonthlyTrend     []int                    `json:"monthly趋势"`
-	PendingInvites   int                      `json:"pending_invites"`
-	AcceptedInvites  int                      `json:"accepted_invites"`
-	DeclinedInvites  int                      `json:"declined_invites"`
-	CityDistribution []CityDistributionItem   `json:"city_distribution"`
-	TopSkills        []SkillCountItem         `json:"top_skills"`
+	TotalCount       int                    `json:"total_count"`
+	OpenHiringCount  int                    `json:"open_hiring_count"`
+	MemberCount      int                    `json:"member_count"`
+	AverageRating    float64                `json:"average_rating"`
+	MonthlyChange    int                    `json:"monthly_change"`
+	MonthlyTrend     []int                  `json:"monthly_trend"`
+	PendingInvites   int                    `json:"pending_invites"`
+	AcceptedInvites  int                    `json:"accepted_invites"`
+	DeclinedInvites  int                    `json:"declined_invites"`
+	CityDistribution []CityDistributionItem `json:"city_distribution"`
+	TopSkills        []SkillCountItem       `json:"top_skills"`
 }
 
 type CityDistributionItem struct {
@@ -248,39 +227,29 @@ type SkillCountItem struct {
 }
 
 // GetTalentStats - 取得人才庫統計資料
+// @Summary 取得人才庫統計資料
+// @Description 取得人才庫的統計資訊
+// @Tags Smart Matching
+// @Accept json
+// @Produce json
+// @Param city query string false "縣市"
+// @Param district query string false "區域"
+// @Success 200 {object} TalentStatsResponse
+// @Router /admin/smart-matching/talent/stats [get]
 func (ctl *SmartMatchingController) GetTalentStats(ctx *gin.Context) {
-	centerIDVal, exists := ctx.Get(global.CenterIDKey)
-	if !exists {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Center ID required",
-		})
+	helper := NewContextHelper(ctx)
+	centerID := ctl.requireCenterID(helper)
+	if centerID == 0 {
 		return
 	}
 
-	centerID, ok := centerIDVal.(uint)
-	if !ok {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid center ID format",
-		})
-		return
-	}
-
-	stats, err := ctl.smartMatchingSvc.GetTalentStats(ctx, centerID)
+	stats, err := ctl.smartMatchingSvc.GetTalentStats(ctx.Request.Context(), centerID)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-			Code:    500,
-			Message: err.Error(),
-		})
+		helper.InternalError(err.Error())
 		return
 	}
 
-	ctx.JSON(http.StatusOK, global.ApiResponse{
-		Code:    0,
-		Message: "OK",
-		Datas:   stats,
-	})
+	helper.Success(stats)
 }
 
 // InviteTalentRequest - 邀請人才請求
@@ -298,42 +267,31 @@ type InviteTalentResponse struct {
 }
 
 // InviteTalent - 邀請人才合作
+// @Summary 邀請人才合作
+// @Description 邀請老師加入人才庫
+// @Tags Smart Matching
+// @Accept json
+// @Produce json
+// @Param request body InviteTalentRequest true "邀請資訊"
+// @Success 200 {object} InviteTalentResponse
+// @Router /admin/smart-matching/talent/invite [post]
 func (ctl *SmartMatchingController) InviteTalent(ctx *gin.Context) {
+	helper := NewContextHelper(ctx)
+	centerID := ctl.requireCenterID(helper)
+	if centerID == 0 {
+		return
+	}
+
 	var req InviteTalentRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid request: " + err.Error(),
-		})
+	if !helper.MustBindJSON(&req) {
 		return
 	}
 
-	centerIDVal, exists := ctx.Get(global.CenterIDKey)
-	if !exists {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Center ID required",
-		})
-		return
-	}
+	actorID := helper.MustUserID()
 
-	centerID, ok := centerIDVal.(uint)
-	if !ok {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid center ID format",
-		})
-		return
-	}
-
-	actorID := ctx.GetUint(global.UserIDKey)
-
-	result, err := ctl.smartMatchingSvc.InviteTalent(ctx, centerID, actorID, req.TeacherIDs, req.Message)
+	result, err := ctl.smartMatchingSvc.InviteTalent(ctx.Request.Context(), centerID, actorID, req.TeacherIDs, req.Message)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-			Code:    500,
-			Message: err.Error(),
-		})
+		helper.InternalError(err.Error())
 		return
 	}
 
@@ -355,87 +313,71 @@ func (ctl *SmartMatchingController) InviteTalent(ctx *gin.Context) {
 		},
 	})
 
-	ctx.JSON(http.StatusOK, global.ApiResponse{
-		Code:    0,
-		Message: "OK",
-		Datas:   result,
-	})
+	helper.Success(result)
 }
 
 // GetSearchSuggestions - 取得搜尋建議
+// @Summary 取得搜尋建議
+// @Description 取得搜尋建議關鍵字
+// @Tags Smart Matching
+// @Accept json
+// @Produce json
+// @Param q query string false "搜尋關鍵字"
+// @Success 200 {object} global.ApiResponse
+// @Router /admin/smart-matching/suggestions [get]
 func (ctl *SmartMatchingController) GetSearchSuggestions(ctx *gin.Context) {
-	query := ctx.Query("q")
+	helper := NewContextHelper(ctx)
+
+	query := helper.QueryStringOrDefault("q", "")
 	if query == "" {
-		query = ctx.Query("keyword")
+		query = helper.QueryStringOrDefault("keyword", "")
 	}
 
-	suggestions, err := ctl.smartMatchingSvc.GetSearchSuggestions(ctx, query)
+	suggestions, err := ctl.smartMatchingSvc.GetSearchSuggestions(ctx.Request.Context(), query)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-			Code:    500,
-			Message: err.Error(),
-		})
+		helper.InternalError(err.Error())
 		return
 	}
 
-	ctx.JSON(http.StatusOK, global.ApiResponse{
-		Code:    0,
-		Message: "OK",
-		Datas:   suggestions,
-	})
+	helper.Success(suggestions)
 }
 
 // GetAlternativeSlotsRequest - 替代時段請求
 type GetAlternativeSlotsRequest struct {
-	TeacherID  uint   `json:"teacher_id" binding:"required"`
+	TeacherID    uint      `json:"teacher_id" binding:"required"`
 	OriginalStart time.Time `json:"original_start" binding:"required"`
 	OriginalEnd   time.Time `json:"original_end" binding:"required"`
-	Duration     int    `json:"duration"`
+	Duration     int       `json:"duration"`
 }
 
 // GetAlternativeSlots - 取得替代時段建議
+// @Summary 取得替代時段建議
+// @Description 取得替代時段建議
+// @Tags Smart Matching
+// @Accept json
+// @Produce json
+// @Param request body GetAlternativeSlotsRequest true "時段資訊"
+// @Success 200 {object} global.ApiResponse
+// @Router /admin/smart-matching/alternatives [post]
 func (ctl *SmartMatchingController) GetAlternativeSlots(ctx *gin.Context) {
+	helper := NewContextHelper(ctx)
+	centerID := ctl.requireCenterID(helper)
+	if centerID == 0 {
+		return
+	}
+
 	var req GetAlternativeSlotsRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid request: " + err.Error(),
-		})
+	if !helper.MustBindJSON(&req) {
 		return
 	}
 
-	centerIDVal, exists := ctx.Get(global.CenterIDKey)
-	if !exists {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Center ID required",
-		})
-		return
-	}
-
-	centerID, ok := centerIDVal.(uint)
-	if !ok {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid center ID format",
-		})
-		return
-	}
-
-	alternatives, err := ctl.smartMatchingSvc.GetAlternativeSlots(ctx, centerID, req.TeacherID, req.OriginalStart, req.OriginalEnd, req.Duration)
+	alternatives, err := ctl.smartMatchingSvc.GetAlternativeSlots(ctx.Request.Context(), centerID, req.TeacherID, req.OriginalStart, req.OriginalEnd, req.Duration)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-			Code:    500,
-			Message: err.Error(),
-		})
+		helper.InternalError(err.Error())
 		return
 	}
 
-	ctx.JSON(http.StatusOK, global.ApiResponse{
-		Code:    0,
-		Message: "OK",
-		Datas:   alternatives,
-	})
+	helper.Success(alternatives)
 }
 
 // GetTeacherSessionsRequest - 教師課表請求
@@ -446,79 +388,53 @@ type GetTeacherSessionsRequest struct {
 
 // TeacherSessionResponse - 教師課表回應
 type TeacherSessionResponse struct {
-	TeacherID uint              `json:"teacher_id"`
-	TeacherName string          `json:"teacher_name"`
-	Sessions   []SessionItem    `json:"sessions"`
+	TeacherID   uint         `json:"teacher_id"`
+	TeacherName string       `json:"teacher_name"`
+	Sessions    []SessionItem `json:"sessions"`
 }
 
 type SessionItem struct {
-	ID          uint   `json:"id"`
-	CourseName  string `json:"course_name"`
-	StartTime   string `json:"start_time"`
-	EndTime     string `json:"end_time"`
-	RoomName    string `json:"room_name,omitempty"`
-	Status      string `json:"status"`
+	ID         uint   `json:"id"`
+	CourseName string `json:"course_name"`
+	StartTime  string `json:"start_time"`
+	EndTime    string `json:"end_time"`
+	RoomName   string `json:"room_name,omitempty"`
+	Status     string `json:"status"`
 }
 
 // GetTeacherSessions - 取得教師課表
+// @Summary 取得教師課表
+// @Description 取得指定教師的課表
+// @Tags Smart Matching
+// @Accept json
+// @Produce json
+// @Param teacher_id path uint true "教師ID"
+// @Param start_date query string true "開始日期"
+// @Param end_date query string true "結束日期"
+// @Success 200 {object} TeacherSessionResponse
+// @Router /admin/smart-matching/teachers/{teacher_id}/sessions [get]
 func (ctl *SmartMatchingController) GetTeacherSessions(ctx *gin.Context) {
-	teacherID := ctx.Param("teacher_id")
-	if teacherID == "" {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Teacher ID is required",
-		})
+	helper := NewContextHelper(ctx)
+	centerID := ctl.requireCenterID(helper)
+	if centerID == 0 {
+		return
+	}
+
+	teacherID := helper.MustParamUint("teacher_id")
+	if teacherID == 0 {
 		return
 	}
 
 	var req GetTeacherSessionsRequest
-	if err := ctx.ShouldBindQuery(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid request: " + err.Error(),
-		})
+	if !helper.MustBindJSON(&req) {
 		return
 	}
 
-	centerIDVal, exists := ctx.Get(global.CenterIDKey)
-	if !exists {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Center ID required",
-		})
-		return
-	}
-
-	centerID, ok := centerIDVal.(uint)
-	if !ok {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid center ID format",
-		})
-		return
-	}
-
-	var tID uint
-	if _, err := fmt.Sscanf(teacherID, "%d", &tID); err != nil {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid teacher ID format",
-		})
-		return
-	}
-
-	sessions, err := ctl.smartMatchingSvc.GetTeacherSessions(ctx, centerID, tID, req.StartDate, req.EndDate)
+	sessions, err := ctl.smartMatchingSvc.GetTeacherSessions(ctx.Request.Context(), centerID, teacherID, req.StartDate, req.EndDate)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-			Code:    500,
-			Message: err.Error(),
-		})
+		helper.InternalError(err.Error())
 		return
 	}
 
-	ctx.JSON(http.StatusOK, global.ApiResponse{
-		Code:    0,
-		Message: "OK",
-		Datas:   sessions,
-	})
+	helper.Success(sessions)
 }

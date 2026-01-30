@@ -254,9 +254,13 @@ func (ctl *SchedulingController) CreateRule(ctx *gin.Context) {
 		OverrideBuffer: req.OverrideBuffer,
 	}
 
-	rules, err := ctl.scheduleSvc.CreateRule(ctx.Request.Context(), centerID, adminID, svcReq)
+	rules, errInfo, err := ctl.scheduleSvc.CreateRule(ctx.Request.Context(), centerID, adminID, svcReq)
 	if err != nil {
-		helper.InternalError(err.Error())
+		if errInfo != nil {
+			helper.ErrorWithInfo(errInfo)
+		} else {
+			helper.InternalError(err.Error())
+		}
 		return
 	}
 
@@ -310,9 +314,13 @@ func (ctl *SchedulingController) UpdateRule(ctx *gin.Context) {
 		UpdateMode: req.UpdateMode,
 	}
 
-	rules, err := ctl.scheduleSvc.UpdateRule(ctx.Request.Context(), centerID, adminID, ruleID, svcReq)
+	rules, errInfo, err := ctl.scheduleSvc.UpdateRule(ctx.Request.Context(), centerID, adminID, ruleID, svcReq)
 	if err != nil {
-		helper.InternalError(err.Error())
+		if errInfo != nil {
+			helper.ErrorWithInfo(errInfo)
+		} else {
+			helper.InternalError(err.Error())
+		}
 		return
 	}
 

@@ -16,7 +16,6 @@ import (
 type AdminResourceController struct {
 	BaseController
 	app                  *app.App
-	centerRepository     *repositories.CenterRepository
 	courseRepository     *repositories.CourseRepository
 	roomRepository       *repositories.RoomRepository
 	offeringRepository   *repositories.OfferingRepository
@@ -33,7 +32,6 @@ type AdminResourceController struct {
 func NewAdminResourceController(app *app.App) *AdminResourceController {
 	return &AdminResourceController{
 		app:                  app,
-		centerRepository:     repositories.NewCenterRepository(app),
 		courseRepository:     repositories.NewCourseRepository(app),
 		roomRepository:       repositories.NewRoomRepository(app),
 		offeringRepository:   repositories.NewOfferingRepository(app),
@@ -46,82 +44,6 @@ func NewAdminResourceController(app *app.App) *AdminResourceController {
 		skillRepository:      repositories.NewTeacherSkillRepository(app),
 		certificateRepo:      repositories.NewTeacherCertificateRepository(app),
 	}
-}
-
-// GetCenters 取得中心列表
-// @Summary 取得中心列表
-// @Tags Admin
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Success 200 {object} global.ApiResponse{data=[]models.Center}
-// @Router /api/v1/admin/centers [get]
-func (ctl *AdminResourceController) GetCenters(ctx *gin.Context) {
-	centers, err := ctl.centerRepository.List(ctx)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-			Code:    500,
-			Message: "Failed to get centers",
-		})
-		return
-	}
-
-	ctx.JSON(http.StatusOK, global.ApiResponse{
-		Code:    0,
-		Message: "Success",
-		Datas:   centers,
-	})
-}
-
-// CreateCenter 新增中心
-// @Summary 新增中心
-// @Tags Admin
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Param request body CreateCenterRequest true "中心資訊"
-// @Success 200 {object} global.ApiResponse{data=models.Center}
-// @Router /api/v1/admin/centers [post]
-func (ctl *AdminResourceController) CreateCenter(ctx *gin.Context) {
-	var req CreateCenterRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid request body",
-		})
-		return
-	}
-
-	center := models.Center{
-		Name:      req.Name,
-		PlanLevel: req.PlanLevel,
-		Settings: models.CenterSettings{
-			AllowPublicRegister: req.AllowPublicRegister,
-			DefaultLanguage:     "zh-TW",
-		},
-		CreatedAt: time.Now(),
-	}
-
-	createdCenter, err := ctl.centerRepository.Create(ctx, center)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-			Code:    500,
-			Message: "Failed to create center",
-		})
-		return
-	}
-
-	ctx.JSON(http.StatusOK, global.ApiResponse{
-		Code:    0,
-		Message: "Center created",
-		Datas:   createdCenter,
-	})
-}
-
-type CreateCenterRequest struct {
-	Name                string `json:"name" binding:"required"`
-	PlanLevel           string `json:"plan_level" binding:"required"`
-	AllowPublicRegister bool   `json:"allow_public_register"`
 }
 
 // GetRooms 取得教室列表
@@ -604,7 +526,7 @@ func (ctl *AdminResourceController) DeleteCourse(ctx *gin.Context) {
 		return
 	}
 
-	if err := ctl.courseRepository.DeleteByID(ctl.makeCtx(ctx), courseID, centerID); err != nil {
+	if err := ctl.courseRepository.DeleteByIDWithCenterScope(ctl.makeCtx(ctx), courseID, centerID); err != nil {
 		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
 			Code:    500,
 			Message: "Failed to delete course",
@@ -1188,7 +1110,7 @@ func (ctl *AdminResourceController) GetInvitationStats(ctx *gin.Context) {
 	accepted, _ := ctl.invitationRepo.CountByStatus(ctx, centerID, "ACCEPTED")
 	expired, _ := ctl.invitationRepo.CountByStatus(ctx, centerID, "EXPIRED")
 	rejected, _ := ctl.invitationRepo.CountByStatus(ctx, centerID, "REJECTED")
-	recentPending, _ := ctl.invitationRepo.CountByDateRange(ctx, centerID, thirtyDaysAgo, now, "PENDING")
+	recentPending, _ := ctl.invitationRepo.CountByDateRange(ctx, centerID, thirtyDaysAgo, now)
 
 	stats := InvitationStatsResponse{
 		Total:         total,
@@ -1221,7 +1143,7 @@ func (ctl *AdminResourceController) GetInvitations(ctx *gin.Context) {
 
 	status := ctx.Query("status")
 
-	invitations, total, err := ctl.invitationRepo.ListByCenterIDPaginated(ctx, centerID, int64(req.Page), int64(req.Limit), status)
+	invitations, total, err := ctl.invitationRepo.ListByCenterIDPaginated(ctx, centerID, int(req.Page), int(req.Limit), status)
 	if err != nil {
 		ctl.respondError(ctx, errInfos.SQL_ERROR, "Failed to get invitations")
 		return
@@ -1383,7 +1305,7 @@ func (ctl *AdminResourceController) UpsertTeacherNote(ctx *gin.Context) {
 		existingNote.InternalNote = req.InternalNote
 		existingNote.UpdatedAt = now
 
-		if err := ctl.centerTeacherNoteRepo.Update(ctx, &existingNote); err != nil {
+		if err := ctl.centerTeacherNoteRepo.Update(ctx, existingNote); err != nil {
 			ctl.respondError(ctx, errInfos.SQL_ERROR, "Failed to update teacher note")
 			return
 		}
@@ -1432,7 +1354,8 @@ func (ctl *AdminResourceController) UpsertTeacherNote(ctx *gin.Context) {
 		UpdatedAt:    now,
 	}
 
-	if err := ctl.centerTeacherNoteRepo.Create(ctx, &newNote); err != nil {
+	_, createErr := ctl.centerTeacherNoteRepo.Create(ctx, newNote)
+	if createErr != nil {
 		ctl.respondError(ctx, errInfos.SQL_ERROR, "Failed to create teacher note")
 		return
 	}
@@ -1495,7 +1418,7 @@ func (ctl *AdminResourceController) DeleteTeacherNote(ctx *gin.Context) {
 		return
 	}
 
-	if err := ctl.centerTeacherNoteRepo.Delete(ctx, note.ID); err != nil {
+	if err := ctl.centerTeacherNoteRepo.DeleteByID(ctx, note.ID); err != nil {
 		ctl.respondError(ctx, errInfos.SQL_ERROR, "Failed to delete teacher note")
 		return
 	}

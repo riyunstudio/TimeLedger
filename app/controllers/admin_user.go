@@ -1,11 +1,9 @@
 package controllers
 
 import (
-	"net/http"
 	"time"
 	"timeLedger/app"
 	"timeLedger/app/services"
-	"timeLedger/global"
 	"timeLedger/global/errInfos"
 
 	"github.com/gin-gonic/gin"
@@ -41,6 +39,15 @@ type UpdateNotifySettingsRequest struct {
 	Enabled bool `json:"enabled" binding:"required"`
 }
 
+// requireAdminID 取得並驗證管理員 ID（通用模式）
+func (ctl *AdminUserController) requireAdminID(helper *ContextHelper) uint {
+	adminID := helper.MustUserID()
+	if adminID == 0 {
+		return 0
+	}
+	return adminID
+}
+
 // GetLINEBindingStatus 取得 LINE 綁定狀態
 // @Summary 取得 LINE 綁定狀態
 // @Description 取得目前管理員的 LINE 綁定狀態
@@ -50,31 +57,19 @@ type UpdateNotifySettingsRequest struct {
 // @Success 200 {object} LINEBindingResponse
 // @Router /admin/me/line-binding [get]
 func (c *AdminUserController) GetLINEBindingStatus(ctx *gin.Context) {
-	// 從 gin context 取得 admin ID
-	adminIDVal, exists := ctx.Get(global.UserIDKey)
-	if !exists {
-		ctx.JSON(http.StatusUnauthorized, global.ApiResponse{
-			Code:    global.UNAUTHORIZED,
-			Message: "Unauthorized",
-		})
+	helper := NewContextHelper(ctx)
+	adminID := c.requireAdminID(helper)
+	if adminID == 0 {
 		return
 	}
-	adminID := adminIDVal.(uint)
 
-	status, eInfo, err := c.adminService.GetLINEBindingStatus(ctx.Request.Context(), adminID)
+	status, errInfo, err := c.adminService.GetLINEBindingStatus(ctx.Request.Context(), adminID)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-			Code:    eInfo.Code,
-			Message: eInfo.Msg,
-		})
+		helper.ErrorWithInfo(errInfo)
 		return
 	}
 
-	ctx.JSON(http.StatusOK, global.ApiResponse{
-		Code:    0,
-		Message: "OK",
-		Datas:   status,
-	})
+	helper.Success(status)
 }
 
 // InitLINEBinding 初始化 LINE 綁定
@@ -86,32 +81,21 @@ func (c *AdminUserController) GetLINEBindingStatus(ctx *gin.Context) {
 // @Success 200 {object} map[string]interface{} "code, expires_at"
 // @Router /admin/me/line/bind [post]
 func (c *AdminUserController) InitLINEBinding(ctx *gin.Context) {
-	adminIDVal, exists := ctx.Get(global.UserIDKey)
-	if !exists {
-		ctx.JSON(http.StatusUnauthorized, global.ApiResponse{
-			Code:    global.UNAUTHORIZED,
-			Message: "Unauthorized",
-		})
+	helper := NewContextHelper(ctx)
+	adminID := c.requireAdminID(helper)
+	if adminID == 0 {
 		return
 	}
-	adminID := adminIDVal.(uint)
 
-	code, expiresAt, eInfo, err := c.adminService.InitLINEBinding(ctx.Request.Context(), adminID)
+	code, expiresAt, errInfo, err := c.adminService.InitLINEBinding(ctx.Request.Context(), adminID)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-			Code:    eInfo.Code,
-			Message: eInfo.Msg,
-		})
+		helper.ErrorWithInfo(errInfo)
 		return
 	}
 
-	ctx.JSON(http.StatusOK, global.ApiResponse{
-		Code:    0,
-		Message: "OK",
-		Datas: gin.H{
-			"code":       code,
-			"expires_at": expiresAt,
-		},
+	helper.Success(gin.H{
+		"code":       code,
+		"expires_at": expiresAt,
 	})
 }
 
@@ -124,32 +108,19 @@ func (c *AdminUserController) InitLINEBinding(ctx *gin.Context) {
 // @Success 200 {object} map[string]string
 // @Router /admin/me/line/unbind [delete]
 func (c *AdminUserController) UnbindLINE(ctx *gin.Context) {
-	adminIDVal, exists := ctx.Get(global.UserIDKey)
-	if !exists {
-		ctx.JSON(http.StatusUnauthorized, global.ApiResponse{
-			Code:    global.UNAUTHORIZED,
-			Message: "Unauthorized",
-		})
-		return
-	}
-	adminID := adminIDVal.(uint)
-
-	eInfo, err := c.adminService.UnbindLINE(ctx.Request.Context(), adminID)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-			Code:    eInfo.Code,
-			Message: eInfo.Msg,
-		})
+	helper := NewContextHelper(ctx)
+	adminID := c.requireAdminID(helper)
+	if adminID == 0 {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, global.ApiResponse{
-		Code:    0,
-		Message: "OK",
-		Datas: gin.H{
-			"message": "LINE 帳號已解除綁定",
-		},
-	})
+	errInfo, _ := c.adminService.UnbindLINE(ctx.Request.Context(), adminID)
+	if errInfo != nil {
+		helper.ErrorWithInfo(errInfo)
+		return
+	}
+
+	helper.Success(gin.H{"message": "LINE 帳號已解除綁定"})
 }
 
 // UpdateLINENotifySettings 更新 LINE 通知設定
@@ -162,41 +133,26 @@ func (c *AdminUserController) UnbindLINE(ctx *gin.Context) {
 // @Success 200 {object} map[string]string
 // @Router /admin/me/line/notify-settings [patch]
 func (c *AdminUserController) UpdateLINENotifySettings(ctx *gin.Context) {
-	adminIDVal, exists := ctx.Get(global.UserIDKey)
-	if !exists {
-		ctx.JSON(http.StatusUnauthorized, global.ApiResponse{
-			Code:    global.UNAUTHORIZED,
-			Message: "Unauthorized",
-		})
+	helper := NewContextHelper(ctx)
+	adminID := c.requireAdminID(helper)
+	if adminID == 0 {
 		return
 	}
-	adminID := adminIDVal.(uint)
 
 	var req UpdateNotifySettingsRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid request body",
-		})
+	if !helper.MustBindJSON(&req) {
 		return
 	}
 
-	eInfo, err := c.adminService.UpdateLINENotifySettings(ctx.Request.Context(), adminID, req.Enabled)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-			Code:    eInfo.Code,
-			Message: eInfo.Msg,
-		})
+	errInfo, _ := c.adminService.UpdateLINENotifySettings(ctx.Request.Context(), adminID, req.Enabled)
+	if errInfo != nil {
+		helper.ErrorWithInfo(errInfo)
 		return
 	}
 
-	ctx.JSON(http.StatusOK, global.ApiResponse{
-		Code:    0,
-		Message: "OK",
-		Datas: gin.H{
-			"message":        "通知設定已更新",
-			"notify_enabled": req.Enabled,
-		},
+	helper.Success(gin.H{
+		"message":        "通知設定已更新",
+		"notify_enabled": req.Enabled,
 	})
 }
 
@@ -209,30 +165,19 @@ func (c *AdminUserController) UpdateLINENotifySettings(ctx *gin.Context) {
 // @Success 200 {object} models.AdminUser
 // @Router /admin/me/profile [get]
 func (c *AdminUserController) GetAdminProfile(ctx *gin.Context) {
-	adminIDVal, exists := ctx.Get(global.UserIDKey)
-	if !exists {
-		ctx.JSON(http.StatusUnauthorized, global.ApiResponse{
-			Code:    global.UNAUTHORIZED,
-			Message: "Unauthorized",
-		})
+	helper := NewContextHelper(ctx)
+	adminID := c.requireAdminID(helper)
+	if adminID == 0 {
 		return
 	}
-	adminID := adminIDVal.(uint)
 
-	admin, eInfo, err := c.adminService.GetAdminProfile(ctx.Request.Context(), adminID)
+	admin, errInfo, err := c.adminService.GetAdminProfile(ctx.Request.Context(), adminID)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-			Code:    eInfo.Code,
-			Message: eInfo.Msg,
-		})
+		helper.ErrorWithInfo(errInfo)
 		return
 	}
 
-	ctx.JSON(http.StatusOK, global.ApiResponse{
-		Code:    0,
-		Message: "OK",
-		Datas:   admin,
-	})
+	helper.Success(admin)
 }
 
 // ChangePassword 修改管理員密碼
@@ -245,45 +190,28 @@ func (c *AdminUserController) GetAdminProfile(ctx *gin.Context) {
 // @Success 200 {object} map[string]string
 // @Router /admin/me/change-password [post]
 func (c *AdminUserController) ChangePassword(ctx *gin.Context) {
-	adminIDVal, exists := ctx.Get(global.UserIDKey)
-	if !exists {
-		ctx.JSON(http.StatusUnauthorized, global.ApiResponse{
-			Code:    global.UNAUTHORIZED,
-			Message: "Unauthorized",
-		})
+	helper := NewContextHelper(ctx)
+	adminID := c.requireAdminID(helper)
+	if adminID == 0 {
 		return
 	}
-	adminID := adminIDVal.(uint)
 
 	var req services.ChangePasswordRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "密碼必須至少 6 個字元",
-		})
+	if !helper.MustBindJSON(&req) {
 		return
 	}
 
-	eInfo, err := c.adminService.ChangePassword(ctx.Request.Context(), adminID, &req)
+	errInfo, err := c.adminService.ChangePassword(ctx.Request.Context(), adminID, &req)
 	if err != nil {
-		statusCode := http.StatusInternalServerError
-		if eInfo != nil && eInfo.Code == errInfos.PASSWORD_NOT_MATCH {
-			statusCode = http.StatusBadRequest
+		if errInfo != nil && errInfo.Code == errInfos.PASSWORD_NOT_MATCH {
+			helper.BadRequest(errInfo.Msg)
+		} else {
+			helper.ErrorWithInfo(errInfo)
 		}
-		ctx.JSON(statusCode, global.ApiResponse{
-			Code:    eInfo.Code,
-			Message: eInfo.Msg,
-		})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, global.ApiResponse{
-		Code:    0,
-		Message: "OK",
-		Datas: gin.H{
-			"message": "密碼已成功修改",
-		},
-	})
+	helper.Success(gin.H{"message": "密碼已成功修改"})
 }
 
 // ToggleAdminStatusRequest 切換管理員狀態請求
@@ -301,40 +229,26 @@ type ToggleAdminStatusRequest struct {
 // @Success 200 {object} []services.AdminListItem
 // @Router /admin/admins [get]
 func (c *AdminUserController) ListAdmins(ctx *gin.Context) {
-	adminIDVal, exists := ctx.Get(global.UserIDKey)
-	if !exists {
-		ctx.JSON(http.StatusUnauthorized, global.ApiResponse{
-			Code:    global.UNAUTHORIZED,
-			Message: "Unauthorized",
-		})
+	helper := NewContextHelper(ctx)
+	adminID := c.requireAdminID(helper)
+	if adminID == 0 {
 		return
 	}
-	adminID := adminIDVal.(uint)
 
 	// 取得操作者資料以獲取 center_id
-	operator, eInfo, err := c.adminService.GetAdminProfile(ctx.Request.Context(), adminID)
+	operator, errInfo, err := c.adminService.GetAdminProfile(ctx.Request.Context(), adminID)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-			Code:    eInfo.Code,
-			Message: eInfo.Msg,
-		})
+		helper.ErrorWithInfo(errInfo)
 		return
 	}
 
-	admins, listEInfo, listErr := c.adminService.ListAdmins(ctx.Request.Context(), operator.CenterID)
+	admins, listErrInfo, listErr := c.adminService.ListAdmins(ctx.Request.Context(), operator.CenterID)
 	if listErr != nil {
-		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-			Code:    listEInfo.Code,
-			Message: listEInfo.Msg,
-		})
+		helper.ErrorWithInfo(listErrInfo)
 		return
 	}
 
-	ctx.JSON(http.StatusOK, global.ApiResponse{
-		Code:    0,
-		Message: "OK",
-		Datas:   admins,
-	})
+	helper.Success(admins)
 }
 
 // ToggleAdminStatus 停用/啟用管理員
@@ -347,37 +261,28 @@ func (c *AdminUserController) ListAdmins(ctx *gin.Context) {
 // @Success 200 {object} map[string]string
 // @Router /admin/admins/toggle-status [post]
 func (c *AdminUserController) ToggleAdminStatus(ctx *gin.Context) {
-	adminIDVal, exists := ctx.Get(global.UserIDKey)
-	if !exists {
-		ctx.JSON(http.StatusUnauthorized, global.ApiResponse{
-			Code:    global.UNAUTHORIZED,
-			Message: "Unauthorized",
-		})
+	helper := NewContextHelper(ctx)
+	adminID := c.requireAdminID(helper)
+	if adminID == 0 {
 		return
 	}
-	adminID := adminIDVal.(uint)
 
 	var req ToggleAdminStatusRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid request body",
-		})
+	if !helper.MustBindJSON(&req) {
 		return
 	}
 
-	eInfo, err := c.adminService.ToggleAdminStatus(ctx.Request.Context(), adminID, req.TargetAdminID, req.NewStatus)
+	errInfo, err := c.adminService.ToggleAdminStatus(ctx.Request.Context(), adminID, req.TargetAdminID, req.NewStatus)
 	if err != nil {
-		statusCode := http.StatusInternalServerError
-		if eInfo != nil {
-			if eInfo.Code == errInfos.FORBIDDEN || eInfo.Code == errInfos.ADMIN_CANNOT_DISABLE_SELF {
-				statusCode = http.StatusBadRequest
+		if errInfo != nil {
+			if errInfo.Code == errInfos.FORBIDDEN || errInfo.Code == errInfos.ADMIN_CANNOT_DISABLE_SELF {
+				helper.Forbidden(errInfo.Msg)
+			} else {
+				helper.ErrorWithInfo(errInfo)
 			}
+		} else {
+			helper.InternalError(err.Error())
 		}
-		ctx.JSON(statusCode, global.ApiResponse{
-			Code:    eInfo.Code,
-			Message: eInfo.Msg,
-		})
 		return
 	}
 
@@ -386,13 +291,7 @@ func (c *AdminUserController) ToggleAdminStatus(ctx *gin.Context) {
 		statusText = "已啟用"
 	}
 
-	ctx.JSON(http.StatusOK, global.ApiResponse{
-		Code:    0,
-		Message: "OK",
-		Datas: gin.H{
-			"message": statusText,
-		},
-	})
+	helper.Success(gin.H{"message": statusText})
 }
 
 // ResetAdminPasswordRequest 重設管理員密碼請求
@@ -411,45 +310,28 @@ type ResetAdminPasswordRequest struct {
 // @Success 200 {object} map[string]string
 // @Router /admin/admins/reset-password [post]
 func (c *AdminUserController) ResetAdminPassword(ctx *gin.Context) {
-	adminIDVal, exists := ctx.Get(global.UserIDKey)
-	if !exists {
-		ctx.JSON(http.StatusUnauthorized, global.ApiResponse{
-			Code:    global.UNAUTHORIZED,
-			Message: "Unauthorized",
-		})
+	helper := NewContextHelper(ctx)
+	adminID := c.requireAdminID(helper)
+	if adminID == 0 {
 		return
 	}
-	adminID := adminIDVal.(uint)
 
 	var req ResetAdminPasswordRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "密碼必須至少 6 個字元",
-		})
+	if !helper.MustBindJSON(&req) {
 		return
 	}
 
-	eInfo, err := c.adminService.ResetAdminPassword(ctx.Request.Context(), adminID, req.TargetAdminID, req.NewPassword)
+	errInfo, err := c.adminService.ResetAdminPassword(ctx.Request.Context(), adminID, req.TargetAdminID, req.NewPassword)
 	if err != nil {
-		statusCode := http.StatusInternalServerError
-		if eInfo != nil && eInfo.Code == errInfos.FORBIDDEN {
-			statusCode = http.StatusBadRequest
+		if errInfo != nil && errInfo.Code == errInfos.FORBIDDEN {
+			helper.Forbidden(errInfo.Msg)
+		} else {
+			helper.ErrorWithInfo(errInfo)
 		}
-		ctx.JSON(statusCode, global.ApiResponse{
-			Code:    eInfo.Code,
-			Message: eInfo.Msg,
-		})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, global.ApiResponse{
-		Code:    0,
-		Message: "OK",
-		Datas: gin.H{
-			"message": "密碼已重設",
-		},
-	})
+	helper.Success(gin.H{"message": "密碼已重設"})
 }
 
 // ChangeAdminRoleRequest 修改管理員角色請求
@@ -468,47 +350,32 @@ type ChangeAdminRoleRequest struct {
 // @Success 200 {object} map[string]string
 // @Router /admin/admins/change-role [post]
 func (c *AdminUserController) ChangeAdminRole(ctx *gin.Context) {
-	adminIDVal, exists := ctx.Get(global.UserIDKey)
-	if !exists {
-		ctx.JSON(http.StatusUnauthorized, global.ApiResponse{
-			Code:    global.UNAUTHORIZED,
-			Message: "Unauthorized",
-		})
+	helper := NewContextHelper(ctx)
+	adminID := c.requireAdminID(helper)
+	if adminID == 0 {
 		return
 	}
-	adminID := adminIDVal.(uint)
 
 	var req ChangeAdminRoleRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid request body",
-		})
+	if !helper.MustBindJSON(&req) {
 		return
 	}
 
-	eInfo, err := c.adminService.ChangeAdminRole(ctx.Request.Context(), adminID, req.TargetAdminID, req.NewRole)
+	errInfo, err := c.adminService.ChangeAdminRole(ctx.Request.Context(), adminID, req.TargetAdminID, req.NewRole)
 	if err != nil {
-		statusCode := http.StatusInternalServerError
-		if eInfo != nil {
-			if eInfo.Code == errInfos.FORBIDDEN || eInfo.Code == errInfos.ADMIN_NOT_FOUND {
-				statusCode = http.StatusBadRequest
+		if errInfo != nil {
+			if errInfo.Code == errInfos.FORBIDDEN || errInfo.Code == errInfos.ADMIN_NOT_FOUND {
+				helper.BadRequest(errInfo.Msg)
+			} else {
+				helper.ErrorWithInfo(errInfo)
 			}
+		} else {
+			helper.InternalError(err.Error())
 		}
-		ctx.JSON(statusCode, global.ApiResponse{
-			Code:    eInfo.Code,
-			Message: eInfo.Msg,
-		})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, global.ApiResponse{
-		Code:    0,
-		Message: "OK",
-		Datas: gin.H{
-			"message": "角色已更新",
-		},
-	})
+	helper.Success(gin.H{"message": "角色已更新"})
 }
 
 // CreateAdminRequest 建立管理員請求
@@ -529,68 +396,45 @@ type CreateAdminRequest struct {
 // @Success 200 {object} map[string]interface{}
 // @Router /admin/admins [post]
 func (c *AdminUserController) CreateAdmin(ctx *gin.Context) {
-	adminIDVal, exists := ctx.Get(global.UserIDKey)
-	if !exists {
-		ctx.JSON(http.StatusUnauthorized, global.ApiResponse{
-			Code:    global.UNAUTHORIZED,
-			Message: "Unauthorized",
-		})
+	helper := NewContextHelper(ctx)
+	adminID := c.requireAdminID(helper)
+	if adminID == 0 {
 		return
 	}
-	adminID := adminIDVal.(uint)
 
 	// 檢查操作者權限（必須是 OWNER）
-	operator, eInfo, err := c.adminService.GetAdminProfile(ctx.Request.Context(), adminID)
+	operator, errInfo, err := c.adminService.GetAdminProfile(ctx.Request.Context(), adminID)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-			Code:    eInfo.Code,
-			Message: eInfo.Msg,
-		})
+		helper.ErrorWithInfo(errInfo)
 		return
 	}
 
 	if operator.Role != "OWNER" {
-		ctx.JSON(http.StatusForbidden, global.ApiResponse{
-			Code:    global.FORBIDDEN,
-			Message: "Only OWNER can create admins",
-		})
+		helper.Forbidden("Only OWNER can create admins")
 		return
 	}
 
 	var req CreateAdminRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid request: " + err.Error(),
-		})
+	if !helper.MustBindJSON(&req) {
 		return
 	}
 
-	admin, eInfo, err := c.adminService.CreateAdmin(ctx.Request.Context(), operator.CenterID, req.Email, req.Name, req.Role, req.Password)
-	if err != nil {
-		statusCode := http.StatusInternalServerError
-		if eInfo != nil {
-			if eInfo.Code == errInfos.ADMIN_EMAIL_EXISTS {
-				statusCode = http.StatusBadRequest
-			}
+	admin, createErrInfo, createErr := c.adminService.CreateAdmin(ctx.Request.Context(), operator.CenterID, req.Email, req.Name, req.Role, req.Password)
+	if createErr != nil {
+		if createErrInfo != nil && createErrInfo.Code == errInfos.ADMIN_EMAIL_EXISTS {
+			helper.BadRequest(createErrInfo.Msg)
+		} else {
+			helper.ErrorWithInfo(createErrInfo)
 		}
-		ctx.JSON(statusCode, global.ApiResponse{
-			Code:    eInfo.Code,
-			Message: eInfo.Msg,
-		})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, global.ApiResponse{
-		Code:    0,
-		Message: "OK",
-		Datas: gin.H{
-			"id":        admin.ID,
-			"email":     admin.Email,
-			"name":      admin.Name,
-			"role":      admin.Role,
-			"status":    admin.Status,
-			"center_id": admin.CenterID,
-		},
+	helper.Success(gin.H{
+		"id":        admin.ID,
+		"email":     admin.Email,
+		"name":      admin.Name,
+		"role":      admin.Role,
+		"status":    admin.Status,
+		"center_id": admin.CenterID,
 	})
 }

@@ -2,39 +2,24 @@ package controllers
 
 import (
 	"fmt"
-	"net/http"
-	"time"
 	"timeLedger/app"
-	"timeLedger/app/models"
-	"timeLedger/app/repositories"
-	"timeLedger/global"
-	"timeLedger/global/errInfos"
+	"timeLedger/app/services"
 
 	"github.com/gin-gonic/gin"
 )
 
+// OfferingController 班別管理控制器
 type OfferingController struct {
-	BaseController
-	offeringRepository *repositories.OfferingRepository
-	courseRepository   *repositories.CourseRepository
-	roomRepository     *repositories.RoomRepository
-	teacherRepository  *repositories.TeacherRepository
-	auditLogRepo       *repositories.AuditLogRepository
+	app            *app.App
+	offeringService *services.OfferingService
 }
 
-func NewOfferingController(app *app.App) *OfferingController {
+// NewOfferingController 建立 OfferingController 實例
+func NewOfferingController(appInstance *app.App) *OfferingController {
 	return &OfferingController{
-		offeringRepository: repositories.NewOfferingRepository(app),
-		courseRepository:   repositories.NewCourseRepository(app),
-		roomRepository:     repositories.NewRoomRepository(app),
-		teacherRepository:  repositories.NewTeacherRepository(app),
-		auditLogRepo:       repositories.NewAuditLogRepository(app),
+		app:             appInstance,
+		offeringService: services.NewOfferingService(appInstance),
 	}
-}
-
-type GetOfferingsResponse struct {
-	Offerings  []models.Offering `json:"offerings"`
-	Pagination global.Pagination `json:"pagination"`
 }
 
 // GetOfferings 取得班別列表
@@ -45,53 +30,46 @@ type GetOfferingsResponse struct {
 // @Security BearerAuth
 // @Param page query int false "Page number" default(1)
 // @Param limit query int false "Items per page" default(20)
-// @Success 200 {object} global.ApiResponse{data=GetOfferingsResponse}
+// @Success 200 {object} global.ApiResponse{data=services.ListOfferingsOutput}
 // @Router /api/v1/admin/offerings [get]
-func (ctl *OfferingController) GetOfferings(ctx *gin.Context) {
-	centerID := ctx.GetUint(global.CenterIDKey)
+func (c *OfferingController) GetOfferings(ctx *gin.Context) {
+	helper := NewContextHelper(ctx)
+
+	centerID := helper.MustCenterID()
 	if centerID == 0 {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Center ID required",
-		})
 		return
 	}
 
-	page := int64(1)
-	limit := int64(20)
-	if p := ctx.Query("page"); p != "" {
-		fmt.Sscanf(p, "%d", &page)
+	page := helper.QueryStringOrDefault("page", "1")
+	limit := helper.QueryStringOrDefault("limit", "20")
+
+	var pageInt, limitInt int
+	if _, err := fmt.Sscanf(page, "%d", &pageInt); err != nil || pageInt < 1 {
+		pageInt = 1
 	}
-	if l := ctx.Query("limit"); l != "" {
-		fmt.Sscanf(l, "%d", &limit)
+	if _, err := fmt.Sscanf(limit, "%d", &limitInt); err != nil || limitInt < 1 || limitInt > 100 {
+		limitInt = 20
 	}
 
-	if page < 1 {
-		page = 1
-	}
-	if limit < 1 || limit > 100 {
-		limit = 20
-	}
-
-	offerings, total, err := ctl.offeringRepository.ListByCenterIDPaginated(ctl.makeCtx(ctx), centerID, page, limit)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-			Code:    errInfos.SQL_ERROR,
-			Message: ctl.app.Err.New(errInfos.SQL_ERROR).Msg,
-		})
-		return
-	}
-
-	pagination := global.NewPagination(page, limit, total)
-
-	ctx.JSON(http.StatusOK, global.ApiResponse{
-		Code:    0,
-		Message: "Success",
-		Datas: GetOfferingsResponse{
-			Offerings:  offerings,
-			Pagination: pagination,
-		},
+	result, errInfo, err := c.offeringService.ListOfferings(ctx.Request.Context(), &services.ListOfferingsInput{
+		CenterID: centerID,
+		Page:     pageInt,
+		Limit:    limitInt,
 	})
+	if err != nil {
+		helper.ErrorWithInfo(errInfo)
+		return
+	}
+
+	helper.Success(result)
+}
+
+// CreateOfferingRequest 新增班別請求
+type CreateOfferingRequest struct {
+	CourseID            uint  `json:"course_id" binding:"required"`
+	DefaultRoomID       *uint `json:"default_room_id"`
+	DefaultTeacherID    *uint `json:"default_teacher_id"`
+	AllowBufferOverride bool  `json:"allow_buffer_override"`
 }
 
 // CreateOffering 新增班別
@@ -101,88 +79,48 @@ func (ctl *OfferingController) GetOfferings(ctx *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param request body CreateOfferingRequest true "班別資訊"
-// @Success 200 {object} global.ApiResponse{data=models.Offering}
+// @Success 201 {object} global.ApiResponse{data=models.Offering}
 // @Router /api/v1/admin/offerings [post]
-func (ctl *OfferingController) CreateOffering(ctx *gin.Context) {
-	centerID := ctx.GetUint(global.CenterIDKey)
+func (c *OfferingController) CreateOffering(ctx *gin.Context) {
+	helper := NewContextHelper(ctx)
+
+	centerID := helper.MustCenterID()
 	if centerID == 0 {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Center ID required",
-		})
+		return
+	}
+
+	adminID := helper.MustUserID()
+	if adminID == 0 {
 		return
 	}
 
 	var req CreateOfferingRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid request body",
-		})
+	if !helper.MustBindJSON(&req) {
 		return
 	}
 
-	// 獲取課程名稱作為 offering 的名稱
-	course, err := ctl.courseRepository.GetByID(ctl.makeCtx(ctx), req.CourseID)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Course not found",
-		})
-		return
-	}
-
-	offering := models.Offering{
+	result, errInfo, err := c.offeringService.CreateOffering(ctx.Request.Context(), &services.CreateOfferingInput{
 		CenterID:            centerID,
+		AdminID:             adminID,
 		CourseID:            req.CourseID,
-		Name:                course.Name, // 使用課程名稱作為班別名稱
 		DefaultRoomID:       req.DefaultRoomID,
 		DefaultTeacherID:    req.DefaultTeacherID,
 		AllowBufferOverride: req.AllowBufferOverride,
-		CreatedAt:           time.Now(),
-		UpdatedAt:           time.Now(),
-	}
-
-	createdOffering, err := ctl.offeringRepository.Create(ctl.makeCtx(ctx), offering)
+	})
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-			Code:    500,
-			Message: "Failed to create offering",
-		})
+		helper.ErrorWithInfo(errInfo)
 		return
 	}
 
-	actorID := ctx.GetUint(global.UserIDKey)
-	ctl.auditLogRepo.Create(ctx, models.AuditLog{
-		CenterID:   centerID,
-		ActorType:  "ADMIN",
-		ActorID:    actorID,
-		Action:     "OFFERING_CREATE",
-		TargetType: "Offering",
-		TargetID:   createdOffering.ID,
-		Payload: models.AuditPayload{
-			After: map[string]interface{}{
-				"course_id":             req.CourseID,
-				"course_name":           course.Name,
-				"default_room_id":       req.DefaultRoomID,
-				"default_teacher_id":    req.DefaultTeacherID,
-				"allow_buffer_override": req.AllowBufferOverride,
-			},
-		},
-	})
-
-	ctx.JSON(http.StatusOK, global.ApiResponse{
-		Code:    0,
-		Message: "Offering created",
-		Datas:   createdOffering,
-	})
+	helper.Created(result)
 }
 
-type CreateOfferingRequest struct {
-	CourseID            uint  `json:"course_id" binding:"required"`
-	DefaultRoomID       *uint `json:"default_room_id"`
-	DefaultTeacherID    *uint `json:"default_teacher_id"`
-	AllowBufferOverride bool  `json:"allow_buffer_override"`
+// UpdateOfferingRequest 更新班別請求
+type UpdateOfferingRequest struct {
+	Name                *string `json:"name"`
+	DefaultRoomID       *uint   `json:"default_room_id"`
+	DefaultTeacherID    *uint   `json:"default_teacher_id"`
+	AllowBufferOverride bool    `json:"allow_buffer_override"`
 }
 
 // UpdateOffering 更新班別
@@ -195,117 +133,45 @@ type CreateOfferingRequest struct {
 // @Param request body UpdateOfferingRequest true "班別資訊"
 // @Success 200 {object} global.ApiResponse{data=models.Offering}
 // @Router /api/v1/admin/offerings/{offering_id} [put]
-func (ctl *OfferingController) UpdateOffering(ctx *gin.Context) {
-	centerID := ctx.GetUint(global.CenterIDKey)
-	offeringIDStr := ctx.Param("offering_id")
-	if offeringIDStr == "" {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Offering ID required",
-		})
+func (c *OfferingController) UpdateOffering(ctx *gin.Context) {
+	helper := NewContextHelper(ctx)
+
+	centerID := helper.MustCenterID()
+	if centerID == 0 {
 		return
 	}
 
-	var offeringID uint
-	if _, err := fmt.Sscanf(offeringIDStr, "%d", &offeringID); err != nil {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid offering ID",
-		})
+	adminID := helper.MustUserID()
+	if adminID == 0 {
+		return
+	}
+
+	offeringID := helper.MustParamUint("offering_id")
+	if offeringID == 0 {
 		return
 	}
 
 	var req UpdateOfferingRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid request body",
-		})
+	if !helper.MustBindJSON(&req) {
 		return
 	}
 
-	// 查詢現有 offering
-	existingOffering, err := ctl.offeringRepository.GetByID(ctl.makeCtx(ctx), offeringID)
+	result, errInfo, err := c.offeringService.UpdateOffering(ctx.Request.Context(), &services.UpdateOfferingInput{
+		CenterID:            centerID,
+		AdminID:             adminID,
+		OfferingID:          offeringID,
+		Name:                req.Name,
+		DefaultRoomID:       req.DefaultRoomID,
+		DefaultTeacherID:    req.DefaultTeacherID,
+		AllowBufferOverride: req.AllowBufferOverride,
+	})
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Offering not found",
-		})
+		helper.ErrorWithInfo(errInfo)
 		return
 	}
 
-	// 驗證權限
-	if existingOffering.CenterID != centerID {
-		ctx.JSON(http.StatusForbidden, global.ApiResponse{
-			Code:    global.FORBIDDEN,
-			Message: "Permission denied",
-		})
-		return
-	}
-
-	// 更新字段
-	existingOffering.DefaultRoomID = req.DefaultRoomID
-	existingOffering.DefaultTeacherID = req.DefaultTeacherID
-	existingOffering.AllowBufferOverride = req.AllowBufferOverride
-	existingOffering.UpdatedAt = time.Now()
-
-	// 如果有提供 name，則更新
-	if req.Name != nil && *req.Name != "" {
-		existingOffering.Name = *req.Name
-	}
-
-	if err := ctl.offeringRepository.Update(ctl.makeCtx(ctx), existingOffering); err != nil {
-		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-			Code:    500,
-			Message: "Failed to update offering",
-		})
-		return
-	}
-
-	actorID := ctx.GetUint(global.UserIDKey)
-	ctl.auditLogRepo.Create(ctx, models.AuditLog{
-		CenterID:   centerID,
-		ActorType:  "ADMIN",
-		ActorID:    actorID,
-		Action:     "OFFERING_UPDATE",
-		TargetType: "Offering",
-		TargetID:   offeringID,
-		Payload: models.AuditPayload{
-			After: map[string]interface{}{
-				"default_room_id":       req.DefaultRoomID,
-				"default_teacher_id":    req.DefaultTeacherID,
-				"allow_buffer_override": req.AllowBufferOverride,
-			},
-		},
-	})
-
-	ctx.JSON(http.StatusOK, global.ApiResponse{
-		Code:    0,
-		Message: "Offering updated",
-		Datas:   existingOffering,
-	})
+	helper.Success(result)
 }
-
-type UpdateOfferingRequest struct {
-	Name                *string `json:"name"`
-	DefaultRoomID       *uint   `json:"default_room_id"`
-	DefaultTeacherID    *uint   `json:"default_teacher_id"`
-	AllowBufferOverride bool    `json:"allow_buffer_override"`
-}
-
-type CopyOfferingRequest struct {
-	NewName     string `json:"new_name" binding:"required"`
-	CopyTeacher bool   `json:"copy_teacher"`
-}
-
-type CopyOfferingResponse struct {
-	ID          uint   `json:"id"`
-	Name        string `json:"name"`
-	CourseID    uint   `json:"course_id"`
-	RulesCopied int    `json:"rules_copied"`
-}
-
-// CopyOffering 複製班別
 
 // DeleteOffering 刪除班別
 // @Summary 刪除班別
@@ -314,55 +180,51 @@ type CopyOfferingResponse struct {
 // @Produce json
 // @Security BearerAuth
 // @Param offering_id path int true "Offering ID"
-// @Success 200 {object} global.ApiResponse
+// @Success 204 {object} global.ApiResponse
 // @Router /api/v1/admin/offerings/{offering_id} [delete]
-func (ctl *OfferingController) DeleteOffering(ctx *gin.Context) {
-	centerID := ctx.GetUint(global.CenterIDKey)
-	offeringIDStr := ctx.Param("offering_id")
-	if offeringIDStr == "" {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Offering ID required",
-		})
+func (c *OfferingController) DeleteOffering(ctx *gin.Context) {
+	helper := NewContextHelper(ctx)
+
+	centerID := helper.MustCenterID()
+	if centerID == 0 {
 		return
 	}
 
-	var offeringID uint
-	if _, err := fmt.Sscanf(offeringIDStr, "%d", &offeringID); err != nil {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid offering ID",
-		})
+	adminID := helper.MustUserID()
+	if adminID == 0 {
 		return
 	}
 
-	if err := ctl.offeringRepository.DeleteByID(ctl.makeCtx(ctx), offeringID, centerID); err != nil {
-		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-			Code:    500,
-			Message: "Failed to delete offering",
-		})
+	offeringID := helper.MustParamUint("offering_id")
+	if offeringID == 0 {
 		return
 	}
 
-	actorID := ctx.GetUint(global.UserIDKey)
-	ctl.auditLogRepo.Create(ctx, models.AuditLog{
-		CenterID:   centerID,
-		ActorType:  "ADMIN",
-		ActorID:    actorID,
-		Action:     "OFFERING_DELETE",
-		TargetType: "Offering",
-		TargetID:   offeringID,
-		Payload: models.AuditPayload{
-			After: map[string]interface{}{
-				"status": "DELETED",
-			},
-		},
+	errInfo := c.offeringService.DeleteOffering(ctx.Request.Context(), &services.DeleteOfferingInput{
+		CenterID: centerID,
+		AdminID:  adminID,
+		ID:       offeringID,
 	})
+	if errInfo != nil {
+		helper.ErrorWithInfo(errInfo)
+		return
+	}
 
-	ctx.JSON(http.StatusOK, global.ApiResponse{
-		Code:    0,
-		Message: "Offering deleted",
-	})
+	helper.NoContent()
+}
+
+// CopyOfferingRequest 複製班別請求
+type CopyOfferingRequest struct {
+	NewName     string `json:"new_name" binding:"required"`
+	CopyTeacher bool   `json:"copy_teacher"`
+}
+
+// CopyOfferingResponse 複製班別響應
+type CopyOfferingResponse struct {
+	ID          uint   `json:"id"`
+	Name        string `json:"name"`
+	CourseID    uint   `json:"course_id"`
+	RulesCopied int    `json:"rules_copied"`
 }
 
 // CopyOffering 複製班別
@@ -374,98 +236,121 @@ func (ctl *OfferingController) DeleteOffering(ctx *gin.Context) {
 // @Param id path int true "Center ID"
 // @Param offering_id path int true "Offering ID"
 // @Param request body CopyOfferingRequest true "複製資訊"
-// @Success 200 {object} global.ApiResponse{data=CopyOfferingResponse}
+// @Success 201 {object} global.ApiResponse{data=CopyOfferingResponse}
 // @Router /api/v1/admin/centers/{id}/offerings/{offering_id}/copy [post]
-func (ctl *OfferingController) CopyOffering(ctx *gin.Context) {
-	centerIDStr := ctx.Param("id")
-	offeringIDStr := ctx.Param("offeringId")
+func (c *OfferingController) CopyOffering(ctx *gin.Context) {
+	helper := NewContextHelper(ctx)
 
-	var centerID, offeringID uint
-	if _, err := fmt.Sscanf(centerIDStr, "%d", &centerID); err != nil {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid center ID",
-		})
+	centerID := helper.MustParamUint("id")
+	if centerID == 0 {
 		return
 	}
-	if _, err := fmt.Sscanf(offeringIDStr, "%d", &offeringID); err != nil {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid offering ID",
-		})
+
+	adminID := helper.MustUserID()
+	if adminID == 0 {
+		return
+	}
+
+	offeringID := helper.MustParamUint("offering_id")
+	if offeringID == 0 {
 		return
 	}
 
 	var req CopyOfferingRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid request body",
-		})
+	if !helper.MustBindJSON(&req) {
 		return
 	}
 
-	original, err := ctl.offeringRepository.GetByIDAndCenterID(ctl.makeCtx(ctx), offeringID, centerID)
-	if err != nil {
-		ctx.JSON(http.StatusNotFound, global.ApiResponse{
-			Code:    errInfos.NOT_FOUND,
-			Message: ctl.app.Err.New(errInfos.NOT_FOUND).Msg,
-		})
-		return
-	}
-
-	newTeacherID := original.DefaultTeacherID
-	if !req.CopyTeacher {
-		newTeacherID = nil
-	}
-
-	newOffering := models.Offering{
-		CenterID:            centerID,
-		CourseID:            original.CourseID,
-		Name:                req.NewName,
-		DefaultRoomID:       original.DefaultRoomID,
-		DefaultTeacherID:    newTeacherID,
-		AllowBufferOverride: original.AllowBufferOverride,
-		IsActive:            true,
-		CreatedAt:           time.Now(),
-		UpdatedAt:           time.Now(),
-	}
-
-	createdOffering, err := ctl.offeringRepository.Create(ctl.makeCtx(ctx), newOffering)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-			Code:    errInfos.SQL_ERROR,
-			Message: ctl.app.Err.New(errInfos.SQL_ERROR).Msg,
-		})
-		return
-	}
-
-	actorID := ctx.GetUint(global.UserIDKey)
-	ctl.auditLogRepo.Create(ctx, models.AuditLog{
-		CenterID:   centerID,
-		ActorType:  "ADMIN",
-		ActorID:    actorID,
-		Action:     "OFFERING_COPY",
-		TargetType: "Offering",
-		TargetID:   createdOffering.ID,
-		Payload: models.AuditPayload{
-			After: map[string]interface{}{
-				"original_offering_id": original.ID,
-				"new_offering_id":      createdOffering.ID,
-				"name":                 req.NewName,
-				"copy_teacher":         req.CopyTeacher,
-			},
-		},
+	result, errInfo, err := c.offeringService.CopyOffering(ctx.Request.Context(), &services.CopyOfferingInput{
+		CenterID:    centerID,
+		AdminID:     adminID,
+		OfferingID:  offeringID,
+		NewName:     req.NewName,
+		CopyTeacher: req.CopyTeacher,
 	})
+	if err != nil {
+		helper.ErrorWithInfo(errInfo)
+		return
+	}
 
-	ctx.JSON(http.StatusOK, global.ApiResponse{
-		Code:    0,
-		Message: "Offering copied successfully",
-		Datas: CopyOfferingResponse{
-			ID:          createdOffering.ID,
-			Name:        createdOffering.Name,
-			CourseID:    createdOffering.CourseID,
-			RulesCopied: 0,
-		},
+	helper.Created(CopyOfferingResponse{
+		ID:          result.ID,
+		Name:        result.Name,
+		CourseID:    result.CourseID,
+		RulesCopied: result.RulesCopied,
 	})
+}
+
+// GetActiveOfferings 取得啟用的班別列表
+// @Summary 取得啟用的班別列表
+// @Tags Admin
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} global.ApiResponse{data=[]models.Offering}
+// @Router /api/v1/admin/offerings/active [get]
+func (c *OfferingController) GetActiveOfferings(ctx *gin.Context) {
+	helper := NewContextHelper(ctx)
+
+	centerID := helper.MustCenterID()
+	if centerID == 0 {
+		return
+	}
+
+	offerings, err := c.offeringService.GetActiveOfferings(ctx.Request.Context(), &services.GetActiveOfferingsInput{
+		CenterID: centerID,
+	})
+	if err != nil {
+		helper.InternalError("Failed to get active offerings")
+		return
+	}
+
+	helper.Success(offerings)
+}
+
+// ToggleOfferingActive 切換班別啟用狀態
+// @Summary 切換班別啟用狀態
+// @Tags Admin
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param offering_id path int true "Offering ID"
+// @Param request body ToggleActiveRequest true "狀態資訊"
+// @Success 200 {object} global.ApiResponse
+// @Router /api/v1/admin/offerings/{offering_id}/toggle-active [patch]
+func (c *OfferingController) ToggleOfferingActive(ctx *gin.Context) {
+	helper := NewContextHelper(ctx)
+
+	centerID := helper.MustCenterID()
+	if centerID == 0 {
+		return
+	}
+
+	adminID := helper.MustUserID()
+	if adminID == 0 {
+		return
+	}
+
+	offeringID := helper.MustParamUint("offering_id")
+	if offeringID == 0 {
+		return
+	}
+
+	var req ToggleActiveRequest
+	if !helper.MustBindJSON(&req) {
+		return
+	}
+
+	errInfo := c.offeringService.ToggleOfferingActive(ctx.Request.Context(), &services.ToggleOfferingActiveInput{
+		CenterID: centerID,
+		AdminID:  adminID,
+		ID:       offeringID,
+		IsActive: req.IsActive,
+	})
+	if errInfo != nil {
+		helper.ErrorWithInfo(errInfo)
+		return
+	}
+
+	helper.Success(nil)
 }

@@ -20,19 +20,27 @@ type route struct {
 }
 
 type actions struct {
-	user              *controllers.UserController
-	auth              *controllers.AuthController
-	teacher           *controllers.TeacherController
-	geo               *controllers.GeoController
-	adminResource     *controllers.AdminResourceController
-	offering          *controllers.OfferingController
-	timetableTemplate *controllers.TimetableTemplateController
-	adminUser         *controllers.AdminUserController
-	scheduling        *controllers.SchedulingController
-	smartMatching     *controllers.SmartMatchingController
-	notification      *controllers.NotificationController
-	export            *controllers.ExportController
-	lineBot           *controllers.LineBotController
+	user               *controllers.UserController
+	auth               *controllers.AuthController
+	teacher            *controllers.TeacherController
+	adminTeacher       *controllers.AdminTeacherController
+	adminCenter        *controllers.AdminCenterController
+	teacherProfile     *controllers.TeacherProfileController
+	teacherSchedule    *controllers.TeacherScheduleController
+	teacherSession     *controllers.TeacherSessionController
+	teacherEvent       *controllers.TeacherEventController
+	teacherException   *controllers.TeacherExceptionController
+	teacherInvitation  *controllers.TeacherInvitationController
+	geo                *controllers.GeoController
+	adminResource      *controllers.AdminResourceController
+	offering           *controllers.OfferingController
+	timetableTemplate  *controllers.TimetableTemplateController
+	adminUser          *controllers.AdminUserController
+	scheduling         *controllers.SchedulingController
+	smartMatching      *controllers.SmartMatchingController
+	notification       *controllers.NotificationController
+	export             *controllers.ExportController
+	lineBot            *controllers.LineBotController
 }
 
 // 載入路由
@@ -56,48 +64,61 @@ func (s *Server) LoadRoutes() {
 		{http.MethodPut, "/api/v1/user", s.action.user.Update, []gin.HandlerFunc{authMiddleware.Authenticate()}},
 
 		// Teacher - Profile
-		{http.MethodGet, "/api/v1/teacher/me/profile", s.action.teacher.GetProfile, []gin.HandlerFunc{authMiddleware.Authenticate()}},
-		{http.MethodPut, "/api/v1/teacher/me/profile", s.action.teacher.UpdateProfile, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+		{http.MethodGet, "/api/v1/teacher/me/profile", s.action.teacherProfile.GetProfile, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+		{http.MethodPut, "/api/v1/teacher/me/profile", s.action.teacherProfile.UpdateProfile, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+		// Teacher - Centers
+		{http.MethodGet, "/api/v1/teacher/me/centers", s.action.teacherProfile.GetCenters, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+		// Teacher - Skills
+		{http.MethodGet, "/api/v1/teacher/me/skills", s.action.teacherProfile.GetSkills, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+		{http.MethodPost, "/api/v1/teacher/me/skills", s.action.teacherProfile.CreateSkill, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+		{http.MethodPut, "/api/v1/teacher/me/skills/:id", s.action.teacherProfile.UpdateSkill, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+		{http.MethodDelete, "/api/v1/teacher/me/skills/:id", s.action.teacherProfile.DeleteSkill, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+		// Teacher - Certificates
+		{http.MethodGet, "/api/v1/teacher/me/certificates", s.action.teacherProfile.GetCertificates, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+		{http.MethodPost, "/api/v1/teacher/me/certificates", s.action.teacherProfile.CreateCertificate, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+		{http.MethodPost, "/api/v1/teacher/me/certificates/upload", s.action.teacherProfile.UploadCertificateFile, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+		{http.MethodDelete, "/api/v1/teacher/me/certificates/:id", s.action.teacherProfile.DeleteCertificate, []gin.HandlerFunc{authMiddleware.Authenticate()}},
 		// Hashtags
-		{http.MethodGet, "/api/v1/hashtags/search", s.action.teacher.SearchHashtags, []gin.HandlerFunc{authMiddleware.Authenticate()}},
-		{http.MethodPost, "/api/v1/hashtags", s.action.teacher.CreateHashtag, []gin.HandlerFunc{authMiddleware.Authenticate()}},
-		{http.MethodGet, "/api/v1/teacher/me/centers", s.action.teacher.GetCenters, []gin.HandlerFunc{authMiddleware.Authenticate()}},
-		{http.MethodGet, "/api/v1/teacher/me/skills", s.action.teacher.GetSkills, []gin.HandlerFunc{authMiddleware.Authenticate()}},
-		{http.MethodPost, "/api/v1/teacher/me/skills", s.action.teacher.CreateSkill, []gin.HandlerFunc{authMiddleware.Authenticate()}},
-		{http.MethodPut, "/api/v1/teacher/me/skills/:id", s.action.teacher.UpdateSkill, []gin.HandlerFunc{authMiddleware.Authenticate()}},
-		{http.MethodDelete, "/api/v1/teacher/me/skills/:id", s.action.teacher.DeleteSkill, []gin.HandlerFunc{authMiddleware.Authenticate()}},
-		{http.MethodGet, "/api/v1/teacher/me/certificates", s.action.teacher.GetCertificates, []gin.HandlerFunc{authMiddleware.Authenticate()}},
-		{http.MethodPost, "/api/v1/teacher/me/certificates", s.action.teacher.CreateCertificate, []gin.HandlerFunc{authMiddleware.Authenticate()}},
-		{http.MethodPost, "/api/v1/teacher/me/certificates/upload", s.action.teacher.UploadCertificateFile, []gin.HandlerFunc{authMiddleware.Authenticate()}},
-		{http.MethodDelete, "/api/v1/teacher/me/certificates/:id", s.action.teacher.DeleteCertificate, []gin.HandlerFunc{authMiddleware.Authenticate()}},
-		{http.MethodGet, "/api/v1/teacher/me/personal-events", s.action.teacher.GetPersonalEvents, []gin.HandlerFunc{authMiddleware.Authenticate()}},
-		{http.MethodPost, "/api/v1/teacher/me/personal-events", s.action.teacher.CreatePersonalEvent, []gin.HandlerFunc{authMiddleware.Authenticate()}},
-		{http.MethodPatch, "/api/v1/teacher/me/personal-events/:id", s.action.teacher.UpdatePersonalEvent, []gin.HandlerFunc{authMiddleware.Authenticate()}},
-		{http.MethodDelete, "/api/v1/teacher/me/personal-events/:id", s.action.teacher.DeletePersonalEvent, []gin.HandlerFunc{authMiddleware.Authenticate()}},
-		{http.MethodGet, "/api/v1/teacher/me/personal-events/:id/note", s.action.teacher.GetPersonalEventNote, []gin.HandlerFunc{authMiddleware.Authenticate()}},
-		{http.MethodPut, "/api/v1/teacher/me/personal-events/:id/note", s.action.teacher.UpdatePersonalEventNote, []gin.HandlerFunc{authMiddleware.Authenticate()}},
-		{http.MethodGet, "/api/v1/teacher/me/schedule", s.action.teacher.GetSchedule, []gin.HandlerFunc{authMiddleware.Authenticate()}},
-		{http.MethodGet, "/api/v1/teacher/schedules", s.action.teacher.GetSchedules, []gin.HandlerFunc{authMiddleware.Authenticate()}},
-		{http.MethodGet, "/api/v1/teacher/me/centers/:center_id/schedule-rules", s.action.teacher.GetCenterScheduleRules, []gin.HandlerFunc{authMiddleware.Authenticate()}},
-		{http.MethodGet, "/api/v1/teacher/sessions/note", s.action.teacher.GetSessionNote, []gin.HandlerFunc{authMiddleware.Authenticate()}},
-		{http.MethodPut, "/api/v1/teacher/sessions/note", s.action.teacher.UpsertSessionNote, []gin.HandlerFunc{authMiddleware.Authenticate()}},
-		{http.MethodGet, "/api/v1/teacher/exceptions", s.action.teacher.GetExceptions, []gin.HandlerFunc{authMiddleware.Authenticate()}},
-		{http.MethodPost, "/api/v1/teacher/exceptions", s.action.teacher.CreateException, []gin.HandlerFunc{authMiddleware.Authenticate()}},
-		{http.MethodPost, "/api/v1/teacher/exceptions/:id/revoke", s.action.teacher.RevokeException, []gin.HandlerFunc{authMiddleware.Authenticate()}},
-		{http.MethodPost, "/api/v1/teacher/scheduling/check-rule-lock", s.action.teacher.CheckRuleLockStatus, []gin.HandlerFunc{authMiddleware.Authenticate()}},
-		{http.MethodPost, "/api/v1/teacher/scheduling/preview-recurrence-edit", s.action.teacher.PreviewRecurrenceEdit, []gin.HandlerFunc{authMiddleware.Authenticate()}},
-		{http.MethodPost, "/api/v1/teacher/scheduling/edit-recurring", s.action.teacher.EditRecurringSchedule, []gin.HandlerFunc{authMiddleware.Authenticate()}},
-		{http.MethodPost, "/api/v1/teacher/scheduling/delete-recurring", s.action.teacher.DeleteRecurringSchedule, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+		{http.MethodGet, "/api/v1/hashtags/search", s.action.teacherProfile.SearchHashtags, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+		{http.MethodPost, "/api/v1/hashtags", s.action.teacherProfile.CreateHashtag, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+		// Teacher - Personal Events
+		{http.MethodGet, "/api/v1/teacher/me/personal-events", s.action.teacherEvent.GetPersonalEvents, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+		{http.MethodPost, "/api/v1/teacher/me/personal-events", s.action.teacherEvent.CreatePersonalEvent, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+		{http.MethodPatch, "/api/v1/teacher/me/personal-events/:id", s.action.teacherEvent.UpdatePersonalEvent, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+		{http.MethodDelete, "/api/v1/teacher/me/personal-events/:id", s.action.teacherEvent.DeletePersonalEvent, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+		{http.MethodGet, "/api/v1/teacher/me/personal-events/:id/note", s.action.teacherEvent.GetPersonalEventNote, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+		{http.MethodPut, "/api/v1/teacher/me/personal-events/:id/note", s.action.teacherEvent.UpdatePersonalEventNote, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+		// Teacher - Schedule
+		{http.MethodGet, "/api/v1/teacher/me/schedule", s.action.teacherSchedule.GetSchedule, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+		{http.MethodGet, "/api/v1/teacher/schedules", s.action.teacherSchedule.GetSchedules, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+		{http.MethodGet, "/api/v1/teacher/me/centers/:center_id/schedule-rules", s.action.teacherSchedule.GetCenterScheduleRules, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+		// Teacher - Sessions
+		{http.MethodGet, "/api/v1/teacher/sessions/note", s.action.teacherSession.GetSessionNote, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+		{http.MethodPut, "/api/v1/teacher/sessions/note", s.action.teacherSession.UpsertSessionNote, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+		// Teacher - Exceptions
+		{http.MethodGet, "/api/v1/teacher/exceptions", s.action.teacherException.GetExceptions, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+		{http.MethodPost, "/api/v1/teacher/exceptions", s.action.teacherException.CreateException, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+		{http.MethodPost, "/api/v1/teacher/exceptions/:id/revoke", s.action.teacherException.RevokeException, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+		// Teacher - Scheduling
+		{http.MethodPost, "/api/v1/teacher/scheduling/check-rule-lock", s.action.teacherSchedule.CheckRuleLockStatus, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+		{http.MethodPost, "/api/v1/teacher/scheduling/preview-recurrence-edit", s.action.teacherSchedule.PreviewRecurrenceEdit, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+		{http.MethodPost, "/api/v1/teacher/scheduling/edit-recurring", s.action.teacherSchedule.EditRecurringSchedule, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+		{http.MethodPost, "/api/v1/teacher/scheduling/delete-recurring", s.action.teacherSchedule.DeleteRecurringSchedule, []gin.HandlerFunc{authMiddleware.Authenticate()}},
 
 		// Teacher - Invitations
-		{http.MethodGet, "/api/v1/teacher/me/invitations", s.action.teacher.GetTeacherInvitations, []gin.HandlerFunc{authMiddleware.Authenticate()}},
-		{http.MethodPost, "/api/v1/teacher/me/invitations/respond", s.action.teacher.RespondToInvitation, []gin.HandlerFunc{authMiddleware.Authenticate()}},
-		{http.MethodGet, "/api/v1/teacher/me/invitations/pending-count", s.action.teacher.GetPendingInvitationsCount, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+		{http.MethodGet, "/api/v1/teacher/me/invitations", s.action.teacherInvitation.GetTeacherInvitations, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+		{http.MethodPost, "/api/v1/teacher/me/invitations/respond", s.action.teacherInvitation.RespondToInvitation, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+		{http.MethodGet, "/api/v1/teacher/me/invitations/pending-count", s.action.teacherInvitation.GetPendingInvitationsCount, []gin.HandlerFunc{authMiddleware.Authenticate()}},
 
-		// Teacher - Admin
-		{http.MethodGet, "/api/v1/teachers", s.action.teacher.ListTeachers, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireAdmin()}},
-		{http.MethodDelete, "/api/v1/teachers/:id", s.action.teacher.DeleteTeacher, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireAdmin()}},
-		{http.MethodPost, "/api/v1/admin/centers/:id/invitations", s.action.teacher.InviteTeacher, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		// Admin - Teacher Management
+		{http.MethodGet, "/api/v1/teachers", s.action.adminTeacher.ListTeachers, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireAdmin()}},
+		{http.MethodDelete, "/api/v1/teachers/:id", s.action.adminTeacher.DeleteTeacher, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireAdmin()}},
+		{http.MethodPost, "/api/v1/admin/centers/:id/invitations", s.action.teacherInvitation.InviteTeacher, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+
+		// Admin - Center Management
+		{http.MethodGet, "/api/v1/admin/centers", s.action.adminCenter.GetCenters, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodPost, "/api/v1/admin/centers", s.action.adminCenter.CreateCenter, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+
 		// Admin - Teacher Resources
 		{http.MethodGet, "/api/v1/admin/teachers", s.action.adminResource.GetTeachers, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 
@@ -178,12 +199,12 @@ func (s *Server) LoadRoutes() {
 		{http.MethodGet, "/api/v1/admin/centers/:id/invitations", s.action.adminResource.GetInvitations, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodGet, "/api/v1/admin/centers/:id/invitations/stats", s.action.adminResource.GetInvitationStats, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		// Admin - Invitation Links
-		{http.MethodPost, "/api/v1/admin/centers/:id/invitations/generate-link", s.action.teacher.GenerateInvitationLink, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
-		{http.MethodGet, "/api/v1/admin/centers/:id/invitations/links", s.action.teacher.GetInvitationLinks, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
-		{http.MethodDelete, "/api/v1/admin/invitations/links/:id", s.action.teacher.RevokeInvitationLink, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodPost, "/api/v1/admin/centers/:id/invitations/generate-link", s.action.teacherInvitation.GenerateInvitationLink, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodGet, "/api/v1/admin/centers/:id/invitations/links", s.action.teacherInvitation.GetInvitationLinks, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodDelete, "/api/v1/admin/invitations/links/:id", s.action.teacherInvitation.RevokeInvitationLink, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		// Public Invitation APIs (no auth required)
-		{http.MethodGet, "/api/v1/invitations/:token", s.action.teacher.GetPublicInvitation, []gin.HandlerFunc{}},
-		{http.MethodPost, "/api/v1/invitations/:token/accept", s.action.teacher.AcceptInvitationByLink, []gin.HandlerFunc{}},
+		{http.MethodGet, "/api/v1/invitations/:token", s.action.teacherInvitation.GetPublicInvitation, []gin.HandlerFunc{}},
+		{http.MethodPost, "/api/v1/invitations/:token/accept", s.action.teacherInvitation.AcceptInvitationByLink, []gin.HandlerFunc{}},
 
 		// Admin - Holidays
 		{http.MethodGet, "/api/v1/admin/centers/:id/holidays", s.action.adminResource.GetHolidays, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
@@ -291,6 +312,14 @@ func (s *Server) NewControllers() {
 	authService := services.NewAuthService(s.app)
 	s.action.auth = controllers.NewAuthController(s.app, authService)
 	s.action.teacher = controllers.NewTeacherController(s.app)
+	s.action.adminTeacher = controllers.NewAdminTeacherController(s.app)
+	s.action.adminCenter = controllers.NewAdminCenterController(s.app)
+	s.action.teacherProfile = controllers.NewTeacherProfileController(s.app)
+	s.action.teacherSchedule = controllers.NewTeacherScheduleController(s.app)
+	s.action.teacherSession = controllers.NewTeacherSessionController(s.app)
+	s.action.teacherEvent = controllers.NewTeacherEventController(s.app)
+	s.action.teacherException = controllers.NewTeacherExceptionController(s.app)
+	s.action.teacherInvitation = controllers.NewTeacherInvitationController(s.app)
 	s.action.geo = controllers.NewGeoController(s.app)
 	s.action.adminResource = controllers.NewAdminResourceController(s.app)
 	s.action.offering = controllers.NewOfferingController(s.app)

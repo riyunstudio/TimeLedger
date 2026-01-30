@@ -324,7 +324,23 @@ func (h *ContextHelper) ErrorWithCode(status int, code errInfos.ErrCode, message
 }
 
 // ErrorWithInfo 回傳使用 errInfos.Res 的錯誤
-func (h *ContextHelper) ErrorWithInfo(status int, errInfo *errInfos.Res) {
+func (h *ContextHelper) ErrorWithInfo(errInfo *errInfos.Res) {
+	// 根據錯誤碼決定 HTTP 狀態碼
+	status := http.StatusInternalServerError
+	switch errInfo.Code {
+	case global.UNAUTHORIZED:
+		status = http.StatusUnauthorized
+	case global.FORBIDDEN:
+		status = http.StatusForbidden
+	case errInfos.NOT_FOUND:
+		status = http.StatusNotFound
+	case global.BAD_REQUEST, errInfos.PARAMS_VALIDATE_ERROR:
+		status = http.StatusBadRequest
+	case errInfos.INVALID_STATUS, errInfos.SCHED_OVERLAP, errInfos.SCHED_BUFFER,
+		errInfos.SCHED_RULE_CONFLICT, errInfos.ERR_RESOURCE_LOCKED,
+		errInfos.ERR_CONCURRENT_MODIFIED, errInfos.ERR_TX_FAILED:
+		status = http.StatusConflict
+	}
 	h.ctx.JSON(status, global.ApiResponse{
 		Code:    errInfo.Code,
 		Message: errInfo.Msg,
