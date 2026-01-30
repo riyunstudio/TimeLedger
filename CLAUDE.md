@@ -383,6 +383,154 @@ func (s *TeacherProfileService) UpdateSkill(ctx context.Context, skillID, teache
 **單元測試覆蓋：**
 - `app/services/teacher_profile_test.go` - 包含 Profile CRUD、Skill CRUD、Certificate CRUD 等測試案例
 
+### 4.8 BaseService 基礎服務結構（指令 10）
+
+`BaseService` 是服務層的基礎設施，提供分頁、過濾、日誌等通用功能。
+
+**結構定義：**
+```go
+type BaseService struct {
+    App    *app.App
+    Logger *ServiceLogger
+}
+
+func NewBaseService(app *app.App, component string) *BaseService {
+    return &BaseService{
+        App:    app,
+        Logger: NewServiceLogger(app, component),
+    }
+}
+```
+
+#### 4.8.1 PaginationParams 分頁參數
+
+```go
+type PaginationParams struct {
+    Page      int    `json:"page"`
+    Limit     int    `json:"limit"`
+    SortBy    string `json:"sort_by"`
+    SortOrder string `json:"sort_order"`
+}
+
+// 主要方法
+func (p *PaginationParams) Validate()                    // 驗證並修正參數
+func (p *PaginationParams) GetOffset() int              // 取得偏移量
+func (p *PaginationParams) BuildOrderClause() string    // 建立排序子句
+func DefaultPagination() *PaginationParams              // 取得預設分頁參數
+```
+
+**驗證邏輯：**
+- `page` 為負數時預設為 1
+- `limit` 為 0 時預設為 20
+- `limit` 超過 100 時上限為 100
+- `sort_order` 無效時預設為 DESC
+
+#### 4.8.2 PaginationResult 分頁結果
+
+```go
+type PaginationResult struct {
+    Data       interface{} `json:"data"`
+    Total      int64       `json:"total"`
+    Page       int         `json:"page"`
+    TotalPages int         `json:"total_pages"`
+    HasNext    bool        `json:"has_next"`
+    HasPrev    bool        `json:"has_prev"`
+}
+
+func NewPaginationResult(data interface{}, total int64, params *PaginationParams) *PaginationResult
+```
+
+**計算邏輯：**
+- `TotalPages` = `(total + limit - 1) / limit`
+- `HasNext` = `page < TotalPages`
+- `HasPrev` = `page > 1`
+
+#### 4.8.3 FilterBuilder 過濾建構器
+
+```go
+type FilterBuilder struct {
+    conditions []string
+    args       []interface{}
+}
+
+// 支援的方法
+func (fb *FilterBuilder) AddEq(column string, value interface{}) *FilterBuilder
+func (fb *FilterBuilder) AddNe(column string, value interface{}) *FilterBuilder
+func (fb *FilterBuilder) AddIn(column string, values []interface{}) *FilterBuilder
+func (fb *FilterBuilder) AddBetween(column string, min, max interface{}) *FilterBuilder
+func (fb *FilterBuilder) AddCenterScope(centerID uint) *FilterBuilder
+func (fb *FilterBuilder) IsEmpty() bool
+func (fb *FilterBuilder) Build() (string, []interface{})
+```
+
+**使用範例：**
+```go
+fb := NewFilterBuilder()
+conditions, args := fb.
+    AddEq("status", "active").
+    AddIn("category", []interface{}{"A", "B"}).
+    AddBetween("created_at", "2026-01-01", "2026-12-31").
+    AddCenterScope(centerID).
+    Build()
+// 輸出："status = ? AND category IN (?, ?) AND created_at BETWEEN ? AND ? AND center_id = ?"
+```
+
+#### 4.8.4 ServiceLogger 結構化日誌
+
+```go
+type ServiceLogger struct {
+    logger    *logger.Logger
+    component string
+    enabled   bool  // 測試環境自動禁用
+}
+
+// 支援的方法
+func (sl *ServiceLogger) Debug(message string, keysAndValues ...interface{})
+func (sl *ServiceLogger) Info(message string, keysAndValues ...interface{})
+func (sl *ServiceLogger) Warn(message string, keysAndValues ...interface{})
+func (sl *ServiceLogger) Error(message string, keysAndValues ...interface{})
+func (sl *ServiceLogger) ErrorWithErr(message string, err error, keysAndValues ...interface{})
+```
+
+**日誌格式範例：**
+```
+[2026/01/30 23:37:47] [Debug] [ScheduleValidation] message=checking overlap center_id=1
+[2026/01/30 23:37:47] [Warn] [ScheduleValidation] slow_query_duration=413ms
+```
+
+#### 4.8.5 服務層標準範本
+
+```go
+type MyService struct {
+    BaseService
+    repo *MyRepository
+}
+
+func NewMyService(app *app.App) *MyService {
+    baseSvc := NewBaseService(app, "MyService")
+    return &MyService{
+        BaseService: *baseSvc,
+        repo:        NewMyRepository(app),
+    }
+}
+
+func (s *MyService) DoSomething(ctx context.Context, id uint) error {
+    s.Logger.Info("starting operation", "id", id)
+    // 業務邏輯
+    s.Logger.Debug("operation completed", "id", id)
+    return nil
+}
+```
+
+#### 4.8.6 已整合 BaseService 的服務
+
+| 服務名稱 | 檔案 | 狀態 |
+|:---|:---|:---:|
+| ScheduleService | app/services/scheduling.go | ✅ 已整合 |
+| ScheduleValidationServiceImpl | app/services/scheduling_validation.go | ✅ 已整合 |
+| ScheduleExpansionServiceImpl | app/services/scheduling_expansion.go | ✅ 已整合 |
+| ScheduleExceptionServiceImpl | app/services/scheduling_expansion.go | ✅ 已整合 |
+
 ---
 
 ## 5. 命名慣例 (Naming Conventions)
