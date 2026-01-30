@@ -42,6 +42,20 @@ func (s *ScheduleExpansionServiceImpl) ExpandRules(ctx context.Context, rules []
 		holidaySet[h.Date.Format("2006-01-02")] = true
 	}
 
+	// 批次取得所有規則在日期範圍內的例外資料（消除 N+1 查詢）
+	ruleIDs := make([]uint, 0, len(rules))
+	for _, rule := range rules {
+		if rule.Weekday != 0 {
+			ruleIDs = append(ruleIDs, rule.ID)
+		}
+	}
+
+	// 建立例外資料 Map：RuleID -> DateString -> Exceptions
+	exceptionsMap := make(map[uint]map[string][]models.ScheduleException)
+	if len(ruleIDs) > 0 {
+		exceptionsMap, _ = s.exceptionRepo.GetByRuleIDsAndDateRange(ctx, ruleIDs, startDate, endDate)
+	}
+
 	for _, rule := range rules {
 		if rule.Weekday == 0 {
 			continue
@@ -76,8 +90,12 @@ func (s *ScheduleExpansionServiceImpl) ExpandRules(ctx context.Context, rules []
 						continue
 					}
 
-					// 使用日期字串進行比較，避免 time.Time 與 date 類型的不一致問題
-					exceptions, _ := s.exceptionRepo.GetByRuleIDAndDateStr(ctx, rule.ID, dateStr)
+					// 從預載入的 Map 中取得例外資料（批次查詢優化）
+					ruleExceptions := exceptionsMap[rule.ID]
+					exceptions := []models.ScheduleException{}
+					if ruleExceptions != nil {
+						exceptions = ruleExceptions[dateStr]
+					}
 
 					// 過濾並處理例外狀態
 					skipSession := false
@@ -426,7 +444,9 @@ func (s *ScheduleExceptionServiceImpl) CreateException(ctx context.Context, cent
 	createdException.ExceptionType = exceptionType
 
 	// 同步發送通知（直接發送，不經佇列）
-	_ = s.notificationQueue.NotifyExceptionSubmittedSync(ctx, &createdException, teacherName, centerName)
+	if s.notificationQueue != nil {
+		_ = s.notificationQueue.NotifyExceptionSubmittedSync(ctx, &createdException, teacherName, centerName)
+	}
 
 	return createdException, nil
 }
@@ -548,12 +568,16 @@ func (s *ScheduleExceptionServiceImpl) ReviewException(ctx context.Context, exce
 
 	// 發送 LINE 通知給老師（同步發送）
 	// 取得老師資料
-	rule, _ := s.ruleRepo.GetByID(ctx, exception.RuleID)
-	if rule.TeacherID != nil {
-		teacher, _ := s.teacherRepo.GetByID(ctx, *rule.TeacherID)
+	if s.notificationQueue != nil {
+		rule, _ := s.ruleRepo.GetByID(ctx, exception.RuleID)
+		if rule.ID > 0 && rule.TeacherID != nil {
+			teacher, _ := s.teacherRepo.GetByID(ctx, *rule.TeacherID)
 
-		approved := status == "APPROVED"
-		_ = s.notificationQueue.NotifyExceptionResultSync(ctx, &exception, &teacher, approved, reason)
+			approved := status == "APPROVED"
+			if teacher.ID > 0 {
+				_ = s.notificationQueue.NotifyExceptionResultSync(ctx, &exception, &teacher, approved, reason)
+			}
+		}
 	}
 
 	s.auditLogRepo.Create(ctx, models.AuditLog{

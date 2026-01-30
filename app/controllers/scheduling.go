@@ -1,1866 +1,682 @@
 package controllers
 
 import (
-	"context"
-	"errors"
-	"fmt"
-	"net/http"
-	"strconv"
-	"strings"
-	"time"
 	"timeLedger/app"
-	"timeLedger/app/models"
-	"timeLedger/app/repositories"
+	"timeLedger/app/requests"
 	"timeLedger/app/services"
-	"timeLedger/global"
-	"timeLedger/global/errInfos"
 
 	"github.com/gin-gonic/gin"
 )
 
+// SchedulingController 排課管理控制器（Thin Controller）
 type SchedulingController struct {
 	BaseController
-	app               *app.App
-	validationService services.ScheduleValidationService
-	expansionService  services.ScheduleExpansionService
-	exceptionService  services.ScheduleExceptionService
-	auditLogRepo      *repositories.AuditLogRepository
-	centerRepo        *repositories.CenterRepository
-	courseRepo        *repositories.CourseRepository
-	offeringRepo      *repositories.OfferingRepository
-	scheduleRuleRepo  *repositories.ScheduleRuleRepository
+	app         *app.App
+	scheduleSvc services.ScheduleServiceInterface
 }
 
+// NewSchedulingController 建立排課控制器
 func NewSchedulingController(app *app.App) *SchedulingController {
 	return &SchedulingController{
-		app:               app,
-		validationService: services.NewScheduleValidationService(app),
-		expansionService:  services.NewScheduleExpansionService(app),
-		exceptionService:  services.NewScheduleExceptionService(app),
-		auditLogRepo:      repositories.NewAuditLogRepository(app),
-		centerRepo:        repositories.NewCenterRepository(app),
-		courseRepo:        repositories.NewCourseRepository(app),
-		offeringRepo:      repositories.NewOfferingRepository(app),
-		scheduleRuleRepo:  repositories.NewScheduleRuleRepository(app),
+		app:         app,
+		scheduleSvc: services.NewScheduleService(app),
 	}
 }
 
-type CheckOverlapRequest struct {
-	TeacherID     *uint     `json:"teacher_id"`
-	RoomID        uint      `json:"room_id" binding:"required"`
-	StartTime     time.Time `json:"start_time" binding:"required"`
-	EndTime       time.Time `json:"end_time" binding:"required"`
-	ExcludeRuleID *uint     `json:"exclude_rule_id"`
+// requireCenterID 取得並驗證中心 ID（通用模式）
+func (ctl *SchedulingController) requireCenterID(helper *ContextHelper) uint {
+	centerID := helper.MustCenterID()
+	if centerID == 0 {
+		return 0
+	}
+	return centerID
 }
 
-type CheckBufferRequest struct {
-	TeacherID     uint      `json:"teacher_id" binding:"required"`
-	RoomID        uint      `json:"room_id" binding:"required"`
-	PrevEndTime   time.Time `json:"prev_end_time" binding:"required"`
-	NextStartTime time.Time `json:"next_start_time" binding:"required"`
-	CourseID      uint      `json:"course_id" binding:"required"`
+// requireRuleID 取得並驗證規則 ID（通用模式）
+func (ctl *SchedulingController) requireRuleID(helper *ContextHelper) uint {
+	ruleID := helper.MustParamUint("ruleId")
+	if ruleID == 0 {
+		return 0
+	}
+	return ruleID
 }
 
-type CreateExceptionRequest struct {
-	RuleID         uint       `json:"rule_id" binding:"required"`
-	OriginalDate   time.Time  `json:"original_date" binding:"required"`
-	Type           string     `json:"type" binding:"required"`
-	NewStartAt     *time.Time `json:"new_start_at"`
-	NewEndAt       *time.Time `json:"new_end_at"`
-	NewTeacherID   *uint      `json:"new_teacher_id"`
-	NewTeacherName string     `json:"new_teacher_name"`
-	NewRoomID      *uint      `json:"new_room_id"`
-	Reason         string     `json:"reason" binding:"required"`
+// requireExceptionID 取得並驗證例外 ID（通用模式）
+func (ctl *SchedulingController) requireExceptionID(helper *ContextHelper) uint {
+	exceptionID := helper.MustParamUint("exceptionId")
+	if exceptionID == 0 {
+		return 0
+	}
+	return exceptionID
 }
 
-type ReviewExceptionRequest struct {
-	Action         string `json:"action" binding:"required"`
-	OverrideBuffer bool   `json:"override_buffer"`
-	Reason         string `json:"reason"`
+// requireAdminID 取得並驗證管理員 ID（通用模式）
+func (ctl *SchedulingController) requireAdminID(helper *ContextHelper) uint {
+	adminID := helper.MustUserID()
+	if adminID == 0 {
+		return 0
+	}
+	return adminID
 }
 
-type ExpandRulesRequest struct {
-	RuleIDs   []uint    `json:"rule_ids"` // 可為空，空陣列表示展開所有規則
-	StartDate time.Time `json:"start_date" binding:"required"`
-	EndDate   time.Time `json:"end_date" binding:"required"`
-}
-
-type ValidateFullRequest struct {
-	TeacherID           *uint     `json:"teacher_id"`
-	RoomID              uint      `json:"room_id" binding:"required"`
-	CourseID            uint      `json:"course_id" binding:"required"`
-	StartTime           time.Time `json:"start_time" binding:"required"`
-	EndTime             time.Time `json:"end_time" binding:"required"`
-	ExcludeRuleID       *uint     `json:"exclude_rule_id"`
-	AllowBufferOverride bool      `json:"allow_buffer_override"`
-}
-
+// CheckOverlap 檢查時間衝突
+// @Summary 檢查課程時間是否與現有排程衝突
+// @Tags Admin - Scheduling
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param request body requests.CheckOverlapRequest true "衝突檢查請求"
+// @Success 200 {object} global.ApiResponse{data=services.OverlapCheckResult}
+// @Router /api/v1/admin/scheduling/check-overlap [post]
 func (ctl *SchedulingController) CheckOverlap(ctx *gin.Context) {
-	var req CheckOverlapRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid request parameters",
-		})
+	helper := NewContextHelper(ctx)
+
+	centerID := ctl.requireCenterID(helper)
+	if centerID == 0 {
 		return
 	}
 
-	// 從 JWT token 取得 center_id
-	centerID := ctx.GetUint(global.CenterIDKey)
-	if centerID == 0 {
-		if val, exists := ctx.Get(global.CenterIDKey); exists {
-			switch v := val.(type) {
-			case uint:
-				centerID = v
-			case uint64:
-				centerID = uint(v)
-			case int:
-				centerID = uint(v)
-			case float64:
-				centerID = uint(v)
-			}
-		}
-	}
-
-	if centerID == 0 {
-		ctx.JSON(http.StatusUnauthorized, global.ApiResponse{
-			Code:    global.UNAUTHORIZED,
-			Message: "Center ID not found in token",
-		})
+	var req requests.CheckOverlapRequest
+	if !helper.MustBindJSON(&req) {
 		return
 	}
 
-	result, err := ctl.validationService.CheckOverlap(ctx, centerID, req.TeacherID, req.RoomID, req.StartTime, req.EndTime, req.ExcludeRuleID)
+	result, err := ctl.scheduleSvc.CheckOverlap(ctx.Request.Context(), centerID, req.TeacherID, req.RoomID, req.StartTime, req.EndTime, req.ExcludeRuleID)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-			Code:    500,
-			Message: err.Error(),
-		})
+		helper.InternalError(err.Error())
 		return
 	}
 
-	ctx.JSON(http.StatusOK, global.ApiResponse{
-		Code:    0,
-		Message: "OK",
-		Datas:   result,
-	})
+	helper.Success(result)
 }
 
+// CheckTeacherBuffer 檢查老師緩衝時間
+// @Summary 檢查老師的緩衝時間是否足夠
+// @Tags Admin - Scheduling
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param request body requests.CheckBufferRequest true "緩衝檢查請求"
+// @Success 200 {object} global.ApiResponse{data=services.BufferCheckResult}
+// @Router /api/v1/admin/scheduling/check-teacher-buffer [post]
 func (ctl *SchedulingController) CheckTeacherBuffer(ctx *gin.Context) {
-	var req CheckBufferRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid request parameters",
-		})
+	helper := NewContextHelper(ctx)
+
+	centerID := ctl.requireCenterID(helper)
+	if centerID == 0 {
 		return
 	}
 
-	// 從 JWT token 取得 center_id
-	centerID := ctx.GetUint(global.CenterIDKey)
-	if centerID == 0 {
-		if val, exists := ctx.Get(global.CenterIDKey); exists {
-			switch v := val.(type) {
-			case uint:
-				centerID = v
-			case uint64:
-				centerID = uint(v)
-			case int:
-				centerID = uint(v)
-			case float64:
-				centerID = uint(v)
-			}
-		}
-	}
-
-	if centerID == 0 {
-		ctx.JSON(http.StatusUnauthorized, global.ApiResponse{
-			Code:    global.UNAUTHORIZED,
-			Message: "Center ID not found in token",
-		})
+	var req requests.CheckBufferRequest
+	if !helper.MustBindJSON(&req) {
 		return
 	}
 
-	result, err := ctl.validationService.CheckTeacherBuffer(ctx, centerID, req.TeacherID, req.PrevEndTime, req.NextStartTime, req.CourseID)
+	result, err := ctl.scheduleSvc.CheckTeacherBuffer(ctx.Request.Context(), centerID, req.TeacherID, req.PrevEndTime, req.NextStartTime, req.CourseID)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-			Code:    500,
-			Message: err.Error(),
-		})
+		helper.InternalError(err.Error())
 		return
 	}
 
-	ctx.JSON(http.StatusOK, global.ApiResponse{
-		Code:    0,
-		Message: "OK",
-		Datas:   result,
-	})
+	helper.Success(result)
 }
 
+// CheckRoomBuffer 檢查教室緩衝時間
+// @Summary 檢查教室的緩衝時間是否足夠
+// @Tags Admin - Scheduling
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param request body requests.CheckBufferRequest true "緩衝檢查請求"
+// @Success 200 {object} global.ApiResponse{data=services.BufferCheckResult}
+// @Router /api/v1/admin/scheduling/check-room-buffer [post]
 func (ctl *SchedulingController) CheckRoomBuffer(ctx *gin.Context) {
-	var req CheckBufferRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid request parameters",
-		})
+	helper := NewContextHelper(ctx)
+
+	centerID := ctl.requireCenterID(helper)
+	if centerID == 0 {
 		return
 	}
 
-	// 從 JWT token 取得 center_id
-	centerID := ctx.GetUint(global.CenterIDKey)
-	if centerID == 0 {
-		if val, exists := ctx.Get(global.CenterIDKey); exists {
-			switch v := val.(type) {
-			case uint:
-				centerID = v
-			case uint64:
-				centerID = uint(v)
-			case int:
-				centerID = uint(v)
-			case float64:
-				centerID = uint(v)
-			}
-		}
-	}
-
-	if centerID == 0 {
-		ctx.JSON(http.StatusUnauthorized, global.ApiResponse{
-			Code:    global.UNAUTHORIZED,
-			Message: "Center ID not found in token",
-		})
+	var req requests.CheckBufferRequest
+	if !helper.MustBindJSON(&req) {
 		return
 	}
 
-	result, err := ctl.validationService.CheckRoomBuffer(ctx, centerID, req.RoomID, req.PrevEndTime, req.NextStartTime, req.CourseID)
+	result, err := ctl.scheduleSvc.CheckRoomBuffer(ctx.Request.Context(), centerID, req.RoomID, req.PrevEndTime, req.NextStartTime, req.CourseID)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-			Code:    500,
-			Message: err.Error(),
-		})
+		helper.InternalError(err.Error())
 		return
 	}
 
-	ctx.JSON(http.StatusOK, global.ApiResponse{
-		Code:    0,
-		Message: "OK",
-		Datas:   result,
-	})
+	helper.Success(result)
 }
 
+// ValidateFull 完整驗證排課
+// @Summary 完整驗證排課（硬衝突 + 緩衝檢查）
+// @Tags Admin - Scheduling
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param request body requests.ValidateFullRequest true "完整驗證請求"
+// @Success 200 {object} global.ApiResponse{data=services.FullValidationResult}
+// @Router /api/v1/admin/scheduling/validate [post]
 func (ctl *SchedulingController) ValidateFull(ctx *gin.Context) {
-	var req ValidateFullRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid request parameters",
-		})
+	helper := NewContextHelper(ctx)
+
+	centerID := ctl.requireCenterID(helper)
+	if centerID == 0 {
 		return
 	}
 
-	// 從 JWT token 取得 center_id
-	centerID := ctx.GetUint(global.CenterIDKey)
-	if centerID == 0 {
-		if val, exists := ctx.Get(global.CenterIDKey); exists {
-			switch v := val.(type) {
-			case uint:
-				centerID = v
-			case uint64:
-				centerID = uint(v)
-			case int:
-				centerID = uint(v)
-			case float64:
-				centerID = uint(v)
-			}
-		}
-	}
-
-	if centerID == 0 {
-		ctx.JSON(http.StatusUnauthorized, global.ApiResponse{
-			Code:    global.UNAUTHORIZED,
-			Message: "Center ID not found in token",
-		})
+	adminID := ctl.requireAdminID(helper)
+	if adminID == 0 {
 		return
 	}
 
-	adminID := ctx.GetUint(global.UserIDKey)
-	result, err := ctl.validationService.ValidateFull(ctx, centerID, req.TeacherID, req.RoomID, req.CourseID, req.StartTime, req.EndTime, req.ExcludeRuleID, req.AllowBufferOverride)
+	var req requests.ValidateFullRequest
+	if !helper.MustBindJSON(&req) {
+		return
+	}
+
+	result, err := ctl.scheduleSvc.ValidateFull(ctx.Request.Context(), centerID, req.TeacherID, req.RoomID, req.CourseID, req.StartTime, req.EndTime, req.ExcludeRuleID, req.AllowBufferOverride)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-			Code:    500,
-			Message: err.Error(),
-		})
+		helper.InternalError(err.Error())
 		return
 	}
 
-	conflictCount := 0
-	if !result.Valid {
-		conflictCount = len(result.Conflicts)
-	}
-
-	ctl.auditLogRepo.Create(ctx, models.AuditLog{
-		CenterID:   centerID,
-		ActorType:  "ADMIN",
-		ActorID:    adminID,
-		Action:     "VALIDATE_SCHEDULE",
-		TargetType: "ScheduleValidation",
-		TargetID:   0,
-		Payload: models.AuditPayload{
-			After: map[string]interface{}{
-				"teacher_id":     req.TeacherID,
-				"room_id":        req.RoomID,
-				"course_id":      req.CourseID,
-				"start_time":     req.StartTime,
-				"end_time":       req.EndTime,
-				"valid":          result.Valid,
-				"conflict_count": conflictCount,
-			},
-		},
-	})
-
-	ctx.JSON(http.StatusOK, global.ApiResponse{
-		Code:    0,
-		Message: "OK",
-		Datas:   result,
-	})
+	helper.Success(result)
 }
 
-func (ctl *SchedulingController) CreateException(ctx *gin.Context) {
-	var req CreateExceptionRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid request parameters",
-		})
+// GetRules 取得排課規則列表
+// @Summary 取得中心的所有排課規則
+// @Tags Admin - Scheduling
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} global.ApiResponse{data=[]models.ScheduleRule}
+// @Router /api/v1/admin/scheduling/rules [get]
+func (ctl *SchedulingController) GetRules(ctx *gin.Context) {
+	helper := NewContextHelper(ctx)
+
+	centerID := ctl.requireCenterID(helper)
+	if centerID == 0 {
 		return
 	}
 
-	// 從 JWT token 取得 center_id
-	centerID := ctx.GetUint(global.CenterIDKey)
-	if centerID == 0 {
-		if val, exists := ctx.Get(global.CenterIDKey); exists {
-			switch v := val.(type) {
-			case uint:
-				centerID = v
-			case uint64:
-				centerID = uint(v)
-			case int:
-				centerID = uint(v)
-			case float64:
-				centerID = uint(v)
-			}
-		}
-	}
-
-	if centerID == 0 {
-		ctx.JSON(http.StatusUnauthorized, global.ApiResponse{
-			Code:    global.UNAUTHORIZED,
-			Message: "Center ID not found in token",
-		})
-		return
-	}
-
-	adminID := ctx.GetUint(global.UserIDKey)
-	exception, err := ctl.exceptionService.CreateException(ctx, centerID, adminID, req.RuleID, req.OriginalDate, req.Type, req.NewStartAt, req.NewEndAt, req.NewTeacherID, req.NewTeacherName, req.Reason)
+	rules, err := ctl.scheduleSvc.GetRules(ctx.Request.Context(), centerID)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-			Code:    500,
-			Message: err.Error(),
-		})
+		helper.InternalError(err.Error())
 		return
 	}
 
-	ctx.JSON(http.StatusOK, global.ApiResponse{
-		Code:    0,
-		Message: "Exception created successfully",
-		Datas:   exception,
-	})
+	helper.Success(rules)
 }
 
-func (ctl *SchedulingController) ReviewException(ctx *gin.Context) {
-	id := ctx.Param("exceptionId")
-	var req ReviewExceptionRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid request parameters",
-		})
+// CreateRule 建立排課規則
+// @Summary 建立新的排課規則
+// @Tags Admin - Scheduling
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param request body requests.CreateRuleRequest true "規則資訊"
+// @Success 200 {object} global.ApiResponse{data=[]models.ScheduleRule}
+// @Router /api/v1/admin/scheduling/rules [post]
+func (ctl *SchedulingController) CreateRule(ctx *gin.Context) {
+	helper := NewContextHelper(ctx)
+
+	centerID := ctl.requireCenterID(helper)
+	if centerID == 0 {
 		return
 	}
 
-	var exceptionID uint
-	if _, err := fmt.Sscanf(id, "%d", &exceptionID); err != nil {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid exception ID",
-		})
+	adminID := ctl.requireAdminID(helper)
+	if adminID == 0 {
 		return
 	}
 
-	adminID := ctx.GetUint(global.UserIDKey)
-	err := ctl.exceptionService.ReviewException(ctx, exceptionID, adminID, req.Action, req.OverrideBuffer, req.Reason)
+	var req requests.CreateRuleRequest
+	if !helper.MustBindJSON(&req) {
+		return
+	}
+
+	svcReq := &services.CreateScheduleRuleRequest{
+		Name:           req.Name,
+		OfferingID:     req.OfferingID,
+		TeacherID:      req.TeacherID,
+		RoomID:         req.RoomID,
+		StartTime:      req.StartTime,
+		EndTime:        req.EndTime,
+		Duration:       req.Duration,
+		Weekdays:       req.Weekdays,
+		StartDate:      req.StartDate,
+		EndDate:        req.EndDate,
+		OverrideBuffer: req.OverrideBuffer,
+	}
+
+	rules, err := ctl.scheduleSvc.CreateRule(ctx.Request.Context(), centerID, adminID, svcReq)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-			Code:    500,
-			Message: err.Error(),
-		})
+		helper.InternalError(err.Error())
 		return
 	}
 
-	ctx.JSON(http.StatusOK, global.ApiResponse{
-		Code:    0,
-		Message: "Exception reviewed successfully",
-	})
+	helper.Success(rules)
 }
 
+// UpdateRule 更新排課規則
+// @Summary 更新排課規則
+// @Tags Admin - Scheduling
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path uint true "規則ID"
+// @Param request body requests.UpdateRuleRequest true "規則資訊"
+// @Success 200 {object} global.ApiResponse{data=[]models.ScheduleRule}
+// @Router /api/v1/admin/scheduling/rules/{id} [put]
+func (ctl *SchedulingController) UpdateRule(ctx *gin.Context) {
+	helper := NewContextHelper(ctx)
+
+	centerID := ctl.requireCenterID(helper)
+	if centerID == 0 {
+		return
+	}
+
+	adminID := ctl.requireAdminID(helper)
+	if adminID == 0 {
+		return
+	}
+
+	ruleID := ctl.requireRuleID(helper)
+	if ruleID == 0 {
+		return
+	}
+
+	var req requests.UpdateRuleRequest
+	if !helper.MustBindJSON(&req) {
+		return
+	}
+
+	svcReq := &services.UpdateScheduleRuleRequest{
+		Name:       req.Name,
+		OfferingID: req.OfferingID,
+		TeacherID:  req.TeacherID,
+		RoomID:     req.RoomID,
+		StartTime:  req.StartTime,
+		EndTime:    req.EndTime,
+		Duration:   req.Duration,
+		Weekdays:   req.Weekdays,
+		StartDate:  req.StartDate,
+		EndDate:    req.EndDate,
+		UpdateMode: req.UpdateMode,
+	}
+
+	rules, err := ctl.scheduleSvc.UpdateRule(ctx.Request.Context(), centerID, adminID, ruleID, svcReq)
+	if err != nil {
+		helper.InternalError(err.Error())
+		return
+	}
+
+	helper.Success(rules)
+}
+
+// DeleteRule 刪除排課規則
+// @Summary 刪除排課規則
+// @Tags Admin - Scheduling
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path uint true "規則ID"
+// @Success 200 {object} global.ApiResponse
+// @Router /api/v1/admin/scheduling/rules/{id} [delete]
+func (ctl *SchedulingController) DeleteRule(ctx *gin.Context) {
+	helper := NewContextHelper(ctx)
+
+	centerID := ctl.requireCenterID(helper)
+	if centerID == 0 {
+		return
+	}
+
+	adminID := ctl.requireAdminID(helper)
+	if adminID == 0 {
+		return
+	}
+
+	ruleID := ctl.requireRuleID(helper)
+	if ruleID == 0 {
+		return
+	}
+
+	err := ctl.scheduleSvc.DeleteRule(ctx.Request.Context(), centerID, adminID, ruleID)
+	if err != nil {
+		helper.InternalError(err.Error())
+		return
+	}
+
+	helper.Success(gin.H{"message": "Schedule rule deleted successfully"})
+}
+
+// ExpandRules 展開排課規則
+// @Summary 展開排課規則為具體課程場次
+// @Tags Admin - Scheduling
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param request body requests.ExpandRulesRequest true "展開請求"
+// @Success 200 {object} global.ApiResponse{data=[]services.ExpandedSchedule}
+// @Router /api/v1/admin/scheduling/expand [post]
+func (ctl *SchedulingController) ExpandRules(ctx *gin.Context) {
+	helper := NewContextHelper(ctx)
+
+	centerID := ctl.requireCenterID(helper)
+	if centerID == 0 {
+		return
+	}
+
+	var req requests.ExpandRulesRequest
+	if !helper.MustBindJSON(&req) {
+		return
+	}
+
+	svcReq := &services.ExpandRulesRequest{
+		RuleIDs:   req.RuleIDs,
+		StartDate: req.StartDate,
+		EndDate:   req.EndDate,
+	}
+
+	schedules, err := ctl.scheduleSvc.ExpandRules(ctx.Request.Context(), centerID, svcReq)
+	if err != nil {
+		helper.InternalError(err.Error())
+		return
+	}
+
+	helper.Success(schedules)
+}
+
+// GetExceptionsByRule 取得規則的所有例外申請
+// @Summary 取得指定規則的所有例外申請
+// @Tags Admin - Scheduling
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path uint true "規則ID"
+// @Success 200 {object} global.ApiResponse{data=[]models.ScheduleException}
+// @Router /api/v1/admin/scheduling/rules/{id}/exceptions [get]
 func (ctl *SchedulingController) GetExceptionsByRule(ctx *gin.Context) {
-	ruleID := ctx.Param("ruleId")
-	var ruleIDInt uint
-	if _, err := fmt.Sscanf(ruleID, "%d", &ruleIDInt); err != nil {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid rule ID",
-		})
+	helper := NewContextHelper(ctx)
+
+	ruleID := ctl.requireRuleID(helper)
+	if ruleID == 0 {
 		return
 	}
 
-	exceptions, err := ctl.exceptionService.GetExceptionsByRule(ctx, ruleIDInt)
+	exceptions, err := ctl.scheduleSvc.GetExceptionsByRule(ctx.Request.Context(), ruleID)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-			Code:    500,
-			Message: err.Error(),
-		})
+		helper.InternalError(err.Error())
 		return
 	}
 
-	ctx.JSON(http.StatusOK, global.ApiResponse{
-		Code:    0,
-		Message: "OK",
-		Datas:   exceptions,
-	})
+	helper.Success(exceptions)
 }
 
-func (ctl *SchedulingController) GetExceptionsByDateRange(ctx *gin.Context) {
-	centerID := ctx.GetUint(global.CenterIDKey)
+// CreateException 建立例外申請
+// @Summary 建立新的例外申請
+// @Tags Teacher - Scheduling
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param request body requests.CreateExceptionRequest true "例外資訊"
+// @Success 200 {object} global.ApiResponse{data=models.ScheduleException}
+// @Router /api/v1/teacher/me/exceptions [post]
+func (ctl *SchedulingController) CreateException(ctx *gin.Context) {
+	helper := NewContextHelper(ctx)
+
+	centerID := ctl.requireCenterID(helper)
 	if centerID == 0 {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Center ID required",
-		})
 		return
 	}
 
-	startDateStr := ctx.Query("start_date")
-	endDateStr := ctx.Query("end_date")
+	teacherID := ctl.requireAdminID(helper) // 老師端使用 MustUserID
+	if teacherID == 0 {
+		return
+	}
 
-	startDate, err := time.Parse("2006-01-02", startDateStr)
+	var req requests.CreateExceptionRequest
+	if !helper.MustBindJSON(&req) {
+		return
+	}
+
+	svcReq := &services.CreateExceptionRequest{
+		RuleID:         req.RuleID,
+		OriginalDate:   req.OriginalDate,
+		Type:           req.Type,
+		NewStartAt:     req.NewStartAt,
+		NewEndAt:       req.NewEndAt,
+		NewTeacherID:   req.NewTeacherID,
+		NewTeacherName: req.NewTeacherName,
+		NewRoomID:      req.NewRoomID,
+		Reason:         req.Reason,
+	}
+
+	exception, err := ctl.scheduleSvc.CreateException(ctx.Request.Context(), centerID, teacherID, req.RuleID, svcReq)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid start date format",
-		})
+		helper.InternalError(err.Error())
 		return
 	}
 
-	endDate, err := time.Parse("2006-01-02", endDateStr)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid end date format",
-		})
-		return
-	}
-
-	exceptions, err := ctl.exceptionService.GetExceptionsByDateRange(ctx, centerID, startDate, endDate)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-			Code:    500,
-			Message: err.Error(),
-		})
-		return
-	}
-
-	ctx.JSON(http.StatusOK, global.ApiResponse{
-		Code:    0,
-		Message: "OK",
-		Datas:   exceptions,
-	})
+	helper.Success(exception)
 }
 
-// GetPendingExceptions 獲取中心所有待審核的例外申請
-// @Summary 獲取中心所有待審核的例外申請
+// ReviewException 審核例外申請
+// @Summary 審核例外申請（核准/拒絕）
+// @Tags Admin - Scheduling
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path uint true "例外ID"
+// @Param request body requests.ReviewExceptionRequest true "審核資訊"
+// @Success 200 {object} global.ApiResponse
+// @Router /api/v1/admin/scheduling/exceptions/{id}/review [post]
+func (ctl *SchedulingController) ReviewException(ctx *gin.Context) {
+	helper := NewContextHelper(ctx)
+
+	adminID := ctl.requireAdminID(helper)
+	if adminID == 0 {
+		return
+	}
+
+	exceptionID := ctl.requireExceptionID(helper)
+	if exceptionID == 0 {
+		return
+	}
+
+	var req requests.ReviewExceptionRequest
+	if !helper.MustBindJSON(&req) {
+		return
+	}
+
+	svcReq := &services.ReviewExceptionRequest{
+		Action:         req.Action,
+		OverrideBuffer: req.OverrideBuffer,
+		Reason:         req.Reason,
+	}
+
+	err := ctl.scheduleSvc.ReviewException(ctx.Request.Context(), exceptionID, adminID, svcReq)
+	if err != nil {
+		helper.InternalError(err.Error())
+		return
+	}
+
+	helper.Success(gin.H{"message": "Exception reviewed successfully"})
+}
+
+// GetExceptionsByDateRange 取得日期範圍內的例外申請
+// @Summary 取得指定日期範圍內的所有例外申請
+// @Tags Admin - Scheduling
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param start_date query string false "開始日期 (YYYY-MM-DD)"
+// @Param end_date query string false "結束日期 (YYYY-MM-DD)"
+// @Success 200 {object} global.ApiResponse{data=[]models.ScheduleException}
+// @Router /api/v1/admin/scheduling/exceptions [get]
+func (ctl *SchedulingController) GetExceptionsByDateRange(ctx *gin.Context) {
+	helper := NewContextHelper(ctx)
+
+	centerID := ctl.requireCenterID(helper)
+	if centerID == 0 {
+		return
+	}
+
+	startDate, endDate := helper.MustQueryDateRange("start_date", "end_date")
+	if startDate.IsZero() && endDate.IsZero() {
+		return
+	}
+
+	exceptions, err := ctl.scheduleSvc.GetExceptionsByDateRange(ctx.Request.Context(), centerID, startDate, endDate)
+	if err != nil {
+		helper.InternalError(err.Error())
+		return
+	}
+
+	helper.Success(exceptions)
+}
+
+// GetPendingExceptions 取得待審核的例外申請
+// @Summary 取得所有待審核的例外申請
 // @Tags Admin - Scheduling
 // @Accept json
 // @Produce json
 // @Security BearerAuth
 // @Success 200 {object} global.ApiResponse{data=[]models.ScheduleException}
-// @Router /api/v1/admin/exceptions/pending [get]
+// @Router /api/v1/admin/scheduling/exceptions/pending [get]
 func (ctl *SchedulingController) GetPendingExceptions(ctx *gin.Context) {
-	centerID := ctx.GetUint(global.CenterIDKey)
+	helper := NewContextHelper(ctx)
+
+	centerID := ctl.requireCenterID(helper)
 	if centerID == 0 {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Center ID required",
-		})
 		return
 	}
 
-	exceptions, err := ctl.exceptionService.GetPendingExceptions(ctx, centerID)
+	exceptions, err := ctl.scheduleSvc.GetPendingExceptions(ctx.Request.Context(), centerID)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-			Code:    500,
-			Message: err.Error(),
-		})
+		helper.InternalError(err.Error())
 		return
 	}
 
-	ctx.JSON(http.StatusOK, global.ApiResponse{
-		Code:    0,
-		Message: "OK",
-		Datas:   exceptions,
-	})
+	helper.Success(exceptions)
 }
 
-// GetAllExceptions 取得所有例外申請（可依狀態篩選）
-// @Summary 取得所有例外申請
+// GetAllExceptions 取得所有例外申請
+// @Summary 取得所有例外申請（可依狀態篩選）
 // @Tags Admin - Scheduling
 // @Accept json
 // @Produce json
 // @Security BearerAuth
 // @Param status query string false "狀態篩選：PENDING, APPROVED, REJECTED, REVOKED"
 // @Success 200 {object} global.ApiResponse{data=[]models.ScheduleException}
-// @Router /api/v1/admin/exceptions/all [get]
+// @Router /api/v1/admin/scheduling/exceptions/all [get]
 func (ctl *SchedulingController) GetAllExceptions(ctx *gin.Context) {
-	centerID := ctx.GetUint(global.CenterIDKey)
+	helper := NewContextHelper(ctx)
+
+	centerID := ctl.requireCenterID(helper)
 	if centerID == 0 {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Center ID required",
-		})
 		return
 	}
 
-	status := ctx.Query("status")
+	status := helper.QueryStringOrDefault("status", "")
 
-	exceptions, err := ctl.exceptionService.GetAllExceptions(ctx, centerID, status)
+	exceptions, err := ctl.scheduleSvc.GetAllExceptions(ctx.Request.Context(), centerID, status)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-			Code:    500,
-			Message: err.Error(),
-		})
+		helper.InternalError(err.Error())
 		return
 	}
 
-	ctx.JSON(http.StatusOK, global.ApiResponse{
-		Code:    0,
-		Message: "OK",
-		Datas:   exceptions,
-	})
+	helper.Success(exceptions)
 }
 
-func (ctl *SchedulingController) ExpandRules(ctx *gin.Context) {
-	centerID := ctx.GetUint(global.CenterIDKey)
-	if centerID == 0 {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Center ID required",
-		})
-		return
-	}
-
-	// 手動解析請求參數，支援 YYYY-MM-DD 格式
-	var reqBody struct {
-		RuleIDs   []uint `json:"rule_ids"`
-		StartDate string `json:"start_date"`
-		EndDate   string `json:"end_date"`
-	}
-	if err := ctx.ShouldBindJSON(&reqBody); err != nil {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid request parameters",
-		})
-		return
-	}
-
-	// 解析日期（支援 YYYY-MM-DD 格式）
-	startDate, err := time.Parse("2006-01-02", reqBody.StartDate)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid start_date format, expected YYYY-MM-DD",
-		})
-		return
-	}
-
-	endDate, err := time.Parse("2006-01-02", reqBody.EndDate)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid end_date format, expected YYYY-MM-DD",
-		})
-		return
-	}
-
-	scheduleRuleRepo := repositories.NewScheduleRuleRepository(ctl.app)
-	rules, err := scheduleRuleRepo.ListByCenterID(ctx, centerID)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-			Code:    500,
-			Message: err.Error(),
-		})
-		return
-	}
-
-	var filteredRules []models.ScheduleRule
-	if len(reqBody.RuleIDs) > 0 {
-		for _, rule := range rules {
-			for _, ruleID := range reqBody.RuleIDs {
-				if rule.ID == ruleID {
-					filteredRules = append(filteredRules, rule)
-					break
-				}
-			}
-		}
-	} else {
-		filteredRules = rules
-	}
-
-	expandedSchedules := ctl.expansionService.ExpandRules(ctx, filteredRules, startDate, endDate, centerID)
-
-	ctx.JSON(http.StatusOK, global.ApiResponse{
-		Code:    0,
-		Message: "OK",
-		Datas:   expandedSchedules,
-	})
-}
-
-type CreateRuleRequest struct {
-	Name           string  `json:"name" binding:"required"`
-	OfferingID     uint    `json:"offering_id" binding:"required"`
-	TeacherID      uint    `json:"teacher_id"`
-	RoomID         uint    `json:"room_id" binding:"required"`
-	StartTime      string  `json:"start_time" binding:"required"`
-	EndTime        string  `json:"end_time" binding:"required"`
-	Duration       int     `json:"duration" binding:"required"`
-	Weekdays       []int   `json:"weekdays" binding:"required,min=1"`
-	StartDate      string  `json:"start_date" binding:"required"`
-	EndDate        *string `json:"end_date"`
-	OverrideBuffer bool    `json:"override_buffer"` // 允許覆蓋 Buffer 衝突
-}
-
-func (ctl *SchedulingController) CreateRule(ctx *gin.Context) {
-	centerID := ctx.GetUint(global.CenterIDKey)
-	if centerID == 0 {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Center ID required",
-		})
-		return
-	}
-
-	var req CreateRuleRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid request parameters: " + err.Error(),
-		})
-		return
-	}
-
-	startDate, err := time.Parse("2006-01-02", req.StartDate)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid start_date format",
-		})
-		return
-	}
-
-	var endDate time.Time
-	if req.EndDate != nil && *req.EndDate != "" {
-		endDate, err = time.Parse("2006-01-02", *req.EndDate)
-		if err != nil {
-			ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-				Code:    global.BAD_REQUEST,
-				Message: "Invalid end_date format",
-			})
-			return
-		}
-	} else {
-		endDate = time.Date(2099, 12, 31, 0, 0, 0, 0, time.UTC)
-	}
-
-	scheduleRuleRepo := repositories.NewScheduleRuleRepository(ctl.app)
-
-	// 計算檢查日期（從開始日期起的未來一週）
-	// 轉換為中央時區，確保 weekday 計算正確
-	loc := app.GetTaiwanLocation()
-	startDate = time.Date(startDate.Year(), startDate.Month(), startDate.Day(), 0, 0, 0, 0, loc)
-	checkDate := startDate
-
-	// 檢查每個 weekday 是否有衝突
-	var overlappingRules []models.ScheduleRule
-	var personalEventConflicts []models.PersonalEvent
-	for _, weekday := range req.Weekdays {
-		// 找到該 weekday 的日期（使用中央時區計算）
-		current := checkDate
-		weekdayDiff := weekday - int(current.Weekday())
-		if weekdayDiff <= 0 {
-			weekdayDiff += 7
-		}
-		targetDate := current.AddDate(0, 0, weekdayDiff)
-
-		overlaps, eventConflicts, err := scheduleRuleRepo.CheckOverlap(ctx, centerID, req.RoomID, &req.TeacherID, weekday, req.StartTime, req.EndTime, nil, targetDate)
-		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-				Code:    500,
-				Message: "Failed to check overlap: " + err.Error(),
-			})
-			return
-		}
-		overlappingRules = append(overlappingRules, overlaps...)
-		personalEventConflicts = append(personalEventConflicts, eventConflicts...)
-	}
-
-	if len(overlappingRules) > 0 || len(personalEventConflicts) > 0 {
-		// 產生衝突訊息 - 去重，只顯示衝突的星期
-		conflictSet := make(map[string]bool) // 用於去重
-		conflictMessages := []string{}
-
-		// 排課規則衝突
-		for _, rule := range overlappingRules {
-			dayNames := []string{"", "週一", "週二", "週三", "週四", "週五", "週六", "週日"}
-			key := fmt.Sprintf("rule-%d-%s-%s", rule.Weekday, rule.StartTime, rule.EndTime)
-
-			if !conflictSet[key] {
-				conflictSet[key] = true
-				msg := fmt.Sprintf("%s %s-%s", dayNames[rule.Weekday], rule.StartTime, rule.EndTime)
-				if rule.TeacherID != nil {
-					msg += " 老師已有排課"
-				} else {
-					msg += " 教室已有排課"
-				}
-				conflictMessages = append(conflictMessages, msg)
-			}
-		}
-
-		// 個人行程衝突
-		for _, event := range personalEventConflicts {
-			key := fmt.Sprintf("event-%s", event.Title)
-
-			if !conflictSet[key] {
-				conflictSet[key] = true
-				eventDate := event.StartAt
-				dayNames := []string{"", "週日", "週一", "週二", "週三", "週四", "週五", "週六"}
-				msg := fmt.Sprintf("%s %s-%s 「%s」",
-					dayNames[eventDate.Weekday()],
-					event.StartAt.Format("15:04"),
-					event.EndAt.Format("15:04"),
-					event.Title)
-				msg += " 老師個人行程"
-				conflictMessages = append(conflictMessages, msg)
-			}
-		}
-
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    40002, // OVERLAP error code
-			Message: "排課時間與現有規則或個人行程衝突",
-			Datas: map[string]interface{}{
-				"conflicts": conflictMessages,
-			},
-		})
-		return
-	}
-
-	// 【新增】Buffer 檢查
-	var bufferConflicts []map[string]interface{}
-
-	// 取得課程設定（包含緩衝時間）- 先取得 offering 再取得 course
-	offering, err := ctl.offeringRepo.GetByID(ctl.makeCtx(ctx), req.OfferingID)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-			Code:    500,
-			Message: "Failed to get offering for buffer check: " + err.Error(),
-		})
-		return
-	}
-
-	_, err = ctl.courseRepo.GetByID(ctl.makeCtx(ctx), offering.CourseID)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-			Code:    500,
-			Message: "Failed to get course for buffer check: " + err.Error(),
-		})
-		return
-	}
-
-	for _, weekday := range req.Weekdays {
-		// 找到該 weekday 的日期
-		current := checkDate
-		weekdayDiff := weekday - int(current.Weekday())
-		if weekdayDiff <= 0 {
-			weekdayDiff += 7
-		}
-		targetDate := current.AddDate(0, 0, weekdayDiff)
-
-		// 產生新課程的時間（使用中央時區避免日期偏移）
-		loc := app.GetTaiwanLocation()
-		targetDateLocal := time.Date(
-			targetDate.Year(), targetDate.Month(), targetDate.Day(),
-			0, 0, 0, 0, loc,
-		)
-		newStartTime, _ := time.ParseInLocation("2006-01-02 15:04", targetDateLocal.Format("2006-01-02")+" "+req.StartTime, loc)
-
-		// 檢查 Teacher Buffer
-		if req.TeacherID > 0 {
-			prevEndTime, _ := ctl.getTeacherPreviousSessionEndTime(ctx, centerID, req.TeacherID, weekday, req.StartTime, newStartTime)
-
-			if !prevEndTime.IsZero() {
-				teacherBufferResult, err := ctl.validationService.CheckTeacherBuffer(ctx, centerID, req.TeacherID, prevEndTime, newStartTime, offering.CourseID)
-				if err != nil {
-					ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-						Code:    500,
-						Message: "Failed to check teacher buffer: " + err.Error(),
-					})
-					return
-				}
-
-				if !teacherBufferResult.Valid {
-					dayNames := []string{"", "週一", "週二", "週三", "週四", "週五", "週六", "週日"}
-					for _, conflict := range teacherBufferResult.Conflicts {
-						bufferConflicts = append(bufferConflicts, map[string]interface{}{
-							"weekday":          weekday,
-							"day_name":         dayNames[weekday],
-							"start_time":       req.StartTime,
-							"end_time":         req.EndTime,
-							"conflict_type":    conflict.Type,
-							"message":          conflict.Message,
-							"can_override":     conflict.CanOverride,
-							"required_minutes": conflict.RequiredMinutes,
-							"diff_minutes":     conflict.DiffMinutes,
-						})
-					}
-				}
-			}
-		}
-
-		// 檢查 Room Buffer
-		if req.RoomID > 0 {
-			prevRoomEndTime, _ := ctl.getRoomPreviousSessionEndTime(ctx, centerID, req.RoomID, weekday, req.StartTime, newStartTime)
-			if !prevRoomEndTime.IsZero() {
-				roomBufferResult, err := ctl.validationService.CheckRoomBuffer(ctx, centerID, req.RoomID, prevRoomEndTime, newStartTime, offering.CourseID)
-				if err != nil {
-					ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-						Code:    500,
-						Message: "Failed to check room buffer: " + err.Error(),
-					})
-					return
-				}
-
-				if !roomBufferResult.Valid {
-					dayNames := []string{"", "週一", "週二", "週三", "週四", "週五", "週六", "週日"}
-					for _, conflict := range roomBufferResult.Conflicts {
-						bufferConflicts = append(bufferConflicts, map[string]interface{}{
-							"weekday":          weekday,
-							"day_name":         dayNames[weekday],
-							"start_time":       req.StartTime,
-							"end_time":         req.EndTime,
-							"conflict_type":    conflict.Type,
-							"message":          conflict.Message,
-							"can_override":     conflict.CanOverride,
-							"required_minutes": conflict.RequiredMinutes,
-							"diff_minutes":     conflict.DiffMinutes,
-						})
-					}
-				}
-			}
-		}
-	}
-
-	// 如果有 Buffer 衝突，回傳衝突資訊
-	if len(bufferConflicts) > 0 {
-		// 檢查是否所有衝突都可覆蓋，且管理員選擇覆蓋
-		allOverridable := true
-		for _, conflict := range bufferConflicts {
-			canOverride, ok := conflict["can_override"].(bool)
-			if !ok || !canOverride {
-				allOverridable = false
-				break
-			}
-		}
-
-		if req.OverrideBuffer && allOverridable {
-			// 允許覆蓋，繼續執行
-		} else {
-			ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-				Code:    40003, // BUFFER_CONFLICT error code
-				Message: "排課時間違反緩衝時間規定",
-				Datas: map[string]interface{}{
-					"buffer_conflicts": bufferConflicts,
-					"conflict_count":   len(bufferConflicts),
-					"can_override":     allOverridable,
-				},
-			})
-			return
-		}
-	}
-
-	var createdRules []models.ScheduleRule
-
-	for _, weekday := range req.Weekdays {
-		rule := models.ScheduleRule{
-			CenterID:   centerID,
-			OfferingID: req.OfferingID,
-			TeacherID:  &req.TeacherID,
-			RoomID:     req.RoomID,
-			Weekday:    weekday,
-			StartTime:  req.StartTime,
-			EndTime:    req.EndTime,
-			EffectiveRange: models.DateRange{
-				StartDate: startDate,
-				EndDate:   endDate,
-			},
-		}
-
-		createdRule, err := scheduleRuleRepo.Create(ctx, rule)
-		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-				Code:    500,
-				Message: "Failed to create schedule rule: " + err.Error(),
-			})
-			return
-		}
-		createdRules = append(createdRules, createdRule)
-	}
-
-	ctx.JSON(http.StatusOK, global.ApiResponse{
-		Code:    0,
-		Message: "Schedule rules created successfully",
-		Datas:   createdRules,
-	})
-}
-
-func (ctl *SchedulingController) GetRules(ctx *gin.Context) {
-	centerID := ctx.GetUint(global.CenterIDKey)
-	if centerID == 0 {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Center ID required",
-		})
-		return
-	}
-
-	scheduleRuleRepo := repositories.NewScheduleRuleRepository(ctl.app)
-	rules, err := scheduleRuleRepo.ListByCenterID(ctx, centerID)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-			Code:    500,
-			Message: err.Error(),
-		})
-		return
-	}
-
-	ctx.JSON(http.StatusOK, global.ApiResponse{
-		Code:    0,
-		Message: "OK",
-		Datas:   rules,
-	})
-}
-
-// getTeacherPreviousSessionEndTime 取得老師在指定 weekday 之前的最後一筆課程結束時間
-// newStartTime 用於構造正確的日期，以便計算緩衝時間
-func (ctl *SchedulingController) getTeacherPreviousSessionEndTime(ctx context.Context, centerID, teacherID uint, weekday int, beforeTimeStr string, newStartTime time.Time) (time.Time, error) {
-	rule, err := ctl.scheduleRuleRepo.GetLastSessionByTeacherAndWeekday(ctx, centerID, teacherID, weekday, beforeTimeStr)
-	if err != nil {
-		return time.Time{}, nil
-	}
-
-	if rule == nil {
-		return time.Time{}, nil
-	}
-
-	// 使用中央時區解析時間，確保與 newStartTime 的時區一致
-	// 注意：EndTime 格式是 "HH:mm"（沒有秒）
-	loc := app.GetTaiwanLocation()
-
-	// 解析 EndTime 並使用與 newStartTime 相同的日期
-	// 這樣才能正確計算緩衝時間
-	endTimeParts := strings.Split(rule.EndTime, ":")
-	if len(endTimeParts) >= 2 {
-		hour, _ := strconv.Atoi(endTimeParts[0])
-		minute, _ := strconv.Atoi(endTimeParts[1])
-
-		// 使用 newStartTime 的日期來構造 endTime，這樣才能正確比較
-		endTime := time.Date(
-			newStartTime.Year(), newStartTime.Month(), newStartTime.Day(),
-			hour, minute, 0, 0, loc,
-		)
-		return endTime, nil
-	}
-
-	return time.Time{}, nil
-}
-
-// getRoomPreviousSessionEndTime 取得教室在指定 weekday 之前的最後一筆課程結束時間
-// newStartTime 用於構造正確的日期，以便計算緩衝時間
-func (ctl *SchedulingController) getRoomPreviousSessionEndTime(ctx context.Context, centerID, roomID uint, weekday int, beforeTimeStr string, newStartTime time.Time) (time.Time, error) {
-	rule, err := ctl.scheduleRuleRepo.GetLastSessionByRoomAndWeekday(ctx, centerID, roomID, weekday, beforeTimeStr)
-	if err != nil {
-		return time.Time{}, nil
-	}
-
-	if rule == nil {
-		return time.Time{}, nil
-	}
-
-	// 使用中央時區解析時間，確保與 newStartTime 的時區一致
-	// 注意：EndTime 格式是 "HH:mm"（沒有秒）
-	loc := app.GetTaiwanLocation()
-
-	// 解析 EndTime 並使用與 newStartTime 相同的日期
-	// 這樣才能正確計算緩衝時間
-	endTimeParts := strings.Split(rule.EndTime, ":")
-	if len(endTimeParts) >= 2 {
-		hour, _ := strconv.Atoi(endTimeParts[0])
-		minute, _ := strconv.Atoi(endTimeParts[1])
-
-		// 使用 newStartTime 的日期來構造 endTime，這樣才能正確比較
-		endTime := time.Date(
-			newStartTime.Year(), newStartTime.Month(), newStartTime.Day(),
-			hour, minute, 0, 0, loc,
-		)
-		return endTime, nil
-	}
-
-	// Fallback: 使用舊的解析方式
-	timeStr := "2000-01-01" + " " + rule.EndTime
-	endTime, _ := time.ParseInLocation("2006-01-02 15:04", timeStr, loc)
-	return endTime, nil
-}
-
-func (ctl *SchedulingController) DeleteRule(ctx *gin.Context) {
-	centerID := ctx.GetUint(global.CenterIDKey)
-	if centerID == 0 {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Center ID required",
-		})
-		return
-	}
-
-	ruleIDStr := ctx.Param("ruleId")
-	var ruleID uint
-	if _, err := fmt.Sscanf(ruleIDStr, "%d", &ruleID); err != nil {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid rule ID",
-		})
-		return
-	}
-
-	scheduleRuleRepo := repositories.NewScheduleRuleRepository(ctl.app)
-	if err := scheduleRuleRepo.DeleteByIDAndCenterID(ctx, ruleID, centerID); err != nil {
-		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-			Code:    500,
-			Message: "Failed to delete rule: " + err.Error(),
-		})
-		return
-	}
-
-	actorID := ctx.GetUint(global.UserIDKey)
-	ctl.auditLogRepo.Create(ctx, models.AuditLog{
-		CenterID:   centerID,
-		ActorType:  "ADMIN",
-		ActorID:    actorID,
-		Action:     "DELETE_SCHEDULE_RULE",
-		TargetType: "ScheduleRule",
-		TargetID:   ruleID,
-		Payload: models.AuditPayload{
-			After: map[string]interface{}{
-				"status": "DELETED",
-			},
-		},
-	})
-
-	ctx.JSON(http.StatusOK, global.ApiResponse{
-		Code:    0,
-		Message: "Schedule rule deleted successfully",
-	})
-}
-
-type UpdateRuleRequest struct {
-	Name       string  `json:"name"`
-	OfferingID uint    `json:"offering_id"`
-	TeacherID  *uint   `json:"teacher_id"`
-	RoomID     uint    `json:"room_id"`
-	StartTime  string  `json:"start_time"`
-	EndTime    string  `json:"end_time"`
-	Duration   int     `json:"duration"`
-	Weekdays   []int   `json:"weekdays"`
-	StartDate  string  `json:"start_date"`
-	EndDate    *string `json:"end_date"`
-	// 更新模式：SINGLE - 只修改這一天，FUTURE - 修改這天及之後，ALL - 修改所有
-	UpdateMode string `json:"update_mode"`
-}
-
-const (
-	UpdateModeSingle = "SINGLE"
-	UpdateModeFuture = "FUTURE"
-	UpdateModeAll    = "ALL"
-)
-
-func (ctl *SchedulingController) UpdateRule(ctx *gin.Context) {
-	centerID := ctx.GetUint(global.CenterIDKey)
-	if centerID == 0 {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Center ID required",
-		})
-		return
-	}
-
-	ruleIDStr := ctx.Param("ruleId")
-	var ruleID uint
-	if _, err := fmt.Sscanf(ruleIDStr, "%d", &ruleID); err != nil {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid rule ID",
-		})
-		return
-	}
-
-	var req UpdateRuleRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid request parameters: " + err.Error(),
-		})
-		return
-	}
-
-	// 解析日期
-	var startDate, endDate time.Time
-	var err error
-
-	// 如果提供了 start_date，則解析；否則保持為零值（表示不更新）
-	if req.StartDate != "" {
-		startDate, err = time.Parse("2006-01-02", req.StartDate)
-		if err != nil {
-			ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-				Code:    global.BAD_REQUEST,
-				Message: "Invalid start_date format",
-			})
-			return
-		}
-	}
-
-	// 如果提供了 end_date，則解析；否則保持為零值（表示不更新）
-	if req.EndDate != nil && *req.EndDate != "" {
-		endDate, err = time.Parse("2006-01-02", *req.EndDate)
-		if err != nil {
-			ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-				Code:    global.BAD_REQUEST,
-				Message: "Invalid end_date format",
-			})
-			return
-		}
-	}
-
-	scheduleRuleRepo := repositories.NewScheduleRuleRepository(ctl.app)
-
-	// 檢查規則是否存在且屬於該中心
-	existingRule, err := scheduleRuleRepo.GetByIDAndCenterID(ctx, ruleID, centerID)
-	if err != nil {
-		ctx.JSON(http.StatusNotFound, global.ApiResponse{
-			Code:    errInfos.NOT_FOUND,
-			Message: "Rule not found",
-		})
-		return
-	}
-
-	// 找出同一組的所有規則（相同的 name 或 offering_id 和時間）
-	allRules, err := scheduleRuleRepo.ListByCenterID(ctx, centerID)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-			Code:    500,
-			Message: "Failed to fetch rules: " + err.Error(),
-		})
-		return
-	}
-
-	// 找出與當前規則相關聯的規則（相同的 offering_id、start_time、end_time）
-	var relatedRules []models.ScheduleRule
-	for _, rule := range allRules {
-		if rule.OfferingID == existingRule.OfferingID &&
-			rule.StartTime == existingRule.StartTime &&
-			rule.EndTime == existingRule.EndTime &&
-			rule.ID != existingRule.ID {
-			relatedRules = append(relatedRules, rule)
-		}
-	}
-
-	// 根據 update_mode 處理不同的更新策略
-	var resultRules []models.ScheduleRule
-
-	switch req.UpdateMode {
-	case UpdateModeFuture:
-		// FUTURE: 截斷現有規則，創建新規則段
-		resultRules, err = handleFutureUpdate(ctx, scheduleRuleRepo, centerID, existingRule, relatedRules, req, startDate, endDate)
-		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-				Code:    500,
-				Message: "Failed to update rule (FUTURE): " + err.Error(),
-			})
-			return
-		}
-	case UpdateModeSingle:
-		// SINGLE: 只更新這個規則（不改變 weekday 結構）
-		exceptionRepo := repositories.NewScheduleExceptionRepository(ctl.app)
-		resultRules, err = handleSingleUpdate(ctx, scheduleRuleRepo, exceptionRepo, centerID, existingRule, req, startDate)
-		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-				Code:    500,
-				Message: "Failed to update rule (SINGLE): " + err.Error(),
-			})
-			return
-		}
-	default:
-		// ALL 或空：更新所有相關規則
-		resultRules, err = handleAllUpdate(ctx, scheduleRuleRepo, centerID, existingRule, relatedRules, req, startDate, endDate)
-		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-				Code:    500,
-				Message: "Failed to update rule (ALL): " + err.Error(),
-			})
-			return
-		}
-	}
-
-	ctx.JSON(http.StatusOK, global.ApiResponse{
-		Code:    0,
-		Message: "Schedule rules updated successfully",
-		Datas:   resultRules,
-	})
-}
-
-// handleFutureUpdate 處理 FUTURE 模式：截斷現有規則，創建新規則段
-func handleFutureUpdate(ctx context.Context, ruleRepo *repositories.ScheduleRuleRepository, centerID uint, existingRule models.ScheduleRule, relatedRules []models.ScheduleRule, req UpdateRuleRequest, startDate, endDate time.Time) ([]models.ScheduleRule, error) {
-	var result []models.ScheduleRule
-
-	// 如果沒有提供 startDate，無法執行 FUTURE 模式
-	if startDate.IsZero() {
-		return nil, errors.New("start_date is required for FUTURE update mode")
-	}
-
-	cutoffDate := startDate.AddDate(0, 0, -1) // 前一天
-
-	// 1. 更新現有規則的 end_date 到 cutoffDate
-	for _, rule := range append(relatedRules, existingRule) {
-		rule.EffectiveRange.EndDate = cutoffDate
-		if err := ruleRepo.Update(ctx, rule); err != nil {
-			return nil, err
-		}
-		result = append(result, rule)
-	}
-
-	// 2. 創建新的規則段
-	newRules := createNewRuleSegment(centerID, existingRule, relatedRules, req, startDate, endDate)
-	for _, newRule := range newRules {
-		created, err := ruleRepo.Create(ctx, newRule)
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, created)
-	}
-
-	return result, nil
-}
-
-// handleSingleUpdate 處理 SINGLE 模式：針對單一日期建立例外單
-func handleSingleUpdate(ctx context.Context, ruleRepo *repositories.ScheduleRuleRepository, exceptionRepo *repositories.ScheduleExceptionRepository, centerID uint, existingRule models.ScheduleRule, req UpdateRuleRequest, targetDate time.Time) ([]models.ScheduleRule, error) {
-	// SINGLE 模式：針對 targetDate 這一天進行變更
-	// 1. 建立 CANCEL 例外單（取消這一天的原場次）
-
-	now := time.Now()
-	cancelException := models.ScheduleException{
-		CenterID:      centerID,
-		RuleID:        existingRule.ID,
-		OriginalDate:  targetDate,
-		ExceptionType: "CANCEL",
-		Status:        "APPROVED", // SINGLE 模式直接核准
-		Reason:        req.Name,   // 使用更新原因作為取消原因
-		ReviewedAt:    &now,
-	}
-
-	if _, err := exceptionRepo.Create(ctx, cancelException); err != nil {
-		return nil, fmt.Errorf("failed to create cancel exception: %w", err)
-	}
-
-	// 2. 建立新時間的規則（視為新規則，只針對這一天）
-	weekday := int(targetDate.Weekday())
-	if weekday == 0 {
-		weekday = 7 // 週日轉換為 7
-	}
-
-	newRule := models.ScheduleRule{
-		CenterID:   centerID,
-		OfferingID: req.OfferingID,
-		TeacherID:  req.TeacherID,
-		RoomID:     req.RoomID,
-		Name:       req.Name,
-		Weekday:    weekday,
-		StartTime:  req.StartTime,
-		EndTime:    req.EndTime,
-		Duration:   req.Duration,
-		EffectiveRange: models.DateRange{
-			StartDate: targetDate,
-			EndDate:   targetDate, // 只有這一天
-		},
-	}
-
-	created, err := ruleRepo.Create(ctx, newRule)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create new rule for reschedule: %w", err)
-	}
-
-	// 3. 建立 RESCHEDULE 例外單關聯新舊規則（如果新時間與原時間不同）
-	startHour := parseHour(req.StartTime)
-	endHour := parseHour(req.EndTime)
-
-	newStartAt := time.Date(targetDate.Year(), targetDate.Month(), targetDate.Day(), startHour, 0, 0, 0, time.UTC)
-	newEndAt := time.Date(targetDate.Year(), targetDate.Month(), targetDate.Day(), endHour, 0, 0, 0, time.UTC)
-
-	rescheduleException := models.ScheduleException{
-		CenterID:      centerID,
-		RuleID:        existingRule.ID, // 關聯原規則
-		OriginalDate:  targetDate,
-		ExceptionType: "RESCHEDULE",
-		Status:        "APPROVED",
-		Reason:        req.Name,
-		NewStartAt:    &newStartAt,
-		NewEndAt:      &newEndAt,
-		ReviewedAt:    &now,
-	}
-
-	if _, err := exceptionRepo.Create(ctx, rescheduleException); err != nil {
-		// 例外單建立失敗不影響主要流程，記錄錯誤但繼續
-		fmt.Printf("Warning: failed to create reschedule exception: %v\n", err)
-	}
-
-	return []models.ScheduleRule{existingRule, created}, nil
-}
-
-// parseHour 從時間字串（如 "14:00"）解析小時
-func parseHour(timeStr string) int {
-	if timeStr == "" {
-		return 0
-	}
-	parts := strings.Split(timeStr, ":")
-	if len(parts) < 1 {
-		return 0
-	}
-	hour, _ := strconv.Atoi(parts[0])
-	return hour
-}
-
-// handleAllUpdate 處理 ALL 模式：更新所有相關規則
-func handleAllUpdate(ctx context.Context, ruleRepo *repositories.ScheduleRuleRepository, centerID uint, existingRule models.ScheduleRule, relatedRules []models.ScheduleRule, req UpdateRuleRequest, startDate, endDate time.Time) ([]models.ScheduleRule, error) {
-	// 收集所有相關的 weekday
-	existingWeekdays := []int{existingRule.Weekday}
-	for _, rule := range relatedRules {
-		existingWeekdays = append(existingWeekdays, rule.Weekday)
-	}
-
-	// 轉換 req.Weekdays 為 map 便於查找
-	newWeekdayMap := make(map[int]bool)
-	for _, w := range req.Weekdays {
-		newWeekdayMap[w] = true
-	}
-
-	// 追蹤需要更新和創建的規則
-	var updatedRules []models.ScheduleRule
-	var createdRules []models.ScheduleRule
-	var deletedRuleIDs []uint
-
-	// 1. 處理現有規則：更新或標記刪除
-	for _, rule := range append(relatedRules, existingRule) {
-		if newWeekdayMap[rule.Weekday] {
-			// 這個 weekday 仍然需要保留，更新它
-			updatedRule := rule
-			if req.Name != "" {
-				updatedRule.Name = req.Name
-			}
-			if req.OfferingID != 0 {
-				updatedRule.OfferingID = req.OfferingID
-			}
-			if req.TeacherID != nil {
-				updatedRule.TeacherID = req.TeacherID
-			}
-			if req.RoomID != 0 {
-				updatedRule.RoomID = req.RoomID
-			}
-			if req.StartTime != "" {
-				updatedRule.StartTime = req.StartTime
-			}
-			if req.EndTime != "" {
-				updatedRule.EndTime = req.EndTime
-			}
-			if req.Duration != 0 {
-				updatedRule.Duration = req.Duration
-			}
-			// 只有當新日期與現有日期不同時才更新（避免不必要的更新）
-			if !startDate.IsZero() && startDate != rule.EffectiveRange.StartDate {
-				updatedRule.EffectiveRange.StartDate = startDate
-			}
-			// endDate 為零值時保持現有值
-			if !endDate.IsZero() {
-				updatedRule.EffectiveRange.EndDate = endDate
-			}
-
-			updatedRules = append(updatedRules, updatedRule)
-			delete(newWeekdayMap, rule.Weekday)
-		} else {
-			// 這個 weekday 不再需要，標記刪除
-			deletedRuleIDs = append(deletedRuleIDs, rule.ID)
-		}
-	}
-
-	// 2. 創建新的規則
-	for weekday := range newWeekdayMap {
-		newRule := createSingleRule(centerID, existingRule, req, weekday, startDate, endDate)
-		createdRules = append(createdRules, *newRule)
-	}
-
-	// 3. 執行資料庫操作
-	// 先刪除
-	for _, id := range deletedRuleIDs {
-		if err := ruleRepo.Delete(ctx, id); err != nil {
-			return nil, err
-		}
-	}
-
-	// 更新
-	for _, rule := range updatedRules {
-		if err := ruleRepo.Update(ctx, rule); err != nil {
-			return nil, err
-		}
-	}
-
-	// 創建
-	for _, rule := range createdRules {
-		created, err := ruleRepo.Create(ctx, rule)
-		if err != nil {
-			return nil, err
-		}
-		updatedRules = append(updatedRules, created)
-	}
-
-	return updatedRules, nil
-}
-
-// createNewRuleSegment 為 FUTURE 模式創建新的規則段
-func createNewRuleSegment(centerID uint, existingRule models.ScheduleRule, relatedRules []models.ScheduleRule, req UpdateRuleRequest, startDate, endDate time.Time) []models.ScheduleRule {
-	// 收集所有需要創建的 weekday
-	weekdaysToCreate := []int{existingRule.Weekday}
-	for _, rule := range relatedRules {
-		weekdaysToCreate = append(weekdaysToCreate, rule.Weekday)
-	}
-
-	var newRules []models.ScheduleRule
-	for _, weekday := range weekdaysToCreate {
-		newRule := createSingleRule(centerID, existingRule, req, weekday, startDate, endDate)
-		newRules = append(newRules, *newRule)
-	}
-
-	return newRules
-}
-
-// createSingleRule 創建單個規則
-func createSingleRule(centerID uint, existingRule models.ScheduleRule, req UpdateRuleRequest, weekday int, startDate, endDate time.Time) *models.ScheduleRule {
-	// 如果日期為零值，使用現有規則的日期
-	effectiveStartDate := startDate
-	if startDate.IsZero() {
-		effectiveStartDate = existingRule.EffectiveRange.StartDate
-	}
-	effectiveEndDate := endDate
-	if endDate.IsZero() {
-		effectiveEndDate = existingRule.EffectiveRange.EndDate
-	}
-
-	newRule := &models.ScheduleRule{
-		CenterID:   centerID,
-		OfferingID: existingRule.OfferingID,
-		TeacherID:  existingRule.TeacherID,
-		RoomID:     existingRule.RoomID,
-		Name:       existingRule.Name,
-		Weekday:    weekday,
-		StartTime:  existingRule.StartTime,
-		EndTime:    existingRule.EndTime,
-		Duration:   existingRule.Duration,
-		EffectiveRange: models.DateRange{
-			StartDate: effectiveStartDate,
-			EndDate:   effectiveEndDate,
-		},
-	}
-	if req.Name != "" {
-		newRule.Name = req.Name
-	}
-	if req.OfferingID != 0 {
-		newRule.OfferingID = req.OfferingID
-	}
-	if req.TeacherID != nil {
-		newRule.TeacherID = req.TeacherID
-	}
-	if req.RoomID != 0 {
-		newRule.RoomID = req.RoomID
-	}
-	if req.StartTime != "" {
-		newRule.StartTime = req.StartTime
-	}
-	if req.EndTime != "" {
-		newRule.EndTime = req.EndTime
-	}
-	if req.Duration != 0 {
-		newRule.Duration = req.Duration
-	}
-	return newRule
-}
-
-type DetectPhaseTransitionsRequest struct {
-	OfferingID uint      `json:"offering_id" binding:"required"`
-	StartDate  time.Time `json:"start_date" binding:"required"`
-	EndDate    time.Time `json:"end_date" binding:"required"`
-}
-
-func (ctl *SchedulingController) DetectPhaseTransitions(ctx *gin.Context) {
-	centerID := ctx.GetUint(global.CenterIDKey)
-	if centerID == 0 {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Center ID required",
-		})
-		return
-	}
-
-	var req DetectPhaseTransitionsRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid request parameters: " + err.Error(),
-		})
-		return
-	}
-
-	transitions, err := ctl.expansionService.DetectPhaseTransitions(ctx, centerID, req.OfferingID, req.StartDate, req.EndDate)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-			Code:    500,
-			Message: err.Error(),
-		})
-		return
-	}
-
-	ctx.JSON(http.StatusOK, global.ApiResponse{
-		Code:    0,
-		Message: "OK",
-		Datas:   transitions,
-	})
-}
-
-type CheckRuleLockStatusRequest struct {
-	RuleID        uint      `json:"rule_id" binding:"required"`
-	ExceptionDate time.Time `json:"exception_date" binding:"required"`
-}
-
-type CheckRuleLockStatusResponse struct {
-	IsLocked      bool       `json:"is_locked"`
-	LockReason    string     `json:"lock_reason,omitempty"`
-	LockAt        *time.Time `json:"lock_at,omitempty"`
-	Deadline      time.Time  `json:"deadline"`
-	DaysRemaining int        `json:"days_remaining"`
-}
-
-func (ctl *SchedulingController) CheckRuleLockStatus(ctx *gin.Context) {
-	centerID := ctx.GetUint(global.CenterIDKey)
-	if centerID == 0 {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Center ID required",
-		})
-		return
-	}
-
-	var req CheckRuleLockStatusRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Invalid request parameters: " + err.Error(),
-		})
-		return
-	}
-
-	scheduleRuleRepo := repositories.NewScheduleRuleRepository(ctl.app)
-	rule, err := scheduleRuleRepo.GetByID(ctx, req.RuleID)
-	if err != nil {
-		ctx.JSON(http.StatusNotFound, global.ApiResponse{
-			Code:    errInfos.NOT_FOUND,
-			Message: "Rule not found",
-		})
-		return
-	}
-
-	if rule.CenterID != centerID {
-		ctx.JSON(http.StatusForbidden, global.ApiResponse{
-			Code:    errInfos.FORBIDDEN,
-			Message: "Rule does not belong to this center",
-		})
-		return
-	}
-
-	now := time.Now()
-	response := CheckRuleLockStatusResponse{
-		DaysRemaining: -1,
-	}
-
-	if rule.LockAt != nil && now.After(*rule.LockAt) {
-		response.IsLocked = true
-		response.LockReason = "已超過異動截止日"
-		response.LockAt = rule.LockAt
-	}
-
-	center, _ := ctl.centerRepo.GetByID(ctx, centerID)
-	leadDays := center.Settings.ExceptionLeadDays
-	if leadDays <= 0 {
-		leadDays = 14
-	}
-
-	deadline := req.ExceptionDate.AddDate(0, 0, -leadDays)
-	response.Deadline = deadline
-	daysRemaining := int(deadline.Sub(now).Hours() / 24)
-	response.DaysRemaining = daysRemaining
-
-	if daysRemaining < 0 && !response.IsLocked {
-		response.IsLocked = true
-		response.LockReason = fmt.Sprintf("已超過異動截止日（需提前 %d 天申請）", leadDays)
-	}
-
-	ctx.JSON(http.StatusOK, global.ApiResponse{
-		Code:    0,
-		Message: "OK",
-		Datas:   response,
-	})
-}
-
-// GetTodaySummary 獲取管理員後台首頁的今日課表摘要
-// @Summary 獲取今日課表摘要統計
+// DetectPhaseTransitions 偵測階段轉換
+// @Summary 偵測課程序列中的階段轉換點
 // @Tags Admin - Scheduling
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Success 200 {object} global.ApiResponse{data=TodaySummaryResponse}
+// @Param request body requests.DetectPhaseTransitionsRequest true "偵測請求"
+// @Success 200 {object} global.ApiResponse{data=[]services.PhaseTransition}
+// @Router /api/v1/admin/scheduling/phase-transitions [post]
+func (ctl *SchedulingController) DetectPhaseTransitions(ctx *gin.Context) {
+	helper := NewContextHelper(ctx)
+
+	centerID := ctl.requireCenterID(helper)
+	if centerID == 0 {
+		return
+	}
+
+	var req requests.DetectPhaseTransitionsRequest
+	if !helper.MustBindJSON(&req) {
+		return
+	}
+
+	transitions, err := ctl.scheduleSvc.DetectPhaseTransitions(ctx.Request.Context(), centerID, req.OfferingID, req.StartDate, req.EndDate)
+	if err != nil {
+		helper.InternalError(err.Error())
+		return
+	}
+
+	helper.Success(transitions)
+}
+
+// CheckRuleLockStatus 檢查規則鎖定狀態
+// @Summary 檢查規則是否已超過異動截止日
+// @Tags Admin - Scheduling
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param request body requests.CheckRuleLockStatusRequest true "檢查請求"
+// @Success 200 {object} global.ApiResponse{data=services.RuleLockStatus}
+// @Router /api/v1/admin/scheduling/rules/check-lock [post]
+func (ctl *SchedulingController) CheckRuleLockStatus(ctx *gin.Context) {
+	helper := NewContextHelper(ctx)
+
+	centerID := ctl.requireCenterID(helper)
+	if centerID == 0 {
+		return
+	}
+
+	var req requests.CheckRuleLockStatusRequest
+	if !helper.MustBindJSON(&req) {
+		return
+	}
+
+	status, err := ctl.scheduleSvc.CheckRuleLockStatus(ctx.Request.Context(), centerID, req.RuleID, req.ExceptionDate)
+	if err != nil {
+		helper.InternalError(err.Error())
+		return
+	}
+
+	helper.Success(status)
+}
+
+// GetTodaySummary 取得今日課表摘要
+// @Summary 取得管理員後台首頁的今日課表摘要
+// @Tags Admin - Dashboard
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} global.ApiResponse{data=services.TodaySummary}
 // @Router /api/v1/admin/dashboard/today-summary [get]
 func (ctl *SchedulingController) GetTodaySummary(ctx *gin.Context) {
-	centerID := ctx.GetUint(global.CenterIDKey)
+	helper := NewContextHelper(ctx)
+
+	centerID := ctl.requireCenterID(helper)
 	if centerID == 0 {
-		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
-			Code:    global.BAD_REQUEST,
-			Message: "Center ID required",
-		})
 		return
 	}
 
-	// 取得今日日期
-	today := time.Now()
-	todayStr := today.Format("2006-01-02")
-	startOfDay := time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, today.Location())
-	endOfDay := time.Date(today.Year(), today.Month(), today.Day(), 23, 59, 59, 999999999, today.Location())
-
-	// 展開今日的排課規則
-	scheduleRuleRepo := repositories.NewScheduleRuleRepository(ctl.app)
-	rules, err := scheduleRuleRepo.ListByCenterID(ctx, centerID)
+	summary, err := ctl.scheduleSvc.GetTodaySummary(ctx.Request.Context(), centerID)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
-			Code:    500,
-			Message: "Failed to fetch schedule rules: " + err.Error(),
-		})
+		helper.InternalError(err.Error())
 		return
 	}
 
-	// 展開規則取得今日的 sessions
-	allSessions := ctl.expansionService.ExpandRules(ctx, rules, startOfDay, endOfDay, centerID)
-
-	// 過濾出今天的 sessions
-	var todaySessions []services.ExpandedSchedule
-	for _, session := range allSessions {
-		if session.Date.Format("2006-01-02") == todayStr {
-			todaySessions = append(todaySessions, session)
-		}
-	}
-
-	// 取得待審核例外申請數量
-	pendingExceptions, err := ctl.exceptionService.GetPendingExceptions(ctx, centerID)
-	if err != nil {
-		pendingExceptions = []models.ScheduleException{}
-	}
-
-	// 計算課表異動數量（檢查今天是否有例外申請）
-	todayExceptions, err := ctl.exceptionService.GetExceptionsByDateRange(ctx, centerID, startOfDay, endOfDay)
-	if err != nil {
-		todayExceptions = []models.ScheduleException{}
-	}
-	changesCount := len(todayExceptions)
-	hasScheduleChanges := changesCount > 0
-
-	// 建構 response
-	response := TodaySummaryResponse{
-		Sessions:           []TodaySession{},
-		PendingExceptions:  len(pendingExceptions),
-		ChangesCount:       changesCount,
-		HasScheduleChanges: hasScheduleChanges,
-	}
-
-	now := today
-
-	for _, session := range todaySessions {
-		// 使用 ExpandedSchedule 已經預先填入的名稱
-		teacherName := session.TeacherName
-		if teacherName == "" {
-			teacherName = "未安排老師"
-		}
-
-		roomName := session.RoomName
-		if roomName == "" {
-			roomName = "未安排教室"
-		}
-
-		offeringName := session.OfferingName
-		if offeringName == "" {
-			offeringName = "未知課程"
-		}
-
-		// 建構完整的時間
-		startDateTime := time.Date(
-			session.Date.Year(), session.Date.Month(), session.Date.Day(),
-			0, 0, 0, 0, session.Date.Location(),
-		)
-		startParts := strings.Split(session.StartTime, ":")
-		if len(startParts) >= 2 {
-			startHour, _ := strconv.Atoi(startParts[0])
-			startMin, _ := strconv.Atoi(startParts[1])
-			startDateTime = startDateTime.Add(time.Duration(startHour)*time.Hour + time.Duration(startMin)*time.Minute)
-		}
-
-		endDateTime := time.Date(
-			session.Date.Year(), session.Date.Month(), session.Date.Day(),
-			0, 0, 0, 0, session.Date.Location(),
-		)
-		endParts := strings.Split(session.EndTime, ":")
-		if len(endParts) >= 2 {
-			endHour, _ := strconv.Atoi(endParts[0])
-			endMin, _ := strconv.Atoi(endParts[1])
-			endDateTime = endDateTime.Add(time.Duration(endHour)*time.Hour + time.Duration(endMin)*time.Minute)
-		}
-
-		// 判斷課程狀態
-		var status string
-		// 檢查是否為跨日課程（結束時間早於開始時間）
-		isCrossDay := endDateTime.Before(startDateTime)
-		if isCrossDay {
-			// 跨日課程：結束時間加 24 小時
-			endDateTime = endDateTime.Add(24 * time.Hour)
-		}
-
-		if now.After(endDateTime) {
-			status = "completed"
-		} else if now.After(startDateTime) && now.Before(endDateTime) {
-			status = "in_progress"
-		} else {
-			status = "upcoming"
-		}
-
-		response.Sessions = append(response.Sessions, TodaySession{
-			ID:        session.RuleID,
-			StartTime: startDateTime,
-			EndTime:   endDateTime,
-			Offering:  TodayOffering{Name: offeringName},
-			Teacher:   TodayTeacher{Name: teacherName},
-			Room:      TodayRoom{Name: roomName},
-			Status:    status,
-		})
-	}
-
-	// 計算統計數據
-	var completed int
-	var inProgress int
-	var upcoming int
-	var inProgressTeachers []string
-
-	for _, session := range response.Sessions {
-		switch session.Status {
-		case "completed":
-			completed++
-		case "in_progress":
-			inProgress++
-			if session.Teacher.Name != "" && session.Teacher.Name != "未安排老師" {
-				found := false
-				for _, name := range inProgressTeachers {
-					if name == session.Teacher.Name {
-						found = true
-						break
-					}
-				}
-				if !found {
-					inProgressTeachers = append(inProgressTeachers, session.Teacher.Name)
-				}
-			}
-		case "upcoming":
-			upcoming++
-		}
-	}
-
-	response.TotalSessions = len(response.Sessions)
-	response.CompletedSessions = completed
-	response.InProgressSessions = inProgress
-	response.UpcomingSessions = upcoming
-	response.InProgressTeacherNames = inProgressTeachers
-
-	ctx.JSON(http.StatusOK, global.ApiResponse{
-		Code:    0,
-		Message: "OK",
-		Datas:   response,
-	})
-}
-
-type TodaySummaryResponse struct {
-	Sessions               []TodaySession `json:"sessions"`
-	TotalSessions          int            `json:"totalSessions"`
-	CompletedSessions      int            `json:"completedSessions"`
-	UpcomingSessions       int            `json:"upcomingSessions"`
-	InProgressSessions     int            `json:"inProgressSessions"`
-	InProgressTeacherNames []string       `json:"inProgressTeacherNames,omitempty"`
-	PendingExceptions      int            `json:"pendingExceptions"`
-	ChangesCount           int            `json:"changesCount"`
-	HasScheduleChanges     bool           `json:"hasScheduleChanges"`
-}
-
-type TodaySession struct {
-	ID        uint          `json:"id"`
-	StartTime time.Time     `json:"start_time"`
-	EndTime   time.Time     `json:"end_time"`
-	Offering  TodayOffering `json:"offering"`
-	Teacher   TodayTeacher  `json:"teacher"`
-	Room      TodayRoom     `json:"room"`
-	Status    string        `json:"status"`
-}
-
-type TodayOffering struct {
-	Name string `json:"name"`
-}
-
-type TodayTeacher struct {
-	Name string `json:"name"`
-}
-
-type TodayRoom struct {
-	Name string `json:"name"`
+	helper.Success(summary)
 }
