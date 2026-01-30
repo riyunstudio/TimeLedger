@@ -87,7 +87,7 @@ func (s *UserService) Update(ctx context.Context, req *requests.UserUpdateReques
 
 	user.UpdateTime = s.app.Tools.NowUnix()
 
-	err = s.userRepository.UpdateById(ctx, user)
+	err = s.userRepository.Update(ctx, user)
 	if err != nil {
 		return nil, s.app.Err.New(errInfos.SQL_ERROR), err
 	}

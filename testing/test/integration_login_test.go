@@ -233,9 +233,9 @@ func TestIntegration_TeacherCRUD_WithAuth(t *testing.T) {
 		t.Fatalf("Failed to create teacher: %v", err)
 	}
 
-	t.Run("GetTeacherByID", func(t *testing.T) {
-		teacherController := controllers.NewTeacherController(appInstance)
+	teacherProfileController := controllers.NewTeacherProfileController(appInstance)
 
+	t.Run("GetTeacherByID", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		c.Set(global.UserIDKey, createdTeacher.ID)
@@ -243,7 +243,7 @@ func TestIntegration_TeacherCRUD_WithAuth(t *testing.T) {
 		c.Params = gin.Params{{Key: "id", Value: fmt.Sprintf("%d", createdTeacher.ID)}}
 		c.Request = httptest.NewRequest("GET", "/api/v1/teachers/"+fmt.Sprintf("%d", createdTeacher.ID), nil)
 
-		teacherController.GetProfile(c)
+		teacherProfileController.GetProfile(c)
 
 		if w.Code != http.StatusOK {
 			t.Errorf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())
@@ -251,8 +251,6 @@ func TestIntegration_TeacherCRUD_WithAuth(t *testing.T) {
 	})
 
 	t.Run("UpdateTeacherProfile", func(t *testing.T) {
-		teacherController := controllers.NewTeacherController(appInstance)
-
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		c.Set(global.UserIDKey, createdTeacher.ID)
@@ -268,7 +266,7 @@ func TestIntegration_TeacherCRUD_WithAuth(t *testing.T) {
 		c.Request = httptest.NewRequest("PUT", "/api/v1/teachers/"+fmt.Sprintf("%d", createdTeacher.ID), bytes.NewBuffer(body))
 		c.Request.Header.Set("Content-Type", "application/json")
 
-		teacherController.UpdateProfile(c)
+		teacherProfileController.UpdateProfile(c)
 
 		if w.Code != http.StatusOK {
 			t.Errorf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())

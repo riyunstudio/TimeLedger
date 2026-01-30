@@ -39,4 +39,10 @@ type NotificationService interface {
 
 	// MarkAllAsRead 標記所有通知為已讀
 	MarkAllAsRead(ctx context.Context, userID uint, userType string) error
+
+	// GetUnreadCount 取得未讀通知數量
+	GetUnreadCount(ctx context.Context, userID uint, userType string) (int, error)
+
+	// SetNotifyToken 設定老師的通知 Token
+	SetNotifyToken(ctx context.Context, teacherID uint, token string) error
 }

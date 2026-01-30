@@ -40,6 +40,55 @@ type DateRange struct {
 	EndDate   time.Time `json:"end_date"`
 }
 
+// MarshalJSON 自訂 JSON 序列化，輸出 MySQL 相容格式
+func (dr DateRange) MarshalJSON() ([]byte, error) {
+	type Alias DateRange
+	return json.Marshal(&struct {
+		StartDate string `json:"start_date"`
+		EndDate   string `json:"end_date"`
+	}{
+		StartDate: dr.StartDate.Format("2006-01-02 15:04:05"),
+		EndDate:   dr.EndDate.Format("2006-01-02 15:04:05"),
+	})
+}
+
+// UnmarshalJSON 自訂 JSON 反序列化，支援 ISO 8601 和 MySQL 格式
+func (dr *DateRange) UnmarshalJSON(data []byte) error {
+	type Alias DateRange
+	aux := &struct {
+		StartDate string `json:"start_date"`
+		EndDate   string `json:"end_date"`
+	}{}
+	if err := json.Unmarshal(data, aux); err != nil {
+		return err
+	}
+
+	// 嘗試解析 MySQL 格式
+	loc := time.UTC
+	startDate, err := time.ParseInLocation("2006-01-02 15:04:05", aux.StartDate, loc)
+	if err != nil {
+		// 嘗試解析 ISO 8601 格式
+		startDate, err = time.ParseInLocation(time.RFC3339, aux.StartDate, loc)
+		if err != nil {
+			return errors.New("invalid start_date format")
+		}
+	}
+	dr.StartDate = startDate
+
+	if aux.EndDate != "" {
+		endDate, err := time.ParseInLocation("2006-01-02 15:04:05", aux.EndDate, loc)
+		if err != nil {
+			endDate, err = time.ParseInLocation(time.RFC3339, aux.EndDate, loc)
+			if err != nil {
+				return errors.New("invalid end_date format")
+			}
+		}
+		dr.EndDate = endDate
+	}
+
+	return nil
+}
+
 func (dr *DateRange) Scan(value interface{}) error {
 	if value == nil {
 		return nil

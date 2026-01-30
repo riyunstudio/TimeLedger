@@ -1146,7 +1146,7 @@ func (s *ScheduleRecurrenceServiceImpl) DeleteRecurringSchedule(ctx context.Cont
 		result.AffectedCount = preview.AffectedCount
 
 	case RecurrenceEditAll:
-		err := s.ruleRepo.Delete(ctx, ruleID)
+		err := s.ruleRepo.DeleteByID(ctx, ruleID)
 		if err != nil {
 			return RecurrenceEditResult{}, err
 		}

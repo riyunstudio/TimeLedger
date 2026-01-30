@@ -7,3 +7,7 @@ type User struct {
 	CreateTime int64  `gorm:"type:int(10); default:0; not null; comment:'建立時間'" json:"create_time"`
 	UpdateTime int64  `gorm:"type:int(10); default:0; not null; comment:'更新時間'" json:"update_time"`
 }
+
+func (User) TableName() string {
+	return "users"
+}

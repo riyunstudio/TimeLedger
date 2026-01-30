@@ -97,3 +97,10 @@ const (
 	PASSWORD_NOT_MATCH        ErrCode = 100003
 	ADMIN_CANNOT_DISABLE_SELF ErrCode = 100004
 )
+
+// 資源鎖定與衝突類 (11) - 用於交易衝突和資源鎖定場景
+const (
+	ERR_RESOURCE_LOCKED     ErrCode = 110001 // 資源被鎖定（如另一筆交易正在修改）
+	ERR_CONCURRENT_MODIFIED ErrCode = 110002 // 並發修改衝突
+	ERR_TX_FAILED           ErrCode = 110003 // 交易執行失敗
+)

@@ -35,7 +35,7 @@ func (s *NotificationServiceImpl) SendTeacherNotification(ctx context.Context, t
 }
 
 func (s *NotificationServiceImpl) SendTeacherNotificationWithType(ctx context.Context, teacherID uint, title, message string, notificationType string) error {
-	notification := &models.Notification{
+	notification := models.Notification{
 		UserID:    teacherID,
 		UserType:  "TEACHER",
 		Title:     title,
@@ -45,7 +45,8 @@ func (s *NotificationServiceImpl) SendTeacherNotificationWithType(ctx context.Co
 		CreatedAt: time.Now(),
 	}
 
-	if err := s.notificationRepo.Create(ctx, notification); err != nil {
+	_, err := s.notificationRepo.Create(ctx, notification)
+	if err != nil {
 		return err
 	}
 
@@ -62,7 +63,7 @@ func (s *NotificationServiceImpl) SendTeacherNotificationWithType(ctx context.Co
 }
 
 func (s *NotificationServiceImpl) SendAdminNotification(ctx context.Context, centerID uint, title, message string, notificationType string) error {
-	notification := &models.Notification{
+	notification := models.Notification{
 		UserID:    0,
 		UserType:  "ADMIN",
 		CenterID:  centerID,
@@ -73,7 +74,8 @@ func (s *NotificationServiceImpl) SendAdminNotification(ctx context.Context, cen
 		CreatedAt: time.Now(),
 	}
 
-	return s.notificationRepo.Create(ctx, notification)
+	_, err := s.notificationRepo.Create(ctx, notification)
+	return err
 }
 
 func (s *NotificationServiceImpl) SendScheduleReminder(ctx context.Context, ruleID uint, date time.Time) error {
@@ -139,11 +141,12 @@ func (s *NotificationServiceImpl) SendReviewNotification(ctx context.Context, ex
 }
 
 func (s *NotificationServiceImpl) CreateNotificationRecord(ctx context.Context, notification *models.Notification) error {
-	return s.notificationRepo.Create(ctx, notification)
+	_, err := s.notificationRepo.Create(ctx, *notification)
+	return err
 }
 
 func (s *NotificationServiceImpl) GetNotifications(ctx context.Context, userID uint, userType string, limit int, offset int) ([]models.Notification, error) {
-	return s.notificationRepo.List(ctx, userID, userType, limit, offset)
+	return s.notificationRepo.Find(ctx, "user_id = ? AND user_type = ?", userID, userType)
 }
 
 func (s *NotificationServiceImpl) MarkAsRead(ctx context.Context, notificationID uint) error {
@@ -152,6 +155,26 @@ func (s *NotificationServiceImpl) MarkAsRead(ctx context.Context, notificationID
 
 func (s *NotificationServiceImpl) MarkAllAsRead(ctx context.Context, userID uint, userType string) error {
 	return s.notificationRepo.MarkAllAsRead(ctx, userID, userType)
+}
+
+// GetUnreadCount 取得未讀通知數量
+func (s *NotificationServiceImpl) GetUnreadCount(ctx context.Context, userID uint, userType string) (int, error) {
+	notifications, err := s.notificationRepo.ListUnread(ctx, userID, userType)
+	if err != nil {
+		return 0, err
+	}
+	return len(notifications), nil
+}
+
+// SetNotifyToken 設定老師的通知 Token
+func (s *NotificationServiceImpl) SetNotifyToken(ctx context.Context, teacherID uint, token string) error {
+	teacher, err := s.teacherRepo.GetByID(ctx, teacherID)
+	if err != nil {
+		return err
+	}
+
+	teacher.LineNotifyToken = token
+	return s.teacherRepo.Update(ctx, teacher)
 }
 
 // SendTalentInvitationNotification 發送人才庫邀請通知
@@ -166,7 +189,7 @@ func (s *NotificationServiceImpl) SendTalentInvitationNotification(ctx context.C
 （如非本人，請忽略此訊息）`, centerName, s.buildInvitationLink(inviteToken), inviteToken)
 
 	// 建立通知記錄
-	notification := &models.Notification{
+	notification := models.Notification{
 		UserID:    teacherID,
 		UserType:  "TEACHER",
 		Title:     title,
@@ -176,7 +199,8 @@ func (s *NotificationServiceImpl) SendTalentInvitationNotification(ctx context.C
 		CreatedAt: time.Now(),
 	}
 
-	if err := s.notificationRepo.Create(ctx, notification); err != nil {
+	_, err := s.notificationRepo.Create(ctx, notification)
+	if err != nil {
 		return err
 	}
 

@@ -64,10 +64,10 @@ func setupIntegrationTestAppWithMigrations() (*app.App, *gorm.DB, func()) {
 
 	// 初始化測試用的 Env 配置
 	env := &configs.Env{
-		JWTSecret:      "test-jwt-secret-key-for-testing-only",
-		AppEnv:         "test",
-		AppDebug:       true,
-		AppTimezone:    "Asia/Taipei",
+		JWTSecret:   "test-jwt-secret-key-for-testing-only",
+		AppEnv:      "test",
+		AppDebug:    true,
+		AppTimezone: "Asia/Taipei",
 	}
 
 	appInstance := &app.App{
@@ -367,7 +367,9 @@ func TestIntegration_TeacherFullWorkflow(t *testing.T) {
 	createdRule, _ := ruleRepo.Create(ctx, rule)
 	t.Logf("Created schedule rule: ID=%d", createdRule.ID)
 
-	teacherController := controllers.NewTeacherController(appInstance)
+	teacherProfileController := controllers.NewTeacherProfileController(appInstance)
+	teacherScheduleController := controllers.NewTeacherScheduleController(appInstance)
+	teacherExceptionController := controllers.NewTeacherExceptionController(appInstance)
 
 	t.Run("Step1_GetProfile", func(t *testing.T) {
 		w := httptest.NewRecorder()
@@ -376,7 +378,7 @@ func TestIntegration_TeacherFullWorkflow(t *testing.T) {
 		c.Set(global.CenterIDKey, createdCenter.ID)
 		c.Request = httptest.NewRequest("GET", "/api/v1/teacher/me/profile", nil)
 
-		teacherController.GetProfile(c)
+		teacherProfileController.GetProfile(c)
 
 		if w.Code != http.StatusOK {
 			t.Fatalf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())
@@ -399,7 +401,7 @@ func TestIntegration_TeacherFullWorkflow(t *testing.T) {
 		toDate := now.AddDate(0, 1, 0).Format("2006-01-02")
 		c.Request = httptest.NewRequest("GET", "/api/v1/teacher/me/schedule?from="+fromDate+"&to="+toDate, nil)
 
-		teacherController.GetSchedule(c)
+		teacherScheduleController.GetSchedule(c)
 
 		if w.Code != http.StatusOK {
 			t.Fatalf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())
@@ -414,7 +416,7 @@ func TestIntegration_TeacherFullWorkflow(t *testing.T) {
 		c.Set(global.CenterIDKey, createdCenter.ID)
 		c.Request = httptest.NewRequest("GET", "/api/v1/teacher/exceptions", nil)
 
-		teacherController.GetExceptions(c)
+		teacherExceptionController.GetExceptions(c)
 
 		if w.Code != http.StatusOK {
 			t.Fatalf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())
@@ -1003,8 +1005,8 @@ func TestIntegration_InvitationFlow(t *testing.T) {
 		c.Request = httptest.NewRequest("POST", "/api/v1/admin/centers/"+fmt.Sprintf("%d", createdCenter.ID)+"/invitations", bytes.NewBuffer(body))
 		c.Request.Header.Set("Content-Type", "application/json")
 
-		teacherController := controllers.NewTeacherController(appInstance)
-		teacherController.InviteTeacher(c)
+		teacherInvitationController := controllers.NewTeacherInvitationController(appInstance)
+		teacherInvitationController.InviteTeacher(c)
 
 		if w.Code != http.StatusOK {
 			t.Fatalf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())
@@ -1133,7 +1135,7 @@ func TestIntegration_ExceptionReview(t *testing.T) {
 	createdRule, _ := scheduleRuleRepo.Create(ctx, scheduleRule)
 
 	schedulingController := controllers.NewSchedulingController(appInstance)
-	teacherController := controllers.NewTeacherController(appInstance)
+	teacherExceptionController := controllers.NewTeacherExceptionController(appInstance)
 
 	t.Run("Step1_CreateExceptionRequest", func(t *testing.T) {
 		w := httptest.NewRecorder()
@@ -1142,35 +1144,31 @@ func TestIntegration_ExceptionReview(t *testing.T) {
 		c.Set(global.CenterIDKey, createdCenter.ID)
 		c.Set(global.UserTypeKey, "TEACHER")
 
+		// 使用 20 天後的日期，符合 ExceptionLeadDays=14 的要求
 		originalDate := now.AddDate(0, 0, 20)
 		newStartAt := originalDate.Add(time.Hour * 14)
 		newEndAt := originalDate.Add(time.Hour * 15)
-
-		newStartAtStr := newStartAt.Format(time.RFC3339)
-		newEndAtStr := newEndAt.Format(time.RFC3339)
 
 		reqBody := map[string]interface{}{
 			"center_id":     createdCenter.ID,
 			"rule_id":       createdRule.ID,
 			"original_date": originalDate.Format("2006-01-02"),
 			"type":          "RESCHEDULE",
-			"new_start_at":  newStartAtStr,
-			"new_end_at":    newEndAtStr,
+			"new_start_at":  newStartAt.Format(time.RFC3339),
+			"new_end_at":    newEndAt.Format(time.RFC3339),
 			"reason":        "Personal meeting",
 		}
 		body, _ := json.Marshal(reqBody)
-		c.Request = httptest.NewRequest("POST", "/api/v1/teacher/scheduling/exceptions", bytes.NewBuffer(body))
+		c.Request = httptest.NewRequest("POST", "/api/v1/teacher/exceptions", bytes.NewBuffer(body))
 		c.Request.Header.Set("Content-Type", "application/json")
 
-		teacherController.CreateException(c)
+		teacherExceptionController.CreateException(c)
 
+		// 正確的斷言：狀態必須是 200
 		if w.Code != http.StatusOK {
-			t.Logf("Create exception request body: %s", string(body))
-			t.Logf("Response: %s", w.Body.String())
+			t.Fatalf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())
 		}
-		if w.Code == http.StatusOK {
-			t.Log("Successfully created exception request")
-		}
+		t.Log("Successfully created exception request")
 	})
 
 	t.Run("Step2_GetExceptions", func(t *testing.T) {
@@ -1179,9 +1177,9 @@ func TestIntegration_ExceptionReview(t *testing.T) {
 		c.Set(global.UserIDKey, createdTeacher.ID)
 		c.Set(global.CenterIDKey, createdCenter.ID)
 		c.Set(global.UserTypeKey, "TEACHER")
-		c.Request = httptest.NewRequest("GET", "/api/v1/teacher/scheduling/exceptions", nil)
+		c.Request = httptest.NewRequest("GET", "/api/v1/teacher/exceptions", nil)
 
-		teacherController.GetExceptions(c)
+		teacherExceptionController.GetExceptions(c)
 
 		if w.Code != http.StatusOK {
 			t.Fatalf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())
@@ -1194,15 +1192,15 @@ func TestIntegration_ExceptionReview(t *testing.T) {
 		newStartAt := now.AddDate(0, 0, 5).Add(time.Hour * 14)
 		newEndAt := now.AddDate(0, 0, 5).Add(time.Hour * 15)
 		exception := models.ScheduleException{
-			RuleID:       createdRule.ID,
-			CenterID:     createdCenter.ID,
-			OriginalDate: now.AddDate(0, 0, 5),
-			ExceptionType:         "TIME_CHANGE",
-			Status:       "PENDING",
-			NewStartAt:   &newStartAt,
-			NewEndAt:     &newEndAt,
-			Reason:       "Doctor appointment",
-			CreatedAt:    now,
+			RuleID:        createdRule.ID,
+			CenterID:      createdCenter.ID,
+			OriginalDate:  now.AddDate(0, 0, 5),
+			ExceptionType: "RESCHEDULE", // 使用有效的例外類型
+			Status:        "PENDING",
+			NewStartAt:    &newStartAt,
+			NewEndAt:      &newEndAt,
+			Reason:        "Doctor appointment",
+			CreatedAt:     now,
 		}
 		createdException, _ := exceptionRepo.Create(ctx, exception)
 
@@ -1232,13 +1230,13 @@ func TestIntegration_ExceptionReview(t *testing.T) {
 	t.Run("Step4_ReviewException_Reject", func(t *testing.T) {
 		exceptionRepo := repositories.NewScheduleExceptionRepository(appInstance)
 		exception := models.ScheduleException{
-			RuleID:       createdRule.ID,
-			CenterID:     createdCenter.ID,
-			OriginalDate: now.AddDate(0, 0, 7),
-			ExceptionType:         "CANCEL",
-			Status:       "PENDING",
-			Reason:       "Travel",
-			CreatedAt:    now,
+			RuleID:        createdRule.ID,
+			CenterID:      createdCenter.ID,
+			OriginalDate:  now.AddDate(0, 0, 7),
+			ExceptionType: "CANCEL",
+			Status:        "PENDING",
+			Reason:        "Travel",
+			CreatedAt:     now,
 		}
 		createdException, _ := exceptionRepo.Create(ctx, exception)
 
@@ -1270,15 +1268,15 @@ func TestIntegration_ExceptionReview(t *testing.T) {
 		newStartAt := now.AddDate(0, 0, 9).Add(time.Hour * 10)
 		newEndAt := now.AddDate(0, 0, 9).Add(time.Hour * 11)
 		exception := models.ScheduleException{
-			RuleID:       createdRule.ID,
-			CenterID:     createdCenter.ID,
-			OriginalDate: now.AddDate(0, 0, 9),
-			ExceptionType:         "TIME_CHANGE",
-			Status:       "PENDING",
-			NewStartAt:   &newStartAt,
-			NewEndAt:     &newEndAt,
-			Reason:       "Family event",
-			CreatedAt:    now,
+			RuleID:        createdRule.ID,
+			CenterID:      createdCenter.ID,
+			OriginalDate:  now.AddDate(0, 0, 9),
+			ExceptionType: "RESCHEDULE", // 使用有效的例外類型
+			Status:        "PENDING",
+			NewStartAt:    &newStartAt,
+			NewEndAt:      &newEndAt,
+			Reason:        "Family event",
+			CreatedAt:     now,
 		}
 		createdException, _ := exceptionRepo.Create(ctx, exception)
 
@@ -1291,7 +1289,7 @@ func TestIntegration_ExceptionReview(t *testing.T) {
 
 		c.Request = httptest.NewRequest("POST", "/api/v1/teacher/exceptions/"+fmt.Sprintf("%d", createdException.ID)+"/revoke", nil)
 
-		teacherController.RevokeException(c)
+		teacherExceptionController.RevokeException(c)
 
 		if w.Code != http.StatusOK {
 			t.Fatalf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())
@@ -1393,7 +1391,7 @@ func TestIntegration_RecurrenceEditing(t *testing.T) {
 	}
 	createdRule, _ := scheduleRuleRepo.Create(ctx, scheduleRule)
 
-	teacherController := controllers.NewTeacherController(appInstance)
+	teacherScheduleController := controllers.NewTeacherScheduleController(appInstance)
 
 	t.Run("Step1_PreviewAffectedSessions", func(t *testing.T) {
 		w := httptest.NewRecorder()
@@ -1417,7 +1415,7 @@ func TestIntegration_RecurrenceEditing(t *testing.T) {
 		c.Request = httptest.NewRequest("POST", "/api/v1/teacher/scheduling/preview-recurrence-edit", bytes.NewBuffer(body))
 		c.Request.Header.Set("Content-Type", "application/json")
 
-		teacherController.PreviewRecurrenceEdit(c)
+		teacherScheduleController.PreviewRecurrenceEdit(c)
 
 		if w.Code != http.StatusOK && w.Code != http.StatusBadRequest {
 			t.Fatalf("Expected status 200 or 400, got %d. Body: %s", w.Code, w.Body.String())
@@ -1445,7 +1443,7 @@ func TestIntegration_RecurrenceEditing(t *testing.T) {
 		c.Request = httptest.NewRequest("POST", "/api/v1/teacher/scheduling/edit-recurring", bytes.NewBuffer(body))
 		c.Request.Header.Set("Content-Type", "application/json")
 
-		teacherController.EditRecurringSchedule(c)
+		teacherScheduleController.EditRecurringSchedule(c)
 
 		if w.Code != http.StatusOK && w.Code != http.StatusBadRequest {
 			t.Fatalf("Expected status 200 or 400, got %d. Body: %s", w.Code, w.Body.String())
@@ -1473,7 +1471,7 @@ func TestIntegration_RecurrenceEditing(t *testing.T) {
 		c.Request = httptest.NewRequest("POST", "/api/v1/teacher/scheduling/edit-recurring", bytes.NewBuffer(body))
 		c.Request.Header.Set("Content-Type", "application/json")
 
-		teacherController.EditRecurringSchedule(c)
+		teacherScheduleController.EditRecurringSchedule(c)
 
 		if w.Code != http.StatusOK && w.Code != http.StatusBadRequest {
 			t.Fatalf("Expected status 200 or 400, got %d. Body: %s", w.Code, w.Body.String())
@@ -1497,7 +1495,7 @@ func TestIntegration_RecurrenceEditing(t *testing.T) {
 		c.Request = httptest.NewRequest("POST", "/api/v1/teacher/scheduling/delete-recurring", bytes.NewBuffer(body))
 		c.Request.Header.Set("Content-Type", "application/json")
 
-		teacherController.DeleteRecurringSchedule(c)
+		teacherScheduleController.DeleteRecurringSchedule(c)
 
 		if w.Code != http.StatusOK && w.Code != http.StatusBadRequest {
 			t.Fatalf("Expected status 200 or 400, got %d. Body: %s", w.Code, w.Body.String())
@@ -2116,13 +2114,13 @@ func TestIntegration_ExportFunctionality(t *testing.T) {
 
 	exceptionRepo := repositories.NewScheduleExceptionRepository(appInstance)
 	exception := models.ScheduleException{
-		RuleID:       createdRule.ID,
-		CenterID:     createdCenter.ID,
-		OriginalDate: now.AddDate(0, 0, 5),
-		ExceptionType:         "CANCEL",
-		Status:       "PENDING",
-		Reason:       "Holiday",
-		CreatedAt:    now,
+		RuleID:        createdRule.ID,
+		CenterID:      createdCenter.ID,
+		OriginalDate:  now.AddDate(0, 0, 5),
+		ExceptionType: "CANCEL",
+		Status:        "PENDING",
+		Reason:        "Holiday",
+		CreatedAt:     now,
 	}
 	_, _ = exceptionRepo.Create(ctx, exception)
 
@@ -2586,7 +2584,7 @@ func TestIntegration_TeacherSkillsCertificates(t *testing.T) {
 	}
 	createdTeacher, _ := teacherRepo.Create(ctx, teacher)
 
-	teacherController := controllers.NewTeacherController(appInstance)
+	teacherProfileController := controllers.NewTeacherProfileController(appInstance)
 
 	t.Run("Step1_GetSkills", func(t *testing.T) {
 		w := httptest.NewRecorder()
@@ -2596,7 +2594,7 @@ func TestIntegration_TeacherSkillsCertificates(t *testing.T) {
 		c.Set(global.UserTypeKey, "TEACHER")
 		c.Request = httptest.NewRequest("GET", "/api/v1/teacher/me/skills", nil)
 
-		teacherController.GetSkills(c)
+		teacherProfileController.GetSkills(c)
 
 		if w.Code != http.StatusOK {
 			t.Fatalf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())
@@ -2620,7 +2618,7 @@ func TestIntegration_TeacherSkillsCertificates(t *testing.T) {
 		c.Request = httptest.NewRequest("POST", "/api/v1/teacher/me/skills", bytes.NewBuffer(body))
 		c.Request.Header.Set("Content-Type", "application/json")
 
-		teacherController.CreateSkill(c)
+		teacherProfileController.CreateSkill(c)
 
 		if w.Code != http.StatusOK {
 			t.Fatalf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())
@@ -2636,7 +2634,7 @@ func TestIntegration_TeacherSkillsCertificates(t *testing.T) {
 		c.Set(global.UserTypeKey, "TEACHER")
 		c.Request = httptest.NewRequest("GET", "/api/v1/teacher/me/certificates", nil)
 
-		teacherController.GetCertificates(c)
+		teacherProfileController.GetCertificates(c)
 
 		if w.Code != http.StatusOK {
 			t.Fatalf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())
@@ -2660,7 +2658,7 @@ func TestIntegration_TeacherSkillsCertificates(t *testing.T) {
 		c.Request = httptest.NewRequest("POST", "/api/v1/teacher/me/certificates", bytes.NewBuffer(body))
 		c.Request.Header.Set("Content-Type", "application/json")
 
-		teacherController.CreateCertificate(c)
+		teacherProfileController.CreateCertificate(c)
 
 		if w.Code != http.StatusOK {
 			t.Fatalf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())
@@ -2683,7 +2681,7 @@ func TestIntegration_TeacherSkillsCertificates(t *testing.T) {
 		c.Request = httptest.NewRequest("POST", "/api/v1/teacher/me/certificates", bytes.NewBuffer(body))
 		c.Request.Header.Set("Content-Type", "application/json")
 
-		teacherController.CreateCertificate(c)
+		teacherProfileController.CreateCertificate(c)
 
 		if w.Code != http.StatusOK && w.Code != http.StatusBadRequest {
 			t.Fatalf("Expected status 200 or 400, got %d. Body: %s", w.Code, w.Body.String())
@@ -2716,7 +2714,8 @@ func TestIntegration_TeacherNotesAndEvents(t *testing.T) {
 	}
 	createdTeacher, _ := teacherRepo.Create(ctx, teacher)
 
-	teacherController := controllers.NewTeacherController(appInstance)
+	teacherSessionController := controllers.NewTeacherSessionController(appInstance)
+	teacherEventController := controllers.NewTeacherEventController(appInstance)
 
 	t.Run("Step1_GetSessionNote", func(t *testing.T) {
 		w := httptest.NewRecorder()
@@ -2726,7 +2725,7 @@ func TestIntegration_TeacherNotesAndEvents(t *testing.T) {
 		c.Set(global.UserTypeKey, "TEACHER")
 		c.Request = httptest.NewRequest("GET", "/api/v1/teacher/sessions/note?rule_id=1&session_date="+now.Format("2006-01-02"), nil)
 
-		teacherController.GetSessionNote(c)
+		teacherSessionController.GetSessionNote(c)
 
 		if w.Code != http.StatusOK && w.Code != http.StatusBadRequest {
 			t.Fatalf("Expected status 200 or 400, got %d. Body: %s", w.Code, w.Body.String())
@@ -2750,7 +2749,7 @@ func TestIntegration_TeacherNotesAndEvents(t *testing.T) {
 		c.Request = httptest.NewRequest("PUT", "/api/v1/teacher/sessions/note", bytes.NewBuffer(body))
 		c.Request.Header.Set("Content-Type", "application/json")
 
-		teacherController.UpsertSessionNote(c)
+		teacherSessionController.UpsertSessionNote(c)
 
 		if w.Code != http.StatusOK && w.Code != http.StatusBadRequest {
 			t.Fatalf("Expected status 200 or 400, got %d. Body: %s", w.Code, w.Body.String())
@@ -2766,7 +2765,7 @@ func TestIntegration_TeacherNotesAndEvents(t *testing.T) {
 		c.Set(global.UserTypeKey, "TEACHER")
 		c.Request = httptest.NewRequest("GET", "/api/v1/teacher/me/personal-events", nil)
 
-		teacherController.GetPersonalEvents(c)
+		teacherEventController.GetPersonalEvents(c)
 
 		if w.Code != http.StatusOK {
 			t.Fatalf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())
@@ -2794,7 +2793,7 @@ func TestIntegration_TeacherNotesAndEvents(t *testing.T) {
 		c.Request = httptest.NewRequest("POST", "/api/v1/teacher/me/personal-events", bytes.NewBuffer(body))
 		c.Request.Header.Set("Content-Type", "application/json")
 
-		teacherController.CreatePersonalEvent(c)
+		teacherEventController.CreatePersonalEvent(c)
 
 		if w.Code != http.StatusOK {
 			t.Fatalf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())
@@ -2817,7 +2816,7 @@ func TestIntegration_TeacherNotesAndEvents(t *testing.T) {
 		c.Request = httptest.NewRequest("PATCH", "/api/v1/teacher/me/personal-events/1", bytes.NewBuffer(body))
 		c.Request.Header.Set("Content-Type", "application/json")
 
-		teacherController.UpdatePersonalEvent(c)
+		teacherEventController.UpdatePersonalEvent(c)
 
 		if w.Code != http.StatusOK && w.Code != http.StatusNotFound && w.Code != http.StatusBadRequest {
 			t.Fatalf("Expected status 200, 400 or 404, got %d. Body: %s", w.Code, w.Body.String())
@@ -2862,7 +2861,7 @@ func TestIntegration_AdminTeacherManagement(t *testing.T) {
 	}
 	_, _ = teacherRepo.Create(ctx, teacher)
 
-	teacherController := controllers.NewTeacherController(appInstance)
+	adminTeacherController := controllers.NewAdminTeacherController(appInstance)
 
 	t.Run("Step1_ListTeachers", func(t *testing.T) {
 		w := httptest.NewRecorder()
@@ -2872,7 +2871,7 @@ func TestIntegration_AdminTeacherManagement(t *testing.T) {
 		c.Set(global.UserTypeKey, "ADMIN")
 		c.Request = httptest.NewRequest("GET", "/api/v1/admin/teachers", nil)
 
-		teacherController.ListTeachers(c)
+		adminTeacherController.ListTeachers(c)
 
 		if w.Code != http.StatusOK {
 			t.Fatalf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())
@@ -2898,7 +2897,7 @@ func TestIntegration_AdminTeacherManagement(t *testing.T) {
 		c.Params = gin.Params{{Key: "id", Value: fmt.Sprintf("%d", createdDelTeacher.ID)}}
 		c.Request = httptest.NewRequest("DELETE", "/api/v1/admin/teachers/"+fmt.Sprintf("%d", createdDelTeacher.ID), nil)
 
-		teacherController.DeleteTeacher(c)
+		adminTeacherController.DeleteTeacher(c)
 
 		if w.Code != http.StatusOK {
 			t.Fatalf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())
@@ -2907,6 +2906,8 @@ func TestIntegration_AdminTeacherManagement(t *testing.T) {
 	})
 
 	t.Run("Step3_InviteTeacher", func(t *testing.T) {
+		teacherInvitationController := controllers.NewTeacherInvitationController(appInstance)
+
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		c.Set(global.UserIDKey, createdAdmin.ID)
@@ -2922,7 +2923,7 @@ func TestIntegration_AdminTeacherManagement(t *testing.T) {
 		c.Request = httptest.NewRequest("POST", "/api/v1/admin/centers/"+fmt.Sprintf("%d", createdCenter.ID)+"/teachers/invite", bytes.NewBuffer(body))
 		c.Request.Header.Set("Content-Type", "application/json")
 
-		teacherController.InviteTeacher(c)
+		teacherInvitationController.InviteTeacher(c)
 
 		if w.Code != http.StatusOK {
 			t.Fatalf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())
@@ -3324,7 +3325,8 @@ func TestIntegration_TeacherDeletion(t *testing.T) {
 	}
 	createdTeacher, _ := teacherRepo.Create(ctx, teacher)
 
-	teacherController := controllers.NewTeacherController(appInstance)
+	teacherProfileController := controllers.NewTeacherProfileController(appInstance)
+	teacherEventController := controllers.NewTeacherEventController(appInstance)
 
 	t.Run("Step1_DeleteSkill", func(t *testing.T) {
 		w := httptest.NewRecorder()
@@ -3334,7 +3336,7 @@ func TestIntegration_TeacherDeletion(t *testing.T) {
 		c.Set(global.UserTypeKey, "TEACHER")
 		c.Request = httptest.NewRequest("DELETE", "/api/v1/teacher/me/skills/1", nil)
 
-		teacherController.DeleteSkill(c)
+		teacherProfileController.DeleteSkill(c)
 
 		if w.Code != http.StatusOK && w.Code != http.StatusBadRequest && w.Code != http.StatusNotFound {
 			t.Fatalf("Expected status 200, 400 or 404, got %d. Body: %s", w.Code, w.Body.String())
@@ -3350,7 +3352,7 @@ func TestIntegration_TeacherDeletion(t *testing.T) {
 		c.Set(global.UserTypeKey, "TEACHER")
 		c.Request = httptest.NewRequest("DELETE", "/api/v1/teacher/me/certificates/1", nil)
 
-		teacherController.DeleteCertificate(c)
+		teacherProfileController.DeleteCertificate(c)
 
 		if w.Code != http.StatusOK && w.Code != http.StatusBadRequest && w.Code != http.StatusNotFound {
 			t.Fatalf("Expected status 200, 400 or 404, got %d. Body: %s", w.Code, w.Body.String())
@@ -3366,7 +3368,7 @@ func TestIntegration_TeacherDeletion(t *testing.T) {
 		c.Set(global.UserTypeKey, "TEACHER")
 		c.Request = httptest.NewRequest("DELETE", "/api/v1/teacher/me/personal-events/1", nil)
 
-		teacherController.DeletePersonalEvent(c)
+		teacherEventController.DeletePersonalEvent(c)
 
 		if w.Code != http.StatusOK && w.Code != http.StatusBadRequest && w.Code != http.StatusNotFound {
 			t.Fatalf("Expected status 200, 400 or 404, got %d. Body: %s", w.Code, w.Body.String())
@@ -3399,9 +3401,9 @@ func TestIntegration_TeacherGetCenters(t *testing.T) {
 	}
 	createdTeacher, _ := teacherRepo.Create(ctx, teacher)
 
-	t.Run("Step1_GetCenters", func(t *testing.T) {
-		teacherController := controllers.NewTeacherController(appInstance)
+	teacherProfileController := controllers.NewTeacherProfileController(appInstance)
 
+	t.Run("Step1_GetCenters", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		c.Set(global.UserIDKey, createdTeacher.ID)
@@ -3409,7 +3411,7 @@ func TestIntegration_TeacherGetCenters(t *testing.T) {
 		c.Set(global.UserTypeKey, "TEACHER")
 		c.Request = httptest.NewRequest("GET", "/api/v1/teacher/centers", nil)
 
-		teacherController.GetCenters(c)
+		teacherProfileController.GetCenters(c)
 
 		if w.Code != http.StatusOK {
 			t.Fatalf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())
@@ -3418,8 +3420,6 @@ func TestIntegration_TeacherGetCenters(t *testing.T) {
 	})
 
 	t.Run("Step2_UpdateProfile", func(t *testing.T) {
-		teacherController := controllers.NewTeacherController(appInstance)
-
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		c.Set(global.UserIDKey, createdTeacher.ID)
@@ -3435,7 +3435,7 @@ func TestIntegration_TeacherGetCenters(t *testing.T) {
 		c.Request = httptest.NewRequest("PATCH", "/api/v1/teacher/me/profile", bytes.NewBuffer(body))
 		c.Request.Header.Set("Content-Type", "application/json")
 
-		teacherController.UpdateProfile(c)
+		teacherProfileController.UpdateProfile(c)
 
 		if w.Code != http.StatusOK {
 			t.Fatalf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())

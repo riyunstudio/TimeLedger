@@ -72,4 +72,9 @@ var messagesMap = map[ErrCode]message{
 	ADMIN_EMAIL_EXISTS:        {EN: "Email already registered", TW: "Email 已被註冊", CN: "Email 已被注册"},
 	PASSWORD_NOT_MATCH:        {EN: "Current password is incorrect", TW: "舊密碼錯誤", CN: "旧密码错误"},
 	ADMIN_CANNOT_DISABLE_SELF: {EN: "Cannot disable yourself", TW: "不能停用自己的帳號", CN: "不能停用自己的账号"},
+
+	// 資源鎖定與衝突類
+	ERR_RESOURCE_LOCKED:     {EN: "Resource is locked by another operation", TW: "資源正在被其他操作修改，請稍後再試", CN: "资源正在被其他操作修改，请稍后再试"},
+	ERR_CONCURRENT_MODIFIED: {EN: "Resource was modified by another request", TW: "資源已被其他請求修改，請重新整理後再試", CN: "资源已被其他请求修改，请重新整理后再试"},
+	ERR_TX_FAILED:           {EN: "Transaction failed", TW: "交易執行失敗，請稍後再試", CN: "交易执行失败，请稍后再试"},
 }
