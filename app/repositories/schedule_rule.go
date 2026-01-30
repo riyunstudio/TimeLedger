@@ -307,6 +307,19 @@ func (rp *ScheduleRuleRepository) ListByOfferingID(ctx context.Context, offering
 	return data, err
 }
 
+// ListByOfferingIDWithPreload 批次查詢規則並預載入關聯資料（消除 N+1 查詢）
+func (rp *ScheduleRuleRepository) ListByOfferingIDWithPreload(ctx context.Context, offeringID uint) ([]models.ScheduleRule, error) {
+	var data []models.ScheduleRule
+	err := rp.app.MySQL.RDB.WithContext(ctx).
+		Preload("Offering").
+		Preload("Room").
+		Preload("Teacher").
+		Where("offering_id = ?", offeringID).
+		Order("effective_range ASC").
+		Find(&data).Error
+	return data, err
+}
+
 func (rp *ScheduleRuleRepository) BulkCreate(ctx context.Context, data []models.ScheduleRule) ([]models.ScheduleRule, error) {
 	if len(data) == 0 {
 		return data, nil

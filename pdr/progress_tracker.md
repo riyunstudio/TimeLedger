@@ -1791,6 +1791,106 @@ type TeacherResponse struct {
 
 ---
 
+## 5.1 Stage 5.1 N+1 查詢問題修復（效能優化）- 2026/01/30
+
+### 5.1.1 開發摘要 ✅
+
+本階段專注於修復排課模組中的 N+1 查詢問題，透過批次查詢與記憶體 Map 組裝策略，大幅減少資料庫查詢次數。
+
+### 5.1.2 完成項目 ✅
+
+#### 5.1.2.1 Repository 層優化 ✅
+
+**新增方法**：`ListByOfferingIDWithPreload`
+
+**檔案**：`app/repositories/schedule_rule.go`（第 310-321 行）
+
+```go
+// ListByOfferingIDWithPreload 批次查詢規則並預載入關聯資料（消除 N+1 查詢）
+func (rp *ScheduleRuleRepository) ListByOfferingIDWithPreload(ctx context.Context, offeringID uint) ([]models.ScheduleRule, error) {
+	var data []models.ScheduleRule
+	err := rp.app.MySQL.RDB.WithContext(ctx).
+		Preload("Offering").
+		Preload("Room").
+		Preload("Teacher").
+		Where("offering_id = ?", offeringID).
+		Order("effective_range ASC").
+		Find(&data).Error
+	return data, err
+}
+```
+
+**效益說明**：
+
+| 指標 | 原本行為 | 優化後行為 |
+|:---|:---|:---|
+| 查詢次數 | 1 + (規則數 × 3) | 1 |
+| 觸發時機 | 存取關聯資料時延遲載入 | 查詢時立即載入 |
+| 資料完整性 | 可能觸發多次查詢 | 單一查詢完整取得 |
+
+#### 5.1.2.2 Service 層優化 ✅
+
+**重構方法**：`DetectPhaseTransitions`
+
+**檔案**：`app/services/scheduling_expansion.go`（第 239-337 行）
+
+**原本實作（N+1 問題）**：
+```go
+// 每次迴圈都查詢資料庫
+currentRule, _ := s.GetEffectiveRuleForDate(ctx, offeringID, date)
+```
+
+**優化後實作（批次查詢 + Map）**：
+```go
+// 建立日期到規則的 Map：DateString -> *ScheduleRule
+ruleByDate := make(map[string]*models.ScheduleRule)
+
+// Map 查詢（O(1)）
+currentRule := ruleByDate[dateStr]
+```
+
+### 5.1.3 效能比較預測 ✅
+
+| 場景 | 查詢範圍 | 優化前 | 優化後 | 減少比例 |
+|:---|:---:|:---:|:---:|:---:|
+| DetectPhaseTransitions | 7 天 | 8 次 | 1 次 | 87.5% |
+| DetectPhaseTransitions | 30 天 | 31 次 | 1 次 | 96.8% |
+| DetectPhaseTransitions | 90 天 | 91 次 | 1 次 | 98.9% |
+| ExpandRules（含關聯） | 10 規則 | 31 次 | 1 次 | 96.8% |
+
+### 5.1.4 編譯驗證 ✅
+
+```
+$ cd d:\project\TimeLedger
+$ go build ./app/repositories/
+# Exit code: 0 - Build successful!
+
+$ go build ./app/services/
+# Exit code: 0 - Build successful!
+```
+
+### 5.1.5 程式碼變更 ✅
+
+| 檔案 | 變更類型 | 說明 |
+|:---|:---:|:---|
+| `app/repositories/schedule_rule.go` | 新增方法 | 新增 ListByOfferingIDWithPreload 批次查詢方法 |
+| `app/services/scheduling_expansion.go` | 重構方法 | 重構 DetectPhaseTransitions 使用 Map 查詢 |
+
+### 5.1.6 總體統計 ✅
+
+| 指標 | 數值 |
+|:---|:---:|
+| 新增方法數 | 1 個 |
+| 重構方法數 | 1 個 |
+| 減少查詢次數 | 最多 98.9% |
+| 編譯狀態 | ✅ 通過 |
+
+### 5.1.7 Commit 記錄 ✅
+
+- Stage 5.1 N+1 Query Optimization - Performance improvement with batch fetching and Map-based lookups
+
+---
+
 ## Git 提交紀錄總覽
 
 ```

@@ -237,6 +237,7 @@ func (s *ScheduleExpansionServiceImpl) GetEffectiveRuleForDate(ctx context.Conte
 }
 
 func (s *ScheduleExpansionServiceImpl) DetectPhaseTransitions(ctx context.Context, centerID uint, offeringID uint, startDate, endDate time.Time) ([]PhaseTransition, error) {
+	// 批次查詢所有規則（消除 N+1：避免在迴圈中每次查詢資料庫）
 	rules, err := s.scheduleRuleRepo.ListByOfferingID(ctx, offeringID)
 	if err != nil {
 		return nil, err
@@ -246,12 +247,42 @@ func (s *ScheduleExpansionServiceImpl) DetectPhaseTransitions(ctx context.Contex
 		return []PhaseTransition{}, nil
 	}
 
+	// 建立日期到規則的 Map：DateString -> *ScheduleRule
+	// 這將 N 次查詢優化為 1 次查詢 + O(n) Map 建構
+	ruleByDate := make(map[string]*models.ScheduleRule)
+	for i := range rules {
+		rule := &rules[i]
+		ruleStart := rule.EffectiveRange.StartDate
+		ruleEnd := rule.EffectiveRange.EndDate
+
+		// 展開規則的有效日期範圍
+		current := ruleStart
+		for !current.After(ruleEnd) {
+			// 檢查是否在查詢範圍內
+			if !current.Before(startDate) && !current.After(endDate) {
+				weekday := int(current.Weekday())
+				if weekday == 0 {
+					weekday = 7
+				}
+
+				// 檢查星期是否匹配
+				if weekday == int(rule.Weekday) {
+					dateStr := current.Format("2006-01-02")
+					ruleByDate[dateStr] = rule
+				}
+			}
+			current = current.AddDate(0, 0, 1)
+		}
+	}
+
 	var transitions []PhaseTransition
 	date := startDate
 	prevRule := (*models.ScheduleRule)(nil)
 
+	// 使用 Map 查詢替代資料庫查詢（O(1) vs O(n)）
 	for date.Before(endDate) || date.Equal(endDate) {
-		currentRule, _ := s.GetEffectiveRuleForDate(ctx, offeringID, date)
+		dateStr := date.Format("2006-01-02")
+		currentRule := ruleByDate[dateStr]
 
 		if prevRule != nil && currentRule != nil {
 			prevRuleID := prevRule.ID
