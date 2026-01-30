@@ -461,17 +461,67 @@ func (rp *GenericRepository[T]) PluckWithCenterScope(ctx context.Context, center
 // If the function returns an error, the transaction is rolled back.
 // If the function panics, the transaction is rolled back.
 //
+// IMPORTANT: This method creates a NEW repository instance with transaction connections
+// to avoid race conditions in concurrent requests. Do NOT modify the original repository.
+//
 // Parameters:
-//   - fn: Function to execute within the transaction (receives context and returns error)
+//   - fn: Function to execute within the transaction (receives context and transaction DB)
 //
 // Returns:
 //   - error: Any error from the function or transaction handling
-func (rp *GenericRepository[T]) Transaction(ctx context.Context, fn func(tx context.Context) error) error {
+//
+// Usage Example (in Service layer):
+//
+//	txErr := s.app.MySQL.WDB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+//	    // Use tx directly for DB operations within the transaction
+//	    if err := tx.Create(&rule).Error; err != nil {
+//	        return err
+//	    }
+//	    if err := tx.Create(&auditLog).Error; err != nil {
+//	        return err
+//	    }
+//	    return nil
+//	})
+//
+// Note: For complex transactions with multiple operations, prefer controlling
+// transactions at the Service layer (see ScheduleService pattern) rather than
+// using this repository method.
+func (rp *GenericRepository[T]) Transaction(ctx context.Context, fn func(txCtx context.Context, txDB *gorm.DB) error) error {
 	return rp.dbWrite.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		// Create a new repository with the transaction's database connection
-		txRepo := rp
-		txRepo.dbRead = tx.WithContext(ctx)
-		txRepo.dbWrite = tx.WithContext(ctx)
-		return fn(ctx)
+		// Pass the transaction DB connection to the callback function
+		return fn(ctx, tx)
+	})
+}
+
+// TransactionWithRepo executes a function with a transaction-aware repository.
+// This is the preferred pattern for transactions that need repository methods.
+//
+// Parameters:
+//   - fn: Function that receives a transaction-aware repository and returns an error
+//
+// Returns:
+//   - error: Any error from the function or transaction handling
+//
+// Usage Example:
+//
+//	result, err := rp.TransactionWithRepo(ctx, func(txRepo *GenericRepository[T]) error {
+//	    // All operations using txRepo will be within the same transaction
+//	    if err := txRepo.Create(ctx, data1).Error; err != nil {
+//	        return err
+//	    }
+//	    if err := txRepo.Create(ctx, data2).Error; err != nil {
+//	        return err
+//	    }
+//	    return nil
+//	})
+func (rp *GenericRepository[T]) TransactionWithRepo(ctx context.Context, fn func(txRepo *GenericRepository[T]) error) error {
+	return rp.dbWrite.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// Create a new repository instance with transaction connections
+		txRepo := GenericRepository[T]{
+			dbRead:  tx.WithContext(ctx),
+			dbWrite: tx.WithContext(ctx),
+			table:   rp.table,
+		}
+		return fn(&txRepo)
 	})
 }
