@@ -187,12 +187,18 @@
                   </div>
                   <div>
                     <h3 class="text-white font-medium">{{ match.teacher_name }}</h3>
-                    <p class="text-sm text-slate-400">匹配度 {{ match.match_score }}%</p>
+                    <div class="flex items-center gap-2">
+                      <p class="text-sm text-slate-400">匹配度 {{ match.match_score }}%</p>
+                      <ScoreBreakdownTooltip />
+                    </div>
                   </div>
                 </div>
                 <div class="flex items-center gap-3">
                   <div class="text-right">
-                    <div class="text-2xl font-bold text-primary-500">{{ match.match_score }}%</div>
+                    <div class="flex items-center gap-1">
+                      <div class="text-2xl font-bold text-primary-500">{{ match.match_score }}%</div>
+                      <ScoreBreakdownTooltip />
+                    </div>
                   </div>
                   <input
                     v-if="smartMatchingStore.sortedResults.length > 1"
@@ -210,7 +216,7 @@
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  技能匹配: {{ (match as any).skill_match }}%
+                  技能匹配: {{ match.score_detail?.match_score || 0 }}%
                 </span>
                 <span class="flex items-center gap-1">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -245,8 +251,8 @@
                 </div>
               </div>
 
-              <p v-if="match as any notes" class="text-sm text-slate-400 mb-3">
-                {{ (match as any).notes }}
+              <p v-if="match?.notes" class="text-sm text-slate-400 mb-3">
+                {{ match.notes }}
               </p>
 
               <!-- 查看課表按鈕 -->
@@ -536,6 +542,7 @@ import AdminQuickFilterTags from '~/components/Admin/QuickFilterTags.vue'
 import AdminSearchSuggestions from '~/components/Admin/SearchSuggestions.vue'
 import AdminTalentStatsPanel from '~/components/Admin/TalentStatsPanel.vue'
 import AdminSkillsDistributionChart from '~/components/Admin/SkillsDistributionChart.vue'
+import ScoreBreakdownTooltip from '~/components/Scheduling/ScoreBreakdownTooltip.vue'
 import type { SmartMatchingResult, TalentCard } from '~/types/matching'
 
 interface SelectedSkill {
@@ -554,10 +561,10 @@ interface RecentSearch {
   created_at: number
 }
 
- definePageMeta({
-   middleware: 'auth-admin',
-   layout: 'admin',
- })
+definePageMeta({
+  auth: 'ADMIN',
+  layout: 'admin',
+})
 
  const notificationUI = useNotification()
  const { warning: alertWarning, success: alertSuccess, error: alertError, confirm: alertConfirm } = useAlert()

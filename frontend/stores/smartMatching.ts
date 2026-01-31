@@ -251,7 +251,7 @@ export const useSmartMatchingStore = defineStore('smartMatching', () => {
           comparison = (a.rating || 0) - (b.rating || 0)
           break
         case 'skill-match':
-          comparison = (a as any).skill_match - (b as any).skill_match
+          comparison = (a.score_detail?.match_score || 0) - (b.score_detail?.match_score || 0)
           break
       }
 
