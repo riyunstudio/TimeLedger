@@ -156,6 +156,38 @@ func (c *AdminUserController) UpdateLINENotifySettings(ctx *gin.Context) {
 	})
 }
 
+// GetLINENotifySettings 取得 LINE 通知設定
+// @Summary 取得 LINE 通知設定
+// @Description 取得管理員的 LINE 通知開關狀態
+// @Tags Admin - LINE
+// @Accept json
+// @Produce json
+// @Success 200 {object} global.ApiResponse
+// @Router /admin/me/line/notify-settings [get]
+func (c *AdminUserController) GetLINENotifySettings(ctx *gin.Context) {
+	helper := NewContextHelper(ctx)
+	adminID := c.requireAdminID(helper)
+	if adminID == 0 {
+		return
+	}
+
+	status, errInfo, err := c.adminService.GetLINEBindingStatus(ctx.Request.Context(), adminID)
+	if errInfo != nil {
+		helper.ErrorWithInfo(errInfo)
+		return
+	}
+	if err != nil {
+		helper.InternalError(err.Error())
+		return
+	}
+
+	helper.Success(gin.H{
+		"is_bound":        status.IsBound,
+		"notify_enabled":  status.NotifyEnabled,
+		"bound_at":        status.BoundAt,
+	})
+}
+
 // GetAdminProfile 取得管理員個人資料
 // @Summary 取得管理員個人資料
 // @Description 取得目前登入管理員的個人資料

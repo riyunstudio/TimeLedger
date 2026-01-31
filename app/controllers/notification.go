@@ -251,3 +251,28 @@ func (ctl *NotificationController) GetQueueStats(ctx *gin.Context) {
 
 	helper.Success(stats)
 }
+
+// CheckRedisHealth 檢查 Redis 連線狀態（管理員專用）
+// @Summary 檢查 Redis 連線狀態
+// @Description 檢查 Redis 連線是否正常
+// @Tags Admin - Health
+// @Accept json
+// @Produce json
+// @Success 200 {object} global.ApiResponse
+// @Router /admin/health/redis [get]
+func (ctl *NotificationController) CheckRedisHealth(ctx *gin.Context) {
+	helper := NewContextHelper(ctx)
+
+	redisService := services.NewRedisQueueService(ctl.app)
+
+	isHealthy := redisService.IsHealthy(ctx.Request.Context())
+
+	if isHealthy {
+		helper.Success(gin.H{
+			"redis_connected": true,
+			"status":          "healthy",
+		})
+	} else {
+		helper.InternalError("Redis connection failed")
+	}
+}

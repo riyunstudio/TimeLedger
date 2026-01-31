@@ -17,6 +17,7 @@ import (
 // AsynqConfig Asynq 配置
 type AsynqConfig struct {
 	RedisAddr     string
+	RedisPassword string
 	Concurrency   int
 	MaxRetry      int
 	RetryInterval time.Duration
@@ -27,6 +28,7 @@ type AsynqConfig struct {
 func DefaultAsynqConfig() *AsynqConfig {
 	return &AsynqConfig{
 		RedisAddr:     "localhost:6379",
+		RedisPassword: "",
 		Concurrency:   10,
 		MaxRetry:      3,
 		RetryInterval: 5 * time.Second,
@@ -49,7 +51,15 @@ type AsynqNotificationService struct {
 // NewAsynqNotificationService 建立 Asynq 通知服務
 func NewAsynqNotificationService(app *app.App, cfg *AsynqConfig) *AsynqNotificationService {
 	if cfg == nil {
-		cfg = DefaultAsynqConfig()
+		// 從環境變數讀取 Redis 配置
+		cfg = &AsynqConfig{
+			RedisAddr:     fmt.Sprintf("%s:%s", app.Env.RedisHost, app.Env.RedisPort),
+			RedisPassword: app.Env.RedisPass,
+			Concurrency:   10,
+			MaxRetry:      3,
+			RetryInterval: 5 * time.Second,
+			QueueName:     "notifications",
+		}
 	}
 
 	return &AsynqNotificationService{
@@ -58,7 +68,7 @@ func NewAsynqNotificationService(app *app.App, cfg *AsynqConfig) *AsynqNotificat
 		teacherRepo:     repositories.NewTeacherRepository(app),
 		lineBotService:  NewLineBotService(app),
 		templateService: NewLineBotTemplateService(app.Env.FrontendBaseURL),
-		client:          asynq.NewClient(asynq.RedisClientOpt{Addr: cfg.RedisAddr}),
+		client:          asynq.NewClient(asynq.RedisClientOpt{Addr: cfg.RedisAddr, Password: cfg.RedisPassword}),
 		log:             logger.GetLogger(),
 		config:          cfg,
 	}

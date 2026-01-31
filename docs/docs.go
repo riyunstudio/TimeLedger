@@ -3561,6 +3561,59 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/admin/templates/{template_id}/cells/reorder": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "重新排序模板中的格子",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Template ID",
+                        "name": "template_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "格子排序資訊",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "cells": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/definitions/repositories.ReorderCellRequest"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/global.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/admin/templates/{template_id}/cells/{cell_id}": {
             "delete": {
                 "security": [
@@ -6124,159 +6177,6 @@ const docTemplate = `{
                     }
                 }
             }
-        },
-        "/user": {
-            "get": {
-                "tags": [
-                    "User"
-                ],
-                "summary": "查詢使用者",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "default": "application/json",
-                        "description": "Content-Type",
-                        "name": "Content-Type",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "TraceID",
-                        "name": "Tid",
-                        "in": "header"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "會員ID",
-                        "name": "ID",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "回傳",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/global.ApiResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "datas": {
-                                            "$ref": "#/definitions/resources.UserGetResource"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            },
-            "put": {
-                "tags": [
-                    "User"
-                ],
-                "summary": "修改使用者",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "default": "application/json",
-                        "description": "Content-Type",
-                        "name": "Content-Type",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "TraceID",
-                        "name": "Tid",
-                        "in": "header"
-                    },
-                    {
-                        "description": "參數",
-                        "name": "Params",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/requests.UserUpdateRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "回傳",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/global.ApiResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "datas": {
-                                            "$ref": "#/definitions/resources.UserUpdateResource"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            },
-            "post": {
-                "tags": [
-                    "User"
-                ],
-                "summary": "新增使用者",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "default": "application/json",
-                        "description": "Content-Type",
-                        "name": "Content-Type",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "TraceID",
-                        "name": "Tid",
-                        "in": "header"
-                    },
-                    {
-                        "description": "參數",
-                        "name": "Params",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/requests.UserCreateRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "回傳",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/global.ApiResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "datas": {
-                                            "$ref": "#/definitions/resources.UserCreateResource"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
         }
     },
     "definitions": {
@@ -8150,6 +8050,9 @@ const docTemplate = `{
                 "row_no": {
                     "type": "integer"
                 },
+                "sort_order": {
+                    "type": "integer"
+                },
                 "start_time": {
                     "type": "string"
                 },
@@ -8193,6 +8096,21 @@ const docTemplate = `{
                 },
                 "updated_at": {
                     "type": "string"
+                }
+            }
+        },
+        "repositories.ReorderCellRequest": {
+            "type": "object",
+            "required": [
+                "id",
+                "sort_order"
+            ],
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "sort_order": {
+                    "type": "integer"
                 }
             }
         },
@@ -8565,43 +8483,6 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "session_date": {
-                    "type": "string"
-                }
-            }
-        },
-        "requests.UserCreateRequest": {
-            "type": "object",
-            "required": [
-                "name"
-            ],
-            "properties": {
-                "ips": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "requests.UserUpdateRequest": {
-            "type": "object",
-            "required": [
-                "id"
-            ],
-            "properties": {
-                "id": {
-                    "type": "integer"
-                },
-                "ips": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "name": {
                     "type": "string"
                 }
             }
@@ -9026,66 +8907,6 @@ const docTemplate = `{
                 },
                 "public_contact_info": {
                     "type": "string"
-                }
-            }
-        },
-        "resources.UserCreateResource": {
-            "type": "object",
-            "properties": {
-                "created_at": {
-                    "type": "integer"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "ips": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "resources.UserGetResource": {
-            "type": "object",
-            "properties": {
-                "create_time": {
-                    "type": "integer"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "ips": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "name": {
-                    "type": "string"
-                },
-                "update_time": {
-                    "type": "integer"
-                }
-            }
-        },
-        "resources.UserUpdateResource": {
-            "type": "object",
-            "properties": {
-                "ips": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "name": {
-                    "type": "string"
-                },
-                "updated_at": {
-                    "type": "integer"
                 }
             }
         },
@@ -9698,6 +9519,9 @@ const docTemplate = `{
         "services.TodayOffering": {
             "type": "object",
             "properties": {
+                "id": {
+                    "type": "integer"
+                },
                 "name": {
                     "type": "string"
                 }
@@ -9706,6 +9530,9 @@ const docTemplate = `{
         "services.TodayRoom": {
             "type": "object",
             "properties": {
+                "id": {
+                    "type": "integer"
+                },
                 "name": {
                     "type": "string"
                 }
@@ -9778,6 +9605,9 @@ const docTemplate = `{
         "services.TodayTeacher": {
             "type": "object",
             "properties": {
+                "id": {
+                    "type": "integer"
+                },
                 "name": {
                     "type": "string"
                 }

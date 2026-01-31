@@ -141,6 +141,7 @@ func (s *Server) LoadRoutes() {
 		{http.MethodGet, "/api/v1/admin/me/line-binding", s.action.adminUser.GetLINEBindingStatus, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodPost, "/api/v1/admin/me/line/bind", s.action.adminUser.InitLINEBinding, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodDelete, "/api/v1/admin/me/line/unbind", s.action.adminUser.UnbindLINE, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodGet, "/api/v1/admin/me/line/notify-settings", s.action.adminUser.GetLINENotifySettings, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodPatch, "/api/v1/admin/me/line/notify-settings", s.action.adminUser.UpdateLINENotifySettings, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		// Admin - LINE QR Code
 		{http.MethodGet, "/api/v1/admin/me/line/qrcode", s.action.lineBot.GenerateLINEBindingQR, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
@@ -234,6 +235,8 @@ func (s *Server) LoadRoutes() {
 		{http.MethodPost, "/api/v1/notifications/test", s.action.notification.SendTestNotification, []gin.HandlerFunc{authMiddleware.Authenticate()}},
 		// Notification Queue Stats (Admin only)
 		{http.MethodGet, "/api/v1/admin/notifications/queue-stats", s.action.notification.GetQueueStats, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		// Health Check
+		{http.MethodGet, "/api/v1/admin/health/redis", s.action.notification.CheckRedisHealth, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 
 		// Export
 		{http.MethodPost, "/api/v1/admin/export/schedule/csv", s.action.export.ExportScheduleCSV, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
