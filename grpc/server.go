@@ -6,9 +6,6 @@ import (
 	"net"
 	"sync"
 	"timeLedger/app"
-	"timeLedger/app/repositories"
-	"timeLedger/grpc/proto/user"
-	"timeLedger/grpc/services"
 
 	"google.golang.org/grpc"
 )
@@ -27,7 +24,6 @@ func Initialize(app *app.App) *Grpc {
 }
 
 func (s *Grpc) registerServices() {
-	user.RegisterUserServiceServer(s.srv, &services.User{App: s.app, UserRepository: repositories.NewUserRepository(s.app)})
 }
 
 func (s *Grpc) Start() {

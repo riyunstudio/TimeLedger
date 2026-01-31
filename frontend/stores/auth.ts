@@ -1,10 +1,18 @@
 import { defineStore } from 'pinia'
 import type { Teacher, AuthResponse } from '~/types'
+import { withLoading } from '~/utils/loadingHelper'
 
 export const useAuthStore = defineStore('auth', () => {
+  // 資料狀態
   const user = ref<Teacher | null>(null)
   const token = ref<string | null>(null)
   const refreshToken = ref<string | null>(null)
+
+  // Loading 狀態
+  const isLoading = ref(false)
+  const isRefreshing = ref(false)
+
+  // Computed 狀態
   const isAuthenticated = computed(() => !!token.value)
   const isTeacher = computed(() => !!user.value && !isAdmin.value)
   const isAdmin = computed(() => {
@@ -111,37 +119,49 @@ export const useAuthStore = defineStore('auth', () => {
   const refreshAccessToken = async () => {
     if (!refreshToken.value) return false
 
-    try {
-      const api = useApi()
-      const response = await api.post<{ code: number; message: string; datas: { token: string; refresh_token: string } }>('/auth/refresh', {
-        refresh_token: refreshToken.value,
-      })
+    return withLoading(isRefreshing, async () => {
+      try {
+        const api = useApi()
+        const response = await api.post<{ code: number; message: string; datas: { token: string; refresh_token: string } }>('/auth/refresh', {
+          refresh_token: refreshToken.value,
+        })
 
-      token.value = response.datas?.token || ''
-      refreshToken.value = response.datas?.refresh_token || ''
+        token.value = response.datas?.token || ''
+        refreshToken.value = response.datas?.refresh_token || ''
 
-      const userType = localStorage.getItem('current_user_type')
-      if (userType === 'admin') {
-        localStorage.setItem('admin_token', response.datas?.token || '')
-        localStorage.setItem('admin_refresh_token', response.datas?.refresh_token || '')
-      } else if (userType === 'teacher') {
-        localStorage.setItem('teacher_token', response.datas?.token || '')
-        localStorage.setItem('teacher_refresh_token', response.datas?.refresh_token || '')
+        const userType = localStorage.getItem('current_user_type')
+        if (userType === 'admin') {
+          localStorage.setItem('admin_token', response.datas?.token || '')
+          localStorage.setItem('admin_refresh_token', response.datas?.refresh_token || '')
+        } else if (userType === 'teacher') {
+          localStorage.setItem('teacher_token', response.datas?.token || '')
+          localStorage.setItem('teacher_refresh_token', response.datas?.refresh_token || '')
+        }
+
+        return true
+      } catch (error) {
+        logout()
+        return false
       }
-
-      return true
-    } catch (error) {
-      logout()
-      return false
-    }
+    })
   }
 
   return {
+    // 資料狀態
     user,
     token,
+    refreshToken,
+
+    // Loading 狀態
+    isLoading,
+    isRefreshing,
+
+    // Computed 狀態
     isAuthenticated,
     isTeacher,
     isAdmin,
+
+    // 方法
     login,
     logout,
     refreshAccessToken,

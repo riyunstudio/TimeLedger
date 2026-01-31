@@ -12,6 +12,10 @@ export default defineNuxtConfig({
 
   css: ['~/assets/css/main.css'],
 
+  plugins: [
+    { src: '~/plugins/virtual-scroller.ts', mode: 'client' },
+  ],
+
   tailwindcss: {
     configPath: 'tailwind.config.js',
   },

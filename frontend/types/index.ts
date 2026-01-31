@@ -1,245 +1,60 @@
-export interface User {
-  id: number
-  email?: string
-  name: string
-  avatar_url?: string
-  bio?: string
-}
+/**
+ * 類型定義匯出中心
+ *
+ * 統一匯出所有模組的類型定義，建議直接從此檔案匯入
+ *
+ * @example
+ * ```typescript
+ * import type { Teacher, TeacherSkill, ApiResponse } from '~/types'
+ * ```
+ */
 
-export interface Teacher extends User {
-  line_user_id: string
-  is_open_to_hiring: boolean
-  city?: string
-  district?: string
-  public_contact_info?: PublicContactInfo
-  skills?: TeacherSkill[]
-  certificates?: TeacherCertificate[]
-  personal_hashtags?: PersonalHashtag[]
-}
+// ==================== API 通用類型 ====================
+export * from './api'
 
-export interface PublicContactInfo {
-  instagram?: string
-  youtube?: string
-  website?: string
-  other?: string
-}
+// ==================== 管理員相關類型 ====================
+export * from './admin'
 
-export interface PersonalHashtag {
-  id: number
-  hashtag_id: number
-  name: string
-}
+// ==================== 教師相關類型 ====================
+export * from './teacher'
 
-export interface TeacherSkill {
-  id: number
-  teacher_id: number
-  category: string
-  skill_name: string
-  hashtags?: TeacherSkillHashtag[]
-}
+// ==================== 中心相關類型 ====================
+export * from './center'
 
-export const SKILL_CATEGORIES = {
-  MUSIC: { label: '音樂', color: 'bg-pink-500/20 text-pink-400 border-pink-500/30', icon: '🎵' },
-  ART: { label: '美術', color: 'bg-purple-500/20 text-purple-400 border-purple-500/30', icon: '🎨' },
-  DANCE: { label: '舞蹈', color: 'bg-orange-500/20 text-orange-400 border-orange-500/30', icon: '💃' },
-  LANGUAGE: { label: '語言', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30', icon: '🗣️' },
-  SPORTS: { label: '運動', color: 'bg-green-500/20 text-green-400 border-green-500/30', icon: '⚽' },
-  OTHER: { label: '其他', color: 'bg-slate-500/20 text-slate-400 border-slate-500/30', icon: '✨' },
-} as const
+// ==================== 排課相關類型 ====================
+export * from './scheduling'
 
-export interface TeacherCertificate {
-  id: number
-  teacher_id: number
-  certificate_name: string
-  issued_by?: string
-  issued_date?: string
-  file_url?: string
-}
+// ==================== 智慧媒合相關類型 ====================
+export * from './matching'
 
-export interface TeacherPersonalHashtag {
-  id: number
-  teacher_id: number
-  hashtag_id: number
-  hashtag?: Hashtag
-}
+// ==================== 通知相關類型 ====================
+export * from './notification'
 
-export interface TeacherSkillHashtag {
-  id: number
-  teacher_skill_id: number
-  hashtag_id: number
-  hashtag?: Hashtag
-}
+// ==================== 相容性匯出 (舊版 API Response 格式) ====================
 
-export interface Hashtag {
-  id: number
-  name: string
-  usage_count: number
-}
-
-export interface AdminUser extends User {
-  user_type: 'ADMIN' | 'OWNER' | 'STAFF'
-  role?: string
-  center_id?: number
-}
-
-export interface Center {
-  id: number
-  name: string
-  plan_level: 'STARTER' | 'GROWTH' | 'PRO'
-  settings: CenterSettings
-  created_at: string
-  updated_at: string
-}
-
-export interface CenterSettings {
-  allow_public_register: boolean
-  default_language: string
-}
-
-export interface Course {
-  id: number
-  center_id: number
-  name: string
-  teacher_buffer_min: number
-  room_buffer_min: number
-  created_at: string
-  updated_at: string
-}
-
-export interface Offering {
-  id: number
-  center_id: number
-  course_id: number
-  default_room_id?: number
-  default_teacher_id?: number
-  allow_buffer_override: boolean
-  created_at: string
-  updated_at: string
-}
-
-export interface Room {
-  id: number
-  center_id: number
-  name: string
-  capacity: number
-  created_at: string
-  updated_at: string
-}
-
-export interface ScheduleRule {
-  id: number
-  center_id: number
-  offering_id: number
-  teacher_id?: number
-  room_id: number
-  weekday: number
-  start_time: string
-  end_time: string
-  effective_range: DateRange
-  created_at: string
-  updated_at: string
-  exceptions?: ScheduleException[]
-}
-
-export interface ScheduleException {
-  id: number
-  center_id: number
-  rule_id: number
-  teacher_id: number
-  original_date: string
-  type: 'CANCEL' | 'RESCHEDULE' | 'REPLACE_TEACHER'
-  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'REVOKED'
-  new_start_at?: string
-  new_end_at?: string
-  new_teacher_id?: number
-  new_teacher_name?: string
-  new_room_id?: number
-  reason: string
-  created_at: string
-  updated_at: string
-}
-
-export interface PersonalEvent {
-  id: number | string  // string when expanded from recurrence (format: "originalId_date")
-  originalId?: number  // Original ID for API calls
-  teacher_id: number
-  title: string
-  start_at: string
-  end_at: string
-  recurrence_rule?: RecurrenceRule
-  color: string
-  notes?: string
-  created_at: string
-  updated_at: string
-}
-
-export interface DateRange {
-  start_date: string
-  end_date: string
-}
-
-export interface RecurrenceRule {
-  frequency: 'NONE' | 'DAILY' | 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY'
-  interval: number
-  end_date?: string
-}
-
-export interface SessionNote {
-  id: number
-  center_id: number
-  rule_id: number
-  session_date: string
-  content: string
-  prep_note: string
-  created_at: string
-  updated_at: string
-}
-
-export interface Notification {
-  id: number
-  user_id: number
-  user_type: 'ADMIN' | 'TEACHER'
-  center_id?: number
-  title: string
-  message: string
-  type: 'SCHEDULE' | 'EXCEPTION' | 'REVIEW' | 'GENERAL' | 'APPROVAL' | 'CENTER_INVITE'
-  is_read: boolean
-  read_at?: string
-  created_at: string
-}
-
-export interface CenterMembership {
-  id: number
-  center_id: number
-  center_name?: string
-  teacher_id: number
-  status: 'ACTIVE' | 'INACTIVE' | 'INVITED'
-}
-
-export interface AuthResponse {
-  token: string
-  refresh_token?: string
-  user?: AdminUser
-  teacher?: Teacher
-}
-
-export interface ApiResponse<T = any> {
+/**
+ * @deprecated 請使用 ./api.ts 中的 ApiResponse
+ * 此類型僅為向後相容保留
+ */
+export interface LegacyApiResponse<T = unknown> {
   code: number
   message: string
   data: T
 }
 
-export interface ValidationResult {
-  valid: boolean
-  conflicts: ValidationConflict[]
+/**
+ * @deprecated 請使用 ./scheduling.ts 中的 ScheduleCell
+ */
+export interface ScheduleCell {
+  date: string
+  time: string
+  items: (ScheduleRule | PersonalEvent)[]
+  has_conflict: boolean
 }
 
-export interface ValidationConflict {
-  type: 'OVERLAP' | 'TEACHER_OVERLAP' | 'ROOM_OVERLAP'
-  message: string
-  details?: string
-}
-
+/**
+ * @deprecated 請使用 ./matching.ts 中的 MatchScore
+ */
 export interface MatchScore {
   teacher_id: number
   teacher_name: string
@@ -249,39 +64,61 @@ export interface MatchScore {
   notes?: string
 }
 
-export interface ScheduleCell {
-  date: string
-  time: string
-  items: (ScheduleRule | PersonalEvent)[]
-  has_conflict: boolean
-}
+// ==================== 常用組合類型 ====================
 
-export interface WeekSchedule {
-  week_start: string
-  week_end: string
-  days: DaySchedule[]
-}
-
-export interface DaySchedule {
-  date: string
-  day_of_week: number
-  items: ScheduleItem[]
-}
-
-export interface ScheduleItem {
-  type: 'SCHEDULE_RULE' | 'PERSONAL_EVENT' | 'CENTER_SESSION'
-  id: number | string
+/**
+ * 教師課表項目 (用於前端顯示)
+ */
+export interface TeacherScheduleItem {
+  id: string
+  type: string
   title: string
+  date: string
   start_time: string
   end_time: string
-  color?: string
-  status?: string
-  center_name?: string
-  data?: ScheduleRule | PersonalEvent
-  date?: string
-  room_id?: number
+  room_id: number
   teacher_id?: number
-  center_id?: number
-  rule_id?: number  // 用於關聯課堂筆記
-  is_cross_day_part?: boolean // 跨日課程的一部分
+  center_id: number
+  center_name?: string
+  status: string
+  rule_id?: number
+  data?: unknown
+  is_cross_day_part?: boolean
+}
+
+/**
+ * 課表移動請求
+ */
+export interface MoveScheduleItem {
+  item_id: number
+  item_type: 'SCHEDULE_RULE' | 'PERSONAL_EVENT' | 'CENTER_SESSION'
+  center_id: number
+  new_date: string
+  new_start_time: string
+  new_end_time: string
+  update_mode?: 'SINGLE' | 'FUTURE' | 'ALL'
+}
+
+/**
+ * 課表驗證衝突
+ */
+export interface ScheduleValidationConflict {
+  type: 'OVERLAP' | 'TEACHER_OVERLAP' | 'ROOM_OVERLAP' | 'BUFFER'
+  message: string
+  current_gap_minutes?: number
+  required_buffer_minutes?: number
+  previous_session?: {
+    id: number
+    course_name: string
+    end_at: string
+  }
+  can_override?: boolean
+}
+
+/**
+ * 課表驗證結果
+ */
+export interface ScheduleValidation {
+  valid: boolean
+  conflicts: ScheduleValidationConflict[]
 }

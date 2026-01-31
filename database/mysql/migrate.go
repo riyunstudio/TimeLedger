@@ -12,7 +12,6 @@ func (db *DB) AutoMigrate() {
 	// dropTablesForReschema(db)
 
 	if err := db.WDB.AutoMigrate(
-		&models.User{},
 		&models.Center{},
 		&models.AdminUser{},
 		&models.Teacher{},

@@ -34,8 +34,8 @@ vi.mock('~/stores/auth', () => ({
   }),
 }))
 
-vi.mock('~/stores/teacher', () => ({
-  useTeacherStore: () => ({
+vi.mock('~/stores/useScheduleStore', () => ({
+  useScheduleStore: () => ({
     schedule: { days: [] },
     weekLabel: '2026/01/20 - 2026/01/26',
     fetchSchedule: vi.fn(),

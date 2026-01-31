@@ -1,0 +1,487 @@
+/**
+ * 錯誤處理工具
+ *
+ * 提供統一的錯誤處理機制，整合錯誤碼對照表與現有的 alert/toast 系統
+ */
+
+import { ref } from 'vue'
+import {
+  ERROR_MESSAGES,
+  isSuccessCode,
+  isPermissionError,
+  isUnauthorizedError,
+  isValidationError,
+  type ErrorCode,
+} from '~/constants/errorCodes'
+
+// ==================== 錯誤類型定義 ====================
+
+/**
+ * API 錯誤介面
+ */
+export interface ApiError {
+  /** 錯誤碼 */
+  code: string
+  /** 錯誤訊息 */
+  message: string
+  /** 額外資料 */
+  data?: unknown
+}
+
+/**
+ * 網路錯誤介面
+ */
+export interface NetworkError {
+  /** HTTP 狀態碼 */
+  status?: number
+  /** 狀態文字 */
+  statusText?: string
+  /** 錯誤訊息 */
+  message: string
+  /** 原始錯誤 */
+  originalError?: Error
+}
+
+/**
+ * 錯誤處理選項
+ */
+export interface ErrorHandlerOptions {
+  /** 是否顯示錯誤提示 */
+  showAlert?: boolean
+  /** 是否記錄錯誤 */
+  logError?: boolean
+  /** 自訂錯誤標題 */
+  title?: string
+  /** 錯誤上下文中繼資料 */
+  context?: Record<string, unknown>
+  /** 401 錯誤時是否導向登入頁 */
+  redirectOnUnauthorized?: boolean
+  /** 自訂錯誤處理函數 */
+  onCustomHandler?: (error: ApiError | NetworkError) => void
+}
+
+// ==================== 全域錯誤狀態 ====================
+
+const errorToastRef = ref<{
+  show: (message: string, duration?: number) => void
+} | null>(null)
+
+/**
+ * 註冊錯誤提示組件
+ */
+export function registerErrorToast(component: { show: (message: string, duration?: number) => void }) {
+  errorToastRef.value = component
+}
+
+// ==================== 輔助函數 ====================
+
+/**
+ * 根據錯誤碼取得使用者友善訊息
+ */
+function getErrorMessage(error: ApiError | NetworkError): string {
+  if ('code' in error && error.code) {
+    return ERROR_MESSAGES[error.code] || error.message || '發生未知錯誤'
+  }
+  return error.message || '發生未知錯誤'
+}
+
+/**
+ * 取得 HTTP 狀態碼對應的處理方式
+ */
+function getDefaultHandler(statusCode: number, options: ErrorHandlerOptions) {
+  const handlers: Record<number, (error: ApiError | NetworkError) => void> = {
+    401: (error) => {
+      if (options.redirectOnUnauthorized !== false) {
+        redirectToLogin()
+      }
+      if (options.showAlert !== false) {
+        showErrorAlert('請先登入再進行操作', '未授權')
+      }
+    },
+    403: (error) => {
+      if (options.showAlert !== false) {
+        showErrorAlert('您沒有權限執行此操作', '禁止存取')
+      }
+    },
+    404: (error) => {
+      if (options.showAlert !== false) {
+        showErrorAlert('找不到請求的資源', '404')
+      }
+    },
+    422: (error) => {
+      if (options.showAlert !== false) {
+        showErrorAlert('輸入資料驗證失敗，請檢查後重試', '驗證錯誤')
+      }
+    },
+    429: (error) => {
+      if (options.showAlert !== false) {
+        showErrorAlert('請求過於頻繁，請稍後再試', '速率限制')
+      }
+    },
+    500: (error) => {
+      if (options.showAlert !== false) {
+        showErrorAlert('系統錯誤，請稍後再試', '伺服器錯誤')
+      }
+    },
+  }
+  return handlers[statusCode] || defaultErrorHandler
+}
+
+/**
+ * 預設錯誤處理函數
+ */
+function defaultErrorHandler(error: ApiError | NetworkError, options: ErrorHandlerOptions) {
+  const message = getErrorMessage(error)
+  const title = options.title || getErrorTitle(error)
+
+  if (options.showAlert !== false) {
+    showErrorAlert(message, title)
+  }
+}
+
+/**
+ * 取得錯誤標題
+ */
+function getErrorTitle(error: ApiError | NetworkError): string {
+  if ('code' in error && error.code) {
+    if (isPermissionError(error.code)) {
+      return '權限錯誤'
+    }
+    if (isValidationError(error.code)) {
+      return '驗證錯誤'
+    }
+    if (isUnauthorizedError(error.code)) {
+      return '未授權'
+    }
+  }
+  return '操作失敗'
+}
+
+/**
+ * 顯示錯誤提示
+ */
+function showErrorAlert(message: string, title?: string) {
+  // 使用全域 alert 系統
+  if (typeof window !== 'undefined' && (window as any).$alert) {
+    ;(window as any).$alert({
+      message,
+      title: title || '操作失敗',
+      type: 'error',
+    })
+  } else {
+    // Fallback 到原生 alert
+    alert(`${title || '錯誤'}: ${message}`)
+  }
+}
+
+/**
+ * 顯示簡短錯誤提示 (toast)
+ */
+function showErrorToast(message: string) {
+  if (errorToastRef.value) {
+    errorToastRef.value.show(message, 4000)
+  } else {
+    // Fallback 到 alert
+    showErrorAlert(message, '提示')
+  }
+}
+
+/**
+ * 導向登入頁
+ */
+function redirectToLogin() {
+  if (typeof window !== 'undefined') {
+    // 清除過期的 token
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem('token')
+      localStorage.removeItem('auth_token')
+    }
+
+    // 導向登入頁，保留原始路徑以便登入後回來
+    const currentPath = window.location.pathname
+    const loginPath = currentPath.startsWith('/admin')
+      ? '/admin/login'
+      : '/teacher/login'
+
+    // 只有在不已經是登入頁的情況下才導向
+    if (!window.location.pathname.includes('/login')) {
+      window.location.href = `${loginPath}?redirect=${encodeURIComponent(currentPath)}`
+    }
+  }
+}
+
+/**
+ * 記錄錯誤到監控服務
+ */
+function logError(error: ApiError | NetworkError, context?: Record<string, unknown>) {
+  const errorData = {
+    code: 'code' in error ? error.code : `HTTP_${error.status}`,
+    message: error.message,
+    timestamp: new Date().toISOString(),
+    url: typeof window !== 'undefined' ? window.location.href : '',
+    userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : '',
+    ...context,
+  }
+
+  // 控制台輸出
+  console.error('[Error Handler]', errorData)
+
+  // 未來可以整合監控服務，如 Sentry
+  // if (typeof window !== 'undefined' && (window as any).Sentry) {
+  //   ;(window as any).Sentry.captureException(error)
+  // }
+}
+
+// ==================== 主要錯誤處理類別 ====================
+
+/**
+ * 錯誤處理器
+ *
+ * 提供靜態方法來處理各種類型的錯誤
+ */
+export class ErrorHandler {
+  /**
+   * 處理 API 錯誤回應
+   */
+  static handleApiError(error: ApiError, options: ErrorHandlerOptions = {}): void {
+    const mergedOptions = {
+      showAlert: true,
+      logError: true,
+      redirectOnUnauthorized: true,
+      ...options,
+    }
+
+    // 檢查是否為成功回應
+    if (isSuccessCode(error.code)) {
+      return
+    }
+
+    // 自訂處理器優先
+    if (mergedOptions.onCustomHandler) {
+      mergedOptions.onCustomHandler(error)
+      return
+    }
+
+    // 記錄錯誤
+    if (mergedOptions.logError) {
+      logError(error, mergedOptions.context)
+    }
+
+    // 權限錯誤特殊處理
+    if (isUnauthorizedError(error.code)) {
+      const handler = getDefaultHandler(401, mergedOptions)
+      handler(error)
+      return
+    }
+
+    // 預設處理
+    defaultErrorHandler(error, mergedOptions)
+  }
+
+  /**
+   * 處理網路錯誤
+   */
+  static handleNetworkError(error: NetworkError, options: ErrorHandlerOptions = {}): void {
+    const mergedOptions = {
+      showAlert: true,
+      logError: true,
+      redirectOnUnauthorized: true,
+      ...options,
+    }
+
+    // 自訂處理器優先
+    if (mergedOptions.onCustomHandler) {
+      mergedOptions.onCustomHandler(error)
+      return
+    }
+
+    // 記錄錯誤
+    if (mergedOptions.logError) {
+      logError(error, mergedOptions.context)
+    }
+
+    // 根據 HTTP 狀態碼處理
+    if (error.status) {
+      const handler = getDefaultHandler(error.status, mergedOptions)
+      handler(error)
+      return
+    }
+
+    // 網路錯誤預設處理
+    if (mergedOptions.showAlert !== false) {
+      showErrorAlert('網路連線錯誤，請檢查網路連線後重試', '網路錯誤')
+    }
+  }
+
+  /**
+   * 處理未知錯誤
+   */
+  static handleUnknownError(error: unknown, options: ErrorHandlerOptions = {}): void {
+    const mergedOptions = {
+      showAlert: true,
+      logError: true,
+      redirectOnUnauthorized: false,
+      ...options,
+    }
+
+    const errorMessage = error instanceof Error ? error.message : '發生未知錯誤'
+
+    if (mergedOptions.logError) {
+      console.error('[Unknown Error]', error)
+    }
+
+    if (mergedOptions.showAlert !== false) {
+      showErrorAlert(errorMessage, '錯誤')
+    }
+  }
+
+  /**
+   * 處理錯誤並返回訊息 (適用於需要顯示 toast 的場景)
+   */
+  static handleAndReturn(error: ApiError | NetworkError): string {
+    const message = getErrorMessage(error)
+    showErrorToast(message)
+    return message
+  }
+
+  /**
+   * 安全執行非同步函數
+   *
+   * @param fn 要執行的非同步函數
+   * @param options 錯誤處理選項
+   * @returns 包含結果或錯誤的元組
+   */
+  static async safeExecute<T>(
+    fn: () => Promise<T>,
+    options: ErrorHandlerOptions = {}
+  ): Promise<[T, null] | [null, ApiError | NetworkError]> {
+    try {
+      const result = await fn()
+      return [result, null]
+    } catch (error) {
+      // 判斷錯誤類型
+      if (this.isApiError(error)) {
+        this.handleApiError(error as ApiError, options)
+        return [null, error as ApiError]
+      } else if (this.isNetworkError(error)) {
+        this.handleNetworkError(error as NetworkError, options)
+        return [null, error as NetworkError]
+      } else {
+        this.handleUnknownError(error, options)
+        return [null, { message: String(error) } as NetworkError]
+      }
+    }
+  }
+
+  /**
+   * 檢查是否為 API 錯誤
+   */
+  static isApiError(error: unknown): error is ApiError {
+    return (
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      'message' in error &&
+      typeof (error as ApiError).code === 'string'
+    )
+  }
+
+  /**
+   * 檢查是否為網路錯誤
+   */
+  static isNetworkError(error: unknown): error is NetworkError {
+    return (
+      typeof error === 'object' &&
+      error !== null &&
+      ('status' in error || 'message' in error)
+    )
+  }
+
+  /**
+   * 取得 HTTP 狀態碼對應的錯誤碼
+   */
+  static getErrorCodeFromStatus(status: number): string {
+    const errorMap: Record<number, string> = {
+      400: 'VALIDATION_ERROR',
+      401: 'UNAUTHORIZED',
+      403: 'FORBIDDEN',
+      404: 'NOT_FOUND',
+      409: 'CONFLICT',
+      422: 'VALIDATION_ERROR',
+      429: 'RATE_LIMIT_EXCEEDED',
+      500: 'SYSTEM_ERROR',
+      502: 'SYSTEM_ERROR',
+      503: 'SYSTEM_ERROR',
+    }
+    return errorMap[status] || 'SYSTEM_ERROR'
+  }
+}
+
+// ==================== 便利匯出函數 ====================
+
+/**
+ * 顯示錯誤提示 (簡化 API)
+ */
+export function showError(message: string, title?: string) {
+  showErrorAlert(message, title)
+}
+
+/**
+ * 顯示錯誤 Toast (簡化 API)
+ */
+export function showErrorToast(message: string) {
+  showErrorToast(message)
+}
+
+/**
+ * 處理 API 錯誤 (簡化 API)
+ */
+export function handleApiError(error: ApiError, options?: ErrorHandlerOptions) {
+  ErrorHandler.handleApiError(error, options)
+}
+
+/**
+ * 處理網路錯誤 (簡化 API)
+ */
+export function handleNetworkError(error: NetworkError, options?: ErrorHandlerOptions) {
+  ErrorHandler.handleNetworkError(error, options)
+}
+
+/**
+ * 處理未知錯誤 (簡化 API)
+ */
+export function handleUnknownError(error: unknown, options?: ErrorHandlerOptions) {
+  ErrorHandler.handleUnknownError(error, options)
+}
+
+// ==================== Vue Composables ====================
+
+/**
+ * 錯誤處理 Composables
+ *
+ * 在 Vue 元件中使用
+ */
+export function useErrorHandler() {
+  const handleApiError = (error: ApiError, options?: ErrorHandlerOptions) => {
+    ErrorHandler.handleApiError(error, options)
+  }
+
+  const handleNetworkError = (error: NetworkError, options?: ErrorHandlerOptions) => {
+    ErrorHandler.handleNetworkError(error, options)
+  }
+
+  const safeExecute = <T>(
+    fn: () => Promise<T>,
+    options?: ErrorHandlerOptions
+  ) => {
+    return ErrorHandler.safeExecute(fn, options)
+  }
+
+  return {
+    handleApiError,
+    handleNetworkError,
+    safeExecute,
+    showError,
+    showErrorToast,
+  }
+}

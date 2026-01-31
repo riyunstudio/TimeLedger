@@ -33,8 +33,8 @@ vi.mock('~/stores/auth', () => ({
   }),
 }))
 
-vi.mock('~/stores/teacher', () => ({
-  useTeacherStore: () => ({
+vi.mock('~/stores/useScheduleStore', () => ({
+  useScheduleStore: () => ({
     centers: [],
     fetchCenters: vi.fn(),
   }),

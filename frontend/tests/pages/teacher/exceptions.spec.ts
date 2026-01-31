@@ -28,8 +28,8 @@ vi.mock('~/composables/useNotification', () => ({
   }),
 }))
 
-vi.mock('~/stores/teacher', () => ({
-  useTeacherStore: () => ({
+vi.mock('~/stores/useScheduleStore', () => ({
+  useScheduleStore: () => ({
     centers: [],
     exceptions: [],
     fetchCenters: vi.fn(),

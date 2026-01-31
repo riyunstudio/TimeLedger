@@ -12,6 +12,7 @@ type TimetableCell struct {
 	RoomID     *uint     `gorm:"type:bigint unsigned" json:"room_id"`
 	TeacherID  *uint     `gorm:"type:bigint unsigned" json:"teacher_id"`
 	IsActive   bool      `gorm:"type:boolean;default:true;not null" json:"is_active"`
+	SortOrder  int       `gorm:"type:int;default:0;not null" json:"sort_order"`
 	CreatedAt  time.Time `gorm:"type:datetime;not null" json:"created_at"`
 	UpdatedAt  time.Time `gorm:"type:datetime;not null" json:"updated_at"`
 }

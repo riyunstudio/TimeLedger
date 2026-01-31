@@ -38,8 +38,8 @@ func TestScheduleValidationService_Complete(t *testing.T) {
 		return
 	}
 
-	var teacher models.User
-	if err := db.Where("user_type = ?", "TEACHER").Order("id ASC").First(&teacher).Error; err != nil {
+	var teacher models.Teacher
+	if err := db.Order("id ASC").First(&teacher).Error; err != nil {
 		t.Skipf("跳過測試 - 無可用老師資料: %v", err)
 		return
 	}
@@ -80,8 +80,8 @@ func TestScheduleValidationService_Complete(t *testing.T) {
 
 	t.Run("CheckOverlap_TeacherOverlap", func(t *testing.T) {
 		// 測試時段：老師時間重疊
-		startTime := time.Date(2026, 1, 27, 8, 0, 0, 0, loc)  // Monday 08:00
-		endTime := time.Date(2026, 1, 27, 9, 0, 0, 0, loc)    // Monday 09:00
+		startTime := time.Date(2026, 1, 27, 8, 0, 0, 0, loc) // Monday 08:00
+		endTime := time.Date(2026, 1, 27, 9, 0, 0, 0, loc)   // Monday 09:00
 
 		result, err := validationService.CheckOverlap(
 			context.Background(),
@@ -593,12 +593,12 @@ func TestValidationResult_Structure(t *testing.T) {
 		Valid: false,
 		Conflicts: []services.ValidationConflict{
 			{
-				Type:            "TEACHER_OVERLAP",
-				Message:         "老師在該時段已有課程安排",
-				CanOverride:     false,
-				ConflictSource:  "RULE",
+				Type:             "TEACHER_OVERLAP",
+				Message:          "老師在該時段已有課程安排",
+				CanOverride:      false,
+				ConflictSource:   "RULE",
 				ConflictSourceID: 1,
-				Details:         "rule_id:1, offering_id:1",
+				Details:          "rule_id:1, offering_id:1",
 			},
 			{
 				Type:            "TEACHER_BUFFER",
@@ -651,7 +651,7 @@ func TestScheduleValidationService_AdditionalCases(t *testing.T) {
 		return
 	}
 
-	var teacher models.User
+	var teacher models.Teacher
 	if err := db.Where("user_type = ?", "TEACHER").Order("id ASC").First(&teacher).Error; err != nil {
 		t.Skipf("跳過測試 - 無可用老師資料: %v", err)
 		return
@@ -672,8 +672,8 @@ func TestScheduleValidationService_AdditionalCases(t *testing.T) {
 
 	t.Run("CheckOverlap_BothTeacherAndRoomOverlap", func(t *testing.T) {
 		// 測試時段：老師和教室同時重疊
-		startTime := time.Date(2026, 1, 27, 8, 0, 0, 0, loc)  // Monday 08:00
-		endTime := time.Date(2026, 1, 27, 9, 0, 0, 0, loc)    // Monday 09:00
+		startTime := time.Date(2026, 1, 27, 8, 0, 0, 0, loc) // Monday 08:00
+		endTime := time.Date(2026, 1, 27, 9, 0, 0, 0, loc)   // Monday 09:00
 
 		result, err := validationService.CheckOverlap(
 			context.Background(),
@@ -884,8 +884,8 @@ func TestScheduleValidationService_AdditionalCases(t *testing.T) {
 	t.Run("Boundary_ExactOverlap", func(t *testing.T) {
 		// 邊界：完全重疊（同一時間區間）
 		// 假設 08:00-09:00 有課程
-		startTime := time.Date(2026, 1, 27, 8, 0, 0, 0, loc)  // Monday 08:00
-		endTime := time.Date(2026, 1, 27, 9, 0, 0, 0, loc)    // Monday 09:00
+		startTime := time.Date(2026, 1, 27, 8, 0, 0, 0, loc) // Monday 08:00
+		endTime := time.Date(2026, 1, 27, 9, 0, 0, 0, loc)   // Monday 09:00
 
 		result, err := validationService.CheckOverlap(
 			context.Background(),
@@ -906,8 +906,8 @@ func TestScheduleValidationService_AdditionalCases(t *testing.T) {
 
 	t.Run("Boundary_AdjacentButNotOverlapping", func(t *testing.T) {
 		// 邊界：相鄰但不重疊（09:00-10:00 與 08:00-09:00）
-		startTime := time.Date(2026, 1, 27, 9, 0, 0, 0, loc)  // Monday 09:00
-		endTime := time.Date(2026, 1, 27, 10, 0, 0, 0, loc)   // Monday 10:00
+		startTime := time.Date(2026, 1, 27, 9, 0, 0, 0, loc) // Monday 09:00
+		endTime := time.Date(2026, 1, 27, 10, 0, 0, 0, loc)  // Monday 10:00
 
 		result, err := validationService.CheckOverlap(
 			context.Background(),
@@ -927,8 +927,8 @@ func TestScheduleValidationService_AdditionalCases(t *testing.T) {
 
 	t.Run("Boundary_DifferentRooms", func(t *testing.T) {
 		// 邊界：不同教室不應該有 room overlap
-		startTime := time.Date(2026, 1, 27, 8, 0, 0, 0, loc)  // Monday 08:00
-		endTime := time.Date(2026, 1, 27, 9, 0, 0, 0, loc)    // Monday 09:00
+		startTime := time.Date(2026, 1, 27, 8, 0, 0, 0, loc) // Monday 08:00
+		endTime := time.Date(2026, 1, 27, 9, 0, 0, 0, loc)   // Monday 09:00
 
 		// 使用不同的教室 ID（假設 room_id=2）
 		result, err := validationService.CheckOverlap(
@@ -954,8 +954,8 @@ func TestScheduleValidationService_AdditionalCases(t *testing.T) {
 
 	t.Run("Boundary_DifferentTeachers", func(t *testing.T) {
 		// 邊界：不同老師不應該有 teacher overlap
-		startTime := time.Date(2026, 1, 27, 8, 0, 0, 0, loc)  // Monday 08:00
-		endTime := time.Date(2026, 1, 27, 9, 0, 0, 0, loc)    // Monday 09:00
+		startTime := time.Date(2026, 1, 27, 8, 0, 0, 0, loc) // Monday 08:00
+		endTime := time.Date(2026, 1, 27, 9, 0, 0, 0, loc)   // Monday 09:00
 
 		// 使用不同的老師 ID（假設 teacher_id=99999）
 		var differentTeacherID uint = 99999

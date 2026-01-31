@@ -9,7 +9,7 @@ const mockNotificationStore = {
   fetchNotifications: vi.fn().mockResolvedValue(undefined),
 }
 
-vi.mock('~/stores/notification', () => ({
+vi.mock('~/stores/useNotificationStore', () => ({
   useNotificationStore: () => mockNotificationStore,
 }))
 

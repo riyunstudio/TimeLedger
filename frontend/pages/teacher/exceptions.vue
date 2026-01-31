@@ -19,7 +19,7 @@
   <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
     <div class="glass-card p-4">
       <p class="text-sm text-slate-400">全部申請</p>
-      <p class="text-2xl font-bold text-white mt-1">{{ teacherStore.exceptions.length }}</p>
+      <p class="text-2xl font-bold text-white mt-1">{{ scheduleStore.exceptions.length }}</p>
     </div>
     <div class="glass-card p-4">
       <p class="text-sm text-slate-400">待審核</p>
@@ -141,7 +141,7 @@
       </div>
     </div>
 
-    <div v-if="teacherStore.loading" class="space-y-3">
+    <div v-if="scheduleStore.loading" class="space-y-3">
     <!-- 統計摘要骨架屏 -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
       <div v-for="i in 4" :key="i" class="glass-card p-4 animate-pulse">
@@ -210,7 +210,7 @@ import type { ScheduleException } from '~/types'
 
  const route = useRoute()
  const router = useRouter()
- const teacherStore = useTeacherStore()
+ const scheduleStore = useScheduleStore()
  const sidebarStore = useSidebar()
  const notificationUI = useNotification()
  const { confirm: alertConfirm } = useAlert()
@@ -229,11 +229,11 @@ import type { ScheduleException } from '~/types'
 
  const statusFilters = computed(() => {
    const counts = {
-     '': teacherStore.exceptions.length,
-     PENDING: teacherStore.exceptions.filter(e => e.status === 'PENDING').length,
-     APPROVED: teacherStore.exceptions.filter(e => e.status === 'APPROVED' || e.status === 'APPROVE').length,
-     REJECTED: teacherStore.exceptions.filter(e => e.status === 'REJECTED' || e.status === 'REJECT').length,
-     REVOKED: teacherStore.exceptions.filter(e => e.status === 'REVOKED').length,
+     '': scheduleStore.exceptions.length,
+     PENDING: scheduleStore.exceptions.filter(e => e.status === 'PENDING').length,
+     APPROVED: scheduleStore.exceptions.filter(e => e.status === 'APPROVED' || e.status === 'APPROVE').length,
+     REJECTED: scheduleStore.exceptions.filter(e => e.status === 'REJECTED' || e.status === 'REJECT').length,
+     REVOKED: scheduleStore.exceptions.filter(e => e.status === 'REVOKED').length,
    }
    return [
      { value: '', label: '全部', count: counts[''] },
@@ -245,19 +245,19 @@ import type { ScheduleException } from '~/types'
  })
 
  const statusCounts = computed(() => ({
-   PENDING: teacherStore.exceptions.filter(e => e.status === 'PENDING').length,
-   APPROVED: teacherStore.exceptions.filter(e => e.status === 'APPROVED' || e.status === 'APPROVE').length,
-   REJECTED: teacherStore.exceptions.filter(e => e.status === 'REJECTED' || e.status === 'REJECT').length,
-   REVOKED: teacherStore.exceptions.filter(e => e.status === 'REVOKED').length,
+   PENDING: scheduleStore.exceptions.filter(e => e.status === 'PENDING').length,
+   APPROVED: scheduleStore.exceptions.filter(e => e.status === 'APPROVED' || e.status === 'APPROVE').length,
+   REJECTED: scheduleStore.exceptions.filter(e => e.status === 'REJECTED' || e.status === 'REJECT').length,
+   REVOKED: scheduleStore.exceptions.filter(e => e.status === 'REVOKED').length,
  }))
 
  const filteredExceptions = computed(() => {
-  if (!currentFilter.value) return teacherStore.exceptions
-  return teacherStore.exceptions.filter(e => e.status === currentFilter.value || e.status === currentFilter.value + 'D')
+  if (!currentFilter.value) return scheduleStore.exceptions
+  return scheduleStore.exceptions.filter(e => e.status === currentFilter.value || e.status === currentFilter.value + 'D')
  })
 
  // 中心列表
- const centers = computed(() => teacherStore.centers.map(c => ({
+ const centers = computed(() => scheduleStore.centers.map(c => ({
    center_id: c.center_id,
    center_name: c.center_name
  })))
@@ -270,7 +270,7 @@ import type { ScheduleException } from '~/types'
  }
 
  const fetchExceptions = async () => {
-   await teacherStore.fetchExceptions(currentFilter.value || undefined)
+   await scheduleStore.fetchExceptions(currentFilter.value || undefined)
  }
 
 // 监听筛选器变化，重新获取数据
@@ -314,13 +314,13 @@ const getStatusText = (status: string) => {
 
 const handleRevoke = async (id: number) => {
   if (await alertConfirm('確定要撤回此申請嗎？')) {
-    await teacherStore.revokeException(id)
+    await scheduleStore.revokeException(id)
   }
 }
 
 onMounted(async () => {
   await Promise.all([
-    teacherStore.fetchCenters(),
+    scheduleStore.fetchCenters(),
     fetchExceptions(),
   ])
 

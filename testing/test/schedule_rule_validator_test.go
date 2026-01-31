@@ -172,8 +172,8 @@ func TestScheduleRuleValidator_ValidateForCreateRule_BufferConflict(t *testing.T
 	}
 
 	// Get a teacher who has existing schedule
-	var teacher models.User
-	if err := db.Where("user_type = ?", "TEACHER").Order("id ASC").First(&teacher).Error; err != nil {
+	var teacher models.Teacher
+	if err := db.Order("id ASC").First(&teacher).Error; err != nil {
 		t.Skipf("Skipping - no teacher data available: %v", err)
 		return
 	}
@@ -379,8 +379,8 @@ func TestScheduleRuleValidator_ValidateForCreateRule_WithOverride(t *testing.T) 
 	}
 
 	// Get a teacher who has existing schedule
-	var teacher models.User
-	if err := db.Where("user_type = ?", "TEACHER").Order("id ASC").First(&teacher).Error; err != nil {
+	var teacher models.Teacher
+	if err := db.Order("id ASC").First(&teacher).Error; err != nil {
 		t.Skipf("Skipping - no teacher data available: %v", err)
 		return
 	}

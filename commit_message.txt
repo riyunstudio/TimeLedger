@@ -1,0 +1,6 @@
+fix(dashboard): add missing IDs to today-summary API and fix ScheduleGrid
+
+- Add ID fields to TodayOffering, TodayTeacher, TodayRoom structs
+- Add Preload to ListByCenterID for related data (Offering, Teacher, Room)
+- Add missing functions in ScheduleGrid: getDayDate, getDaySchedules, getDayScheduleCount
+- Update frontend to correctly map course/teacher/room IDs from API

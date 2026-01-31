@@ -20,7 +20,6 @@ type route struct {
 }
 
 type actions struct {
-	user              *controllers.UserController
 	auth              *controllers.AuthController
 	teacher           *controllers.TeacherController
 	adminTeacher      *controllers.AdminTeacherController
@@ -60,11 +59,6 @@ func (s *Server) LoadRoutes() {
 
 		// Geo - Cities & Districts
 		{http.MethodGet, "/api/v1/geo/cities", s.action.geo.ListCities, []gin.HandlerFunc{authMiddleware.Authenticate()}},
-
-		// User
-		{http.MethodGet, "/api/v1/user", s.action.user.Get, []gin.HandlerFunc{authMiddleware.Authenticate()}},
-		{http.MethodPost, "/api/v1/user", s.action.user.Create, []gin.HandlerFunc{}},
-		{http.MethodPut, "/api/v1/user", s.action.user.Update, []gin.HandlerFunc{authMiddleware.Authenticate()}},
 
 		// Teacher - Profile
 		{http.MethodGet, "/api/v1/teacher/me/profile", s.action.teacherProfile.GetProfile, []gin.HandlerFunc{authMiddleware.Authenticate()}},
@@ -139,6 +133,7 @@ func (s *Server) LoadRoutes() {
 		{http.MethodDelete, "/api/v1/admin/templates/:templateId", s.action.timetableTemplate.DeleteTemplate, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodGet, "/api/v1/admin/templates/:templateId/cells", s.action.timetableTemplate.GetCells, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodPost, "/api/v1/admin/templates/:templateId/cells", s.action.timetableTemplate.CreateCells, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodPut, "/api/v1/admin/templates/:templateId/cells/reorder", s.action.timetableTemplate.ReorderCells, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodDelete, "/api/v1/admin/templates/cells/:cellId", s.action.timetableTemplate.DeleteCell, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodPost, "/api/v1/admin/templates/:templateId/apply", s.action.timetableTemplate.ApplyTemplate, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 
@@ -311,7 +306,6 @@ func (s *Server) registerRoutes(r *gin.Engine) {
 // 建構控制器
 func (s *Server) NewControllers() {
 	controllers.NewBaseController(s.app)
-	s.action.user = controllers.NewUserController(s.app)
 
 	authService := services.NewAuthService(s.app)
 	s.action.auth = controllers.NewAuthController(s.app, authService)

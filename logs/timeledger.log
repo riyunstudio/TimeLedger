@@ -2,3 +2,62 @@
 {"level":"info","time":"2026-01-30T00:41:27.249+0800","message":"Notification worker disabled (set NOTIFICATION_WORKER_ENABLED=true to enable)"}
 {"level":"info","time":"2026-01-31T01:14:58.090+0800","message":"Application shutting down gracefully"}
 {"level":"info","time":"2026-01-31T01:14:58.090+0800","message":"Application exited"}
+{"level":"info","time":"2026-01-31T01:32:43.798+0800","message":"Starting TimeLedger application..."}
+{"level":"info","time":"2026-01-31T01:32:51.322+0800","message":"Notification worker disabled (set NOTIFICATION_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-01-31T01:32:51.322+0800","message":"Asynq worker disabled (set ASYNQ_WORKER_ENABLED=true to enable)"}
+{"level":"error","time":"2026-01-31T01:34:43.739+0800","message":"Failed to enqueue notification","type":"welcome_teacher","recipient_id":2,"error":"UNKNOWN: redis command error: SADD failed: NOAUTH Authentication required.","stacktrace":"timeLedger/global/logger.(*Logger).Errorw\n\tD:/project/TimeLedger/global/logger/logger.go:232\ntimeLedger/app/services.(*AsynqNotificationService).EnqueueNotification\n\tD:/project/TimeLedger/app/services/asynq_notification.go:109\ntimeLedger/app/services.(*NotificationQueueServiceImpl).PushToAsynq\n\tD:/project/TimeLedger/app/services/notification_queue.go:96\ntimeLedger/app/services.(*NotificationQueueServiceImpl).NotifyWelcomeTeacher\n\tD:/project/TimeLedger/app/services/notification_queue.go:349\ntimeLedger/app/services.(*authService).triggerWelcomeTeacherMessage\n\tD:/project/TimeLedger/app/services/auth.go:209"}
+{"level":"info","time":"2026-01-31T01:39:50.278+0800","message":"Starting TimeLedger application..."}
+{"level":"info","time":"2026-01-31T01:39:50.848+0800","message":"Notification worker disabled (set NOTIFICATION_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-01-31T01:39:50.848+0800","message":"Asynq worker disabled (set ASYNQ_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-01-31T01:40:03.893+0800","message":"Application shutting down gracefully"}
+{"level":"info","time":"2026-01-31T01:40:03.893+0800","message":"Application exited"}
+{"level":"info","time":"2026-01-31T01:40:13.792+0800","message":"Starting TimeLedger application..."}
+{"level":"info","time":"2026-01-31T01:40:14.335+0800","message":"Notification worker disabled (set NOTIFICATION_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-01-31T01:40:14.335+0800","message":"Asynq worker disabled (set ASYNQ_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-01-31T01:42:42.821+0800","message":"Application shutting down gracefully"}
+{"level":"info","time":"2026-01-31T01:42:42.821+0800","message":"Application exited"}
+{"level":"info","time":"2026-01-31T01:43:04.781+0800","message":"Starting TimeLedger application..."}
+{"level":"info","time":"2026-01-31T01:43:05.306+0800","message":"Notification worker disabled (set NOTIFICATION_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-01-31T01:43:05.306+0800","message":"Asynq worker disabled (set ASYNQ_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-01-31T01:49:10.190+0800","message":"Application shutting down gracefully"}
+{"level":"info","time":"2026-01-31T01:49:10.190+0800","message":"Application exited"}
+{"level":"info","time":"2026-01-31T01:57:32.699+0800","message":"Starting TimeLedger application..."}
+{"level":"info","time":"2026-01-31T01:57:33.213+0800","message":"Notification worker disabled (set NOTIFICATION_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-01-31T01:57:33.213+0800","message":"Asynq worker disabled (set ASYNQ_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-01-31T02:02:26.502+0800","message":"Application shutting down gracefully"}
+{"level":"info","time":"2026-01-31T02:02:26.502+0800","message":"Application exited"}
+{"level":"info","time":"2026-01-31T02:02:28.489+0800","message":"Starting TimeLedger application..."}
+{"level":"info","time":"2026-01-31T02:02:29.120+0800","message":"Notification worker disabled (set NOTIFICATION_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-01-31T02:02:29.120+0800","message":"Asynq worker disabled (set ASYNQ_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-01-31T02:07:26.314+0800","message":"exception-related cache invalidated","component":"ScheduleExceptionService","center_id":1,"exception_id":1,"rule_id":1,"teacher_id":1}
+{"level":"info","time":"2026-01-31T02:07:33.661+0800","message":"exception-related cache invalidated","component":"ScheduleExceptionService","center_id":1,"exception_id":2,"rule_id":3,"teacher_id":1}
+{"level":"info","time":"2026-01-31T02:12:22.948+0800","message":"exception-related cache invalidated","component":"ScheduleExceptionService","center_id":1,"exception_id":6,"rule_id":8,"teacher_id":2}
+{"level":"error","time":"2026-01-31T02:43:43.012+0800","message":"Failed to enqueue notification","type":"welcome_teacher","recipient_id":1,"error":"UNKNOWN: redis command error: SADD failed: NOAUTH Authentication required.","stacktrace":"timeLedger/global/logger.(*Logger).Errorw\n\tD:/project/TimeLedger/global/logger/logger.go:232\ntimeLedger/app/services.(*AsynqNotificationService).EnqueueNotification\n\tD:/project/TimeLedger/app/services/asynq_notification.go:109\ntimeLedger/app/services.(*NotificationQueueServiceImpl).PushToAsynq\n\tD:/project/TimeLedger/app/services/notification_queue.go:96\ntimeLedger/app/services.(*NotificationQueueServiceImpl).NotifyWelcomeTeacher\n\tD:/project/TimeLedger/app/services/notification_queue.go:349\ntimeLedger/app/services.(*authService).triggerWelcomeTeacherMessage\n\tD:/project/TimeLedger/app/services/auth.go:209"}
+{"level":"info","time":"2026-01-31T02:54:02.237+0800","message":"Application shutting down gracefully"}
+{"level":"info","time":"2026-01-31T02:54:02.237+0800","message":"Application exited"}
+{"level":"info","time":"2026-01-31T02:54:04.416+0800","message":"Starting TimeLedger application..."}
+{"level":"info","time":"2026-01-31T02:54:04.925+0800","message":"Notification worker disabled (set NOTIFICATION_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-01-31T02:54:04.925+0800","message":"Asynq worker disabled (set ASYNQ_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-01-31T03:22:08.242+0800","message":"Application shutting down gracefully"}
+{"level":"info","time":"2026-01-31T03:22:08.242+0800","message":"Application exited"}
+{"level":"info","time":"2026-01-31T03:23:05.856+0800","message":"Starting TimeLedger application..."}
+{"level":"info","time":"2026-01-31T03:23:06.472+0800","message":"Notification worker disabled (set NOTIFICATION_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-01-31T03:23:06.472+0800","message":"Asynq worker disabled (set ASYNQ_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-01-31T03:35:24.722+0800","message":"Application shutting down gracefully"}
+{"level":"info","time":"2026-01-31T03:35:24.722+0800","message":"Application exited"}
+{"level":"info","time":"2026-01-31T03:35:29.606+0800","message":"Starting TimeLedger application..."}
+{"level":"info","time":"2026-01-31T03:35:30.163+0800","message":"Notification worker disabled (set NOTIFICATION_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-01-31T03:35:30.163+0800","message":"Asynq worker disabled (set ASYNQ_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-01-31T03:40:48.906+0800","message":"Application shutting down gracefully"}
+{"level":"info","time":"2026-01-31T03:40:48.906+0800","message":"Application exited"}
+{"level":"info","time":"2026-01-31T03:40:54.412+0800","message":"Starting TimeLedger application..."}
+{"level":"info","time":"2026-01-31T03:40:54.910+0800","message":"Notification worker disabled (set NOTIFICATION_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-01-31T03:40:54.910+0800","message":"Asynq worker disabled (set ASYNQ_WORKER_ENABLED=true to enable)"}
+{"level":"error","time":"2026-01-31T03:49:12.089+0800","message":"Failed to enqueue notification","type":"welcome_teacher","recipient_id":2,"error":"UNKNOWN: redis command error: SADD failed: NOAUTH Authentication required.","stacktrace":"timeLedger/global/logger.(*Logger).Errorw\n\tD:/project/TimeLedger/global/logger/logger.go:232\ntimeLedger/app/services.(*AsynqNotificationService).EnqueueNotification\n\tD:/project/TimeLedger/app/services/asynq_notification.go:109\ntimeLedger/app/services.(*NotificationQueueServiceImpl).PushToAsynq\n\tD:/project/TimeLedger/app/services/notification_queue.go:96\ntimeLedger/app/services.(*NotificationQueueServiceImpl).NotifyWelcomeTeacher\n\tD:/project/TimeLedger/app/services/notification_queue.go:349\ntimeLedger/app/services.(*authService).triggerWelcomeTeacherMessage\n\tD:/project/TimeLedger/app/services/auth.go:209"}
+{"level":"info","time":"2026-01-31T12:31:59.733+0800","message":"Application shutting down gracefully"}
+{"level":"info","time":"2026-01-31T12:31:59.733+0800","message":"Application exited"}
+{"level":"info","time":"2026-01-31T12:32:03.365+0800","message":"Starting TimeLedger application..."}
+{"level":"info","time":"2026-01-31T12:32:04.225+0800","message":"Notification worker disabled (set NOTIFICATION_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-01-31T12:32:04.225+0800","message":"Asynq worker disabled (set ASYNQ_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-01-31T12:32:10.354+0800","message":"Application shutting down gracefully"}
+{"level":"info","time":"2026-01-31T12:32:10.354+0800","message":"Application exited"}

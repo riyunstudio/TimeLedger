@@ -164,26 +164,26 @@
 </template>
 
 <script setup lang="ts">
-import BaseGlassCard from '~/components/base/BaseGlassCard.vue'
-import GlobalAlert from '~/components/GlobalAlert.vue'
 import { alertError, alertSuccess } from '~/composables/useAlert'
+import type { Invitation } from '~/types'
 
 definePageMeta({
   middleware: 'auth-teacher',
   layout: 'default',
 })
 
-const config = useRuntimeConfig()
-const { success, error } = useToast()
+const { success, error: toastError } = useToast()
 const sidebarStore = useSidebar()
+const scheduleStore = useScheduleStore()
 
-const API_BASE = config.public.apiBase
+// 從 store 取得狀態和方法
+const loading = computed(() => scheduleStore.isFetching)
+const invitations = computed(() => scheduleStore.invitations)
+const respondingId = computed(() => scheduleStore.isRespondingInvitation ? scheduleStore.invitations.find(i => i.status === 'PENDING')?.id ?? null : null)
+const pendingInvitationsCount = computed(() => scheduleStore.pendingInvitationsCount)
 
 // 狀態
-const loading = ref(true)
-const invitations = ref<any[]>([])
 const activeTab = ref('PENDING')
-const respondingId = ref<number | null>(null)
 
 // 確認對話框
 const showConfirmDialog = ref(false)
@@ -191,7 +191,7 @@ const confirmType = ref<'warning' | 'info'>('warning')
 const confirmTitle = ref('')
 const confirmMessage = ref('')
 const confirmButtonText = ref('')
-const pendingResponse = ref<{id: number, response: string} | null>(null)
+const pendingResponse = ref<{id: number, response: 'ACCEPT' | 'REJECT'} | null>(null)
 
 // 標籤
 const tabs = computed(() => [
@@ -211,29 +211,25 @@ const filteredInvitations = computed(() => {
 
 // 取得邀請列表
 const fetchInvitations = async () => {
-  loading.value = true
   try {
-    const token = localStorage.getItem('teacher_token')
-    const response = await fetch(`${API_BASE}/teacher/me/invitations`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-    })
-
-    if (response.ok) {
-      const data = await response.json()
-      invitations.value = data.datas || []
-    }
+    await scheduleStore.fetchInvitations()
   } catch (err) {
     console.error('取得邀請列表失敗:', err)
     alertError('載入邀請失敗，請稍後再試')
-  } finally {
-    loading.value = false
+  }
+}
+
+// 取得待處理邀請數量
+const fetchPendingCount = async () => {
+  try {
+    await scheduleStore.fetchPendingCount()
+  } catch (err) {
+    console.error('取得待處理邀請數量失敗:', err)
   }
 }
 
 // 回應邀請
-const respondToInvitation = (id: number, response: 'ACCEPT' | 'DECLINE') => {
+const respondToInvitation = (id: number, response: 'ACCEPT' | 'REJECT') => {
   pendingResponse.value = { id, response }
   
   if (response === 'ACCEPT') {
@@ -257,34 +253,15 @@ const handleConfirm = async () => {
   const { id, response } = pendingResponse.value
   showConfirmDialog.value = false
   
-  respondingId.value = id
   try {
-    const token = localStorage.getItem('teacher_token')
-    const res = await fetch(`${API_BASE}/teacher/me/invitations/respond`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        invitation_id: id,
-        response: response,
-      }),
-    })
-
-    if (res.ok) {
-      const data = await res.json()
-      success(data.message || '操作成功')
-      await fetchInvitations()
-    } else {
-      const data = await res.json()
-      alertError(data.message || '操作失敗')
-    }
+    await scheduleStore.respondToInvitation(id, response)
+    await fetchPendingCount()
+    await scheduleStore.fetchCenters() // 重新整理中心列表
+    success(response === 'ACCEPT' ? '已接受邀請' : '已婉拒邀請')
   } catch (err) {
     console.error('回應邀請失敗:', err)
     alertError('操作失敗，請稍後再試')
   } finally {
-    respondingId.value = null
     pendingResponse.value = null
   }
 }
@@ -369,7 +346,10 @@ const formatDate = (dateStr: string) => {
 }
 
 // 頁面載入時取得邀請列表
-onMounted(() => {
-  fetchInvitations()
+onMounted(async () => {
+  await Promise.all([
+    fetchInvitations(),
+    fetchPendingCount(),
+  ])
 })
 </script>

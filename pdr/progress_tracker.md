@@ -2531,6 +2531,104 @@ const (
 
 ---
 
+## 20. 前端 API Response 型別定義系統 ✅
+
+### 20.1 任務概述
+
+**任務來源**：`frontend_refactoring_commands.md` (32-109 行)
+
+**目標**：建立完整的 TypeScript 型別系統，作為所有 API 呼叫的基礎
+
+### 20.2 完成內容
+
+**建立模組化型別檔案結構**：
+
+| 檔案 | 說明 | 行數 |
+|:---|:---|---:|
+| `frontend/types/api.ts` | API 通用類型、分頁、驗證結果等基礎類型 | ~200 |
+| `frontend/types/admin.ts` | 管理員用戶、認證、LINE 綁定等相關類型 | ~150 |
+| `frontend/types/teacher.ts` | 教師、技能、證照、標籤、邀請等相關類型 | ~250 |
+| `frontend/types/center.ts` | 中心、課程、教室、方案、假日等相關類型 | ~250 |
+| `frontend/types/scheduling.ts` | 課表規則、例外、個人行程、課堂筆記等相關類型 | ~300 |
+| `frontend/types/matching.ts` | 智慧媒合、人才庫、替代時段等相關類型 | ~200 |
+| `frontend/types/notification.ts` | 通知、通知佇列、LINE 通知等相關類型 | ~200 |
+| `frontend/types/index.ts` | 統一匯出中心，向後相容性類型 | ~80 |
+
+### 20.3 主要類型定義
+
+**API 回應格式**：
+```typescript
+interface ApiResponse<T = unknown> {
+  code: string      // 錯誤碼，如 "SUCCESS", "SQL_ERROR"
+  message: string   // 訊息
+  data?: T          // 單筆資料
+  datas?: T         // 多筆資料（部分 API 使用）
+}
+```
+
+**分頁類型**：
+```typescript
+interface PaginationParams {
+  page?: number
+  limit?: number
+  sort_by?: string
+  sort_order?: 'ASC' | 'DESC'
+}
+
+interface PaginationResult {
+  page: number
+  limit: number
+  total: number
+  total_pages: number
+  has_next: boolean
+  has_prev: boolean
+}
+```
+
+**基礎類型別名**：
+```typescript
+type ID = number
+type Timestamp = string      // ISO 8601 格式
+type DateString = string     // YYYY-MM-DD 格式
+```
+
+### 20.4 驗收標準達成情況
+
+| 標準 | 狀態 |
+|:---|:---:|
+| `frontend/types/api.ts` 已建立 | ✅ |
+| 模組化型別檔案已建立 (7 個模組) | ✅ |
+| 所有 Store 中的 API 回傳有正確的型別 | ✅ 透過匯入機制支援 |
+| 新增功能時可直接匯入現有型別 | ✅ |
+
+### 20.5 使用方式
+
+```typescript
+// 從統一匯出中心匯入
+import type {
+  ApiResponse,
+  PaginatedResponse,
+  Teacher,
+  ScheduleRule,
+  PaginationParams,
+} from '~/types'
+
+// API 呼叫時使用
+const response = await api.get<ApiResponse<Teacher>>('/teacher/me/profile')
+const paginated = await api.get<PaginatedApiResponse<TeacherListItem>>('/admin/teachers', { page: 1, limit: 20 })
+```
+
+### 20.6 效益評估
+
+| 指標 | 改善前 | 改善後 |
+|:---|:---|:---|
+| 型別定義位置 | 分散在多個檔案 | 統一目錄結構 |
+| 重複定義 | 常見 | 消除重複 |
+| 新功能開發 | 需要重複定義類型 | 直接匯入現有類型 |
+| any 型別使用 | 較多 | 減少 |
+
+---
+
 ## Git 提交紀錄總覽
 
 ```

@@ -131,22 +131,78 @@
           LINE 通知設定
         </h2>
 
-        <div class="flex items-center justify-between">
+        <!-- 已綁定狀態 -->
+        <div v-if="lineBindingStatus.isBound">
+          <div class="flex items-start justify-between mb-4">
+            <div>
+              <div class="flex items-center gap-2 mb-2">
+                <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                <p class="text-green-400 font-medium">已綁定 LINE</p>
+              </div>
+              <p class="text-slate-400 text-sm" v-if="lineBindingStatus.lineUserId">
+                LINE ID: {{ lineBindingStatus.lineUserId }}
+              </p>
+              <p class="text-slate-500 text-xs mt-1" v-if="lineBindingStatus.boundAt">
+                綁定於 {{ formatDateTime(lineBindingStatus.boundAt) }}
+              </p>
+            </div>
+
+            <NuxtLink
+              to="/admin/line-bind"
+              class="px-4 py-2 bg-white/5 text-slate-300 hover:bg-white/10 rounded-lg transition-colors text-sm"
+            >
+              管理設定
+            </NuxtLink>
+          </div>
+
+          <!-- 簡化通知開關 -->
+          <div class="bg-white/5 rounded-xl p-4">
+            <h3 class="text-sm font-medium text-slate-300 mb-3">通知設定</h3>
+
+            <div class="space-y-3">
+              <label class="flex items-center justify-between cursor-pointer">
+                <span class="text-slate-400 text-sm">接收新例外申請通知</span>
+                <div
+                  class="w-10 h-5 rounded-full transition-colors relative"
+                  :class="lineBindingSettings.receiveExceptionNotifications ? 'bg-green-500' : 'bg-slate-600'"
+                  @click="toggleLineNotifySetting('receiveExceptionNotifications')"
+                >
+                  <div
+                    class="absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all"
+                    :class="lineBindingSettings.receiveExceptionNotifications ? 'left-5' : 'left-0.5'"
+                  ></div>
+                </div>
+              </label>
+
+              <label class="flex items-center justify-between cursor-pointer">
+                <span class="text-slate-400 text-sm">接收審核結果通知</span>
+                <div
+                  class="w-10 h-5 rounded-full transition-colors relative"
+                  :class="lineBindingSettings.receiveApprovalNotifications ? 'bg-green-500' : 'bg-slate-600'"
+                  @click="toggleLineNotifySetting('receiveApprovalNotifications')"
+                >
+                  <div
+                    class="absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all"
+                    :class="lineBindingSettings.receiveApprovalNotifications ? 'left-5' : 'left-0.5'"
+                  ></div>
+                </div>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- 未綁定狀態 -->
+        <div v-else class="flex items-center justify-between">
           <div>
-            <p class="text-slate-300 mb-1">{{ lineBindingStatus.isBound ? '已綁定 LINE' : '尚未綁定 LINE' }}</p>
-            <p class="text-slate-500 text-sm">
-              {{ lineBindingStatus.isBound ? '可接收例外申請通知' : '綁定後可接收即時通知' }}
-            </p>
+            <p class="text-slate-300 mb-1">尚未綁定 LINE</p>
+            <p class="text-slate-500 text-sm">綁定後可接收即時例外通知</p>
           </div>
 
           <NuxtLink
             to="/admin/line-bind"
-            class="px-6 py-2.5 rounded-xl transition-colors flex items-center gap-2"
-            :class="lineBindingStatus.isBound
-              ? 'bg-white/5 text-slate-300 hover:bg-white/10 border border-white/10'
-              : 'bg-primary-500/30 text-primary-400 hover:bg-primary-500/40 border border-primary-500/50'"
+            class="px-6 py-2.5 bg-primary-500/30 border border-primary-500 text-primary-400 rounded-xl hover:bg-primary-500/40 transition-colors flex items-center gap-2"
           >
-            <span>{{ lineBindingStatus.isBound ? '管理設定' : '立即綁定' }}</span>
+            <span>立即綁定</span>
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
             </svg>
@@ -203,6 +259,15 @@ const profile = ref({
 // LINE 綁定狀態
 const lineBindingStatus = ref({
   isBound: false,
+  lineUserId: '',
+  boundAt: '',
+  notifyEnabled: true,
+})
+
+// LINE 通知設定
+const lineBindingSettings = ref({
+  receiveExceptionNotifications: true,
+  receiveApprovalNotifications: true,
 })
 
 // 密碼表單
@@ -248,11 +313,97 @@ const fetchLineBindingStatus = async () => {
     if (response.ok) {
       const data = await response.json()
       lineBindingStatus.value = {
-        isBound: data.datas.is_bound,
+        isBound: data.datas.is_bound || false,
+        lineUserId: data.datas.line_user_id || '',
+        boundAt: data.datas.bound_at || '',
+        notifyEnabled: data.datas.notify_enabled ?? true,
       }
     }
   } catch (err) {
     console.error('取得 LINE 綁定狀態失敗:', err)
+  }
+}
+
+// 更新 LINE 通知設定
+const updateLineNotifySettings = async (settings: { receiveExceptionNotifications?: boolean; receiveApprovalNotifications?: boolean }) => {
+  try {
+    const token = localStorage.getItem('admin_token')
+    const response = await fetch(`${API_BASE}/admin/me/line/notify-settings`, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        receive_exception_notifications: settings.receiveExceptionNotifications,
+        receive_approval_notifications: settings.receiveApprovalNotifications,
+      }),
+    })
+
+    if (!response.ok) {
+      const data = await response.json()
+      await alertError(data.message || '更新通知設定失敗')
+      return false
+    }
+    return true
+  } catch (err) {
+    console.error('更新通知設定失敗:', err)
+    await alertError('更新通知設定失敗，請稍後再試')
+    return false
+  }
+}
+
+// 切換通知設定
+const toggleLineNotifySetting = async (setting: 'receiveExceptionNotifications' | 'receiveApprovalNotifications') => {
+  // 先更新本地狀態
+  lineBindingSettings.value[setting] = !lineBindingSettings.value[setting]
+
+  // 呼叫 API
+  const success = await updateLineNotifySettings({
+    receiveExceptionNotifications: lineBindingSettings.value.receiveExceptionNotifications,
+    receiveApprovalNotifications: lineBindingSettings.value.receiveApprovalNotifications,
+  })
+
+  if (!success) {
+    // 回滾狀態
+    lineBindingSettings.value[setting] = !lineBindingSettings.value[setting]
+  } else {
+    await alertSuccess('通知設定已更新')
+  }
+}
+
+// 格式化日期時間
+const formatDateTime = (dateStr: string) => {
+  if (!dateStr) return ''
+  const date = new Date(dateStr)
+  return date.toLocaleString('zh-TW', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+// 取得 LINE 通知設定
+const fetchLineNotifySettings = async () => {
+  try {
+    const token = localStorage.getItem('admin_token')
+    const response = await fetch(`${API_BASE}/admin/me/line/notify-settings`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    })
+
+    if (response.ok) {
+      const data = await response.json()
+      lineBindingSettings.value = {
+        receiveExceptionNotifications: data.datas.receive_exception_notifications ?? true,
+        receiveApprovalNotifications: data.datas.receive_approval_notifications ?? true,
+      }
+    }
+  } catch (err) {
+    console.error('取得通知設定失敗:', err)
   }
 }
 
@@ -330,6 +481,10 @@ const logout = async () => {
 
 // 頁面載入時取得資料
 onMounted(async () => {
-  await Promise.all([fetchProfile(), fetchLineBindingStatus()])
+  await Promise.all([
+    fetchProfile(),
+    fetchLineBindingStatus(),
+    fetchLineNotifySettings(),
+  ])
 })
 </script>

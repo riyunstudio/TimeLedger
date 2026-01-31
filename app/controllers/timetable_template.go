@@ -580,3 +580,75 @@ func (c *TimetableTemplateController) ValidateApplyTemplate(ctx *gin.Context) {
 		"conflicts": result.Conflicts,
 	})
 }
+
+// ReorderCells 重新排序模板中的格子
+// @Summary 重新排序模板中的格子
+// @Tags Admin
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param template_id path int true "Template ID"
+// @Param request body object{cells=[]repositories.ReorderCellRequest} true "格子排序資訊"
+// @Success 200 {object} global.ApiResponse
+// @Router /api/v1/admin/templates/{template_id}/cells/reorder [put]
+func (c *TimetableTemplateController) ReorderCells(ctx *gin.Context) {
+	helper := NewContextHelper(ctx)
+
+	centerID := helper.MustCenterID()
+	if centerID == 0 {
+		return
+	}
+
+	adminID := helper.MustUserID()
+	if adminID == 0 {
+		return
+	}
+
+	templateID := helper.MustParamUint("templateId")
+	if templateID == 0 {
+		return
+	}
+
+	// 解析請求體為帶 cells 鍵的物件
+	var reqBody struct {
+		Cells []repositories.ReorderCellRequest `json:"cells" binding:"required,dive"`
+	}
+	if !helper.MustBindJSON(&reqBody) {
+		return
+	}
+
+	// 驗證模板是否存在且屬於該中心
+	template, err := c.templateRepo.GetByID(ctx.Request.Context(), templateID)
+	if err != nil {
+		helper.NotFound("Template not found")
+		return
+	}
+
+	if template.CenterID != centerID {
+		helper.Forbidden("Template does not belong to this center")
+		return
+	}
+
+	// 批次更新所有 cells 的 sort_order
+	if err := c.cellRepo.BatchUpdateSortOrder(ctx.Request.Context(), reqBody.Cells); err != nil {
+		helper.InternalError("Failed to reorder cells: " + err.Error())
+		return
+	}
+
+	c.auditLogRepo.Create(ctx, models.AuditLog{
+		CenterID:   centerID,
+		ActorType:  "ADMIN",
+		ActorID:    adminID,
+		Action:     "TIMETABLE_CELLS_REORDER",
+		TargetType: "TimetableCell",
+		TargetID:   templateID,
+		Payload: models.AuditPayload{
+			After: map[string]interface{}{
+				"template_id": templateID,
+				"cells_count": len(reqBody.Cells),
+			},
+		},
+	})
+
+	helper.Success(nil)
+}

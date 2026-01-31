@@ -1,211 +1,219 @@
 <template>
-  <!-- 今日課表摘要區塊 -->
-  <div class="mb-6" role="region" aria-label="今日課表摘要">
-    <h2 class="text-lg font-semibold text-white mb-4">今日課表摘要</h2>
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4" role="list">
-      <!-- 今日課程數 -->
-      <div class="glass-card p-4">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-sm text-slate-400">今日課程</p>
-            <p class="text-2xl font-bold text-white mt-1">{{ todayStats.totalSessions }}</p>
+  <!-- Loading 遮罩（初始載入時顯示） -->
+  <BaseLoading
+    v-if="isInitialLoading"
+    :loading="true"
+    size="lg"
+    text="載入課表中..."
+    full-screen
+  />
+
+  <template v-else>
+    <!-- 今日課表摘要區塊 -->
+    <div class="mb-6" role="region" aria-label="今日課表摘要">
+      <h2 class="text-lg font-semibold text-white mb-4">今日課表摘要</h2>
+
+      <!-- 載入中的摘要骨架屏 -->
+      <div v-if="scheduleStore.isLoading" class="grid grid-cols-2 md:grid-cols-4 gap-4" role="list">
+        <div v-for="i in 4" :key="i" class="glass-card p-4 animate-pulse">
+          <div class="flex items-center justify-between">
+            <div class="flex-1">
+              <div class="h-3 w-16 bg-white/10 rounded mb-2"></div>
+              <div class="h-6 w-12 bg-white/10 rounded"></div>
+            </div>
+            <div class="w-10 h-10 bg-white/10 rounded-lg"></div>
           </div>
-          <div class="w-10 h-10 rounded-lg bg-primary-500/20 flex items-center justify-center">
-            <svg class="w-5 h-5 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-          </div>
-        </div>
-        <div class="mt-2 flex items-center gap-2 text-xs">
-          <span class="text-success-500">{{ todayStats.completedSessions }} 已完成</span>
-          <span class="text-slate-600">|</span>
-          <span class="text-primary-500">{{ todayStats.upcomingSessions }} 待上課</span>
         </div>
       </div>
 
-      <!-- 進行中課程 -->
-      <div class="glass-card p-4">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-sm text-slate-400">進行中</p>
-            <p class="text-2xl font-bold text-white mt-1">{{ todayStats.inProgressSessions }}</p>
-          </div>
-          <div class="w-10 h-10 rounded-lg bg-yellow-500/20 flex items-center justify-center">
-            <svg class="w-5 h-5 text-yellow-500 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-        </div>
-        <div class="mt-2 text-xs text-slate-400 truncate">
-          {{ todayStats.inProgressTeacherNames.length > 0 ? todayStats.inProgressTeacherNames.join('、') : '無進行中課程' }}
-        </div>
-      </div>
-
-      <!-- 即將開始 -->
-      <div class="glass-card p-4">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-sm text-slate-400">即將開始</p>
-            <p class="text-2xl font-bold text-white mt-1">{{ upcomingSessions.length }}</p>
-          </div>
-          <div class="w-10 h-10 rounded-lg bg-secondary-500/20 flex items-center justify-center">
-            <svg class="w-5 h-5 text-secondary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-        </div>
-        <div class="mt-2 text-xs text-slate-400">
-          <span v-if="upcomingSessions.length > 0">下一堂 {{ upcomingSessions[0]?.minutesUntil }} 分鐘後</span>
-          <span v-else>今日無課程</span>
-        </div>
-      </div>
-
-      <!-- 待審核申請 -->
-      <div class="glass-card p-4">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-sm text-slate-400">待審核</p>
-            <p class="text-2xl font-bold text-white mt-1">{{ pendingExceptions }}</p>
-          </div>
-          <div class="w-10 h-10 rounded-lg bg-warning-500/20 flex items-center justify-center">
-            <svg class="w-5 h-5 text-warning-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-            </svg>
-          </div>
-        </div>
-        <div class="mt-2 text-xs text-slate-400">
-          <NuxtLink to="/teacher/exceptions" class="text-primary-500 hover:text-primary-400">
-            查看詳情 →
-          </NuxtLink>
-        </div>
-      </div>
-    </div>
-
-    <!-- 即將開始的課程列表 -->
-    <div v-if="upcomingSessions.length > 0" class="mt-4 glass-card p-4" role="region" aria-label="即將開始的課程">
-      <h3 class="text-sm font-medium text-white mb-3">即將開始</h3>
-      <div class="space-y-2" role="list">
-        <div
-          v-for="session in upcomingSessions.slice(0, 3)"
-          :key="session.id"
-          role="listitem"
-          class="flex items-center justify-between p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors cursor-pointer"
-          @click="openItemDetail(session)"
-        >
-          <div class="flex items-center gap-3">
-            <span class="text-primary-500 font-mono text-sm">{{ session.time }}</span>
+      <!-- 正常顯示摘要 -->
+      <div v-else class="grid grid-cols-2 md:grid-cols-4 gap-4" role="list">
+        <!-- 今日課程數 -->
+        <div class="glass-card p-4">
+          <div class="flex items-center justify-between">
             <div>
-              <p class="text-white text-sm">{{ session.title }}</p>
-              <p class="text-slate-500 text-xs">{{ session.centerName }}</p>
+              <p class="text-sm text-slate-400">今日課程</p>
+              <p class="text-2xl font-bold text-white mt-1">{{ todayStats.totalSessions }}</p>
+            </div>
+            <div class="w-10 h-10 rounded-lg bg-primary-500/20 flex items-center justify-center">
+              <svg class="w-5 h-5 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
             </div>
           </div>
-          <span class="text-xs text-slate-400">{{ session.minutesUntil }} 分鐘後</span>
-        </div>
-      </div>
-      <button
-        v-if="upcomingSessions.length > 3"
-        class="mt-3 text-sm text-primary-500 hover:text-primary-400 flex items-center gap-1"
-      >
-        查看全部 {{ upcomingSessions.length }} 堂課
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-        </svg>
-      </button>
-    </div>
-  </div>
-
-  <!-- 教師課表週曆組件（使用內建導航列） -->
-  <div class="mb-4">
-    <TeacherScheduleGrid
-      v-if="teacherStore.schedule"
-      :schedules="transformedSchedules"
-      :week-start="teacherStore.weekStart"
-      @update:weekStart="handleWeekStartChange"
-      @select-schedule="handleScheduleNoteAction"
-      @add-personal-event="showPersonalEventModal = true"
-      @add-exception="goToExceptions"
-      @export="goToExport"
-      @edit-personal-event="handleEditPersonalEvent"
-      @delete-personal-event="handleDeletePersonalEvent"
-      @personal-event-note="handlePersonalEventNote"
-    />
-  </div>
-
-  <!-- 載入狀態 -->
-  <div
-    v-if="!teacherStore.schedule && !teacherStore.loading"
-    class="text-center py-12 text-slate-500"
-  >
-    載入中...
-  </div>
-
-  <!-- 骨架屏載入狀態 -->
-  <div v-else-if="teacherStore.loading" class="space-y-4">
-    <!-- 今日摘要骨架屏 -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-      <div v-for="i in 4" :key="i" class="glass-card p-4 animate-pulse">
-        <div class="flex items-center justify-between">
-          <div class="flex-1">
-            <div class="h-3 w-16 bg-white/10 rounded mb-2"></div>
-            <div class="h-6 w-12 bg-white/10 rounded"></div>
+          <div class="mt-2 flex items-center gap-2 text-xs">
+            <span class="text-success-500">{{ todayStats.completedSessions }} 已完成</span>
+            <span class="text-slate-600">|</span>
+            <span class="text-primary-500">{{ todayStats.upcomingSessions }} 待上課</span>
           </div>
-          <div class="w-10 h-10 bg-white/10 rounded-lg"></div>
+        </div>
+
+        <!-- 進行中課程 -->
+        <div class="glass-card p-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm text-slate-400">進行中</p>
+              <p class="text-2xl font-bold text-white mt-1">{{ todayStats.inProgressSessions }}</p>
+            </div>
+            <div class="w-10 h-10 rounded-lg bg-yellow-500/20 flex items-center justify-center">
+              <svg class="w-5 h-5 text-yellow-500 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+          </div>
+          <div class="mt-2 text-xs text-slate-400 truncate">
+            {{ todayStats.inProgressTeacherNames.length > 0 ? todayStats.inProgressTeacherNames.join('、') : '無進行中課程' }}
+          </div>
+        </div>
+
+        <!-- 即將開始 -->
+        <div class="glass-card p-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm text-slate-400">即將開始</p>
+              <p class="text-2xl font-bold text-white mt-1">{{ upcomingSessions.length }}</p>
+            </div>
+            <div class="w-10 h-10 rounded-lg bg-secondary-500/20 flex items-center justify-center">
+              <svg class="w-5 h-5 text-secondary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+          </div>
+          <div class="mt-2 text-xs text-slate-400">
+            <span v-if="upcomingSessions.length > 0">下一堂 {{ upcomingSessions[0]?.minutesUntil }} 分鐘後</span>
+            <span v-else>今日無課程</span>
+          </div>
+        </div>
+
+        <!-- 待審核申請 -->
+        <div class="glass-card p-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm text-slate-400">待審核</p>
+              <p class="text-2xl font-bold text-white mt-1">{{ pendingExceptions }}</p>
+            </div>
+            <div class="w-10 h-10 rounded-lg bg-warning-500/20 flex items-center justify-center">
+              <svg class="w-5 h-5 text-warning-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+            </div>
+          </div>
+          <div class="mt-2 text-xs text-slate-400">
+            <NuxtLink to="/teacher/exceptions" class="text-primary-500 hover:text-primary-400">
+              查看詳情 →
+            </NuxtLink>
+          </div>
         </div>
       </div>
-    </div>
 
-    <!-- 快捷操作骨架屏 -->
-    <div class="flex gap-3">
-      <div v-for="i in 3" :key="i" class="h-10 w-32 bg-white/10 rounded-lg animate-pulse"></div>
-    </div>
-
-    <!-- 課表骨架屏 -->
-    <div class="glass-card p-4 animate-pulse">
-      <div class="h-10 w-48 bg-white/10 rounded mb-4"></div>
-      <div class="space-y-2">
-        <div v-for="i in 5" :key="i" class="h-12 bg-white/10 rounded"></div>
+      <!-- 即將開始的課程列表 -->
+      <div v-if="upcomingSessions.length > 0" class="mt-4 glass-card p-4" role="region" aria-label="即將開始的課程">
+        <h3 class="text-sm font-medium text-white mb-3">即將開始</h3>
+        <div class="space-y-2" role="list">
+          <div
+            v-for="session in upcomingSessions.slice(0, 3)"
+            :key="session.id"
+            role="listitem"
+            class="flex items-center justify-between p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors cursor-pointer"
+            @click="openItemDetail(session)"
+          >
+            <div class="flex items-center gap-3">
+              <span class="text-primary-500 font-mono text-sm">{{ session.time }}</span>
+              <div>
+                <p class="text-white text-sm">{{ session.title }}</p>
+                <p class="text-slate-500 text-xs">{{ session.centerName }}</p>
+              </div>
+            </div>
+            <span class="text-xs text-slate-400">{{ session.minutesUntil }} 分鐘後</span>
+          </div>
+        </div>
+        <button
+          v-if="upcomingSessions.length > 3"
+          class="mt-3 text-sm text-primary-500 hover:text-primary-400 flex items-center gap-1"
+        >
+          查看全部 {{ upcomingSessions.length }} 堂課
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
       </div>
     </div>
-  </div>
 
-  <button
-    @click="showPersonalEventModal = true"
-    class="fixed bottom-24 md:bottom-6 right-6 w-14 h-14 rounded-full bg-gradient-to-r from-primary-500 to-secondary-500 flex items-center justify-center shadow-xl hover:scale-110 transition-transform duration-300 z-50"
-  >
-    <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-    </svg>
-  </button>
+    <!-- 教師課表週曆組件 -->
+    <div class="mb-4">
+      <TeacherScheduleGrid
+        v-if="scheduleStore.schedule"
+        :schedules="transformedSchedules"
+        :week-start="scheduleStore.weekStart"
+        :loading="scheduleStore.isLoading"
+        @update:weekStart="handleWeekStartChange"
+        @select-schedule="handleScheduleNoteAction"
+        @add-personal-event="showPersonalEventModal = true"
+        @add-exception="goToExceptions"
+        @export="goToExport"
+        @edit-personal-event="handleEditPersonalEvent"
+        @delete-personal-event="handleDeletePersonalEvent"
+        @personal-event-note="handlePersonalEventNote"
+      />
 
-  <PersonalEventModal
-    v-if="showPersonalEventModal"
-    :editing-event="editingEvent"
-    @close="showPersonalEventModal = false; editingEvent = null"
-    @saved="handlePersonalEventSaved"
-  />
+      <!-- 課表載入中狀態 -->
+      <div v-else-if="scheduleStore.isLoading" class="glass-card p-4">
+        <Skeleton type="table" :table-columns="5" :table-rows="5" />
+      </div>
 
-  <NotificationDropdown
-    v-if="notificationUI.show.value"
-    @close="notificationUI.close()"
-  />
+      <!-- 無課表資料 -->
+      <div v-else class="text-center py-12 text-slate-500">
+        <p>尚無課表資料</p>
+      </div>
+    </div>
 
-  <TeacherSidebar
-    v-if="sidebarStore.isOpen.value"
-    @close="sidebarStore.close()"
-  />
-  <SessionNoteModal
-    :is-open="showSessionNoteModal"
-    :schedule-item="selectedScheduleItem"
-    @close="handleNoteModalClose"
-    @saved="handleNoteModalSaved"
-  />
+    <!-- 週次切換 loading -->
+    <div v-if="isChangingWeek" class="fixed inset-0 bg-black/20 flex items-center justify-center z-40">
+      <BaseLoading :loading="true" text="載入中..." />
+    </div>
 
-  <PersonalEventNoteModal
-    :is-open="showPersonalEventNoteModal"
-    :event="selectedPersonalEvent"
-    @close="showPersonalEventNoteModal = false; selectedPersonalEvent = null"
-    @saved="handlePersonalEventNoteSaved"
-  />
+    <!-- 新增行程按鈕 -->
+    <button
+      @click="showPersonalEventModal = true"
+      class="fixed bottom-24 md:bottom-6 right-6 w-14 h-14 rounded-full bg-gradient-to-r from-primary-500 to-secondary-500 flex items-center justify-center shadow-xl hover:scale-110 transition-transform duration-300 z-50"
+      :disabled="scheduleStore.isCreatingEvent"
+    >
+      <svg v-if="!scheduleStore.isCreatingEvent" class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+      </svg>
+      <BaseLoading v-else :loading="true" size="sm" />
+    </button>
+
+    <PersonalEventModal
+      v-if="showPersonalEventModal"
+      :editing-event="editingEvent"
+      @close="showPersonalEventModal = false; editingEvent = null"
+      @saved="handlePersonalEventSaved"
+    />
+
+    <NotificationDropdown
+      v-if="notificationUI.show.value"
+      @close="notificationUI.close()"
+    />
+
+    <TeacherSidebar
+      v-if="sidebarStore.isOpen.value"
+      @close="sidebarStore.close()"
+    />
+    <SessionNoteModal
+      :is-open="showSessionNoteModal"
+      :schedule-item="selectedScheduleItem"
+      @close="handleNoteModalClose"
+      @saved="handleNoteModalSaved"
+    />
+
+    <PersonalEventNoteModal
+      :is-open="showPersonalEventNoteModal"
+      :event="selectedPersonalEvent"
+      @close="showPersonalEventNoteModal = false; selectedPersonalEvent = null"
+      @saved="handlePersonalEventNoteSaved"
+    />
+  </template>
 </template>
 
 <script setup lang="ts">
@@ -218,20 +226,37 @@ definePageMeta({
   layout: 'default',
 })
 
-const teacherStore = useTeacherStore()
+const scheduleStore = useScheduleStore()
 const sidebarStore = useSidebar()
 const notificationUI = useNotification()
 const router = useRouter()
 const showPersonalEventModal = ref(false)
 const editingEvent = ref<any>(null)
 
+// Loading 狀態
+const isInitialLoading = ref(true)
+const isChangingWeek = ref(false)
+
+// 週次切換
+const changeWeek = async (delta: number) => {
+  isChangingWeek.value = true
+  scheduleStore.changeWeek(delta)
+  try {
+    await scheduleStore.fetchSchedule()
+    calculateTodayStats()
+  } finally {
+    isChangingWeek.value = false
+  }
+  scheduleStore.fetchPersonalEvents()
+}
+
 // 課表資料轉換（包含中心課程和個人行程）
 const transformedSchedules = computed(() => {
-  if (!teacherStore.schedule) return []
+  if (!scheduleStore.schedule) return []
 
   const result: any[] = []
 
-  teacherStore.schedule.days.forEach(day => {
+  scheduleStore.schedule.days.forEach(day => {
     const date = new Date(day.date)
     const weekday = date.getDay() === 0 ? 7 : date.getDay()
 
@@ -264,7 +289,7 @@ const transformedSchedules = computed(() => {
     })
 
     // 處理個人行程
-    const dayEvents = teacherStore.personalEvents.filter(e => {
+    const dayEvents = scheduleStore.personalEvents.filter(e => {
       const eventDate = new Date(e.start_at).toISOString().split('T')[0]
       return eventDate === day.date
     })
@@ -304,19 +329,12 @@ const transformedSchedules = computed(() => {
 
 // 週次範圍標籤
 const weekRangeLabel = computed(() => {
-  return teacherStore.weekLabel || '本週'
+  return scheduleStore.weekLabel || '本週'
 })
 
-const changeWeek = (delta: number) => {
-  teacherStore.changeWeek(delta)
-  teacherStore.fetchSchedule().then(() => {
-    calculateTodayStats()
-  })
-  teacherStore.fetchPersonalEvents()
-}
-
 const handleWeekStartChange = (newStart: Date) => {
-  teacherStore.weekStart = newStart
+  scheduleStore.weekStart = newStart
+  changeWeek(0)
 }
 
 // 處理課表備註動作（來自 ScheduleGrid）
@@ -352,8 +370,8 @@ const handleDeletePersonalEvent = async (event: any) => {
   const confirmed = await alertConfirm(`確定要刪除行程「${event.title}」嗎？`)
   if (confirmed) {
     try {
-      await teacherStore.deletePersonalEvent(event.id)
-      await teacherStore.fetchSchedule()
+      await scheduleStore.deletePersonalEvent(event.id)
+      await scheduleStore.fetchSchedule()
     } catch (error) {
       console.error('Failed to delete personal event:', error)
       await alertError('刪除失敗，請稍後再試')
@@ -383,12 +401,12 @@ const pendingExceptions = ref(0)
 
 // 計算今日課表統計
 const calculateTodayStats = () => {
-  if (!teacherStore.schedule) return
+  if (!scheduleStore.schedule) return
 
   const today = new Date()
   const todayStr = formatDateToString(today)
 
-  const todayDay = teacherStore.schedule.days.find(d => d.date === todayStr)
+  const todayDay = scheduleStore.schedule.days.find(d => d.date === todayStr)
   if (!todayDay) {
     todayStats.value = {
       totalSessions: 0,
@@ -455,7 +473,7 @@ const calculateTodayStats = () => {
 
 // 計算待審核申請數
 const calculatePendingExceptions = () => {
-  pendingExceptions.value = teacherStore.exceptions.filter(e => e.status === 'PENDING').length
+  pendingExceptions.value = scheduleStore.exceptions.filter(e => e.status === 'PENDING').length
 }
 
 // 跳轉到例外申請頁面
@@ -493,8 +511,8 @@ const handleNoteModalSaved = () => {
 }
 
 const handlePersonalEventSaved = () => {
-  teacherStore.fetchPersonalEvents()
-  teacherStore.fetchSchedule().then(() => {
+  scheduleStore.fetchPersonalEvents()
+  scheduleStore.fetchSchedule().then(() => {
     calculateTodayStats()
   })
 }
@@ -556,19 +574,25 @@ const getStatusText = (status: string): string => {
   }
 }
 
-onMounted(() => {
-  teacherStore.fetchCenters()
-  teacherStore.fetchSchedule()
-  teacherStore.fetchPersonalEvents()
-  teacherStore.fetchExceptions()
+onMounted(async () => {
+  try {
+    await Promise.all([
+      scheduleStore.fetchCenters(),
+      scheduleStore.fetchSchedule(),
+      scheduleStore.fetchPersonalEvents(),
+      scheduleStore.fetchExceptions()
+    ])
+  } finally {
+    isInitialLoading.value = false
+  }
 
   // 使用 watch 監聽 schedule 變化
-  watch(() => teacherStore.schedule, () => {
+  watch(() => scheduleStore.schedule, () => {
     calculateTodayStats()
   }, { immediate: true })
 
   // 監聽例外申請變化
-  watch(() => teacherStore.exceptions, () => {
+  watch(() => scheduleStore.exceptions, () => {
     calculatePendingExceptions()
   }, { immediate: true })
 })

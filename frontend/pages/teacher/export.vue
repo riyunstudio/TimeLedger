@@ -656,7 +656,7 @@ const themes: Theme[] = [
 
 const router = useRouter()
 const authStore = useAuthStore()
-const teacherStore = useTeacherStore()
+const scheduleStore = useScheduleStore()
 const sidebarStore = useSidebar()
 const notificationUI = useNotification()
 const scheduleRef = ref<HTMLElement>()
@@ -672,10 +672,10 @@ const currentTheme = computed(() => {
   return themes.find(t => t.id === selectedTheme.value) || themes[0]
 })
 
-const weekLabel = computed(() => teacherStore.weekLabel)
+const weekLabel = computed(() => scheduleStore.weekLabel)
 
 const scheduleDays = computed(() => {
-  return teacherStore.schedule?.days || []
+  return scheduleStore.schedule?.days || []
 })
 
 const totalLessons = computed(() => {
@@ -697,8 +697,8 @@ const teachingDays = computed(() => {
 })
 
 const changeWeek = (delta: number) => {
-  teacherStore.changeWeek(delta)
-  teacherStore.fetchSchedule()
+  scheduleStore.changeWeek(delta)
+  scheduleStore.fetchSchedule()
 }
 
 const formatDate = (date: Date): string => {
@@ -909,6 +909,6 @@ const handleShareLINE = async () => {
 }
 
 onMounted(() => {
-  teacherStore.fetchSchedule()
+  scheduleStore.fetchSchedule()
 })
 </script>
