@@ -63,10 +63,15 @@
             <div>
               <h1 class="text-2xl font-bold" :class="currentTheme.titleClass">{{ authStore.user?.name }}</h1>
               <p class="text-sm" :class="currentTheme.subtitleClass">個人課表</p>
-              <div v-if="options.showPersonalInfo" class="flex gap-2 mt-2">
-                <span class="px-2 py-0.5 rounded-full text-xs" :class="currentTheme.tagClass">鋼琴</span>
-                <span class="px-2 py-0.5 rounded-full text-xs" :class="currentTheme.tagClass2">古典</span>
-                <span class="px-2 py-0.5 rounded-full text-xs" :class="currentTheme.tagClass3">樂理</span>
+              <div v-if="options.showPersonalInfo && teacherHashtags.length > 0" class="flex gap-2 mt-2 flex-wrap">
+                <span
+                  v-for="(tag, index) in teacherHashtags.slice(0, 5)"
+                  :key="tag.id"
+                  class="px-2 py-0.5 rounded-full text-xs"
+                  :class="getTagClass(index)"
+                >
+                  {{ tag.name.replace('#', '') }}
+                </span>
               </div>
             </div>
           </div>
@@ -1014,6 +1019,25 @@ const getStatusText = (status: string) => {
     default:
       return status
   }
+}
+
+// 取得老師的個人標籤
+const teacherHashtags = computed(() => {
+  const user = authStore.user as any
+  if (user?.personal_hashtags && Array.isArray(user.personal_hashtags)) {
+    return user.personal_hashtags
+  }
+  return []
+})
+
+// 根據索引取得標籤樣式
+const getTagClass = (index: number) => {
+  const classes = [
+    currentTheme.value.tagClass,
+    currentTheme.value.tagClass2,
+    currentTheme.value.tagClass3,
+  ]
+  return classes[index % classes.length]
 }
 
 // 根據標題長度動態調整字體大小，避免遮蓋
