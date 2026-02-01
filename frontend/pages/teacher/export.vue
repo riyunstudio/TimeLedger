@@ -41,14 +41,12 @@
         下載 PDF
       </button>
       <button
-        @click="handleDownloadImage"
+        @click="handleExportAsImage"
         class="px-4 py-2 rounded-lg bg-secondary-500 text-white hover:bg-secondary-600 transition-colors flex items-center gap-2"
-        :disabled="scheduleStore.isDownloadingImage"
       >
-        <svg v-if="!scheduleStore.isDownloadingImage" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
         </svg>
-        <BaseLoading v-else :loading="true" size="sm" />
         下載圖片
       </button>
     </div>
@@ -80,7 +78,6 @@
 
         <div class="mb-6">
           <div class="flex items-center gap-2 mb-4">
-            <span class="font-medium" :class="currentTheme.titleClass">{{ weekLabel }}</span>
             <div class="flex gap-1">
               <button
                 @click="changeWeek(-1)"
@@ -91,6 +88,9 @@
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                 </svg>
               </button>
+            </div>
+            <span class="font-medium" :class="currentTheme.titleClass">{{ weekLabel }}</span>
+            <div class="flex gap-1">
               <button
                 @click="changeWeek(1)"
                 class="p-1 rounded transition-colors"
@@ -235,12 +235,12 @@
                   <div
                     v-for="item in getDayScheduleItems(day.date)"
                     :key="item.id"
-                    class="absolute left-1 right-1 rounded p-1.5 text-xs overflow-hidden z-10"
+                    class="absolute left-1 right-1 rounded p-1.5 text-xs z-10"
                     :style="{
                       backgroundColor: `${item.color || '#10B981'}30`,
                       borderLeft: `3px solid ${item.color || '#10B981'}`,
                       top: getGridItemTopOffset(item),
-                      height: `${Math.max(getGridItemHeight(item), 40)}px`
+                      height: `${Math.max(getGridItemHeight(item), 50)}px`
                     }"
                   >
                     <div class="flex items-center gap-1 mb-0.5">
@@ -1034,18 +1034,18 @@ const getBackgroundColor = () => {
 }
 
 // 創建乾淨的 DOM 元素用於匯出
-const createCleanExportElement = (): HTMLElement | null => {
-  // 使用簡單的白色背景，避免任何主題相關的問題
+const createCleanExportElement = (view: 'list' | 'grid' = 'list'): HTMLElement | null => {
+  // 使用簡單的白色背景
   const bgColor = '#ffffff'
 
   // 創建容器
   const container = document.createElement('div')
   container.id = 'export-container'
-  container.style.cssText = `background-color: ${bgColor}; padding: 24px; font-family: Arial, sans-serif; width: 650px;`
+  container.style.cssText = `background-color: ${bgColor}; padding: 24px; font-family: Arial, sans-serif; width: ${view === 'grid' ? '900px' : '650px'};`
 
   // 添加標題區域
   const header = document.createElement('div')
-  header.style.cssText = 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #eee;'
+  header.style.cssText = 'display-content: space-between: flex; justify; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #eee;'
   header.innerHTML = `
     <div style="display: flex; align-items: center; gap: 12px;">
       <div style="width: 50px; height: 50px; border-radius: 50%; background: #6366F1; display: flex; align-items: center; justify-content: center; color: white; font-size: 20px; font-weight: bold;">${authStore.user?.name?.charAt(0) || 'T'}</div>
@@ -1067,55 +1067,164 @@ const createCleanExportElement = (): HTMLElement | null => {
   weekLabelDiv.textContent = weekLabel.value
   container.appendChild(weekLabelDiv)
 
-  // 遍歷每一天
-  scheduleDays.value.forEach(day => {
-    const dayDiv = document.createElement('div')
-    dayDiv.style.cssText = 'margin-bottom: 16px; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; background: white;'
+  if (view === 'grid') {
+    // ========== 網格視圖（週曆格式）- 使用 60px/小時 ==========
+    const gridContainer = document.createElement('div')
+    gridContainer.style.cssText = 'display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px;'
 
-    const date = new Date(day.date)
-    const weekday = ['週日', '週一', '週二', '週三', '週四', '週五', '週六'][date.getDay()]
-    const monthDay = date.toLocaleDateString('zh-TW', { month: 'long', day: 'numeric' })
+    // 左上角空白格
+    const emptyCell = document.createElement('div')
+    emptyCell.style.cssText = 'border: 1px solid #ddd; background: #f0f0f0; height: 40px;'
+    gridContainer.appendChild(emptyCell)
 
-    // 標題
-    const dayHeader = document.createElement('div')
-    dayHeader.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: #f8f8f8; border-bottom: 1px solid #eee;'
-    dayHeader.innerHTML = `<span style="font-weight: bold; color: #333; font-size: 14px;">${weekday} ${monthDay}</span><span style="color: #888; font-size: 12px;">${day.items.length} 課程</span>`
-    dayDiv.appendChild(dayHeader)
+    // 星期標題列
+    const weekdays = ['日', '一', '二', '三', '四', '五', '六']
+    const weekDaysList = scheduleDays.value.slice(0, 7)
 
-    // 課程列表
-    if (day.items.length > 0) {
-      const itemsDiv = document.createElement('div')
-      itemsDiv.style.cssText = 'padding: 6px;'
+    weekDaysList.forEach((day) => {
+      const date = new Date(day.date)
+      const monthDay = date.toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric' })
+
+      const dayHeader = document.createElement('div')
+      dayHeader.style.cssText = 'padding: 4px; text-align: center; border: 1px solid #ddd; background: #f8f8f8; height: 40px; display: flex; flex-direction: column; justify-content: center;'
+      dayHeader.innerHTML = `<span style="font-weight: bold; font-size: 11px; color: #333;">${weekdays[date.getDay()]}</span><span style="font-size: 9px; color: #888;">${monthDay}</span>`
+      gridContainer.appendChild(dayHeader)
+    })
+
+    // 時間列（左側）- 60px/小時
+    const timeColumn = document.createElement('div')
+    timeColumn.style.cssText = 'display: flex; flex-direction: column;'
+    for (let i = 0; i < 24; i++) {
+      const hour = `${i.toString().padStart(2, '0')}:00`
+      const timeCell = document.createElement('div')
+      timeCell.style.cssText = `height: 60px; display: flex; align-items: flex-start; justify-content: center; font-size: 10px; color: #888; border: 1px solid #ddd; background: #fafafa; box-sizing: border-box; padding-top: 2px;`
+      timeCell.textContent = hour
+      timeColumn.appendChild(timeCell)
+    }
+    gridContainer.appendChild(timeColumn)
+
+    // 每天的課程列 - 總高度 1440px (24 * 60)
+    weekDaysList.forEach((day) => {
+      const dayColumn = document.createElement('div')
+      dayColumn.style.cssText = 'display: flex; flex-direction: column; position: relative; height: 1440px; border: 1px solid #ddd; background: white; margin: 0; overflow: hidden;'
+
+      // 背景網格線 - 在最下層
+      const gridBg = document.createElement('div')
+      gridBg.style.cssText = 'position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 1;'
+      for (let i = 0; i < 24; i++) {
+        const line = document.createElement('div')
+        line.style.cssText = 'height: 60px; border-bottom: 1px solid #eee; box-sizing: border-box;'
+        gridBg.appendChild(line)
+      }
+      dayColumn.appendChild(gridBg)
+
+      // 課程區塊 - 在上層，z-index 更高
+      const itemsContainer = document.createElement('div')
+      itemsContainer.style.cssText = 'position: absolute; top: 0; left: 0; right: 0; bottom: 0; padding: 2px; z-index: 10;'
 
       day.items.forEach(item => {
-        const itemDiv = document.createElement('div')
-        itemDiv.style.cssText = 'display: flex; align-items: center; padding: 10px 12px; margin-bottom: 4px; background: #fafafa; border-radius: 6px; border-left: 3px solid ' + (item.color || '#10B981') + ';'
-        itemDiv.innerHTML = `
-          <div style="width: 65px; flex-shrink: 0; text-align: center;">
-            <div style="font-weight: bold; font-size: 13px; color: #333;">${item.start_time}</div>
-            <div style="font-size: 11px; color: #999;">${item.end_time}</div>
-          </div>
-          <div style="flex: 1; min-width: 0; margin-left: 8px;">
-            <div style="font-weight: bold; font-size: 14px; color: #333;">${item.title}</div>
-            ${getValidCenterName(item.center_name) ? `<div style="font-size: 12px; color: #888; margin-top: 2px;">${getValidCenterName(item.center_name)}</div>` : ''}
-          </div>
-          <div style="width: 55px; flex-shrink: 0; text-align: right;">
-            <div style="font-weight: bold; font-size: 13px; color: #333;">${getDuration(item.start_time, item.end_time)}</div>
-            <div style="font-size: 11px; color: #999;">分鐘</div>
-          </div>
-        `
-        itemsDiv.appendChild(itemDiv)
-      })
-      dayDiv.appendChild(itemsDiv)
-    } else {
-      const emptyDiv = document.createElement('div')
-      emptyDiv.style.cssText = 'padding: 20px; text-align: center; color: #aaa; font-size: 13px; background: #fafafa;'
-      emptyDiv.textContent = '休息日'
-      dayDiv.appendChild(emptyDiv)
-    }
+        const [startH, startM] = item.start_time.split(':').map(Number)
+        const [endH, endM] = item.end_time.split(':').map(Number)
+        const duration = (endH * 60 + endM) - (startH * 60 + startM)
+        const startMinutes = startH * 60 + startM
+        const top = startMinutes // 每分鐘 1px
+        const height = Math.max(duration, 30) // 最小 30px
 
-    container.appendChild(dayDiv)
-  })
+        // 取得有效的中心名稱
+        const centerName = getValidCenterName(item.center_name)
+        const displayText = centerName || item.title
+
+        const itemDiv = document.createElement('div')
+        itemDiv.style.cssText = `
+          position: absolute;
+          left: 2px;
+          right: 2px;
+          top: ${top}px;
+          height: ${height}px;
+          background: ${item.color || '#10B981'}60;
+          border-left: 4px solid ${item.color || '#10B981'};
+          border-radius: 4px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-sizing: border-box;
+          padding: 0 6px;
+          z-index: 20;
+          overflow: visible;
+        `
+        const titleSpan = document.createElement('span')
+        titleSpan.style.cssText = `
+          font-size: 11px;
+          color: #8a7e75;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          max-width: 100%;
+          text-align: center;
+          line-height: 1.2;
+          font-weight: 500;
+        `
+        titleSpan.textContent = displayText
+        itemDiv.appendChild(titleSpan)
+        itemsContainer.appendChild(itemDiv)
+      })
+
+      dayColumn.appendChild(itemsContainer)
+      gridContainer.appendChild(dayColumn)
+    })
+
+    container.appendChild(gridContainer)
+  } else {
+    // ========== 列表視圖 ==========
+    scheduleDays.value.forEach(day => {
+      const dayDiv = document.createElement('div')
+      dayDiv.style.cssText = 'margin-bottom: 16px; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; background: white;'
+
+      const date = new Date(day.date)
+      const weekday = ['週日', '週一', '週二', '週三', '週四', '週五', '週六'][date.getDay()]
+      const monthDay = date.toLocaleDateString('zh-TW', { month: 'long', day: 'numeric' })
+
+      // 標題
+      const dayHeader = document.createElement('div')
+      dayHeader.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: #f8f8f8; border-bottom: 1px solid #eee;'
+      dayHeader.innerHTML = `<span style="font-weight: bold; color: #333; font-size: 14px;">${weekday} ${monthDay}</span><span style="color: #888; font-size: 12px;">${day.items.length} 課程</span>`
+      dayDiv.appendChild(dayHeader)
+
+      // 課程列表
+      if (day.items.length > 0) {
+        const itemsDiv = document.createElement('div')
+        itemsDiv.style.cssText = 'padding: 6px;'
+
+        day.items.forEach(item => {
+          const itemDiv = document.createElement('div')
+          itemDiv.style.cssText = 'display: flex; align-items: center; padding: 10px 12px; margin-bottom: 4px; background: #fafafa; border-radius: 6px; border-left: 3px solid ' + (item.color || '#10B981') + ';'
+          itemDiv.innerHTML = `
+            <div style="width: 65px; flex-shrink: 0; text-align: center;">
+              <div style="font-weight: bold; font-size: 13px; color: #333;">${item.start_time}</div>
+              <div style="font-size: 11px; color: #999;">${item.end_time}</div>
+            </div>
+            <div style="flex: 1; min-width: 0; margin-left: 8px;">
+              <div style="font-weight: bold; font-size: 14px; color: #333;">${item.title}</div>
+              ${getValidCenterName(item.center_name) ? `<div style="font-size: 12px; color: #888; margin-top: 2px;">${getValidCenterName(item.center_name)}</div>` : ''}
+            </div>
+            <div style="width: 55px; flex-shrink: 0; text-align: right;">
+              <div style="font-weight: bold; font-size: 13px; color: #333;">${getDuration(item.start_time, item.end_time)}</div>
+              <div style="font-size: 11px; color: #999;">分鐘</div>
+            </div>
+          `
+          itemsDiv.appendChild(itemDiv)
+        })
+        dayDiv.appendChild(itemsDiv)
+      } else {
+        const emptyDiv = document.createElement('div')
+        emptyDiv.style.cssText = 'padding: 20px; text-align: center; color: #aaa; font-size: 13px; background: #fafafa;'
+        emptyDiv.textContent = '休息日'
+        dayDiv.appendChild(emptyDiv)
+      }
+
+      container.appendChild(dayDiv)
+    })
+  }
 
   // 添加頁腳
   const footer = document.createElement('div')
@@ -1137,39 +1246,56 @@ const cleanupExportElement = () => {
 const handleExportAsImage = async () => {
   console.log('開始匯出圖片...')
 
-  // 創建乾淨的匯出元素
-  const exportElement = createCleanExportElement()
+  // 直接截圖週曆區域
+  const exportElement = scheduleRef.value
   if (!exportElement) {
-    notificationUI.showError('無法創建匯出元素')
+    notificationUI.showError('無法找到課表區域')
     return
   }
 
-  // 添加到頁面
-  document.body.appendChild(exportElement)
-  console.log('元素已添加到頁面')
+  // 暫時移除 overflow 限制以確保完整截圖
+  const originalOverflowX = exportElement.style.overflowX
+  const originalOverflowY = exportElement.style.overflowY
+  const originalOverflow = exportElement.style.overflow
+  const originalMaxHeight = exportElement.style.maxHeight
+  const originalPosition = exportElement.style.position
 
-  // 等待元素渲染
-  await new Promise(resolve => setTimeout(resolve, 500))
+  // 確保捕獲完整內容
+  exportElement.style.overflow = 'visible'
+  exportElement.style.maxHeight = 'none'
+  exportElement.style.position = 'relative'
+
+  // 等待瀏覽器重新渲染
+  await new Promise(resolve => setTimeout(resolve, 100))
 
   try {
     const { default: html2canvas } = await import('html2canvas')
     console.log('開始生成 canvas...')
 
+    // 獲取完整的滾動區域尺寸
+    const scrollWidth = exportElement.scrollWidth
+    const scrollHeight = exportElement.scrollHeight
+
     const canvas = await html2canvas(exportElement, {
-      backgroundColor: '#ffffff',
+      backgroundColor: null,
       scale: 2,
       useCORS: true,
       logging: true,
       allowTaint: true,
-      width: 650,
-      height: exportElement.offsetHeight,
+      width: scrollWidth,
+      height: scrollHeight,
+      scrollX: 0,
+      scrollY: 0,
+      windowWidth: scrollWidth,
+      windowHeight: scrollHeight,
     })
 
-    console.log('Canvas 生成完成，開始下載...')
+    console.log('Canvas 生成完成，尺寸:', canvas.width, 'x', canvas.height)
+    console.log('開始下載...')
 
     // 產生下載
     const link = document.createElement('a')
-    link.download = `課表-${weekLabel.value}-${Date.now()}.png`
+    link.download = `課表-${weekLabel.value}-${selectedViewOption.value === 'grid' ? '網格' : '列表'}-${Date.now()}.png`
     link.href = canvas.toDataURL('image/png')
     link.click()
 
@@ -1178,7 +1304,12 @@ const handleExportAsImage = async () => {
     console.error('Image export failed:', error)
     notificationUI.showError('圖片匯出失敗，請稍後再試')
   } finally {
-    cleanupExportElement()
+    // 恢復原始樣式
+    exportElement.style.overflowX = originalOverflowX
+    exportElement.style.overflowY = originalOverflowY
+    exportElement.style.overflow = originalOverflow
+    exportElement.style.maxHeight = originalMaxHeight
+    exportElement.style.position = originalPosition
     console.log('清理完成')
   }
 }
@@ -1187,19 +1318,25 @@ const handleDownloadPDF = async () => {
   console.log('開始生成 PDF...')
   notificationUI.showLoading('正在生成 PDF...')
 
-  // 創建乾淨的匯出元素
-  const exportElement = createCleanExportElement()
+  // 直接截圖週曆區域
+  const exportElement = scheduleRef.value
   if (!exportElement) {
     notificationUI.hideLoading()
-    notificationUI.showError('無法創建匯出元素')
+    notificationUI.showError('無法找到課表區域')
     return
   }
 
-  // 添加到頁面
-  document.body.appendChild(exportElement)
+  // 暫時移除 overflow 限制以確保完整截圖
+  const originalOverflow = exportElement.style.overflow
+  const originalMaxHeight = exportElement.style.maxHeight
+  const originalPosition = exportElement.style.position
 
-  // 等待元素渲染
-  await new Promise(resolve => setTimeout(resolve, 500))
+  exportElement.style.overflow = 'visible'
+  exportElement.style.maxHeight = 'none'
+  exportElement.style.position = 'relative'
+
+  // 等待瀏覽器重新渲染
+  await new Promise(resolve => setTimeout(resolve, 100))
 
   try {
     const { default: html2canvas } = await import('html2canvas')
@@ -1207,23 +1344,29 @@ const handleDownloadPDF = async () => {
 
     console.log('開始生成 canvas...')
 
+    // 獲取完整的滾動區域尺寸
+    const scrollWidth = exportElement.scrollWidth
+    const scrollHeight = exportElement.scrollHeight
+
     const canvas = await html2canvas(exportElement, {
-      backgroundColor: '#ffffff',
+      backgroundColor: null,
       scale: 2,
       useCORS: true,
       logging: true,
       allowTaint: true,
-      width: 650,
-      height: exportElement.offsetHeight,
+      width: scrollWidth,
+      height: scrollHeight,
+      scrollX: 0,
+      scrollY: 0,
+      windowWidth: scrollWidth,
+      windowHeight: scrollHeight,
     })
 
     console.log('Canvas 生成完成，開始生成 PDF...')
 
-    cleanupExportElement()
-
     const imgData = canvas.toDataURL('image/png', 1.0)
     const pdf = new jsPDF({
-      orientation: 'portrait',
+      orientation: scrollWidth > scrollHeight ? 'landscape' : 'portrait',
       unit: 'mm',
       format: 'a4',
     })
@@ -1270,15 +1413,19 @@ const handleDownloadPDF = async () => {
       pdf.addImage(imgData, 'PNG', imgX, imgY, imgWidth * ratio, imgHeight * ratio)
     }
 
-    pdf.save(`課表-${weekLabel.value}-${Date.now()}.pdf`)
+    pdf.save(`課表-${weekLabel.value}-${selectedViewOption.value === 'grid' ? '網格' : '列表'}-${Date.now()}.pdf`)
     notificationUI.hideLoading()
     notificationUI.showSuccess('PDF 已下載')
     console.log('PDF 下載完成')
   } catch (error) {
     console.error('PDF generation failed:', error)
     notificationUI.hideLoading()
-    cleanupExportElement()
     notificationUI.showError('PDF 生成失敗，請稍後再試')
+  } finally {
+    // 恢復原始樣式
+    exportElement.style.overflow = originalOverflow
+    exportElement.style.maxHeight = originalMaxHeight
+    exportElement.style.position = originalPosition
   }
 }
 
@@ -1380,32 +1527,44 @@ const handleDownloadICal = async () => {
 
 // 分享到 LINE（產生圖片後開啟 LINE）
 const handleShareLINE = async () => {
-  // 創建乾淨的匯出元素
-  const exportElement = createCleanExportElement()
+  // 直接截圖週曆區域
+  const exportElement = scheduleRef.value
   if (!exportElement) {
-    notificationUI.showError('無法創建分享圖片')
+    notificationUI.showError('無法找到課表區域')
     return
   }
 
-  // 添加到頁面
-  document.body.appendChild(exportElement)
+  // 暫時移除 overflow 限制以確保完整截圖
+  const originalOverflow = exportElement.style.overflow
+  const originalMaxHeight = exportElement.style.maxHeight
+  const originalPosition = exportElement.style.position
 
-  // 等待元素渲染
-  await new Promise(resolve => setTimeout(resolve, 300))
+  exportElement.style.overflow = 'visible'
+  exportElement.style.maxHeight = 'none'
+  exportElement.style.position = 'relative'
+
+  // 等待瀏覽器重新渲染
+  await new Promise(resolve => setTimeout(resolve, 100))
 
   try {
     const { default: html2canvas } = await import('html2canvas')
 
-    const bgColor = getBackgroundColor() || '#f8f8f8'
+    // 獲取完整的滾動區域尺寸
+    const scrollWidth = exportElement.scrollWidth
+    const scrollHeight = exportElement.scrollHeight
 
     const canvas = await html2canvas(exportElement, {
-      backgroundColor: bgColor,
+      backgroundColor: null,
       scale: 2,
       useCORS: true,
       logging: false,
       allowTaint: true,
-      width: 700,
-      height: exportElement.offsetHeight,
+      width: scrollWidth,
+      height: scrollHeight,
+      scrollX: 0,
+      scrollY: 0,
+      windowWidth: scrollWidth,
+      windowHeight: scrollHeight,
     })
 
     // 將圖片轉為 base64
@@ -1421,13 +1580,16 @@ const handleShareLINE = async () => {
     // 下載圖片讓使用者手動分享
     const link = document.createElement('a')
     link.href = imageData
-    link.download = `課表-${weekLabel.value}-${Date.now()}.png`
+    link.download = `課表-${weekLabel.value}-${selectedViewOption.value === 'grid' ? '網格' : '列表'}-${Date.now()}.png`
     link.click()
   } catch (error) {
     console.error('Failed to share to LINE:', error)
     notificationUI.showError('分享失敗，請嘗試下載圖片')
   } finally {
-    cleanupExportElement()
+    // 恢復原始樣式
+    exportElement.style.overflow = originalOverflow
+    exportElement.style.maxHeight = originalMaxHeight
+    exportElement.style.position = originalPosition
   }
 }
 
