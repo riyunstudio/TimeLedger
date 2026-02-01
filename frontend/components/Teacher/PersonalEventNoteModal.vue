@@ -16,9 +16,9 @@
         </div>
 
         <div class="mb-4 p-3 rounded-lg" :class="theme.dayHeaderClass">
-          <p class="font-medium" :class="theme.itemTitleClass">{{ eventData?.title }}</p>
+          <p class="font-medium" :class="theme.itemTitleClass">{{ eventData?.offering_name }}</p>
           <p class="text-sm" :class="theme.subtitleClass">
-            {{ formatDate(eventData?.start_at) }}
+            {{ formatPersonalEventDate(eventData?.data?.start_at || eventData?.start_at) }}
           </p>
         </div>
 
@@ -62,6 +62,7 @@
 </template>
 
 <script setup lang="ts">
+import { toRef, nextTick } from 'vue'
 import { formatDate } from '~/composables/useTaiwanTime'
 import type { PersonalEvent } from '~/types'
 
@@ -70,16 +71,20 @@ interface Props {
   event: PersonalEvent | null
 }
 
-const { isOpen, event: eventProp } = defineProps<Props>()
+const props = defineProps<Props>()
 
 const emit = defineEmits<{
   close: []
   saved: []
 }>()
 
+// 使用 toRef 保留響應式，避免解構破壞響應式追蹤
+const isOpenRef = toRef(props, 'isOpen')
+const eventRef = toRef(props, 'event')
+
 const isSaving = ref(false)
 
-const eventData = computed(() => eventProp)
+const eventData = computed(() => eventRef.value)
 
 const form = reactive({
   content: '',
@@ -98,8 +103,28 @@ const theme = computed(() => {
   }
 })
 
+// 格式化個人行程日期
+const formatPersonalEventDate = (dateStr: string | undefined): string => {
+  if (!dateStr) return '-'
+
+  try {
+    const date = new Date(dateStr)
+    if (isNaN(date.getTime())) return '-'
+
+    return date.toLocaleDateString('zh-TW', {
+      month: 'long',
+      day: 'numeric',
+      weekday: 'short',
+    })
+  } catch {
+    return '-'
+  }
+}
+
 const loadNote = async () => {
-  if (!eventData.value) return
+  if (!eventData.value) {
+    return
+  }
 
   // 個人行程備註使用不同的 API 端點
   try {
@@ -108,21 +133,41 @@ const loadNote = async () => {
       ? parseInt(eventData.value.id.split('_')[0])
       : eventData.value.id
 
-    const response = await api.get<{ code: number; message: string; datas: { content: string } }>(
+    const response = await api.get<any>(
       `/teacher/me/personal-events/${originalId}/note`
     )
-    form.content = response.datas?.content || ''
+
+    // 處理不同的 API 響應格式
+    // 格式1: { code: 0, message: "success", datas: { content: "..." } }
+    // 格式2: { content: "..." }
+    if (response) {
+      if (response.datas && typeof response.datas === 'object') {
+        form.content = response.datas.content || ''
+      } else if (response.content !== undefined) {
+        form.content = response.content || ''
+      } else {
+        form.content = ''
+      }
+    } else {
+      form.content = ''
+    }
   } catch (error) {
     // 如果沒有備註，返回空
     form.content = ''
   }
 }
 
-watch(() => isOpen, (isOpen) => {
-  if (isOpen && eventData.value) {
+// 監聽 isOpen 變化，確保 Modal 開啟時載入備註
+// 使用深度監聽和 nextTick 確保資料已準備好
+watch([isOpenRef, eventRef], async ([isOpen, event]) => {
+  if (isOpen && event) {
+    // 使用 nextTick 確保 DOM 和 props 已更新完成
+    await nextTick()
+    // 短延遲確保父元件資料已傳遞完成
+    await new Promise(resolve => setTimeout(resolve, 50))
     loadNote()
   }
-})
+}, { immediate: true })
 
 const handleClose = () => {
   emit('close')

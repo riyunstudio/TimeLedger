@@ -73,10 +73,11 @@
 </template>
 
 <script setup lang="ts">
+import { toRef } from 'vue'
 import { formatDate } from '~/composables/useTaiwanTime'
 import type { ScheduleItem, SessionNote } from '~/types'
 
-const { isOpen, scheduleItem } = defineProps<{
+const props = defineProps<{
   isOpen: boolean
   scheduleItem: ScheduleItem | null
 }>()
@@ -85,6 +86,10 @@ const emit = defineEmits<{
   close: []
   saved: []
 }>()
+
+// 使用 toRef 保留響應式，避免解構破壞響應式追蹤
+const isOpenRef = toRef(props, 'isOpen')
+const scheduleItemRef = toRef(props, 'scheduleItem')
 
 const scheduleStore = useScheduleStore()
 const isSaving = ref(false)
@@ -109,10 +114,10 @@ const theme = computed(() => {
 
 const loadNote = async () => {
   // 優先使用 rule_id，其次從 data 取得
-  const ruleId = scheduleItem?.rule_id || scheduleItem?.data?.id
-  if (!ruleId || !scheduleItem?.date) return
+  const ruleId = scheduleItemRef.value?.rule_id || scheduleItemRef.value?.data?.id
+  if (!ruleId || !scheduleItemRef.value?.date) return
 
-  const note = await scheduleStore.fetchSessionNote(ruleId, scheduleItem.date)
+  const note = await scheduleStore.fetchSessionNote(ruleId, scheduleItemRef.value.date)
   if (note) {
     form.content = note.content || ''
     form.prepNote = note.prep_note || ''
@@ -122,8 +127,9 @@ const loadNote = async () => {
   }
 }
 
-watch(() => isOpen, (isOpen) => {
-  if (isOpen && scheduleItem) {
+// 使用 isOpenRef 確保響應式追蹤
+watch(isOpenRef, (isOpen) => {
+  if (isOpen && scheduleItemRef.value) {
     loadNote()
   }
 })
@@ -133,15 +139,28 @@ const handleClose = () => {
 }
 
 const handleSave = async () => {
-  // 優先使用 rule_id，其次從 data 取得
-  const ruleId = scheduleItem?.rule_id || scheduleItem?.data?.id
-  if (!ruleId || !scheduleItem?.date) return
+  // 優先使用 scheduleItem 的 rule_id，其次從 data 取得
+  // 確保正確獲取 rule_id 用於課堂筆記 API 調用
+  const scheduleItem = scheduleItemRef.value
+  if (!scheduleItem) {
+    await alertError('無法儲存：缺少課程資訊，請重新開啟課堂筆記')
+    return
+  }
+
+  // 優先使用 rule_id，其次從 data 取得 id
+  const ruleId = scheduleItem.rule_id || (scheduleItem.data && scheduleItem.data.id)
+  const sessionDate = scheduleItem.date
+
+  if (!ruleId || !sessionDate) {
+    await alertError('無法儲存：缺少課程資訊，請重新開啟課堂筆記')
+    return
+  }
 
   isSaving.value = true
   try {
     await scheduleStore.saveSessionNote(
       ruleId,
-      scheduleItem.date,
+      sessionDate,
       form.content,
       form.prepNote
     )
@@ -149,6 +168,7 @@ const handleSave = async () => {
     handleClose()
   } catch (error) {
     console.error('Failed to save note:', error)
+    // 錯誤已由 useApi 的 handleError 顯示 alert
   } finally {
     isSaving.value = false
   }

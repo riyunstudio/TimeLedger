@@ -116,6 +116,7 @@
 </template>
 
 <script setup lang="ts">
+import { toRef, toRaw, nextTick } from 'vue'
 import { alertError, alertSuccess } from '~/composables/useAlert'
 import { getTodayString, formatDateToString } from '~/composables/useTaiwanTime'
 
@@ -128,10 +129,16 @@ const emit = defineEmits<{
   saved: []
 }>()
 
+// 使用 toRef 保留響應式，避免解構破壞響應式追蹤
+const editingEventRef = toRef(props, 'editingEvent')
+
 const scheduleStore = useScheduleStore()
 const loading = ref(false)
 
-const isEditing = computed(() => !!props.editingEvent)
+const isEditing = computed(() => !!editingEventRef.value)
+
+// 追蹤 Modal 是否已經初始化過
+const isModalInitialized = ref(false)
 
 // 使用台灣時區的今天日期
 const today = getTodayString()
@@ -148,32 +155,99 @@ const form = ref({
 
 // Initialize form based on editing mode
 const initializeForm = () => {
-  if (props.editingEvent) {
-    const startDate = new Date(props.editingEvent.start_at)
-    const endDate = new Date(props.editingEvent.end_at)
-    form.value = {
-      title: props.editingEvent.title || '',
-      start_date: formatDateToString(startDate),
-      start_time: startDate.toTimeString().slice(0, 5),
-      end_date: formatDateToString(endDate),
-      end_time: endDate.toTimeString().slice(0, 5),
-      recurrence: props.editingEvent.recurrence_rule?.type || 'NONE',
-      color_hex: props.editingEvent.color || '#6366F1',
+  // 使用 toRaw 確保取得原始物件，避免響應式追蹤問題
+  const event = toRaw(editingEventRef.value)
+
+  // 優先從頂層獲取資料，其次從 data 獲取
+  // 支援兩種格式：頂層有資料或在 data 中
+  const eventData = event?.data || event
+
+  // 確保 event 存在且有必要的屬性
+  if (eventData && eventData.start_at) {
+    try {
+      const startDate = new Date(eventData.start_at)
+      const endDate = new Date(eventData.end_at)
+
+      // 確保日期解析正確
+      const startDateStr = !isNaN(startDate.getTime())
+        ? formatDateToString(startDate)
+        : today
+      const endDateStr = !isNaN(endDate.getTime())
+        ? formatDateToString(endDate)
+        : today
+
+      // 解析時間，確保格式正確
+      const startTimeStr = !isNaN(startDate.getTime())
+        ? startDate.toTimeString().slice(0, 5)
+        : '09:00'
+      const endTimeStr = !isNaN(endDate.getTime())
+        ? endDate.toTimeString().slice(0, 5)
+        : '10:00'
+
+      // 優先使用 title，其次使用 offering_name（個人行程的標題可能在這兩個欄位）
+      const title = eventData.title || eventData.offering_name || event?.offering_name || event?.title || ''
+
+      // 優先使用 color_hex，其次使用 color
+      const colorHex = eventData.color_hex || eventData.color || event?.color_hex || event?.color || '#6366F1'
+
+      form.value = {
+        title: title,
+        start_date: startDateStr,
+        start_time: startTimeStr,
+        end_date: endDateStr,
+        end_time: endTimeStr,
+        recurrence: eventData.recurrence_rule?.type ||
+                    eventData.recurrence_rule?.recurrence_type ||
+                    eventData.recurrence_type ||
+                    event?.recurrence_rule?.type ||
+                    event?.recurrence_rule?.recurrence_type ||
+                    event?.recurrence_type ||
+                    'NONE',
+        color_hex: colorHex,
+      }
+    } catch (error) {
+      console.error('[PersonalEventModal] Error initializing form:', error)
+      resetForm()
     }
   } else {
-    form.value = {
-      title: '',
-      start_date: today,
-      start_time: '09:00',
-      end_date: today,
-      end_time: '10:00',
-      recurrence: 'NONE' as 'NONE' | 'DAILY' | 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY',
-      color_hex: '#6366F1',
-    }
+    resetForm()
   }
 }
 
-watch(() => props.editingEvent, initializeForm, { immediate: true })
+// 重置表單到預設值
+const resetForm = () => {
+  form.value = {
+    title: '',
+    start_date: today,
+    start_time: '09:00',
+    end_date: today,
+    end_time: '10:00',
+    recurrence: 'NONE' as 'NONE' | 'DAILY' | 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY',
+    color_hex: '#6366F1',
+  }
+}
+
+// 監聽 editingEvent 變化，當有編輯資料時初始化表單
+watch(editingEventRef, (newVal) => {
+  if (newVal) {
+    // 確保在下一個 tick 初始化表單
+    nextTick(() => {
+      initializeForm()
+      isModalInitialized.value = true
+    })
+  }
+}, { immediate: true })
+
+// 監聽 Modal 開啟狀態，確保開啟時表單已初始化
+watch(isEditing, (wasEditing) => {
+  // 當編輯狀態為 true 且表單尚未初始化時，強制初始化
+  if (wasEditing && !isModalInitialized.value) {
+    nextTick(() => {
+      initializeForm()
+      isModalInitialized.value = true
+    })
+  }
+}, { immediate: true })
 
 const colors = [
   '#6366F1',
