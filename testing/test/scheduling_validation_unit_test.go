@@ -251,6 +251,8 @@ func TestScheduleValidationService_Complete(t *testing.T) {
 			endTime,
 			nil,
 			false,
+			nil,
+			nil,
 		)
 
 		assert.NoError(t, err)
@@ -273,6 +275,8 @@ func TestScheduleValidationService_Complete(t *testing.T) {
 			endTime,
 			nil,
 			false,
+			nil,
+			nil,
 		)
 
 		assert.NoError(t, err)
@@ -301,6 +305,8 @@ func TestScheduleValidationService_Complete(t *testing.T) {
 			endTime,
 			nil,
 			true,
+			nil,
+			nil,
 		)
 
 		assert.NoError(t, err)
@@ -329,6 +335,8 @@ func TestScheduleValidationService_Complete(t *testing.T) {
 			endTime,
 			nil,
 			false,
+			nil,
+			nil,
 		)
 
 		assert.NoError(t, err)
@@ -817,6 +825,8 @@ func TestScheduleValidationService_AdditionalCases(t *testing.T) {
 			endTime,
 			nil,
 			false,
+			nil,
+			nil,
 		)
 
 		assert.NoError(t, err)
@@ -840,6 +850,8 @@ func TestScheduleValidationService_AdditionalCases(t *testing.T) {
 			endTime,
 			nil,
 			false,
+			nil,
+			nil,
 		)
 
 		assert.NoError(t, err)
@@ -863,6 +875,8 @@ func TestScheduleValidationService_AdditionalCases(t *testing.T) {
 			endTime,
 			nil,
 			false,
+			nil,
+			nil,
 		)
 
 		assert.NoError(t, err)

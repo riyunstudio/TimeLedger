@@ -339,7 +339,7 @@ func TestScheduleValidationService_ValidateFull(t *testing.T) {
 		startTime := time.Date(2026, 1, 20, 9, 0, 0, 0, time.UTC)
 		endTime := time.Date(2026, 1, 20, 10, 0, 0, 0, time.UTC)
 
-		result, err := validationService.ValidateFull(ctx, center.ID, &teacherID, room.ID, course.ID, startTime, endTime, nil, false)
+		result, err := validationService.ValidateFull(ctx, center.ID, &teacherID, room.ID, course.ID, startTime, endTime, nil, false, nil, nil)
 		if err != nil {
 			t.Fatalf("ValidateFull 發生錯誤: %v", err)
 		}
@@ -756,7 +756,7 @@ func TestIntegrationWorkflow(t *testing.T) {
 		startTime := time.Date(2026, 1, 20, 11, 0, 0, 0, time.UTC)
 		endTime := time.Date(2026, 1, 20, 12, 0, 0, 0, time.UTC)
 
-		result, err := validationService.ValidateFull(ctx, testData.Center.ID, &testData.Teacher.ID, testData.Room.ID, testData.Course.ID, startTime, endTime, nil, false)
+		result, err := validationService.ValidateFull(ctx, testData.Center.ID, &testData.Teacher.ID, testData.Room.ID, testData.Course.ID, startTime, endTime, nil, false, nil, nil)
 		if err != nil {
 			t.Fatalf("ValidateFull 發生錯誤: %v", err)
 		}
