@@ -1680,6 +1680,8 @@ onMounted(() => {
 
 <style scoped>
 /* 匯出模式：隱藏時間和中心名稱 */
+
+/* 列表視圖 */
 :deep(.export-mode) .time-block {
   display: none !important;
 }
@@ -1692,10 +1694,11 @@ onMounted(() => {
   display: none !important;
 }
 
-:deep(.export-mode) .text-\[10px\].leading-none.truncate.opacity-80 {
+:deep(.export-mode) .flex-1.min-w-0 > .text-xs.truncate {
   display: none !important;
 }
 
+/* 網格視圖 */
 :deep(.export-mode) .grid .grid-cols-8 > div:first-child {
   display: none !important;
 }
@@ -1708,10 +1711,16 @@ onMounted(() => {
   border-top-right-radius: 0.5rem !important;
 }
 
-:deep(.export-mode) .list-item-title {
-  white-space: normal !important;
-  overflow: visible !important;
-  word-break: break-all !important;
-  line-height: 1.5 !important;
+/* 網格課程卡片內的時間和中心名稱 */
+:deep(.export-mode) .grid .absolute.inset-0 .flex.items-center.gap-1 {
+  display: none !important;
+}
+
+:deep(.export-mode) .grid .absolute.inset-0 .text-\[10px\].leading-none.truncate.opacity-80 {
+  display: none !important;
+}
+
+:deep(.export-mode) .grid .absolute.inset-0 .mb-0\.5 {
+  margin-bottom: 0 !important;
 }
 </style>
