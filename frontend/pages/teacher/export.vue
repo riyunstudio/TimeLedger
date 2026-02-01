@@ -238,7 +238,7 @@
                   <div
                     v-for="item in getDayScheduleItems(day.date)"
                     :key="item.id"
-                    class="absolute left-1 right-1 rounded p-1.5 text-xs z-10"
+                    class="absolute left-1 right-1 rounded p-1.5 text-xs z-10 flex flex-col items-center justify-center"
                     :style="{
                       backgroundColor: `${item.color || '#10B981'}30`,
                       borderLeft: `3px solid ${item.color || '#10B981'}`,
