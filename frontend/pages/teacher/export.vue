@@ -1700,6 +1700,14 @@ onMounted(() => {
   display: none !important;
 }
 
+:deep(.export-mode) .grid .grid-cols-8 > div:nth-child(2) {
+  border-top-left-radius: 0.5rem !important;
+}
+
+:deep(.export-mode) .grid .grid-cols-8 > div:nth-child(8) {
+  border-top-right-radius: 0.5rem !important;
+}
+
 :deep(.export-mode) .list-item-title {
   white-space: normal !important;
   overflow: visible !important;
