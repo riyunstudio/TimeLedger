@@ -61,9 +61,9 @@
               <span class="text-2xl font-bold text-white">{{ authStore.user?.name?.charAt(0) || 'T' }}</span>
             </div>
             <div>
-              <h1 class="text-2xl font-bold" :class="currentTheme.titleClass">{{ authStore.user?.name }}</h1>
-              <p class="text-sm" :class="currentTheme.subtitleClass">個人課表</p>
-              <div v-if="options.showPersonalInfo && teacherHashtags.length > 0" class="flex gap-2 mt-2 flex-wrap">
+              <h1 class="text-2xl font-bold text-center" :class="currentTheme.titleClass">{{ authStore.user?.name }}</h1>
+              <p class="text-sm text-center" :class="currentTheme.subtitleClass">個人課表</p>
+              <div v-if="options.showPersonalInfo && teacherHashtags.length > 0" class="flex flex-wrap gap-2 mt-2 justify-center">
                 <span
                   v-for="(tag, index) in teacherHashtags.slice(0, 5)"
                   :key="tag.id"
@@ -152,13 +152,13 @@
                   <div class="text-xs" :class="currentTheme.subtitleClass">{{ item.end_time }}</div>
                 </div>
                 <!-- 課程資訊區塊 -->
-                <div class="flex-1 min-w-0 ml-3">
-                  <div class="flex items-center gap-2 mb-1 flex-wrap">
+                <div class="flex-1 min-w-0 ml-3 flex flex-col justify-center">
+                  <div class="flex items-center justify-center gap-2 mb-1 flex-wrap">
                     <span
                       class="w-2 h-2 rounded-full flex-shrink-0"
                       :style="{ backgroundColor: item.color || '#10B981' }"
                     ></span>
-                    <h4 class="font-medium list-item-title" :class="currentTheme.itemTitleClass">
+                    <h4 class="font-medium list-item-title text-center" :class="currentTheme.itemTitleClass">
                       {{ item.title }}
                     </h4>
                     <span
@@ -169,7 +169,7 @@
                       {{ getStatusText(item.status) }}
                     </span>
                   </div>
-                  <div v-if="getValidCenterName(item.center_name)" class="text-xs truncate" :class="currentTheme.centerClass">
+                  <div v-if="getValidCenterName(item.center_name)" class="text-xs truncate text-center" :class="currentTheme.centerClass">
                     {{ getValidCenterName(item.center_name) }}
                   </div>
                 </div>
@@ -246,7 +246,7 @@
                       height: `${Math.max(getGridItemHeight(item), 65)}px`
                     }"
                   >
-                    <div class="flex items-center gap-1 mb-0.5 leading-none">
+                    <div class="flex items-center gap-1 mb-0.5 leading-none justify-center">
                       <span class="font-medium truncate" :class="currentTheme.itemTitleClass">
                         {{ item.start_time }}
                       </span>
@@ -257,7 +257,7 @@
                         {{ getStatusText(item.status) }}
                       </span>
                     </div>
-                    <div class="font-medium leading-tight mb-0.5" :class="[currentTheme.itemTitleClass, getGridTitleClass(item)]">
+                    <div class="font-medium leading-tight mb-0.5 text-center" :class="[currentTheme.itemTitleClass, getGridTitleClass(item)]">
                       {{ item.title }}
                     </div>
                     <div v-if="getValidCenterName(item.center_name)" class="text-[10px] leading-none truncate opacity-80" :class="currentTheme.centerClass">
