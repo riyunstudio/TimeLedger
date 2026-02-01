@@ -260,7 +260,7 @@
                     <div class="font-medium leading-tight mb-0.5 text-center" :class="[currentTheme.itemTitleClass, getGridTitleClass(item)]">
                       {{ item.title }}
                     </div>
-                    <div v-if="getValidCenterName(item.center_name)" class="text-[10px] leading-none truncate opacity-80" :class="currentTheme.centerClass">
+                    <div v-if="getValidCenterName(item.center_name)" class="text-[10px] leading-none truncate opacity-80 text-center" :class="currentTheme.centerClass">
                       {{ getValidCenterName(item.center_name) }}
                     </div>
                   </div>
@@ -1746,5 +1746,44 @@ onMounted(() => {
 
 :deep(.export-mode) .grid .absolute.inset-0 .mb-0\.5 {
   margin-bottom: 0 !important;
+}
+
+/* 匯出模式：強制桌面板版 */
+:deep(.export-mode) {
+  /* 強制使用桌面板網格佈局 */
+  display: block !important;
+  width: 100% !important;
+  max-width: none !important;
+  overflow: visible !important;
+}
+
+:deep(.export-mode) .grid {
+  display: grid !important;
+  grid-template-columns: repeat(8, 1fr) !important;
+  min-width: 900px !important;
+}
+
+:deep(.export-mode) .grid > div {
+  flex: none !important;
+  width: auto !important;
+}
+
+:deep(.export-mode) .lg\:col-span-3 {
+  width: 100% !important;
+  max-width: none !important;
+  flex: none !important;
+}
+
+:deep(.export-mode) .glass-card {
+  padding: 32px !important;
+  width: 100% !important;
+}
+
+:deep(.export-mode) .min-w-\[700px\] {
+  min-width: 900px !important;
+}
+
+:deep(.export-mode) .overflow-x-auto {
+  overflow: visible !important;
 }
 </style>
