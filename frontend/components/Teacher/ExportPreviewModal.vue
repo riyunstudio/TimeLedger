@@ -416,7 +416,7 @@ const handleShare = async () => {
           text: '查看我的課表！',
         })
       } catch (err) {
-        console.log('Share failed:', err)
+        // 使用者取消分享
       }
     }
   }
