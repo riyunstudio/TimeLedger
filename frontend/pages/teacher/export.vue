@@ -141,7 +141,7 @@
                 :class="[currentTheme.itemClass, currentTheme.itemGradient]"
               >
                 <div class="absolute left-0 top-0 bottom-0 w-1" :class="currentTheme.itemAccentClass"></div>
-                <!-- 時間區塊 - 確保寬度固定不被遮蓋 -->
+                <!-- 時間區塊 -->
                 <div class="w-20 flex-shrink-0 time-block">
                   <div class="font-semibold text-sm whitespace-nowrap" :class="currentTheme.timeClass">{{ item.start_time }}</div>
                   <div class="text-xs" :class="currentTheme.subtitleClass">{{ item.end_time }}</div>
@@ -153,10 +153,9 @@
                       class="w-2 h-2 rounded-full flex-shrink-0"
                       :style="{ backgroundColor: item.color || '#10B981' }"
                     ></span>
-                    <h4 class="font-medium truncate" :class="currentTheme.itemTitleClass">
+                    <h4 class="font-medium list-item-title" :class="currentTheme.itemTitleClass">
                       {{ item.title }}
                     </h4>
-                    <!-- 只顯示非 NORMAL 且非 APPROVED 的狀態 -->
                     <span
                       v-if="item.status && item.status !== 'APPROVED' && item.status !== 'NORMAL'"
                       class="px-2 py-0.5 rounded-full text-xs flex-shrink-0"
@@ -165,7 +164,6 @@
                       {{ getStatusText(item.status) }}
                     </span>
                   </div>
-                  <!-- 中心名稱只顯示一次，且過濾掉 NORMAL -->
                   <div v-if="getValidCenterName(item.center_name)" class="text-xs truncate" :class="currentTheme.centerClass">
                     {{ getValidCenterName(item.center_name) }}
                   </div>
@@ -240,10 +238,10 @@
                       backgroundColor: `${item.color || '#10B981'}30`,
                       borderLeft: `3px solid ${item.color || '#10B981'}`,
                       top: getGridItemTopOffset(item),
-                      height: `${Math.max(getGridItemHeight(item), 50)}px`
+                      height: `${Math.max(getGridItemHeight(item), 65)}px`
                     }"
                   >
-                    <div class="flex items-center gap-1 mb-0.5">
+                    <div class="flex items-center gap-1 mb-0.5 leading-none">
                       <span class="font-medium truncate" :class="currentTheme.itemTitleClass">
                         {{ item.start_time }}
                       </span>
@@ -254,10 +252,10 @@
                         {{ getStatusText(item.status) }}
                       </span>
                     </div>
-                    <div class="font-medium truncate" :class="currentTheme.itemTitleClass">
+                    <div class="font-medium leading-tight mb-0.5" :class="[currentTheme.itemTitleClass, getGridTitleClass(item)]">
                       {{ item.title }}
                     </div>
-                    <div v-if="getValidCenterName(item.center_name)" class="text-xs truncate" :class="currentTheme.centerClass">
+                    <div v-if="getValidCenterName(item.center_name)" class="text-[10px] leading-none truncate opacity-80" :class="currentTheme.centerClass">
                       {{ getValidCenterName(item.center_name) }}
                     </div>
                   </div>
@@ -853,8 +851,8 @@ const timeSlots = computed(() => {
   return slots
 })
 
-// 網格每小時的高度（像素）- 減少高度以避免導出問題
-const GRID_HOUR_HEIGHT = 60
+// 網格每小時的高度（像素）- 增加高度以提供更多垂直空間
+const GRID_HOUR_HEIGHT = 80
 
 // 取得指定日期和時間的課程項目
 const getScheduleItemsForHour = (date: string, hour: string) => {
@@ -1018,6 +1016,12 @@ const getStatusText = (status: string) => {
   }
 }
 
+// 根據標題長度動態調整字體大小，避免遮蓋
+const getGridTitleClass = (item: any) => {
+  if (item.title?.length > 10) return 'text-[10px]'
+  return 'text-xs'
+}
+
 const getBackgroundColor = () => {
   const theme = currentTheme.value
   if (theme.id === 'dustyRose') return '#f8f5f5'
@@ -1045,7 +1049,7 @@ const createCleanExportElement = (view: 'list' | 'grid' = 'list'): HTMLElement |
 
   // 添加標題區域
   const header = document.createElement('div')
-  header.style.cssText = 'display-content: space-between: flex; justify; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #eee;'
+  header.style.cssText = 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #eee;'
   header.innerHTML = `
     <div style="display: flex; align-items: center; gap: 12px;">
       <div style="width: 50px; height: 50px; border-radius: 50%; background: #6366F1; display: flex; align-items: center; justify-content: center; color: white; font-size: 20px; font-weight: bold;">${authStore.user?.name?.charAt(0) || 'T'}</div>
@@ -1265,6 +1269,9 @@ const handleExportAsImage = async () => {
   exportElement.style.maxHeight = 'none'
   exportElement.style.position = 'relative'
 
+  // 添加匯出用的 CSS 類別來隱藏時間和中心名稱
+  exportElement.classList.add('export-mode')
+
   // 等待瀏覽器重新渲染
   await new Promise(resolve => setTimeout(resolve, 100))
 
@@ -1304,6 +1311,8 @@ const handleExportAsImage = async () => {
     console.error('Image export failed:', error)
     notificationUI.showError('圖片匯出失敗，請稍後再試')
   } finally {
+    // 移除匯出用的 CSS 類別
+    exportElement.classList.remove('export-mode')
     // 恢復原始樣式
     exportElement.style.overflowX = originalOverflowX
     exportElement.style.overflowY = originalOverflowY
@@ -1334,6 +1343,9 @@ const handleDownloadPDF = async () => {
   exportElement.style.overflow = 'visible'
   exportElement.style.maxHeight = 'none'
   exportElement.style.position = 'relative'
+
+  // 添加匯出用的 CSS 類別來隱藏時間和中心名稱
+  exportElement.classList.add('export-mode')
 
   // 等待瀏覽器重新渲染
   await new Promise(resolve => setTimeout(resolve, 100))
@@ -1422,6 +1434,8 @@ const handleDownloadPDF = async () => {
     notificationUI.hideLoading()
     notificationUI.showError('PDF 生成失敗，請稍後再試')
   } finally {
+    // 移除匯出用的 CSS 類別
+    exportElement.classList.remove('export-mode')
     // 恢復原始樣式
     exportElement.style.overflow = originalOverflow
     exportElement.style.maxHeight = originalMaxHeight
@@ -1543,6 +1557,9 @@ const handleShareLINE = async () => {
   exportElement.style.maxHeight = 'none'
   exportElement.style.position = 'relative'
 
+  // 添加匯出用的 CSS 類別來隱藏時間和中心名稱
+  exportElement.classList.add('export-mode')
+
   // 等待瀏覽器重新渲染
   await new Promise(resolve => setTimeout(resolve, 100))
 
@@ -1586,6 +1603,8 @@ const handleShareLINE = async () => {
     console.error('Failed to share to LINE:', error)
     notificationUI.showError('分享失敗，請嘗試下載圖片')
   } finally {
+    // 移除匯出用的 CSS 類別
+    exportElement.classList.remove('export-mode')
     // 恢復原始樣式
     exportElement.style.overflow = originalOverflow
     exportElement.style.maxHeight = originalMaxHeight
@@ -1658,3 +1677,33 @@ onMounted(() => {
   scheduleStore.fetchSchedule()
 })
 </script>
+
+<style scoped>
+/* 匯出模式：隱藏時間和中心名稱 */
+:deep(.export-mode) .time-block {
+  display: none !important;
+}
+
+:deep(.export-mode) .time-block + div {
+  margin-left: 0 !important;
+}
+
+:deep(.export-mode) .flex-shrink-0.text-right {
+  display: none !important;
+}
+
+:deep(.export-mode) .text-\[10px\].leading-none.truncate.opacity-80 {
+  display: none !important;
+}
+
+:deep(.export-mode) .grid .grid-cols-8 > div:first-child {
+  display: none !important;
+}
+
+:deep(.export-mode) .list-item-title {
+  white-space: normal !important;
+  overflow: visible !important;
+  word-break: break-all !important;
+  line-height: 1.5 !important;
+}
+</style>

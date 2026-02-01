@@ -97,12 +97,15 @@
                   class="rounded-lg p-1.5 bg-white/20"
                   :class="options.privacyMode && item.type === 'PERSONAL_EVENT' ? 'bg-white/10' : 'bg-white/20'"
                 >
-                  <div v-if="options.showTime" class="text-white/90 text-xs mb-0.5">
+                  <div v-if="options.showTime" class="text-white/90 text-[10px] leading-none mb-1">
                     {{ item.start_time }}
                   </div>
-                  <h5 :class="options.compactMode ? 'text-xs' : 'text-sm'" class="font-medium text-white truncate">
+                  <h5 :class="options.compactMode ? 'text-[10px]' : 'text-xs'" class="font-medium text-white leading-tight mb-0.5">
                     {{ item.type === 'PERSONAL_EVENT' ? (options.privacyMode ? '已保留' : item.title) : item.title }}
                   </h5>
+                  <div v-if="item.center_name && item.center_name !== 'NORMAL'" class="text-[9px] text-white/70 leading-none truncate">
+                    {{ item.center_name }}
+                  </div>
                 </div>
                 <div
                   v-if="day.items.length > maxVisibleItems"
