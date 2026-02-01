@@ -169,7 +169,6 @@ const weekDays = computed(() => {
 
     return result
   } catch (error) {
-    console.error('[WeekGrid] Error computing weekDays:', error)
     return []
   }
 })
@@ -190,7 +189,6 @@ const localSlotWidth = ref<number>(120)
 // 計算 slotWidth 的函數
 const calculateSlotWidth = () => {
   if (!calendarContainerRef.value) {
-    console.warn('[WeekGrid] calendarContainerRef is null')
     return
   }
 
@@ -203,11 +201,6 @@ const calculateSlotWidth = () => {
 
   if (calculatedSlotWidth !== localSlotWidth.value) {
     localSlotWidth.value = calculatedSlotWidth
-    console.log('[WeekGrid] calculateSlotWidth:', {
-      containerWidth,
-      calculatedSlotWidth,
-      timeColumnWidth
-    })
     // 清除樣式快取，讓卡片重新計算位置
     styleCache.clear()
     overlapDataCache.clear()
@@ -253,11 +246,6 @@ const getScheduleStyle = (schedule: any): Record<string, string> => {
   const cacheKey = `${schedule.id}-${weekday}-${schedule.start_time}-${currentSlotWidth}`
   const cached = styleCache.get(cacheKey)
   if (cached) {
-    console.log('[WeekGrid] getScheduleStyle - 使用快取:', {
-      id: schedule.id,
-      cacheKey,
-      style: cached
-    })
     return cached
   }
 
@@ -370,19 +358,6 @@ const schedulesWithOverlapData = computed(() => {
 
     const style = getScheduleStyle(schedule)
 
-    console.log('[WeekGrid] Style calculation:', {
-      id: schedule.id,
-      weekday: schedule.weekday,
-      start_hour: schedule.start_hour,
-      start_minute: schedule.start_minute,
-      duration_minutes: schedule.duration_minutes,
-      date: schedule.date,
-      offering_name: schedule.offering_name,
-      style: style,
-      localSlotWidth: localSlotWidth.value,
-      weekDays: weekDays.value.map(d => ({ value: d.value, name: d.name, date: d.date }))
-    })
-
     // 使用淺層複製，避免修改原始資料
     const enhanced = {
       ...schedule,
@@ -425,7 +400,6 @@ const cellClassMap = computed(() => {
 
     return classMap
   } catch (error) {
-    console.error('[WeekGrid] Error computing cellClassMap:', error)
     return {}
   }
 })
@@ -438,19 +412,8 @@ const cellClassMap = computed(() => {
 // 注意：slotWidth 現在由本地計算，不再監聽 props.slotWidth
 const lastSchedulesSnapshot = shallowRef<any[]>([])
 
-// 調試：監控傳入的 props
+// 監控傳入的 props
 watch([() => props.schedules, () => props.weekStart], ([newSchedules, newWeekStart], [oldSchedules, oldWeekStart]) => {
-  console.log('[WeekGrid] Props changed:', {
-    schedulesCount: newSchedules?.length || 0,
-    weekStart: newWeekStart,
-    firstSchedule: newSchedules?.[0] ? {
-      id: newSchedules[0].id,
-      weekday: newSchedules[0].weekday,
-      start_hour: newSchedules[0].start_hour,
-      start_minute: newSchedules[0].start_minute,
-      start_time: newSchedules[0].start_time
-    } : null
-  })
 }, { immediate: true, deep: false })
 
 watch(
@@ -462,7 +425,6 @@ watch(
     if (snapshot !== lastSnapshot) {
       styleCache.clear()
       overlapDataCache.clear()
-      console.log('[WeekGrid] Cache cleared due to schedules change')
       lastSchedulesSnapshot.value = newSchedules.map(s => `${s.id}-${s.weekday}-${s.start_time}-${s.duration_minutes}`)
     }
   },

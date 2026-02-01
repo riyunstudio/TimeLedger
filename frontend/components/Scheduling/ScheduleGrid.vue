@@ -389,13 +389,6 @@ const displaySchedules = computed(() => {
     ? props.schedules
     : schedules.value
 
-  console.log('[ScheduleGrid] displaySchedules - source:', {
-    fromProps: !!(props.schedules && props.schedules.length > 0),
-    propsLength: props.schedules?.length || 0,
-    internalLength: schedules.value.length,
-    totalSourceLength: sourceSchedules.length
-  })
-
   const seen = new Set<string>()
   const result: any[] = []
 
@@ -469,58 +462,32 @@ const fetchSchedules = async () => {
     if (Array.isArray(response)) {
       // 後端直接返回陣列
       expandedSchedules = response
-      console.log('[ScheduleGrid] API response is array, length:', expandedSchedules.length)
-      if (expandedSchedules.length > 0) {
-        console.log('[ScheduleGrid] First item sample:', JSON.stringify(expandedSchedules[0], null, 2))
-      }
     } else if (response?.datas) {
       // 後端返回 { code, datas } 格式
       expandedSchedules = response.datas
-      console.log('[ScheduleGrid] API response.datas, length:', expandedSchedules.length)
-      if (expandedSchedules.length > 0) {
-        console.log('[ScheduleGrid] First item sample:', JSON.stringify(expandedSchedules[0], null, 2))
-      }
     } else if (response?.data) {
       // 另一種格式 { code, data }
       expandedSchedules = response.data
-      console.log('[ScheduleGrid] API response.data, length:', expandedSchedules.length)
-      if (expandedSchedules.length > 0) {
-        console.log('[ScheduleGrid] First item sample:', JSON.stringify(expandedSchedules[0], null, 2))
-      }
     } else {
-      console.log('[ScheduleGrid] API response structure unexpected:', response)
-      console.log('[ScheduleGrid] Response type:', typeof response)
-      if (response) {
-        console.log('[ScheduleGrid] Response keys:', Object.keys(response))
-      }
       expandedSchedules = []
     }
 
     // 如果還是空的，直接調用 /admin/rules API 獲取規則列表
     if (expandedSchedules.length === 0) {
-      console.log('[ScheduleGrid] expandedSchedules is empty, fetching rules directly...')
       try {
         const rulesResponse = await api.post<{ code: number; datas: any[] }>('/admin/rules', {})
-        console.log('[ScheduleGrid] rulesResponse:', rulesResponse)
         if (rulesResponse?.datas) {
           expandedSchedules = rulesResponse.datas
-          console.log('[ScheduleGrid] rulesResponse.datas length:', expandedSchedules.length)
-          if (expandedSchedules.length > 0) {
-            console.log('[ScheduleGrid] First rule sample:', JSON.stringify(expandedSchedules[0], null, 2))
-          }
         }
       } catch (err) {
-        console.error('[ScheduleGrid] Failed to fetch rules:', err)
+        // 忽略錯誤
       }
     }
 
     // 確保 expandedSchedules 是陣列
     if (!Array.isArray(expandedSchedules)) {
-      console.log('[ScheduleGrid] expandedSchedules is not an array, resetting to empty')
       expandedSchedules = []
     }
-
-    console.log('[ScheduleGrid] Processing', expandedSchedules.length, 'schedules')
 
     const scheduleList = expandedSchedules.map((schedule: any, index: number) => {
       try {
@@ -564,7 +531,6 @@ const fetchSchedules = async () => {
           if (effectiveEndDate) {
             const end = new Date(effectiveEndDate)
             if (targetDate > end) {
-              console.log(`[ScheduleGrid] Rule ${schedule.id} is beyond effective range, skipping`)
               return null
             }
           }
@@ -574,7 +540,6 @@ const fetchSchedules = async () => {
           weekday = date.getDay() === 0 ? 7 : date.getDay()
         } else {
           // 無法識別的格式，跳過
-          console.warn('[ScheduleGrid] Unknown schedule format at index', index, schedule)
           return null
         }
 
@@ -589,16 +554,6 @@ const fetchSchedules = async () => {
         const offeringName = schedule.offering?.name || schedule.offering_name || schedule.title || '-'
 
         const dateString = date.toISOString().split('T')[0]
-
-        console.log(`[ScheduleGrid] Processed item ${index}:`, {
-          id: schedule.rule_id || schedule.id,
-          weekday,
-          date: dateString,
-          start_time: startTime,
-          offering_name: offeringName,
-          teacher_name: teacherName,
-          room_name: roomName,
-        })
 
         return {
           id: schedule.rule_id || schedule.id,
@@ -631,13 +586,10 @@ const fetchSchedules = async () => {
       }
     }).filter((item): item is NonNullable<typeof item> => item !== null)
 
-    console.log('[ScheduleGrid] Processed scheduleList length:', scheduleList.length)
     schedules.value = scheduleList
-    console.log('[ScheduleGrid] schedules.value length:', schedules.value.length)
 
     // 注意：slotWidth 現在由 WeekGrid 組件自己計算，不需要在這裡呼叫
   } catch (error: any) {
-    console.error('Failed to fetch schedules:', error)
     hasError.value = true
     errorMessage.value = error?.message || '無法載入課表資料，請稍後重試'
     schedules.value = []
@@ -908,14 +860,12 @@ watch(weekStart, async (newWeekStart, oldWeekStart) => {
 // 監聽 props.schedules 變化，更新標記
 watch(() => props.schedules, (newSchedules) => {
   schedulesFromProps.value = !!(newSchedules && newSchedules.length > 0)
-  console.log('[ScheduleGrid] schedulesFromProps:', schedulesFromProps.value, 'count:', newSchedules?.length || 0)
 }, { immediate: true })
 
 // 監聽外部傳入的 weekStart 變化，同步到內部狀態
 watch(() => props.weekStart, (newWeekStart) => {
   if (newWeekStart) {
     weekStart.value = getWeekStart(newWeekStart)
-    console.log('[ScheduleGrid] weekStart synced from props:', weekStart.value)
   }
 }, { immediate: true })
 
@@ -926,7 +876,6 @@ watch(() => props.weekStart, (newWeekStart) => {
 onMounted(async () => {
   // 設置 schedules 來源標記
   schedulesFromProps.value = !!(props.schedules && props.schedules.length > 0)
-  console.log('[ScheduleGrid] onMounted, schedulesFromProps:', schedulesFromProps.value)
 
   if (!props.schedules || props.schedules.length === 0) {
     await fetchSchedules()

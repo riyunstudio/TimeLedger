@@ -1,53 +1,61 @@
 <template>
-  <div class="flex items-center justify-between mb-6">
-    <div>
+  <div class="mb-6">
+    <div class="mb-4">
       <h2 class="text-2xl font-bold text-white mb-1">匯出課表</h2>
       <p class="text-slate-400 text-sm">預覽並下載您的詳細課表</p>
     </div>
-    <div class="flex gap-3">
+    <!-- 按鈕區域 - 手機版自動換行 -->
+    <div class="flex flex-wrap gap-2 sm:gap-3">
       <button
         @click="router.push('/teacher/dashboard')"
-        class="px-4 py-2 rounded-lg bg-white/5 text-white hover:bg-white/10 transition-colors"
+        class="px-3 py-2 sm:px-4 sm:py-2 rounded-lg bg-white/5 text-white hover:bg-white/10 transition-colors text-sm sm:text-base flex items-center gap-1 sm:gap-2"
       >
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+        </svg>
         返回
       </button>
       <button
         @click="handleDownloadICal"
-        class="px-4 py-2 rounded-lg bg-secondary-500 text-white hover:bg-secondary-600 transition-colors flex items-center gap-2"
+        class="px-3 py-2 sm:px-4 sm:py-2 rounded-lg bg-secondary-500 text-white hover:bg-secondary-600 transition-colors text-sm sm:text-base flex items-center gap-1 sm:gap-2"
         title="匯出到日曆 App"
       >
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
         </svg>
-        iCal
+        <span class="hidden xs:inline">iCal</span>
+        <span class="xs:hidden">日曆</span>
       </button>
       <button
         @click="handleShareLINE"
-        class="px-4 py-2 rounded-lg bg-[#06C755] text-white hover:bg-[#05b546] transition-colors flex items-center gap-2"
+        class="px-3 py-2 sm:px-4 sm:py-2 rounded-lg bg-[#06C755] text-white hover:bg-[#05b546] transition-colors text-sm sm:text-base flex items-center gap-1 sm:gap-2"
         title="分享到 LINE"
       >
-        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.6 9.5c-.17 1.1-1.3 2.08-2.5 2.55-.35.14-.6.22-.86.22-.32 0-.64-.1-.86-.35-.22-.25-.33-.55-.33-.9 0-.6.45-1.1 1-1.35.1-.05.18-.08.28-.08.55 0 1.05.45 1.1 1 .02.1.02.2.02.32zm-3.1 2.7c-.1.05-.18.08-.28.08-.55 0-1.05-.45-1.1-1-.02-.1-.02-.2-.02-.32 0-.6.45-1.1 1-1.35.1-.05.18-.08.28-.08.32 0 .64.1.86.35.22.25.33.55.33.9 0 .6-.45 1.1-1 1.1zm-3.1-2.7c.17-1.1 1.3-2.08 2.5-2.55.35-.14.6-.22.86-.22.32 0 .64.1.86.35.22.25.33.55.33.9 0 .6-.45 1.1-1 1.35-.1.05-.18.08-.28.08-.55 0-1.05-.45-1.1-1-.02-.1-.02-.2-.02-.32 0 .6.45 1.1 1 1.35.1.05.18.08.28.08.32 0 .64-.1.86-.35.22-.25.33-.55.33-.9 0-.6-.45-1.1-1-1.35-.1-.05-.18-.08-.28-.08-.55 0-1.05.45-1.1 1-.02.1-.02.2-.02.32 0-.6.45-1.1 1-1.35z"/>
+        <svg class="w-4 h-4 sm:w-5 sm:h-5" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12.6 9.5c-.17 1. 2zm41-1.3 2.08-2.5 2.55-.35.14-.6.22-.86.22-.32 0-.64-.1-.86-.35-.22-.25-.33-.55-.33-.9 0-.6.45-1.1 1-1.35.1-.05.18-.08.28-.08.55 0 1.05.45 1.1 1 .02.1.02.2.02.32zm-3.1 2.7c-.1.05-.18.08-.28.08-.55 0-1.05-.45-1.1-1-.02-.1-.02-.2-.02-.32 0-.6.45-1.1 1-1.35.1-.05.18-.08.28-.08.32 0 .64.1.86.35.22.25.33.55.33.9 0 .6-.45 1.1-1 1.1zm-3.1-2.7c.17-1.1 1.3-2.08 2.5-2.55.35-.14.6-.22.86-.22.32 0 .64.1.86.35.22.25.33.55.33.9 0 .6-.45 1.1-1 1.35-.1.05-.18.08-.28.08-.55 0-1.05-.45-1.1-1-.02-.1-.02-.2-.02-.32 0 .6.45 1.1 1 1.35.1.05.18.08.28.08.32 0 .64-.1.86-.35.22-.25.33-.55.33-.9 0-.6-.45-1.1-1-1.35-.1-.05-.18-.08-.28-.08-.55 0-1.05.45-1.1 1-.02.1-.02.2-.02.32 0-.6.45-1.1 1-1.35z"/>
         </svg>
-        LINE
+        <span class="hidden xs:inline">LINE</span>
+        <span class="xs:hidden">分享</span>
       </button>
       <button
         @click="handleDownloadPDF"
-        class="px-4 py-2 rounded-lg bg-primary-500 text-white hover:bg-primary-600 transition-colors flex items-center gap-2"
+        class="px-3 py-2 sm:px-4 sm:py-2 rounded-lg bg-primary-500 text-white hover:bg-primary-600 transition-colors text-sm sm:text-base flex items-center gap-1 sm:gap-2"
       >
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
         </svg>
-        下載 PDF
+        <span class="hidden xs:inline">下載 PDF</span>
+        <span class="xs:hidden">PDF</span>
       </button>
       <button
         @click="handleExportAsImage"
-        class="px-4 py-2 rounded-lg bg-secondary-500 text-white hover:bg-secondary-600 transition-colors flex items-center gap-2"
+        class="px-3 py-2 sm:px-4 sm:py-2 rounded-lg bg-secondary-500 text-white hover:bg-secondary-600 transition-colors text-sm sm:text-base flex items-center gap-1 sm:gap-2"
       >
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
         </svg>
-        下載圖片
+        <span class="hidden xs:inline">下載圖片</span>
+        <span class="xs:hidden">圖片</span>
       </button>
     </div>
   </div>
@@ -982,7 +990,6 @@ const isValidCenterName = (name?: string): boolean => {
   // 檢查是否為 NORMAL（忽略大小寫和空白）
   const normalized = trimmed.toUpperCase().replace(/\s+/g, '')
   if (normalized === 'NORMAL') {
-    console.debug('Filtered out center_name:', name)
     return false
   }
   // 檢查是否只包含數字
@@ -1272,8 +1279,6 @@ const cleanupExportElement = () => {
 }
 
 const handleExportAsImage = async () => {
-  console.log('開始匯出圖片...')
-
   // 直接截圖週曆區域
   const exportElement = scheduleRef.value
   if (!exportElement) {
@@ -1301,7 +1306,6 @@ const handleExportAsImage = async () => {
 
   try {
     const { default: html2canvas } = await import('html2canvas')
-    console.log('開始生成 canvas...')
 
     // 獲取完整的滾動區域尺寸
     const scrollWidth = exportElement.scrollWidth
@@ -1311,7 +1315,7 @@ const handleExportAsImage = async () => {
       backgroundColor: null,
       scale: 2,
       useCORS: true,
-      logging: true,
+      logging: false,
       allowTaint: true,
       width: scrollWidth,
       height: scrollHeight,
@@ -1321,16 +1325,11 @@ const handleExportAsImage = async () => {
       windowHeight: scrollHeight,
     })
 
-    console.log('Canvas 生成完成，尺寸:', canvas.width, 'x', canvas.height)
-    console.log('開始下載...')
-
     // 產生下載
     const link = document.createElement('a')
     link.download = `課表-${weekLabel.value}-${selectedViewOption.value === 'grid' ? '網格' : '列表'}-${Date.now()}.png`
     link.href = canvas.toDataURL('image/png')
     link.click()
-
-    console.log('下載完成')
   } catch (error) {
     console.error('Image export failed:', error)
     notificationUI.showError('圖片匯出失敗，請稍後再試')
@@ -1343,12 +1342,10 @@ const handleExportAsImage = async () => {
     exportElement.style.overflow = originalOverflow
     exportElement.style.maxHeight = originalMaxHeight
     exportElement.style.position = originalPosition
-    console.log('清理完成')
   }
 }
 
 const handleDownloadPDF = async () => {
-  console.log('開始生成 PDF...')
   notificationUI.showLoading('正在生成 PDF...')
 
   // 直接截圖週曆區域
@@ -1378,8 +1375,6 @@ const handleDownloadPDF = async () => {
     const { default: html2canvas } = await import('html2canvas')
     const { default: jsPDF } = await import('jspdf')
 
-    console.log('開始生成 canvas...')
-
     // 獲取完整的滾動區域尺寸
     const scrollWidth = exportElement.scrollWidth
     const scrollHeight = exportElement.scrollHeight
@@ -1388,7 +1383,7 @@ const handleDownloadPDF = async () => {
       backgroundColor: null,
       scale: 2,
       useCORS: true,
-      logging: true,
+      logging: false,
       allowTaint: true,
       width: scrollWidth,
       height: scrollHeight,
@@ -1397,8 +1392,6 @@ const handleDownloadPDF = async () => {
       windowWidth: scrollWidth,
       windowHeight: scrollHeight,
     })
-
-    console.log('Canvas 生成完成，開始生成 PDF...')
 
     const imgData = canvas.toDataURL('image/png', 1.0)
     const pdf = new jsPDF({
@@ -1452,7 +1445,6 @@ const handleDownloadPDF = async () => {
     pdf.save(`課表-${weekLabel.value}-${selectedViewOption.value === 'grid' ? '網格' : '列表'}-${Date.now()}.pdf`)
     notificationUI.hideLoading()
     notificationUI.showSuccess('PDF 已下載')
-    console.log('PDF 下載完成')
   } catch (error) {
     console.error('PDF generation failed:', error)
     notificationUI.hideLoading()

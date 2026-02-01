@@ -65,14 +65,10 @@ const notificationDataStore = useNotificationStore()
 const notificationUI = useNotification()
 const router = useRouter()
 
-// 除錯：監聽 show 狀態變化
-console.log('NotificationDropdown mounted, show:', notificationUI.show.value)
-
 // 監聽通知彈窗顯示狀態，開啟時重新整理
 watch(
   () => notificationUI.show.value,
   (isShown) => {
-    console.log('Show state changed:', isShown)
     if (isShown) {
       notificationDataStore.fetchNotifications(true)
     }

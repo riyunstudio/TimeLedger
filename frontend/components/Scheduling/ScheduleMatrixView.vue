@@ -445,9 +445,6 @@ const getScheduleStyle = (schedule: ScheduleData): Record<string, string> => {
   // 高度：持續時間對應的時段數量百分比
   const height = duration * 100
 
-  // 調試記錄
-  console.log(`Schedule: ${schedule.offering_name}, start: ${start_hour}:${start_minute}, slotIndex: ${slotIndex}, slotWidth: ${currentSlotWidth}, left: ${left}px`)
-
   return {
     left: `${left}px`,
     top: `${top}%`,

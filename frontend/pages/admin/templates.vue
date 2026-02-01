@@ -1129,7 +1129,6 @@ const fetchOfferings = async () => {
   try {
     const api = useApi()
     const response = await api.get<any>('/admin/offerings')
-    console.log('Offerings API response:', JSON.stringify(response, null, 2))
 
     // useApi 的 parseResponse 已經提取了 datas 欄位
     // API 回應格式: { Offerings: [...], Pagination: {...} }
@@ -1138,28 +1137,19 @@ const fetchOfferings = async () => {
       if (Array.isArray(response)) {
         // 直接是陣列格式
         offerings.value = response
-        console.log('Parsed from direct array:', offerings.value)
       } else if (Array.isArray(response.Offerings)) {
         // { Offerings: [...] } 格式
         offerings.value = response.Offerings
-        console.log('Parsed from Offerings array:', offerings.value)
       } else if (Array.isArray(response.offerings)) {
         // { offerings: [...] } 格式（小寫）
         offerings.value = response.offerings
-        console.log('Parsed from offerings array:', offerings.value)
       } else {
-        console.warn('Unexpected offerings format:', response)
         offerings.value = []
       }
     } else {
-      console.warn('No offerings data found in response:', response)
       offerings.value = []
     }
-
-    // 除錯：顯示最終結果
-    console.log('Final offerings:', offerings.value)
   } catch (error) {
-    console.error('Failed to fetch offerings:', error)
     offerings.value = []
   } finally {
     offeringsLoading.value = false

@@ -154,18 +154,18 @@
           </div>
         </div>
 
-        <div class="flex gap-3">
+        <div class="flex flex-col sm:flex-row gap-3">
           <button
             @click="handlePreview"
             :disabled="generating"
-            class="flex-1 glass-btn py-3 rounded-xl font-medium"
+            class="flex-1 glass-btn py-3 rounded-xl font-medium order-2 sm:order-1"
           >
             {{ generating ? '生成中...' : '預覽' }}
           </button>
           <button
             @click="handleExport"
             :disabled="generating"
-            class="flex-1 btn-primary"
+            class="flex-1 btn-primary py-3 rounded-xl font-medium order-1 sm:order-2"
           >
             {{ generating ? '生成中...' : '下載並分享' }}
           </button>
@@ -240,10 +240,9 @@ const handleExport = async () => {
 
     await new Promise(resolve => setTimeout(resolve, 2000))
 
-    alert('圖片已生成！請點擊分享按鈕分享到 LINE 或其他平台。')
+    await alert('圖片已生成！請點擊分享按鈕分享到 LINE 或其他平台。')
   } catch (error) {
-    console.error('Export failed:', error)
-    alert('匯出失敗，請稍後再試')
+    await alert('匯出失敗，請稍後再試')
   } finally {
     generating.value = false
   }

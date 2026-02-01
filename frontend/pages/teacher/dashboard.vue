@@ -253,18 +253,10 @@ const changeWeek = async (delta: number) => {
 // 課表資料轉換（包含中心課程和個人行程）
 const transformedSchedules = computed(() => {
   if (!scheduleStore.schedule) {
-    console.log('[dashboard] scheduleStore.schedule is null, returning empty array')
     return []
   }
 
   const result: any[] = []
-
-  console.log('[dashboard] scheduleStore.weekStart:', scheduleStore.weekStart)
-  console.log('[dashboard] scheduleStore.schedule.days:', scheduleStore.schedule.days?.map?.((d: any) => ({
-    date: d.date,
-    day_of_week: d.day_of_week,
-    itemsCount: d.items?.length || 0
-  })) || 'days is null/undefined')
 
   scheduleStore.schedule.days.forEach(day => {
     const date = new Date(day.date)
@@ -340,22 +332,6 @@ const transformedSchedules = computed(() => {
     })
   })
 
-  // 調試：輸出轉換後的課表資料
-  console.log('[dashboard] transformedSchedules result:', {
-    count: result.length,
-    firstItem: result[0] ? {
-      id: result[0].id,
-      offering_name: result[0].offering_name,
-      start_time: result[0].start_time,
-      date: result[0].date,
-    } : null,
-    allItems: result.map(item => ({
-      id: item.id,
-      offering_name: item.offering_name,
-      is_personal_event: item.is_personal_event,
-    }))
-  })
-
   return result
 })
 
@@ -409,7 +385,6 @@ const handleDeletePersonalEvent = async (event: any) => {
       await scheduleStore.deletePersonalEvent(event.id)
       await scheduleStore.fetchSchedule()
     } catch (error) {
-      console.error('Failed to delete personal event:', error)
       await alertError('刪除失敗，請稍後再試')
     }
   }

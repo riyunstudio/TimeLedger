@@ -560,7 +560,6 @@ const handleRejected = async (_id: number, note: string) => {
 
 // 打開詳情Modal
 const openDetail = (exception: any) => {
-  console.log('Opening detail for exception:', exception)
   showDetailModal.value = exception
 }
 

@@ -182,16 +182,11 @@ const replaceTeacherMode = ref<'center' | 'manual'>('center')
 
 // 處理預填資料
 onMounted(async () => {
-  console.log('[ExceptionModal] onMounted - prefill:', props.prefill)
-  console.log('[ExceptionModal] onMounted - centers:', props.centers?.length)
-
   if (props.prefill) {
     const { center_id, rule_id, original_date, original_time } = props.prefill
-    console.log('[ExceptionModal] prefill center_id:', center_id, 'rule_id:', rule_id)
 
     if (center_id) {
       form.center_id = center_id
-      console.log('[ExceptionModal] set form.center_id to:', form.center_id)
     }
 
     if (original_date) {
@@ -200,14 +195,11 @@ onMounted(async () => {
 
     // 如果有 center_id，載入課程列表
     if (form.center_id && form.center_id > 0) {
-      console.log('[ExceptionModal] calling fetchScheduleRules with center_id:', form.center_id)
       await fetchScheduleRules(form.center_id)
-      console.log('[ExceptionModal] localScheduleRules after fetch:', localScheduleRules.value.length)
 
       // 如果有 rule_id，選中對應課程
       if (rule_id) {
         form.rule_id = rule_id
-        console.log('[ExceptionModal] set form.rule_id to:', rule_id)
       }
     }
   }
@@ -220,16 +212,13 @@ const today = computed(() => {
 
 // 監聽中心選擇變化，載入該中心的課程
 watch(() => form.center_id, async (newCenterId, oldCenterId) => {
-  console.log('[ExceptionModal] watch center_id:', { old: oldCenterId, new: newCenterId })
   // 清空課程選擇
   form.rule_id = 0
   form.original_date = ''
   localScheduleRules.value = []
 
   if (newCenterId && newCenterId > 0) {
-    console.log('[ExceptionModal] watch triggering fetchScheduleRules:', newCenterId)
     await fetchScheduleRules(newCenterId)
-    console.log('[ExceptionModal] watch localScheduleRules:', localScheduleRules.value.length)
   }
 })
 
@@ -282,13 +271,7 @@ const fetchScheduleRules = async (centerId: number) => {
     // useApi 的 parseResponse 已經提取了 datas 欄位，所以 response 直接是陣列
     const rules = await api.get<ScheduleRuleData[]>(`/teacher/me/centers/${centerId}/schedule-rules`)
     localScheduleRules.value = rules || []
-    console.log('[ExceptionModal] fetchScheduleRules result:', {
-      centerId,
-      count: localScheduleRules.value.length,
-      rules: localScheduleRules.value
-    })
   } catch (error) {
-    console.error('Failed to fetch schedule rules:', error)
     localScheduleRules.value = []
   } finally {
     loadingRules.value = false
@@ -340,7 +323,6 @@ const handleSubmit = async () => {
     emit('submit')
     emit('close')
   } catch (error: any) {
-    console.error('Failed to create exception:', error)
     // 顯示錯誤彈窗，從錯誤響應中提取訊息
     const errorMessage = error?.response?._data?.message || error?.message || '操作失敗，請稍後再試'
     await alertError(errorMessage)

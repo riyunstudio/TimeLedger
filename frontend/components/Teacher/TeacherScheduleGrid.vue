@@ -38,14 +38,6 @@ const props = defineProps<{
   showHelpTooltip?: boolean
 }>()
 
-// 調試：監控 schedules prop 的變化
-watch(() => props.schedules, (newSchedules) => {
-  console.log('[TeacherScheduleGrid] schedules prop changed:', {
-    count: newSchedules?.length || 0,
-    firstItem: newSchedules?.[0] || null
-  })
-}, { immediate: true })
-
 // ============================================
 // Emits 定義
 // ============================================
@@ -81,7 +73,6 @@ const effectiveShowHelpTooltip = computed(() => props.showHelpTooltip ?? true)
 // ============================================
 
 const handleWeekStartChange = (date: Date) => {
-  console.log('[TeacherScheduleGrid] handleWeekStartChange:', date)
   emit('update:weekStart', date)
 }
 
@@ -91,14 +82,7 @@ const handleWeekStartChange = (date: Date) => {
 
 watch(() => props.weekStart, (newVal) => {
   if (newVal) {
-    console.log('[TeacherScheduleGrid] weekStart changed:', newVal)
+    // 週起始日期變化時，同步到內部狀態
   }
 }, { immediate: true })
-
-// 調試：組件掛載時記錄狀態
-onMounted(() => {
-  console.log('[TeacherScheduleGrid] mounted with schedules:', {
-    count: props.schedules?.length || 0
-  })
-})
 </script>

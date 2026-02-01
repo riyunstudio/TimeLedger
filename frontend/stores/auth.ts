@@ -20,31 +20,21 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isAdmin = computed(() => {
     if (!user.value) {
-      console.log('[DEBUG isAdmin] user.value is null, returning false')
       return false
     }
     const userData = user.value as any
     const role = userData.user_type || userData.role
-    console.log('[DEBUG isAdmin] userData:', JSON.stringify(userData))
-    console.log('[DEBUG isAdmin] role:', role)
-    const result = role === 'ADMIN' || role === 'OWNER' || role === 'STAFF'
-    console.log('[DEBUG isAdmin] result:', result)
-    return result
+    return role === 'ADMIN' || role === 'OWNER' || role === 'STAFF'
   })
 
   // Actions
   function login(authData: AuthResponse) {
-    console.log('[DEBUG login] authData:', JSON.stringify(authData))
-    console.log('[DEBUG login] authData.token:', authData.token)
-    console.log('[DEBUG login] authData.user:', JSON.stringify(authData.user))
-
     // 保存 token 到 localStorage（用於 API 請求認證）
     const userType = authData.user?.user_type || authData.teacher?.user_type || 'ADMIN'
     const storageKey = userType === 'ADMIN' || userType === 'OWNER' || userType === 'STAFF' 
       ? 'admin_token' 
       : 'teacher_token'
     localStorage.setItem(storageKey, authData.token)
-    console.log('[DEBUG login] saved token to localStorage:', storageKey)
 
     token.value = authData.token
     refreshToken.value = authData.refresh_token
@@ -53,7 +43,6 @@ export const useAuthStore = defineStore('auth', () => {
       user.value = authData.teacher
     } else if (authData.user) {
       user.value = authData.user as any
-      console.log('[DEBUG login] user.value after assignment:', JSON.stringify(user.value))
     }
   }
 

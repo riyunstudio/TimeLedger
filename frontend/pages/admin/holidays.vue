@@ -374,19 +374,14 @@ const handleBulkImport = async () => {
     }
 
     const centerId = getCenterId()
-    console.log('Calling API with centerId:', centerId)
-    console.log('Request data:', { holidays: holidaysData })
 
     const response = await api.post(`/admin/centers/${centerId}/holidays/bulk`, { holidays: holidaysData })
-    console.log('API response:', response)
     notificationUI.success(`已成功匯入 ${holidaysData.length} 天假日`)
     showBulkModal.value = false
     bulkForm.jsonData = ''
     await fetchHolidays()
   } catch (error: any) {
-    console.error('Bulk import error:', error)
-    console.error('Error message:', error?.message)
-    console.error('Error status:', error?.status)
+    notificationUI.error(`批次匯入失敗：${error?.message || '未知錯誤'}`)
     notificationUI.error(error?.message?.includes('404') ? 'API 端點不存在，請聯絡管理員' : '匯入失敗，請稍後再試')
   } finally {
     saving.value = false
