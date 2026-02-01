@@ -10,6 +10,7 @@ const notificationState = {
 }
 
 let toastTimeout: ReturnType<typeof setTimeout> | null = null
+let loadingTimeout: ReturnType<typeof setTimeout> | null = null
 
 // 顯示 Toast 並自動消失
 const showToast = (type: 'success' | 'error' | 'warning' | 'info', message: string, duration: number = 3000) => {
@@ -19,6 +20,12 @@ const showToast = (type: 'success' | 'error' | 'warning' | 'info', message: stri
     toastTimeout = null
   }
 
+  // 清除 loading 計時器（如果有的話）
+  if (loadingTimeout) {
+    clearTimeout(loadingTimeout)
+    loadingTimeout = null
+  }
+
   // 設定新的 toast
   notificationState.toast.value = {
     type,
@@ -26,11 +33,19 @@ const showToast = (type: 'success' | 'error' | 'warning' | 'info', message: stri
     visible: true,
   }
 
-  // 自動隱藏
-  toastTimeout = setTimeout(() => {
-    notificationState.toast.value = null
-    toastTimeout = null
-  }, duration)
+  // 自動隱藏（除非是 loading 類型，使用較長的時間）
+  if (type === 'info' && duration > 10000) {
+    // Loading 類型，使用較長的 timeout
+    loadingTimeout = setTimeout(() => {
+      notificationState.toast.value = null
+      loadingTimeout = null
+    }, duration)
+  } else {
+    toastTimeout = setTimeout(() => {
+      notificationState.toast.value = null
+      toastTimeout = null
+    }, duration)
+  }
 }
 
 export const useNotification = () => {
@@ -63,6 +78,22 @@ export const useNotification = () => {
     },
     showError: (message: string) => {
       showToast('error', message)
+    },
+    showWarning: (message: string) => {
+      showToast('warning', message)
+    },
+    showInfo: (message: string) => {
+      showToast('info', message)
+    },
+    showLoading: (message: string) => {
+      showToast('info', message, 60000) // 60 秒超時
+    },
+    hideLoading: () => {
+      if (loadingTimeout) {
+        clearTimeout(loadingTimeout)
+        loadingTimeout = null
+      }
+      notificationState.toast.value = null
     },
   }
 }

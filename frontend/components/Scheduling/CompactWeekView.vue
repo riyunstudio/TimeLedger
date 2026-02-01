@@ -76,17 +76,18 @@
                 <!-- 當日課程 -->
                 <template v-for="schedule in getSchedulesForCell(time, day.value)" :key="schedule.key">
                   <div
-                    class="absolute left-1 right-1 rounded bg-primary-500/20 border border-primary-500/30 p-1 cursor-pointer hover:bg-primary-500/30 transition-colors overflow-hidden"
+                    class="absolute left-1 right-1 rounded p-1 cursor-pointer hover:opacity-90 transition-colors overflow-hidden"
+                    :class="getScheduleCardClass(schedule)"
                     :style="getScheduleCardStyle(schedule, time)"
                     @click="$emit('select-schedule', schedule)"
                   >
-                    <div class="text-xs font-medium text-primary-400 truncate">
+                    <div class="text-xs font-medium truncate" :class="getScheduleTitleClass(schedule)">
                       {{ schedule.offering_name }}
                     </div>
-                    <div class="text-xs text-slate-400 truncate">
+                    <div class="text-xs truncate" :class="getScheduleTimeClass(schedule)">
                       {{ schedule.start_time }}-{{ schedule.end_time }}
                     </div>
-                    <div v-if="schedule.teacher_name" class="text-xs text-slate-500 truncate">
+                    <div v-if="schedule.teacher_name" class="text-xs truncate opacity-70" :class="getScheduleTimeClass(schedule)">
                       {{ schedule.teacher_name }}
                     </div>
                   </div>
@@ -304,9 +305,71 @@ const getScheduleCardStyle = (schedule: any, time: number) => {
     top = minuteOffset
   }
 
+  // 個人行程使用 color_hex 設定背景顏色
+  if (schedule.is_personal_event) {
+    const colorHex = schedule.color_hex || '#6366F1'
+    const bgColor = hexToRgba(colorHex, 0.4)
+    return {
+      top: `${top}px`,
+      height: `${Math.max(durationHeight - 2, 20)}px`,
+      backgroundColor: bgColor,
+      borderColor: hexToRgba(colorHex, 0.8),
+    }
+  }
+
   return {
     top: `${top}px`,
     height: `${Math.max(durationHeight - 2, 20)}px`,
   }
+}
+
+// 輔助函數：將 hex 顏色轉換為 RGBA
+const hexToRgba = (hex: string, alpha: number): string => {
+  if (!hex) return `rgba(99, 102, 241, ${alpha})` // 預設 indigo
+
+  // 移除 # 前綴
+  const hexStr = hex.replace('#', '')
+
+  // 解析 RGB
+  let r, g, b
+  if (hexStr.length === 6) {
+    r = parseInt(hexStr.substring(0, 2), 16)
+    g = parseInt(hexStr.substring(2, 4), 16)
+    b = parseInt(hexStr.substring(4, 6), 16)
+  } else if (hexStr.length === 3) {
+    r = parseInt(hexStr.substring(0, 1) + hexStr.substring(0, 1), 16)
+    g = parseInt(hexStr.substring(1, 2) + hexStr.substring(1, 2), 16)
+    b = parseInt(hexStr.substring(2, 3) + hexStr.substring(2, 3), 16)
+  } else {
+    return `rgba(99, 102, 241, ${alpha})` // 預設 indigo
+  }
+
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
+// 取得卡片樣式類別
+const getScheduleCardClass = (schedule: any): string => {
+  if (schedule.is_personal_event) {
+    const colorHex = schedule.color_hex || '#6366F1'
+    const borderColor = hexToRgba(colorHex, 0.8)
+    return `border ${borderColor}`
+  }
+  return 'bg-primary-500/20 border border-primary-500/30'
+}
+
+// 取得標題樣式類別
+const getScheduleTitleClass = (schedule: any): string => {
+  if (schedule.is_personal_event) {
+    return 'text-white'
+  }
+  return 'text-primary-400'
+}
+
+// 取得時間樣式類別
+const getScheduleTimeClass = (schedule: any): string => {
+  if (schedule.is_personal_event) {
+    return 'text-white/80'
+  }
+  return 'text-slate-400'
 }
 </script>

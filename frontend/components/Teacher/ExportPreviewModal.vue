@@ -246,20 +246,160 @@ const formatDateShort = (dateStr: string): string => {
   })
 }
 
-const handleDownload = () => {
-  if (scheduleRef.value) {
-    import('html2canvas').then(({ default: html2canvas }) => {
-      html2canvas(scheduleRef.value!, {
-        backgroundColor: null,
-        scale: 2,
-      }).then(canvas => {
-        const link = document.createElement('a')
-        link.download = `timeledger-schedule-${Date.now()}.png`
-        link.href = canvas.toDataURL('image/png')
-        link.click()
+const handleDownload = async () => {
+  // 創建乾淨的匯出元素
+  const bgColor = props.theme?.preview?.includes('gradient')
+    ? '#f8f8f8'
+    : (props.theme?.preview?.match(/#[a-fA-F0-9]{6}/)?.[0] || '#f8f8f8')
+
+  // 創建容器
+  const container = document.createElement('div')
+  container.id = 'export-preview-container'
+  container.style.cssText = `
+    position: fixed;
+    left: -10000px;
+    top: 0;
+    background-color: ${bgColor};
+    padding: 24px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    color: #333333;
+    width: 600px;
+    border-radius: 16px;
+  `
+
+  // 標題
+  const header = document.createElement('div')
+  header.style.cssText = `
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #e0e0e0;
+  `
+  header.innerHTML = `
+    <div style="width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, #6366F1, #8B5CF6); display: flex; align-items: center; justify-content: center; color: white; font-size: 18px; font-weight: bold;">
+      ${authStore.user?.name?.charAt(0) || 'T'}
+    </div>
+    <div>
+      <h1 style="margin: 0; font-size: 18px; color: #1a1a1a; font-weight: 600;">${authStore.user?.name}</h1>
+      <p style="margin: 2px 0 0; color: #888; font-size: 12px;">個人課表</p>
+    </div>
+  `
+  container.appendChild(header)
+
+  // 遍歷天數
+  const days = scheduleStore.schedule?.days?.slice(0, props.options.showFullWeek ? 7 : 3) || []
+
+  days.forEach(day => {
+    const dayDiv = document.createElement('div')
+    dayDiv.style.cssText = `
+      margin-bottom: 12px;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      overflow: hidden;
+      background-color: white;
+    `
+
+    const date = new Date(day.date)
+    const weekday = ['週日', '週一', '週二', '週三', '週四', '週五', '週六'][date.getDay()]
+    const monthDay = date.toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric' })
+
+    const dayHeader = document.createElement('div')
+    dayHeader.style.cssText = `
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 12px;
+      background-color: #f5f5f5;
+      border-bottom: 1px solid #e8e8e8;
+    `
+    dayHeader.innerHTML = `
+      <span style="font-weight: 600; font-size: 13px; color: #1a1a1a;">${weekday} ${monthDay}</span>
+      <span style="color: #888; font-size: 11px;">${day.items.length} 課</span>
+    `
+    dayDiv.appendChild(dayHeader)
+
+    if (day.items.length > 0) {
+      const itemsDiv = document.createElement('div')
+      itemsDiv.style.cssText = 'padding: 4px;'
+
+      const maxItems = props.options.compactMode ? 5 : 3
+      day.items.slice(0, maxItems).forEach(item => {
+        const itemDiv = document.createElement('div')
+        itemDiv.style.cssText = `
+          display: flex;
+          align-items: center;
+          padding: 6px 10px;
+          margin-bottom: 2px;
+          background-color: #fafafa;
+          border-radius: 4px;
+          border-left: 3px solid ${item.color || '#10B981'};
+        `
+        itemDiv.innerHTML = `
+          <span style="width: 50px; font-size: 12px; font-weight: 600; color: #333;">${item.start_time}</span>
+          <span style="flex: 1; font-size: 13px; font-weight: 600; color: #1a1a1a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+            ${item.type === 'PERSONAL_EVENT' ? (props.options.privacyMode ? '已保留' : item.title) : item.title}
+          </span>
+        `
+        itemsDiv.appendChild(itemDiv)
       })
+
+      if (day.items.length > maxItems) {
+        const moreDiv = document.createElement('div')
+        moreDiv.style.cssText = 'text-align: center; padding: 4px; color: #999; font-size: 11px;'
+        moreDiv.textContent = `+${day.items.length - maxItems} 更多`
+        itemsDiv.appendChild(moreDiv)
+      }
+
+      dayDiv.appendChild(itemsDiv)
+    } else {
+      const emptyDiv = document.createElement('div')
+      emptyDiv.style.cssText = 'padding: 12px; text-align: center; color: #aaa; font-size: 12px; background-color: #fafafa;'
+      emptyDiv.textContent = '休息'
+      dayDiv.appendChild(emptyDiv)
+    }
+
+    container.appendChild(dayDiv)
+  })
+
+  // 頁腳
+  const footer = document.createElement('div')
+  footer.style.cssText = `
+    margin-top: 12px;
+    padding-top: 8px;
+    border-top: 1px solid #e0e0e0;
+    text-align: center;
+    color: #999;
+    font-size: 10px;
+  `
+  footer.textContent = 'TimeLedger'
+  container.appendChild(footer)
+
+  document.body.appendChild(container)
+
+  await new Promise(resolve => setTimeout(resolve, 300))
+
+  import('html2canvas').then(({ default: html2canvas }) => {
+    html2canvas(container, {
+      backgroundColor: bgColor,
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      allowTaint: true,
+      width: 600,
+      height: container.offsetHeight,
+    }).then(canvas => {
+      document.getElementById('export-preview-container')?.remove()
+
+      const link = document.createElement('a')
+      link.download = `timeledger-schedule-${Date.now()}.png`
+      link.href = canvas.toDataURL('image/png')
+      link.click()
+    }).catch(error => {
+      console.error('Export failed:', error)
+      document.getElementById('export-preview-container')?.remove()
     })
-  }
+  })
 }
 
 const handleShare = async () => {

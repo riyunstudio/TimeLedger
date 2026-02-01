@@ -252,26 +252,23 @@ const changeWeek = async (delta: number) => {
 
 // 課表資料轉換（包含中心課程和個人行程）
 const transformedSchedules = computed(() => {
-  if (!scheduleStore.schedule) return []
+  if (!scheduleStore.schedule) {
+    console.log('[dashboard] scheduleStore.schedule is null, returning empty array')
+    return []
+  }
 
   const result: any[] = []
 
   console.log('[dashboard] scheduleStore.weekStart:', scheduleStore.weekStart)
-  console.log('[dashboard] scheduleStore.schedule.days:', scheduleStore.schedule.days.map(d => ({
+  console.log('[dashboard] scheduleStore.schedule.days:', scheduleStore.schedule.days?.map?.((d: any) => ({
     date: d.date,
     day_of_week: d.day_of_week,
-    itemsCount: d.items.length
-  })))
+    itemsCount: d.items?.length || 0
+  })) || 'days is null/undefined')
 
   scheduleStore.schedule.days.forEach(day => {
     const date = new Date(day.date)
     const weekday = date.getDay() === 0 ? 7 : date.getDay()
-
-    console.log('[dashboard] Processing day:', {
-      date: day.date,
-      day_of_week: day.day_of_week,
-      calculated_weekday: weekday
-    })
 
     // 處理中心課程
     day.items.forEach(item => {
@@ -338,9 +335,25 @@ const transformedSchedules = computed(() => {
         data: event,
         is_personal_event: true,
         type: 'PERSONAL_EVENT',
-        color_hex: (event as any).color_hex,
+        color_hex: (event as any).color_hex || (event as any).color || '#6366F1',
       })
     })
+  })
+
+  // 調試：輸出轉換後的課表資料
+  console.log('[dashboard] transformedSchedules result:', {
+    count: result.length,
+    firstItem: result[0] ? {
+      id: result[0].id,
+      offering_name: result[0].offering_name,
+      start_time: result[0].start_time,
+      date: result[0].date,
+    } : null,
+    allItems: result.map(item => ({
+      id: item.id,
+      offering_name: item.offering_name,
+      is_personal_event: item.is_personal_event,
+    }))
   })
 
   return result
@@ -361,6 +374,9 @@ const handleScheduleNoteAction = (schedule: any) => {
   // 如果是課堂備註動作
   if (schedule.action === 'note') {
     const itemData = schedule.data || {}
+    // schedule.id 就是 rule_id（ScheduleGrid 會將 rule_id 賦值給 id）
+    const ruleId = schedule.rule_id || schedule.id || itemData?.id
+
     selectedScheduleItem.value = {
       id: schedule.id,
       type: 'SCHEDULE_RULE' as const,
@@ -373,6 +389,7 @@ const handleScheduleNoteAction = (schedule: any) => {
       center_name: itemData?.center_name || '',
       status: 'APPROVED' as const,
       data: itemData,
+      rule_id: ruleId, // 確保 rule_id 可用於課堂筆記
     }
     showSessionNoteModal.value = true
   }

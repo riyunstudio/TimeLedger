@@ -200,7 +200,7 @@ func (s *TeacherProfileService) updatePersonalHashtagsWithTx(tx *gorm.DB, ctx co
 			hashtag = &createdHashtag
 		} else {
 			// 標籤存在，更新使用次數（使用交易連線）
-			if err := tx.WithContext(ctx).Model(&models.Hashtag{}).Where("id = ?", hashtag.ID).UpdateColumn("usage_count", "usage_count + 1").Error; err != nil {
+			if err := tx.WithContext(ctx).Model(&models.Hashtag{}).Where("id = ?", hashtag.ID).UpdateColumn("usage_count", gorm.Expr("usage_count + 1")).Error; err != nil {
 				return fmt.Errorf("failed to increment hashtag usage: %w", err)
 			}
 		}

@@ -146,7 +146,7 @@
       </div>
     </div>
 
-    <!-- 新增/編輯技能 Modal - 移到覆蓋層的直接子元素，確保正確的 z-index 和 overflow 處理 -->
+    <!-- 新增/編輯技能 Modal - AddSkillModal 自己管理 isOpen 狀態，不需要 Teleport -->
     <AddSkillModal
       v-if="showAddSkill || editingSkill"
       :skill="editingSkill"
@@ -156,7 +156,7 @@
       @updated="fetchData"
     />
 
-    <!-- 新增證照 Modal - 移到覆蓋層的直接子元素 -->
+    <!-- 新增證照 Modal -->
     <AddCertificateModal
       v-if="showAddCertificate"
       @close="showAddCertificate = false"

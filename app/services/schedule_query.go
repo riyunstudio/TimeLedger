@@ -86,20 +86,22 @@ func (s *scheduleQueryService) GetTeacherSchedule(ctx context.Context, teacherID
 			}
 
 			if status != "CANCELLED" {
-				// 從 ruleMap 獲取課程名稱
-				offeringName := ""
-				if rule, exists := ruleMap[item.RuleID]; exists && rule.OfferingID != 0 {
-					offeringName = rule.Offering.Name
+				// 從 ruleMap 獲取課程名稱，優先使用 Offering.Name，若沒有則回退到 rule.Name
+				courseName := ""
+				if rule, exists := ruleMap[item.RuleID]; exists {
+					// 優先使用 Offering 的名稱
+					if rule.OfferingID != 0 && rule.Offering.Name != "" {
+						courseName = rule.Offering.Name
+					} else if rule.Name != "" {
+						// 回退到 ScheduleRule 的 Name
+						courseName = rule.Name
+					}
 				}
 
-				// Create title: "課程名稱 @ 中心名稱"
-				title := offeringName
-				if centerName != "" {
-					if title != "" {
-						title = fmt.Sprintf("%s @ %s", offeringName, centerName)
-					} else {
-						title = centerName
-					}
+				// Create title: 優先使用課程名稱，若沒有則顯示中心名稱
+				title := courseName
+				if title == "" && centerName != "" {
+					title = centerName
 				}
 				if title == "" {
 					title = "課程"

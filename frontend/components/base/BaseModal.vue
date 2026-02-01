@@ -1,7 +1,7 @@
 <template>
   <Teleport to="body">
     <Transition name="modal">
-      <div v-if="modelValue" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div v-if="modelValue" class="fixed inset-0 z-[200] flex items-center justify-center p-4">
         <div
           class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
           :class="{ 'cursor-pointer': closeOnBackdrop }"

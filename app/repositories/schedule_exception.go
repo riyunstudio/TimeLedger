@@ -56,12 +56,14 @@ func (rp *ScheduleExceptionRepository) GetByRuleAndDateAndCenterID(ctx context.C
 func (rp *ScheduleExceptionRepository) GetByTeacherID(ctx context.Context, teacherID uint, status string) ([]models.ScheduleException, error) {
 	var exceptions []models.ScheduleException
 
+	// 只取得該老師創建的例外申請（透過 schedule_rules.teacher_id 關聯）
+	// 這樣確保老師只會看到自己申請的例外，不會看到同中心其他老師的申請
 	query := rp.app.MySQL.RDB.WithContext(ctx).
 		Table("schedule_exceptions").
 		Select("schedule_exceptions.*").
-		Joins("JOIN center_memberships ON center_memberships.center_id = schedule_exceptions.center_id").
-		Where("center_memberships.teacher_id = ?", teacherID).
-		Where("center_memberships.status = ?", "ACTIVE")
+		Joins("JOIN schedule_rules ON schedule_rules.id = schedule_exceptions.rule_id").
+		Where("schedule_rules.teacher_id = ?", teacherID).
+		Where("schedule_rules.deleted_at IS NULL")
 
 	if status != "" {
 		if status == "APPROVED" {

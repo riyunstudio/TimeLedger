@@ -96,11 +96,11 @@ const form = ref({
 const loadData = async () => {
   try {
     const api = useApi()
-    const response = await api.get<{ code: number; data: any }>('/teacher/me/profile')
-    if (response.code === 0 && response.data) {
-      form.value.is_open_to_hiring = response.data.is_open_to_hiring || false
+    const profile = await api.get<any>('/teacher/me/profile')
+    if (profile) {
+      form.value.is_open_to_hiring = profile.is_open_to_hiring || false
       // public_contact_info 可能是 JSON 字串或物件
-      const contactInfo = response.data.public_contact_info
+      const contactInfo = profile.public_contact_info
       if (typeof contactInfo === 'string') {
         form.value.public_contact_info = contactInfo
       } else if (typeof contactInfo === 'object' && contactInfo !== null) {

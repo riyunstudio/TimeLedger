@@ -99,6 +99,7 @@
     "selectCenter": "選擇中心",
     "originalTime": "原時間",
     "selectSchedule": "選擇課程",
+    "noScheduleForCenter": "該中心暫無您的課程",
     "originalDate": "調整日期",
     "originalDateHelp": "選擇要調整的具體日期",
     "newStartTime": "新開始時間",

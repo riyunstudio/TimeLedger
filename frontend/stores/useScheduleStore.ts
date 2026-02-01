@@ -100,13 +100,13 @@ export const useScheduleStore = defineStore('schedule', () => {
     return withLoading(isFetching, async () => {
       try {
         const api = useApi()
-        const response = await api.get<{ code: number; message: string; data: CenterMembership[] } | null>('/teacher/me/centers')
-        // 處理 null response 或 data 為 null 的情況
-        if (!response || !response.data) {
+        const membershipList = await api.get<CenterMembership[]>('/teacher/me/centers')
+        // 處理 null response 或空陣列的情況
+        if (!membershipList || membershipList.length === 0) {
           centers.value = []
           return
         }
-        centers.value = response.data || []
+        centers.value = membershipList
         if (centers.value.length > 0 && !currentCenter.value && centers.value[0].center_id) {
           currentCenter.value = { id: centers.value[0].center_id, name: centers.value[0].center_name || '' } as any
         }
@@ -227,9 +227,9 @@ export const useScheduleStore = defineStore('schedule', () => {
   }) => {
     return withLoading(isCreatingException, async () => {
       const api = useApi()
-      const response = await api.post<{ code: number; message: string; datas: ScheduleException }>('/teacher/exceptions', data)
-      exceptions.value.unshift(response.datas)
-      return response.datas
+      const newException = await api.post<ScheduleException>('/teacher/exceptions', data)
+      exceptions.value.unshift(newException)
+      return newException
     })
   }
 
@@ -246,10 +246,10 @@ export const useScheduleStore = defineStore('schedule', () => {
     return withLoading(isFetching, async () => {
       try {
         const api = useApi()
-        const response = await api.get<{ code: number; message: string; datas: { note: SessionNote; is_new: boolean } }>(
+        const response = await api.get<{ note: SessionNote; is_new: boolean }>(
           `/teacher/sessions/note?rule_id=${ruleId}&session_date=${sessionDate}`
         )
-        sessionNote.value = response.datas?.note || null
+        sessionNote.value = response?.note || null
         return sessionNote.value
       } catch (error) {
         console.error('Failed to fetch session note:', error)
@@ -262,13 +262,13 @@ export const useScheduleStore = defineStore('schedule', () => {
     return withLoading(isSavingNote, async () => {
       try {
         const api = useApi()
-        const response = await api.put<{ code: number; message: string; datas: SessionNote }>('/teacher/sessions/note', {
+        const response = await api.put<SessionNote>('/teacher/sessions/note', {
           rule_id: ruleId,
           session_date: sessionDate,
           content,
           prep_note: prepNote,
         })
-        sessionNote.value = response.datas || null
+        sessionNote.value = response || null
         return sessionNote.value
       } catch (error) {
         console.error('Failed to save session note:', error)
@@ -284,10 +284,9 @@ export const useScheduleStore = defineStore('schedule', () => {
     return withLoading(isLoading, async () => {
       try {
         const api = useApi()
-        const response = await api.get<{ code: number; message: string; datas: PersonalEvent[] }>(
+        const events = await api.get<PersonalEvent[]>(
           `/teacher/me/personal-events?from=${formatDate(weekStart.value!)}&to=${formatDate(weekEnd.value!)}`
-        )
-        const events = response.datas || []
+        ) || []
 
         const currentWeekStart = new Date(weekStart.value!)
         const currentWeekEnd = new Date(weekEnd.value!)
@@ -317,12 +316,10 @@ export const useScheduleStore = defineStore('schedule', () => {
   }) => {
     return withLoading(isCreatingEvent, async () => {
       const api = useApi()
-      const response = await api.post<{
-        code: number
-        message: string
-        datas: PersonalEvent
-      }>('/teacher/me/personal-events', data)
-      const newEvent = response.datas
+      const newEvent = await api.post<PersonalEvent>('/teacher/me/personal-events', data)
+      if (!newEvent) {
+        throw new Error('建立個人行程失敗：無法取得回傳資料')
+      }
       if (data.recurrence_rule && !newEvent.recurrence_rule) {
         newEvent.recurrence_rule = data.recurrence_rule
       }
@@ -355,12 +352,15 @@ export const useScheduleStore = defineStore('schedule', () => {
         ? parseInt(eventId.split('_')[0])
         : eventId
       const updateData = { ...data, update_mode: 'SINGLE' }
-      const response = await api.patch<{ code: number; message: string; datas: PersonalEvent }>(`/teacher/me/personal-events/${originalId}`, updateData)
+      const updatedEvent = await api.patch<PersonalEvent>(`/teacher/me/personal-events/${originalId}`, updateData)
+      if (!updatedEvent) {
+        throw new Error('更新個人行程失敗：無法取得回傳資料')
+      }
       const index = personalEvents.value.findIndex(e => e.id === eventId)
       if (index !== -1) {
-        personalEvents.value[index] = response.datas
+        personalEvents.value[index] = updatedEvent
       }
-      return response.datas
+      return updatedEvent
     })
   }
 
@@ -369,8 +369,8 @@ export const useScheduleStore = defineStore('schedule', () => {
     return withLoading(isFetching, async () => {
       try {
         const api = useApi()
-        const response = await api.get<{ code: number; message: string; datas: Invitation[] }>('/teacher/me/invitations')
-        invitations.value = response.datas || []
+        const invitationsList = await api.get<Invitation[]>('/teacher/me/invitations')
+        invitations.value = invitationsList || []
       } catch (error) {
         console.error('Failed to fetch invitations:', error)
         throw error
@@ -398,8 +398,8 @@ export const useScheduleStore = defineStore('schedule', () => {
   const fetchPendingCount = async () => {
     try {
       const api = useApi()
-      const response = await api.get<{ code: number; message: string; datas: { count: number } }>('/teacher/me/invitations/pending-count')
-      pendingInvitationsCount.value = response.datas?.count || 0
+      const response = await api.get<{ count: number }>('/teacher/me/invitations/pending-count')
+      pendingInvitationsCount.value = response?.count || 0
     } catch (error) {
       console.error('Failed to fetch pending invitations count:', error)
     }
@@ -439,11 +439,11 @@ export const useScheduleStore = defineStore('schedule', () => {
     return withLoading(isCreatingSubscription, async () => {
       try {
         const api = useApi()
-        const response = await api.post<{ code: number; message: string; datas: { subscription_url: string } }>(
+        const response = await api.post<{ subscription_url: string }>(
           '/teacher/me/schedule/subscription',
           {}
         )
-        subscriptionUrl.value = response.datas?.subscription_url || null
+        subscriptionUrl.value = response?.subscription_url || null
         return subscriptionUrl.value
       } catch (error) {
         console.error('Failed to create subscription:', error)

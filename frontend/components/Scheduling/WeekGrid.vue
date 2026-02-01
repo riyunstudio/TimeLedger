@@ -51,7 +51,7 @@
             <!-- 個人行程 -->
             <ScheduleCard
               :schedule="item"
-              :style="item._scheduleStyle"
+              :position-style="item._scheduleStyle"
               :card-info-type="cardInfoType"
               @click="$emit('select-schedule', item)"
             />
@@ -61,7 +61,7 @@
             <template v-if="item._overlapCount === 1">
               <ScheduleCard
                 :schedule="item"
-                :style="item._scheduleStyle"
+                :position-style="item._scheduleStyle"
                 :card-info-type="cardInfoType"
                 @click="$emit('select-schedule', item)"
               />

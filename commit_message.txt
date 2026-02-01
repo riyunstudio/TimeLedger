@@ -1,9 +1,8 @@
-refactor(frontend): reorganize components into feature directories
+feat(scheduling): add CompactWeekView and improve schedule components
 
-- Admin/: 26 management-related components (headers, sidebars, tabs, modals)
-- Teacher/: 11 teacher-related components (profile, skills, schedules)
-- Navigation/: 1 navigation component (notification dropdown)
-- Scheduling/: 18 scheduling components (calendars, grids, modals)
-- Base/: 14 base UI components (buttons, inputs, loading, toasts)
-
-All Nuxt auto-imports preserved as subdirectory components can be imported using their filename without the directory prefix.
+- Add new CompactWeekView component for compact week display
+- Improve ScheduleGrid and WeekGrid components
+- Update teacher dashboard with new scheduling features
+- Refactor scheduling validation and expansion services
+- Clean up build artifacts and node_modules
+- Update API documentation and swagger specs

@@ -310,9 +310,9 @@ const fetchCities = async () => {
   try {
     loadingCities.value = true
     const api = useApi()
-    const response = await api.get<{ code: number; data: GeoCity[] }>('/geo/cities')
-    if (response.code === 0 && response.data) {
-      citiesData.value = response.data
+    const cities = await api.get<GeoCity[]>('/geo/cities')
+    if (cities && cities.length > 0) {
+      citiesData.value = cities
     }
   } catch (error) {
     console.error('Failed to fetch cities:', error)

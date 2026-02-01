@@ -102,9 +102,24 @@
               </button>
             </div>
           </div>
+          <!-- 視圖切換標籤 -->
+          <div class="flex gap-2 mt-4">
+            <button
+              v-for="viewOption in viewOptions"
+              :key="viewOption.id"
+              @click="selectedViewOption = viewOption.id"
+              class="px-3 py-1.5 rounded-lg text-sm transition-colors"
+              :class="selectedViewOption === viewOption.id 
+                ? 'bg-primary-500/30 text-primary-400 border border-primary-500/50' 
+                : 'text-slate-400 hover:text-white hover:bg-white/5'"
+            >
+              {{ viewOption.name }}
+            </button>
+          </div>
         </div>
 
-        <div class="space-y-6">
+        <!-- 列表視圖 -->
+        <div v-if="selectedViewOption === 'list'" class="space-y-6">
           <div
             v-for="day in scheduleDays"
             :key="day.date"
@@ -122,15 +137,17 @@
               <div
                 v-for="item in day.items"
                 :key="item.id"
-                class="flex items-center px-4 py-4 relative overflow-hidden"
+                class="flex items-start px-4 py-3 relative"
                 :class="[currentTheme.itemClass, currentTheme.itemGradient]"
               >
                 <div class="absolute left-0 top-0 bottom-0 w-1" :class="currentTheme.itemAccentClass"></div>
-                <div class="w-20 flex-shrink-0">
-                  <div class="font-medium bg-clip-text text-transparent" :class="currentTheme.timeGradient">{{ item.start_time }}</div>
-                  <div class="text-sm" :class="currentTheme.subtitleClass">{{ item.end_time }}</div>
+                <!-- 時間區塊 - 確保寬度固定不被遮蓋 -->
+                <div class="w-20 flex-shrink-0 time-block">
+                  <div class="font-semibold text-sm whitespace-nowrap" :class="currentTheme.timeClass">{{ item.start_time }}</div>
+                  <div class="text-xs" :class="currentTheme.subtitleClass">{{ item.end_time }}</div>
                 </div>
-                <div class="flex-1 min-w-0">
+                <!-- 課程資訊區塊 -->
+                <div class="flex-1 min-w-0 ml-3">
                   <div class="flex items-center gap-2 mb-1 flex-wrap">
                     <span
                       class="w-2 h-2 rounded-full flex-shrink-0"
@@ -138,25 +155,24 @@
                     ></span>
                     <h4 class="font-medium truncate" :class="currentTheme.itemTitleClass">
                       {{ item.title }}
-                      <span v-if="item.center_name" class="font-normal" :class="currentTheme.centerClass">{{ item.center_name }}</span>
                     </h4>
+                    <!-- 只顯示非 NORMAL 且非 APPROVED 的狀態 -->
                     <span
-                      v-if="item.status && item.status !== 'APPROVED'"
+                      v-if="item.status && item.status !== 'APPROVED' && item.status !== 'NORMAL'"
                       class="px-2 py-0.5 rounded-full text-xs flex-shrink-0"
                       :class="getStatusClass(item.status)"
                     >
                       {{ getStatusText(item.status) }}
                     </span>
                   </div>
-                  <div class="flex items-center gap-2 text-sm flex-wrap">
-                    <span v-if="item.type === 'PERSONAL_EVENT'" :class="currentTheme.personalClass">個人行程</span>
-                    <template v-else>
-                      <span :class="currentTheme.subtitleClass">課程時段</span>
-                    </template>
+                  <!-- 中心名稱只顯示一次，且過濾掉 NORMAL -->
+                  <div v-if="getValidCenterName(item.center_name)" class="text-xs truncate" :class="currentTheme.centerClass">
+                    {{ getValidCenterName(item.center_name) }}
                   </div>
                 </div>
-                <div class="flex-shrink-0 text-right ml-4">
-                  <p class="text-sm bg-clip-text text-transparent font-medium" :class="currentTheme.timeGradient">
+                <!-- 時長區塊 -->
+                <div class="flex-shrink-0 text-right ml-2 time-block">
+                  <p class="text-sm font-medium whitespace-nowrap" :class="currentTheme.timeClass">
                     {{ getDuration(item.start_time, item.end_time) }}
                   </p>
                   <p class="text-xs" :class="currentTheme.subtitleClass">分鐘</p>
@@ -164,8 +180,89 @@
               </div>
             </div>
 
-            <div v-else class="px-4 py-8 text-center" :class="currentTheme.emptyClass">
+            <div v-else class="px-4 py-6 text-center" :class="currentTheme.emptyClass">
               休息日
+            </div>
+          </div>
+        </div>
+
+        <!-- 網格視圖（週課表格式） -->
+        <div v-else-if="selectedViewOption === 'grid'" class="overflow-x-auto">
+          <div class="min-w-[700px]">
+            <!-- 網格標題列 -->
+            <div class="grid grid-cols-8 gap-1 mb-1">
+              <div class="text-center py-2 text-xs font-medium" :class="currentTheme.subtitleClass">時間</div>
+              <div
+                v-for="(day, index) in weekDays"
+                :key="index"
+                class="text-center py-2 rounded-lg"
+                :class="currentTheme.dayHeaderClass"
+              >
+                <div class="text-xs font-medium" :class="currentTheme.dayTextClass">{{ day.weekday }}</div>
+                <div class="text-xs" :class="currentTheme.subtitleClass">{{ day.monthDay }}</div>
+              </div>
+            </div>
+            <!-- 網格內容 - 使用 flex 佈局確保每列高度一致 -->
+            <div class="grid grid-cols-8 gap-1">
+              <!-- 時間列 -->
+              <div class="flex flex-col">
+                <div
+                  v-for="hour in timeSlots"
+                  :key="hour"
+                  class="flex items-center justify-center text-xs border-r border-white/5"
+                  :style="{ height: `${GRID_HOUR_HEIGHT}px` }"
+                  :class="currentTheme.subtitleClass"
+                >
+                  {{ hour }}
+                </div>
+              </div>
+              <!-- 每天的課程列 -->
+              <div
+                v-for="(day, dayIndex) in weekDays"
+                :key="dayIndex"
+                class="flex flex-col relative"
+              >
+                <!-- 背景網格線 -->
+                <div
+                  v-for="hour in timeSlots"
+                  :key="hour"
+                  class="border-b border-white/5"
+                  :style="{ height: `${GRID_HOUR_HEIGHT}px` }"
+                  :class="currentTheme.itemGradient"
+                ></div>
+                <!-- 課程區塊 - 使用 flex 縱向排列，根據時間計算偏移 -->
+                <div class="absolute inset-0 flex flex-col p-1">
+                  <div
+                    v-for="item in getDayScheduleItems(day.date)"
+                    :key="item.id"
+                    class="absolute left-1 right-1 rounded p-1.5 text-xs overflow-hidden z-10"
+                    :style="{
+                      backgroundColor: `${item.color || '#10B981'}30`,
+                      borderLeft: `3px solid ${item.color || '#10B981'}`,
+                      top: getGridItemTopOffset(item),
+                      height: `${Math.max(getGridItemHeight(item), 40)}px`
+                    }"
+                  >
+                    <div class="flex items-center gap-1 mb-0.5">
+                      <span class="font-medium truncate" :class="currentTheme.itemTitleClass">
+                        {{ item.start_time }}
+                      </span>
+                      <span v-if="item.status && item.status !== 'APPROVED' && item.status !== 'NORMAL'" 
+                        class="px-1 py-0.5 rounded text-[10px] flex-shrink-0"
+                        :class="getStatusClass(item.status)"
+                      >
+                        {{ getStatusText(item.status) }}
+                      </span>
+                    </div>
+                    <div class="font-medium truncate" :class="currentTheme.itemTitleClass">
+                      {{ item.title }}
+                    </div>
+                    <div v-if="getValidCenterName(item.center_name)" class="text-xs truncate" :class="currentTheme.centerClass">
+                      {{ getValidCenterName(item.center_name) }}
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -719,11 +816,96 @@ const notificationUI = useNotification()
 const scheduleRef = ref<HTMLElement>()
 
 const selectedTheme = ref('domeMouse')
+const selectedViewOption = ref('list') // 'list' | 'grid'
 const options = reactive({
   showPersonalInfo: true,
   showStats: true,
   includeNotes: false,
 })
+
+// 視圖選項
+const viewOptions = [
+  { id: 'list', name: '列表' },
+  { id: 'grid', name: '網格' },
+]
+
+// 網格視圖所需的計算屬性
+const weekDays = computed(() => {
+  const days = []
+  const weekdays = ['週日', '週一', '週二', '週三', '週四', '週五', '週六']
+  scheduleDays.value.forEach(day => {
+    const date = new Date(day.date)
+    days.push({
+      date: day.date,
+      weekday: weekdays[date.getDay()],
+      monthDay: date.toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric' })
+    })
+  })
+  return days
+})
+
+// 時間槽（每小時）- 從 00:00 到 23:00，涵蓋全天 24 小時
+const timeSlots = computed(() => {
+  const slots = []
+  for (let i = 0; i < 24; i++) {
+    slots.push(`${i.toString().padStart(2, '0')}:00`)
+  }
+  return slots
+})
+
+// 網格每小時的高度（像素）- 減少高度以避免導出問題
+const GRID_HOUR_HEIGHT = 60
+
+// 取得指定日期和時間的課程項目
+const getScheduleItemsForHour = (date: string, hour: string) => {
+  const day = scheduleDays.value.find(d => d.date === date)
+  if (!day) return []
+  
+  return day.items.filter(item => {
+    return item.start_time.startsWith(hour)
+  })
+}
+
+// 取得指定日期的所有課程（用於網格視圖）
+const getDayScheduleItems = (date: string) => {
+  const day = scheduleDays.value.find(d => d.date === date)
+  if (!day) return []
+  return day.items
+}
+
+// 計算網格視圖中項目的頂部偏移（使用可配置的高度）
+const getGridItemTopOffset = (item: any) => {
+  const [hours, minutes] = item.start_time.split(':').map(Number)
+  const startHour = 0 // 開始時間改為 00:00
+  const offsetHours = hours - startHour
+  const offsetMinutes = minutes
+  return `${(offsetHours * GRID_HOUR_HEIGHT + offsetMinutes * GRID_HOUR_HEIGHT / 60)}px`
+}
+
+// 計算網格視圖中項目的高度
+const getGridItemHeight = (item: any) => {
+  const [startH, startM] = item.start_time.split(':').map(Number)
+  const [endH, endM] = item.end_time.split(':').map(Number)
+  const durationMinutes = (endH * 60 + endM) - (startH * 60 + startM)
+  return durationMinutes * GRID_HOUR_HEIGHT / 60 // 使用可配置的高度
+}
+
+// 計算項目在格子中的頂部偏移（以小時為單位，1小時 = 60px）
+const getItemTopOffset = (item: any) => {
+  const [hours, minutes] = item.start_time.split(':').map(Number)
+  const startHour = 8 // 開始時間
+  const offsetHours = hours - startHour
+  const offsetMinutes = minutes
+  return `${(offsetHours * 60 + offsetMinutes) * 1}px` // 1px per minute
+}
+
+// 計算項目高度
+const getItemHeight = (item: any) => {
+  const [startH, startM] = item.start_time.split(':').map(Number)
+  const [endH, endM] = item.end_time.split(':').map(Number)
+  const durationMinutes = (endH * 60 + endM) - (startH * 60 + startM)
+  return `${durationMinutes * 1}px` // 1px per minute
+}
 
 const currentTheme = computed(() => {
   return themes.find(t => t.id === selectedTheme.value) || themes[0]
@@ -786,6 +968,30 @@ const getDuration = (start: string, end: string): number => {
   return (endH * 60 + endM) - (startH * 60 + startM)
 }
 
+// 檢查中心名稱是否有效（過濾掉 NORMAL、空值等無意義的內容）
+const isValidCenterName = (name?: string): boolean => {
+  if (!name || typeof name !== 'string') {
+    return false
+  }
+  const trimmed = name.trim()
+  // 過濾掉 "NORMAL"、空字串、僅數字等無意義值
+  if (!trimmed) return false
+  // 檢查是否為 NORMAL（忽略大小寫和空白）
+  const normalized = trimmed.toUpperCase().replace(/\s+/g, '')
+  if (normalized === 'NORMAL') {
+    console.debug('Filtered out center_name:', name)
+    return false
+  }
+  // 檢查是否只包含數字
+  if (/^\d+$/.test(trimmed)) return false
+  return true
+}
+
+// 取得有效的中心名稱
+const getValidCenterName = (name?: string): string => {
+  return isValidCenterName(name) ? name!.trim() : ''
+}
+
 const getStatusClass = (status: string) => {
   switch (status) {
     case 'PENDING':
@@ -827,43 +1033,252 @@ const getBackgroundColor = () => {
   return '#f8f8f8'
 }
 
-const handleExportAsImage = () => {
-  if (scheduleRef.value) {
-    import('html2canvas').then(({ default: html2canvas }) => {
-      html2canvas(scheduleRef.value!, {
-        backgroundColor: getBackgroundColor(),
-        scale: 2,
-      }).then(canvas => {
-        const link = document.createElement('a')
-        link.download = `課表-${weekLabel.value}-${Date.now()}.png`
-        link.href = canvas.toDataURL('image/png')
-        link.click()
+// 創建乾淨的 DOM 元素用於匯出
+const createCleanExportElement = (): HTMLElement | null => {
+  // 使用簡單的白色背景，避免任何主題相關的問題
+  const bgColor = '#ffffff'
+
+  // 創建容器
+  const container = document.createElement('div')
+  container.id = 'export-container'
+  container.style.cssText = `background-color: ${bgColor}; padding: 24px; font-family: Arial, sans-serif; width: 650px;`
+
+  // 添加標題區域
+  const header = document.createElement('div')
+  header.style.cssText = 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #eee;'
+  header.innerHTML = `
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <div style="width: 50px; height: 50px; border-radius: 50%; background: #6366F1; display: flex; align-items: center; justify-content: center; color: white; font-size: 20px; font-weight: bold;">${authStore.user?.name?.charAt(0) || 'T'}</div>
+      <div>
+        <h1 style="margin: 0; font-size: 20px; color: #333;">${authStore.user?.name}</h1>
+        <p style="margin: 2px 0 0; color: #888; font-size: 12px;">個人課表</p>
+      </div>
+    </div>
+    <div style="text-align: right;">
+      <p style="margin: 0; color: #888; font-size: 12px;">匯出日期</p>
+      <p style="margin: 2px 0 0; font-size: 14px; color: #333;">${formatDate(new Date())}</p>
+    </div>
+  `
+  container.appendChild(header)
+
+  // 添加週標籤
+  const weekLabelDiv = document.createElement('div')
+  weekLabelDiv.style.cssText = 'font-size: 16px; font-weight: bold; margin-bottom: 16px; color: #333; padding: 8px 12px; background: #f5f5f5; border-radius: 6px; display: inline-block;'
+  weekLabelDiv.textContent = weekLabel.value
+  container.appendChild(weekLabelDiv)
+
+  // 遍歷每一天
+  scheduleDays.value.forEach(day => {
+    const dayDiv = document.createElement('div')
+    dayDiv.style.cssText = 'margin-bottom: 16px; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; background: white;'
+
+    const date = new Date(day.date)
+    const weekday = ['週日', '週一', '週二', '週三', '週四', '週五', '週六'][date.getDay()]
+    const monthDay = date.toLocaleDateString('zh-TW', { month: 'long', day: 'numeric' })
+
+    // 標題
+    const dayHeader = document.createElement('div')
+    dayHeader.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: #f8f8f8; border-bottom: 1px solid #eee;'
+    dayHeader.innerHTML = `<span style="font-weight: bold; color: #333; font-size: 14px;">${weekday} ${monthDay}</span><span style="color: #888; font-size: 12px;">${day.items.length} 課程</span>`
+    dayDiv.appendChild(dayHeader)
+
+    // 課程列表
+    if (day.items.length > 0) {
+      const itemsDiv = document.createElement('div')
+      itemsDiv.style.cssText = 'padding: 6px;'
+
+      day.items.forEach(item => {
+        const itemDiv = document.createElement('div')
+        itemDiv.style.cssText = 'display: flex; align-items: center; padding: 10px 12px; margin-bottom: 4px; background: #fafafa; border-radius: 6px; border-left: 3px solid ' + (item.color || '#10B981') + ';'
+        itemDiv.innerHTML = `
+          <div style="width: 65px; flex-shrink: 0; text-align: center;">
+            <div style="font-weight: bold; font-size: 13px; color: #333;">${item.start_time}</div>
+            <div style="font-size: 11px; color: #999;">${item.end_time}</div>
+          </div>
+          <div style="flex: 1; min-width: 0; margin-left: 8px;">
+            <div style="font-weight: bold; font-size: 14px; color: #333;">${item.title}</div>
+            ${getValidCenterName(item.center_name) ? `<div style="font-size: 12px; color: #888; margin-top: 2px;">${getValidCenterName(item.center_name)}</div>` : ''}
+          </div>
+          <div style="width: 55px; flex-shrink: 0; text-align: right;">
+            <div style="font-weight: bold; font-size: 13px; color: #333;">${getDuration(item.start_time, item.end_time)}</div>
+            <div style="font-size: 11px; color: #999;">分鐘</div>
+          </div>
+        `
+        itemsDiv.appendChild(itemDiv)
       })
-    })
+      dayDiv.appendChild(itemsDiv)
+    } else {
+      const emptyDiv = document.createElement('div')
+      emptyDiv.style.cssText = 'padding: 20px; text-align: center; color: #aaa; font-size: 13px; background: #fafafa;'
+      emptyDiv.textContent = '休息日'
+      dayDiv.appendChild(emptyDiv)
+    }
+
+    container.appendChild(dayDiv)
+  })
+
+  // 添加頁腳
+  const footer = document.createElement('div')
+  footer.style.cssText = 'margin-top: 16px; padding-top: 12px; border-top: 1px solid #eee; text-align: center; color: #999; font-size: 11px;'
+  footer.textContent = 'TimeLedger 課表管理系統'
+  container.appendChild(footer)
+
+  return container
+}
+
+// 清理匯出元素
+const cleanupExportElement = () => {
+  const element = document.getElementById('export-container')
+  if (element && element.parentNode) {
+    element.parentNode.removeChild(element)
   }
 }
 
-const handleDownloadPDF = () => {
-  if (scheduleRef.value) {
-    import('html2canvas').then(({ default: html2canvas }) => {
-      import('jspdf').then(({ default: jsPDF }) => {
-        html2canvas(scheduleRef.value!, {
-          backgroundColor: getBackgroundColor(),
-          scale: 2,
-        }).then(canvas => {
-          const imgData = canvas.toDataURL('image/png')
-          const pdf = new jsPDF({
-            orientation: 'portrait',
-            unit: 'mm',
-            format: 'a4',
-          })
-          const imgWidth = 210
-          const imgHeight = (canvas.height * imgWidth) / canvas.width
-          pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight)
-          pdf.save(`課表-${weekLabel.value}-${Date.now()}.pdf`)
-        })
-      })
+const handleExportAsImage = async () => {
+  console.log('開始匯出圖片...')
+
+  // 創建乾淨的匯出元素
+  const exportElement = createCleanExportElement()
+  if (!exportElement) {
+    notificationUI.showError('無法創建匯出元素')
+    return
+  }
+
+  // 添加到頁面
+  document.body.appendChild(exportElement)
+  console.log('元素已添加到頁面')
+
+  // 等待元素渲染
+  await new Promise(resolve => setTimeout(resolve, 500))
+
+  try {
+    const { default: html2canvas } = await import('html2canvas')
+    console.log('開始生成 canvas...')
+
+    const canvas = await html2canvas(exportElement, {
+      backgroundColor: '#ffffff',
+      scale: 2,
+      useCORS: true,
+      logging: true,
+      allowTaint: true,
+      width: 650,
+      height: exportElement.offsetHeight,
     })
+
+    console.log('Canvas 生成完成，開始下載...')
+
+    // 產生下載
+    const link = document.createElement('a')
+    link.download = `課表-${weekLabel.value}-${Date.now()}.png`
+    link.href = canvas.toDataURL('image/png')
+    link.click()
+
+    console.log('下載完成')
+  } catch (error) {
+    console.error('Image export failed:', error)
+    notificationUI.showError('圖片匯出失敗，請稍後再試')
+  } finally {
+    cleanupExportElement()
+    console.log('清理完成')
+  }
+}
+
+const handleDownloadPDF = async () => {
+  console.log('開始生成 PDF...')
+  notificationUI.showLoading('正在生成 PDF...')
+
+  // 創建乾淨的匯出元素
+  const exportElement = createCleanExportElement()
+  if (!exportElement) {
+    notificationUI.hideLoading()
+    notificationUI.showError('無法創建匯出元素')
+    return
+  }
+
+  // 添加到頁面
+  document.body.appendChild(exportElement)
+
+  // 等待元素渲染
+  await new Promise(resolve => setTimeout(resolve, 500))
+
+  try {
+    const { default: html2canvas } = await import('html2canvas')
+    const { default: jsPDF } = await import('jspdf')
+
+    console.log('開始生成 canvas...')
+
+    const canvas = await html2canvas(exportElement, {
+      backgroundColor: '#ffffff',
+      scale: 2,
+      useCORS: true,
+      logging: true,
+      allowTaint: true,
+      width: 650,
+      height: exportElement.offsetHeight,
+    })
+
+    console.log('Canvas 生成完成，開始生成 PDF...')
+
+    cleanupExportElement()
+
+    const imgData = canvas.toDataURL('image/png', 1.0)
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4',
+    })
+
+    const pdfWidth = pdf.internal.pageSize.getWidth()
+    const pdfHeight = pdf.internal.pageSize.getHeight()
+    const imgWidth = canvas.width
+    const imgHeight = canvas.height
+    const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight)
+
+    const imgX = (pdfWidth - imgWidth * ratio) / 2
+    const imgY = 10
+
+    // 如果內容超過一頁，分頁處理
+    const contentHeight = imgHeight * ratio
+    if (contentHeight > pdfHeight - 20) {
+      const pageCount = Math.ceil(contentHeight / (pdfHeight - 20))
+      const pageHeight = (pdfHeight - 20) / ratio
+
+      for (let i = 0; i < pageCount; i++) {
+        if (i > 0) {
+          pdf.addPage()
+        }
+
+        const sourceY = i * pageHeight
+        const sourceHeight = Math.min(pageHeight, imgHeight - sourceY)
+
+        const tempCanvas = document.createElement('canvas')
+        tempCanvas.width = imgWidth
+        tempCanvas.height = sourceHeight
+        const tempCtx = tempCanvas.getContext('2d')
+
+        if (tempCtx) {
+          tempCtx.fillStyle = '#ffffff'
+          tempCtx.fillRect(0, 0, imgWidth, sourceHeight)
+          tempCtx.drawImage(canvas, 0, sourceY, imgWidth, sourceHeight, 0, 0, imgWidth, sourceHeight)
+
+          const tempImgData = tempCanvas.toDataURL('image/png', 1.0)
+          const yPos = i === 0 ? imgY : 10
+          pdf.addImage(tempImgData, 'PNG', imgX, yPos, imgWidth * ratio, sourceHeight * ratio)
+        }
+      }
+    } else {
+      pdf.addImage(imgData, 'PNG', imgX, imgY, imgWidth * ratio, imgHeight * ratio)
+    }
+
+    pdf.save(`課表-${weekLabel.value}-${Date.now()}.pdf`)
+    notificationUI.hideLoading()
+    notificationUI.showSuccess('PDF 已下載')
+    console.log('PDF 下載完成')
+  } catch (error) {
+    console.error('PDF generation failed:', error)
+    notificationUI.hideLoading()
+    cleanupExportElement()
+    notificationUI.showError('PDF 生成失敗，請稍後再試')
   }
 }
 
@@ -965,26 +1380,45 @@ const handleDownloadICal = async () => {
 
 // 分享到 LINE（產生圖片後開啟 LINE）
 const handleShareLINE = async () => {
-  if (!scheduleRef.value) return
+  // 創建乾淨的匯出元素
+  const exportElement = createCleanExportElement()
+  if (!exportElement) {
+    notificationUI.showError('無法創建分享圖片')
+    return
+  }
+
+  // 添加到頁面
+  document.body.appendChild(exportElement)
+
+  // 等待元素渲染
+  await new Promise(resolve => setTimeout(resolve, 300))
 
   try {
     const { default: html2canvas } = await import('html2canvas')
-    const canvas = await html2canvas(scheduleRef.value, {
-      backgroundColor: getBackgroundColor(),
+
+    const bgColor = getBackgroundColor() || '#f8f8f8'
+
+    const canvas = await html2canvas(exportElement, {
+      backgroundColor: bgColor,
       scale: 2,
+      useCORS: true,
+      logging: false,
+      allowTaint: true,
+      width: 700,
+      height: exportElement.offsetHeight,
     })
 
     // 將圖片轉為 base64
     const imageData = canvas.toDataURL('image/png')
 
-    // 嘗試開啟 LINE（會失敗但會複製圖片）
+    // 嘗試開啟 LINE
     const lineUrl = `https://line.me/R/msg/text/?${encodeURIComponent(`${authStore.user?.name} 的課表 - ${weekLabel.value}`)}`
     window.open(lineUrl, '_blank')
 
     // 提示使用者手動分享
     notificationUI.showSuccess('圖片已產生，請在 LINE 中貼上')
 
-    // 也可以選擇下載圖片讓使用者手動分享
+    // 下載圖片讓使用者手動分享
     const link = document.createElement('a')
     link.href = imageData
     link.download = `課表-${weekLabel.value}-${Date.now()}.png`
@@ -992,6 +1426,8 @@ const handleShareLINE = async () => {
   } catch (error) {
     console.error('Failed to share to LINE:', error)
     notificationUI.showError('分享失敗，請嘗試下載圖片')
+  } finally {
+    cleanupExportElement()
   }
 }
 

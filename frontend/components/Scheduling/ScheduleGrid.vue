@@ -623,6 +623,7 @@ const fetchSchedules = async () => {
           rule: schedule.rule || null,
           offering_id: schedule.offering_id || schedule.offering?.id,
           effective_range: schedule.effective_range || null,
+          rule_id: schedule.rule_id || schedule.id, // 添加 rule_id 欄位
         }
       } catch (err) {
         console.error('[ScheduleGrid] Error processing schedule at index', index, err)
