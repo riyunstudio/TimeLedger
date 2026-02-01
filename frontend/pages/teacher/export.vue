@@ -238,7 +238,7 @@
                   <div
                     v-for="item in getDayScheduleItems(day.date)"
                     :key="item.id"
-                    class="absolute left-1 right-1 rounded p-1.5 text-xs z-10 flex flex-col items-center justify-center"
+                    class="absolute left-1 right-1 rounded p-1.5 text-xs z-10"
                     :style="{
                       backgroundColor: `${item.color || '#10B981'}30`,
                       borderLeft: `3px solid ${item.color || '#10B981'}`,
@@ -246,7 +246,7 @@
                       height: `${Math.max(getGridItemHeight(item), 65)}px`
                     }"
                   >
-                    <div class="flex items-center gap-1 mb-0.5 leading-none justify-center">
+                    <div class="flex items-center gap-1 mb-0.5 leading-none">
                       <span class="font-medium truncate" :class="currentTheme.itemTitleClass">
                         {{ item.start_time }}
                       </span>
@@ -1785,5 +1785,17 @@ onMounted(() => {
 
 :deep(.export-mode) .overflow-x-auto {
   overflow: visible !important;
+}
+
+/* 匯出模式：課程卡片內容置中 */
+:deep(.export-mode) .grid .absolute.inset-0 {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+:deep(.export-mode) .grid .absolute.inset-0 .flex.items-center.gap-1 {
+  justify-content: center !important;
 }
 </style>
