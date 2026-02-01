@@ -146,14 +146,22 @@ export type RecurrenceFrequency = 'NONE' | 'DAILY' | 'WEEKLY' | 'BIWEEKLY' | 'MO
 
 /**
  * 循環規則
+ *
+ * 對應後端 RecurrenceRule 模型
  */
 export interface RecurrenceRule {
-  /** 循環頻率 */
-  frequency: RecurrenceFrequency
+  /** 循環類型 */
+  type: RecurrenceFrequency
   /** 循環間隔 (如每 2 週為 interval: 2) */
   interval: number
   /** 結束日期 (可選，不設限則持續循環) */
   end_date?: DateString
+  /** 循環次數上限 (可選) */
+  count?: number
+  /** 結束日期 ISO 字串 (可選) */
+  until?: string
+  /** 星期幾循環 (用於 WEEKLY, BIWEEKLY) */
+  weekdays?: number[]
 }
 
 // ==================== 驗證結果類型 ====================

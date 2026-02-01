@@ -16,6 +16,9 @@ const fetchPromise = ref<Promise<void> | null>(null)
 
 export function useResourceCache() {
   const { getCenterId } = useCenterId()
+  const authStore = useAuthStore()
+
+  const isAdmin = computed(() => authStore.isAdmin)
 
   const fetchAllResources = async () => {
     // 如果已經在加載中，返回現有的 promise
@@ -28,6 +31,13 @@ export function useResourceCache() {
       return
     }
 
+    // 老師端不需要調用 Admin API，直接跳過
+    // 老師端的課表數據已經包含足夠的資訊（room_id, title 等）
+    if (!isAdmin.value) {
+      resourceCache.value.loaded = true
+      return
+    }
+
     // 創建新的 promise
     const promise = (async () => {
       try {
@@ -35,25 +45,34 @@ export function useResourceCache() {
         const centerId = getCenterId()
 
         const [offeringsRes, teachersRes, roomsRes] = await Promise.all([
-          api.get<{ code: number; datas: any }>(`/admin/offerings`),
-          api.get<{ code: number; datas: any[] }>('/admin/teachers'),
-          api.get<{ code: number; datas: any[] }>(`/admin/rooms`)
+          // offerings 使用 active endpoint 獲取所有可用的班別
+          api.get<any>(`/admin/offerings/active`),
+          // teachers 使用 /admin/teachers 端點（useApi 會自動添加 /api/v1 前綴）
+          api.get<any[]>(`/admin/teachers`),
+          // rooms 使用 /admin/rooms/active 端點
+          api.get<any[]>(`/admin/rooms/active`)
         ])
 
-        // 處理 offerings
-        resourceCache.value.offerings = offeringsRes.datas?.offerings || []
+        // 處理 offerings - GetActiveOfferings 返回 []models.Offering 陣列 (使用 data 欄位)
+        resourceCache.value.offerings = offeringsRes?.data || offeringsRes || []
 
-        // 處理 teachers
+        // 處理 teachers - ListTeachers 返回 []AdminTeacherResponse 陣列 (使用 data 欄位)
+        const teachersData = (teachersRes as any)?.data || (teachersRes as any)?.datas || teachersRes || []
         resourceCache.value.teachers = new Map()
-        teachersRes.datas?.forEach((t: any) => {
-          resourceCache.value.teachers.set(t.id, t)
-        })
+        if (Array.isArray(teachersData)) {
+          teachersData.forEach((t: any) => {
+            resourceCache.value.teachers.set(t.id, t)
+          })
+        }
 
-        // 處理 rooms
+        // 處理 rooms - GetRooms 返回 []RoomResponse 陣列 (使用 data 欄位)
+        const roomsData = (roomsRes as any)?.data || (roomsRes as any)?.datas || roomsRes || []
         resourceCache.value.rooms = new Map()
-        roomsRes.datas?.forEach((r: any) => {
-          resourceCache.value.rooms.set(r.id, r)
-        })
+        if (Array.isArray(roomsData)) {
+          roomsData.forEach((r: any) => {
+            resourceCache.value.rooms.set(r.id, r)
+          })
+        }
 
         resourceCache.value.loaded = true
       } catch (error) {
@@ -83,11 +102,23 @@ export function useResourceCache() {
     return offering?.name || `課程 ${offeringId}`
   }
 
+  const invalidate = (type?: string) => {
+    // 雖然目前 fetchAllResources 是全量抓取，但我們保留 type 參數以利未來擴充
+    resourceCache.value.loaded = false
+    fetchPromise.value = null
+  }
+
+  const fetchIfExpired = async () => {
+    return fetchAllResources()
+  }
+
   return {
     resourceCache,
     fetchAllResources,
     getTeacherName,
     getRoomName,
     getOfferingName,
+    invalidate,
+    fetchIfExpired,
   }
 }

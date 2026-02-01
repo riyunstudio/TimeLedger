@@ -3,7 +3,7 @@
     <div class="glass-card w-full max-w-md animate-spring" @click.stop>
       <div class="flex items-center justify-between p-4 border-b border-white/10">
         <h3 class="text-lg font-semibold text-slate-100">
-          {{ room ? '編輯教室' : '新增教室' }}
+          {{ room ? $t('common.edit') : $t('common.add') }}{{ $t('schedule.room') }}
         </h3>
         <button @click="emit('close')" class="p-2 rounded-lg hover:bg-white/10 transition-colors">
           <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -14,18 +14,18 @@
 
       <form @submit.prevent="handleSubmit" class="p-4 space-y-4">
         <div>
-          <label class="block text-slate-300 mb-2 font-medium">教室名稱</label>
+          <label class="block text-slate-300 mb-2 font-medium">{{ $t('schedule.roomName') }}</label>
           <input
             v-model="form.name"
             type="text"
-            placeholder="例：Room A"
+            :placeholder="$t('schedule.roomNamePlaceholder')"
             class="input-field"
             required
           />
         </div>
 
         <div>
-          <label class="block text-slate-300 mb-2 font-medium">容量</label>
+          <label class="block text-slate-300 mb-2 font-medium">{{ $t('schedule.capacity') }}</label>
           <input
             v-model.number="form.capacity"
             type="number"
@@ -41,14 +41,14 @@
             @click="emit('close')"
             class="flex-1 glass-btn py-3 rounded-xl font-medium"
           >
-            取消
+            {{ $t('common.cancel') }}
           </button>
           <button
             type="submit"
             :disabled="loading"
             class="flex-1 btn-primary"
           >
-            {{ loading ? '儲存中...' : '儲存' }}
+            {{ loading ? $t('common.saving') : $t('common.save') }}
           </button>
         </div>
       </form>
@@ -58,6 +58,9 @@
 
 <script setup lang="ts">
 import { alertError } from '~/composables/useAlert'
+
+// 資源快取
+const { invalidate } = useResourceCache()
 
 const props = defineProps<{
   room: any | null
@@ -107,7 +110,14 @@ const handleSubmit = async () => {
       await api.post(`/admin/rooms`, roomData)
     }
 
+    // 清除教室快取，確保下次存取取得最新資料
+    invalidate('rooms')
+
+    // 重新載入資料以確保取得最新內容
     emit('saved')
+
+    // 延遲關閉 Modal，確保 UI 已更新
+    await new Promise(resolve => setTimeout(resolve, 100))
     emit('close')
   } catch (error) {
     console.error('Failed to save room:', error)

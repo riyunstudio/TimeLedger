@@ -96,10 +96,10 @@ const form = ref({
 const loadData = async () => {
   try {
     const api = useApi()
-    const response = await api.get<{ code: number; datas: any }>('/teacher/me/profile')
-    if (response.datas) {
-      form.value.is_open_to_hiring = response.datas.is_open_to_hiring || false
-      form.value.public_contact_info = response.datas.public_contact_info || ''
+    const response = await api.get<any>('/teacher/me/profile')
+    if (response) {
+      form.value.is_open_to_hiring = response.is_open_to_hiring || false
+      form.value.public_contact_info = response.public_contact_info || ''
     }
   } catch (error) {
     console.error('Failed to load hiring settings:', error)

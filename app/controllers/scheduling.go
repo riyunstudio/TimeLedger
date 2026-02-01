@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"strings"
 	"time"
 
 	"timeLedger/app"
@@ -9,6 +10,47 @@ import (
 
 	"github.com/gin-gonic/gin"
 )
+
+// parseTimeString 解析時間字串為 time.Time
+// 支援格式： "HH:mm"（如 "09:00"）或 RFC3339（如 "2026-02-01T09:00:00+08:00"）
+func parseTimeString(timeStr string) (time.Time, error) {
+	// 嘗試解析 "HH:mm" 格式
+	if len(timeStr) == 5 && strings.Contains(timeStr, ":") {
+		t, err := time.Parse("15:04", timeStr)
+		if err == nil {
+			// 返回今天的日期加上這個時間
+			today := time.Now().In(time.FixedZone("UTC+8", 8*60*60))
+			return time.Date(today.Year(), today.Month(), today.Day(),
+				t.Hour(), t.Minute(), t.Second(), t.Nanosecond(),
+				t.Location()), nil
+		}
+	}
+
+	// 嘗試解析 "HH:mm:ss" 格式
+	if len(timeStr) == 8 && strings.Count(timeStr, ":") == 2 {
+		t, err := time.Parse("15:04:05", timeStr)
+		if err == nil {
+			today := time.Now().In(time.FixedZone("UTC+8", 8*60*60))
+			return time.Date(today.Year(), today.Month(), today.Day(),
+				t.Hour(), t.Minute(), t.Second(), t.Nanosecond(),
+				t.Location()), nil
+		}
+	}
+
+	// 嘗試解析 RFC3339 格式
+	t, err := time.Parse(time.RFC3339, timeStr)
+	if err == nil {
+		return t, nil
+	}
+
+	// 嘗試解析 RFC3339 with timezone 格式
+	t, err = time.Parse("2006-01-02T15:04:05Z07:00", timeStr)
+	if err == nil {
+		return t, nil
+	}
+
+	return time.Time{}, err
+}
 
 // SchedulingController 排課管理控制器（Thin Controller）
 type SchedulingController struct {
@@ -83,16 +125,28 @@ func (ctl *SchedulingController) CheckOverlap(ctx *gin.Context) {
 		return
 	}
 
+	// 解析時間字串為 time.Time（支援 "HH:mm" 或 RFC3339 格式）
+	startTime, err := parseTimeString(req.StartTime)
+	if err != nil {
+		helper.BadRequest("無效的開始時間格式，請使用 HH:mm 或 ISO 格式")
+		return
+	}
+	endTime, err := parseTimeString(req.EndTime)
+	if err != nil {
+		helper.BadRequest("無效的結束時間格式，請使用 HH:mm 或 ISO 格式")
+		return
+	}
+
 	// 計算 weekday（如果未提供則從 StartTime 推算）
 	checkWeekday := req.Weekday
 	if checkWeekday == 0 {
-		checkWeekday = int(req.StartTime.Weekday())
+		checkWeekday = int(startTime.Weekday())
 		if checkWeekday == 0 {
 			checkWeekday = 7
 		}
 	}
 
-	result, err := ctl.scheduleSvc.CheckOverlap(ctx.Request.Context(), centerID, req.TeacherID, req.RoomID, req.StartTime, req.EndTime, checkWeekday, req.ExcludeRuleID)
+	result, err := ctl.scheduleSvc.CheckOverlap(ctx.Request.Context(), centerID, req.TeacherID, req.RoomID, startTime, endTime, checkWeekday, req.ExcludeRuleID)
 	if err != nil {
 		helper.InternalError(err.Error())
 		return
@@ -123,7 +177,19 @@ func (ctl *SchedulingController) CheckTeacherBuffer(ctx *gin.Context) {
 		return
 	}
 
-	result, err := ctl.scheduleSvc.CheckTeacherBuffer(ctx.Request.Context(), centerID, req.TeacherID, req.PrevEndTime, req.NextStartTime, req.CourseID)
+	// 解析時間字串為 time.Time（支援 "HH:mm" 或 RFC3339 格式）
+	prevEndTime, err := parseTimeString(req.PrevEndTime)
+	if err != nil {
+		helper.BadRequest("無效的結束時間格式，請使用 HH:mm 或 ISO 格式")
+		return
+	}
+	nextStartTime, err := parseTimeString(req.NextStartTime)
+	if err != nil {
+		helper.BadRequest("無效的開始時間格式，請使用 HH:mm 或 ISO 格式")
+		return
+	}
+
+	result, err := ctl.scheduleSvc.CheckTeacherBuffer(ctx.Request.Context(), centerID, req.TeacherID, prevEndTime, nextStartTime, req.CourseID)
 	if err != nil {
 		helper.InternalError(err.Error())
 		return
@@ -154,7 +220,19 @@ func (ctl *SchedulingController) CheckRoomBuffer(ctx *gin.Context) {
 		return
 	}
 
-	result, err := ctl.scheduleSvc.CheckRoomBuffer(ctx.Request.Context(), centerID, req.RoomID, req.PrevEndTime, req.NextStartTime, req.CourseID)
+	// 解析時間字串為 time.Time（支援 "HH:mm" 或 RFC3339 格式）
+	prevEndTime, err := parseTimeString(req.PrevEndTime)
+	if err != nil {
+		helper.BadRequest("無效的結束時間格式，請使用 HH:mm 或 ISO 格式")
+		return
+	}
+	nextStartTime, err := parseTimeString(req.NextStartTime)
+	if err != nil {
+		helper.BadRequest("無效的開始時間格式，請使用 HH:mm 或 ISO 格式")
+		return
+	}
+
+	result, err := ctl.scheduleSvc.CheckRoomBuffer(ctx.Request.Context(), centerID, req.RoomID, prevEndTime, nextStartTime, req.CourseID)
 	if err != nil {
 		helper.InternalError(err.Error())
 		return
@@ -190,7 +268,38 @@ func (ctl *SchedulingController) ValidateFull(ctx *gin.Context) {
 		return
 	}
 
-	result, err := ctl.scheduleSvc.ValidateFull(ctx.Request.Context(), centerID, req.TeacherID, req.RoomID, req.CourseID, req.StartTime, req.EndTime, req.ExcludeRuleID, req.AllowBufferOverride)
+	// 解析時間字串為 time.Time（支援 "HH:mm" 或 RFC3339 格式）
+	startTime, err := parseTimeString(req.StartTime)
+	if err != nil {
+		helper.BadRequest("無效的開始時間格式，請使用 HH:mm 或 ISO 格式")
+		return
+	}
+	endTime, err := parseTimeString(req.EndTime)
+	if err != nil {
+		helper.BadRequest("無效的結束時間格式，請使用 HH:mm 或 ISO 格式")
+		return
+	}
+
+	// 解析可選的時間欄位
+	var prevEndTime, nextStartTime *time.Time
+	if req.PrevEndTime != nil {
+		pt, err := parseTimeString(*req.PrevEndTime)
+		if err != nil {
+			helper.BadRequest("無效的結束時間格式，請使用 HH:mm 或 ISO 格式")
+			return
+		}
+		prevEndTime = &pt
+	}
+	if req.NextStartTime != nil {
+		nt, err := parseTimeString(*req.NextStartTime)
+		if err != nil {
+			helper.BadRequest("無效的開始時間格式，請使用 HH:mm 或 ISO 格式")
+			return
+		}
+		nextStartTime = &nt
+	}
+
+	result, err := ctl.scheduleSvc.ValidateFull(ctx.Request.Context(), centerID, req.TeacherID, req.RoomID, req.CourseID, startTime, endTime, req.ExcludeRuleID, req.AllowBufferOverride, prevEndTime, nextStartTime)
 	if err != nil {
 		helper.InternalError(err.Error())
 		return

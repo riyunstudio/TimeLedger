@@ -1349,6 +1349,8 @@ definitions:
         type: integer
       row_no:
         type: integer
+      sort_order:
+        type: integer
       start_time:
         type: string
       teacher_id:
@@ -1378,6 +1380,16 @@ definitions:
         type: string
       updated_at:
         type: string
+    type: object
+  repositories.ReorderCellRequest:
+    properties:
+      id:
+        type: integer
+      sort_order:
+        type: integer
+    required:
+    - id
+    - sort_order
     type: object
   requests.CheckBufferRequest:
     properties:
@@ -1631,30 +1643,6 @@ definitions:
     required:
     - rule_id
     - session_date
-    type: object
-  requests.UserCreateRequest:
-    properties:
-      ips:
-        items:
-          type: string
-        type: array
-      name:
-        type: string
-    required:
-    - name
-    type: object
-  requests.UserUpdateRequest:
-    properties:
-      id:
-        type: integer
-      ips:
-        items:
-          type: string
-        type: array
-      name:
-        type: string
-    required:
-    - id
     type: object
   requests.ValidateFullRequest:
     properties:
@@ -1932,45 +1920,6 @@ definitions:
         type: array
       public_contact_info:
         type: string
-    type: object
-  resources.UserCreateResource:
-    properties:
-      created_at:
-        type: integer
-      id:
-        type: integer
-      ips:
-        items:
-          type: string
-        type: array
-      name:
-        type: string
-    type: object
-  resources.UserGetResource:
-    properties:
-      create_time:
-        type: integer
-      id:
-        type: integer
-      ips:
-        items:
-          type: string
-        type: array
-      name:
-        type: string
-      update_time:
-        type: integer
-    type: object
-  resources.UserUpdateResource:
-    properties:
-      ips:
-        items:
-          type: string
-        type: array
-      name:
-        type: string
-      updated_at:
-        type: integer
     type: object
   services.AdminListItem:
     properties:
@@ -2376,11 +2325,15 @@ definitions:
     type: object
   services.TodayOffering:
     properties:
+      id:
+        type: integer
       name:
         type: string
     type: object
   services.TodayRoom:
     properties:
+      id:
+        type: integer
       name:
         type: string
     type: object
@@ -2428,6 +2381,8 @@ definitions:
     type: object
   services.TodayTeacher:
     properties:
+      id:
+        type: integer
       name:
         type: string
     type: object
@@ -4620,6 +4575,39 @@ paths:
       summary: 刪除格子
       tags:
       - Admin
+  /api/v1/admin/templates/{template_id}/cells/reorder:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Template ID
+        in: path
+        name: template_id
+        required: true
+        type: integer
+      - description: 格子排序資訊
+        in: body
+        name: request
+        required: true
+        schema:
+          properties:
+            cells:
+              items:
+                $ref: '#/definitions/repositories.ReorderCellRequest'
+              type: array
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/global.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: 重新排序模板中的格子
+      tags:
+      - Admin
   /api/v1/admin/templates/{template_id}/validate-apply:
     post:
       consumes:
@@ -6093,99 +6081,6 @@ paths:
       summary: 取得未讀通知數量
       tags:
       - Notifications
-  /user:
-    get:
-      parameters:
-      - default: application/json
-        description: Content-Type
-        in: header
-        name: Content-Type
-        required: true
-        type: string
-      - description: TraceID
-        in: header
-        name: Tid
-        type: string
-      - description: 會員ID
-        in: query
-        name: ID
-        required: true
-        type: integer
-      responses:
-        "200":
-          description: 回傳
-          schema:
-            allOf:
-            - $ref: '#/definitions/global.ApiResponse'
-            - properties:
-                datas:
-                  $ref: '#/definitions/resources.UserGetResource'
-              type: object
-      summary: 查詢使用者
-      tags:
-      - User
-    post:
-      parameters:
-      - default: application/json
-        description: Content-Type
-        in: header
-        name: Content-Type
-        required: true
-        type: string
-      - description: TraceID
-        in: header
-        name: Tid
-        type: string
-      - description: 參數
-        in: body
-        name: Params
-        required: true
-        schema:
-          $ref: '#/definitions/requests.UserCreateRequest'
-      responses:
-        "200":
-          description: 回傳
-          schema:
-            allOf:
-            - $ref: '#/definitions/global.ApiResponse'
-            - properties:
-                datas:
-                  $ref: '#/definitions/resources.UserCreateResource'
-              type: object
-      summary: 新增使用者
-      tags:
-      - User
-    put:
-      parameters:
-      - default: application/json
-        description: Content-Type
-        in: header
-        name: Content-Type
-        required: true
-        type: string
-      - description: TraceID
-        in: header
-        name: Tid
-        type: string
-      - description: 參數
-        in: body
-        name: Params
-        required: true
-        schema:
-          $ref: '#/definitions/requests.UserUpdateRequest'
-      responses:
-        "200":
-          description: 回傳
-          schema:
-            allOf:
-            - $ref: '#/definitions/global.ApiResponse'
-            - properties:
-                datas:
-                  $ref: '#/definitions/resources.UserUpdateResource'
-              type: object
-      summary: 修改使用者
-      tags:
-      - User
 schemes:
 - http
 swagger: "2.0"

@@ -3,19 +3,17 @@
     <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" @click.self="$emit('close')">
       <div class="glass-card w-full max-w-lg max-h-[90vh] overflow-y-auto">
         <div class="flex items-center justify-between p-4 border-b border-white/10">
-          <h3 class="text-lg font-semibold text-white">{{ isEdit ? '編輯例外申請' : '新增例外申請' }}</h3>
+          <h3 class="text-lg font-semibold text-white">{{ isEdit ? $t('exception.editExceptionRequest') : $t('exception.addExceptionRequest') }}</h3>
           <button @click="$emit('close')" class="p-2 rounded-lg hover:bg-white/10">
-            <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <Icon icon="close" size="lg" />
           </button>
         </div>
 
         <form @submit.prevent="handleSubmit" class="p-4 space-y-4">
           <div>
-            <label class="block text-sm font-medium text-slate-300 mb-1">中心</label>
+            <label class="block text-sm font-medium text-slate-300 mb-1">{{ $t('exception.center') }}</label>
             <select v-model="form.center_id" class="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:border-primary-500" required>
-              <option value="">選擇中心</option>
+              <option value="">{{ $t('exception.selectCenter') }}</option>
               <option v-for="center in centers" :key="center.center_id" :value="center.center_id">
                 {{ center.center_name }}
               </option>
@@ -23,20 +21,20 @@
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-slate-300 mb-1">課程時段</label>
+            <label class="block text-sm font-medium text-slate-300 mb-1">{{ $t('exception.originalTime') }}</label>
             <select v-model="form.rule_id" class="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:border-primary-500" required :disabled="loadingRules">
-              <option value="">選擇課程時段</option>
+              <option value="">{{ $t('exception.selectSchedule') }}</option>
               <option v-for="rule in displayScheduleRules" :key="rule.id" :value="rule.id">
                 {{ formatRuleDisplay(rule) }}
               </option>
             </select>
-            <p v-if="loadingRules" class="text-xs text-slate-500 mt-1">載入中...</p>
-            <p v-else-if="form.center_id && displayScheduleRules.length === 0" class="text-xs text-slate-500 mt-1">該中心暫無您的課程</p>
+            <p v-if="loadingRules" class="text-xs text-slate-500 mt-1">{{ $t('common.loading') }}</p>
+            <p v-else-if="form.center_id && displayScheduleRules.length === 0" class="text-xs text-slate-500 mt-1">{{ $t('exception.noScheduleForCenter') }}</p>
           </div>
 
           <!-- 選擇具體日期 -->
           <div v-if="form.rule_id">
-            <label class="block text-sm font-medium text-slate-300 mb-1">調整日期</label>
+            <label class="block text-sm font-medium text-slate-300 mb-1">{{ $t('exception.originalDate') }}</label>
             <input
               type="date"
               v-model="form.original_date"
@@ -44,23 +42,23 @@
               class="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:border-primary-500"
               required
             />
-            <p class="text-xs text-slate-500 mt-1">選擇要調整的具體日期</p>
+            <p class="text-xs text-slate-500 mt-1">{{ $t('exception.originalDateHelp') }}</p>
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-slate-300 mb-1">申請類型</label>
+            <label class="block text-sm font-medium text-slate-300 mb-1">{{ $t('exception.type') }}</label>
             <div class="flex gap-3 flex-wrap">
               <label class="flex items-center gap-2 cursor-pointer">
                 <input type="radio" v-model="form.type" value="CANCEL" class="accent-primary-500" />
-                <span class="text-white">停課</span>
+                <span class="text-white">{{ $t('exception.cancel') }}</span>
               </label>
               <label class="flex items-center gap-2 cursor-pointer">
                 <input type="radio" v-model="form.type" value="RESCHEDULE" class="accent-primary-500" />
-                <span class="text-white">改期</span>
+                <span class="text-white">{{ $t('exception.reschedule') }}</span>
               </label>
               <label class="flex items-center gap-2 cursor-pointer">
                 <input type="radio" v-model="form.type" value="REPLACE_TEACHER" class="accent-primary-500" />
-                <span class="text-white">找代課</span>
+                <span class="text-white">{{ $t('exception.replaceTeacher') }}</span>
               </label>
             </div>
           </div>
@@ -69,11 +67,11 @@
           <div v-if="form.type === 'RESCHEDULE'">
             <div class="grid grid-cols-2 gap-4">
               <div>
-                <label class="block text-sm font-medium text-slate-300 mb-1">新開始時間</label>
+                <label class="block text-sm font-medium text-slate-300 mb-1">{{ $t('exception.newStartTime') }}</label>
                 <input type="datetime-local" v-model="form.new_start_at" class="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:border-primary-500" />
               </div>
               <div>
-                <label class="block text-sm font-medium text-slate-300 mb-1">新結束時間</label>
+                <label class="block text-sm font-medium text-slate-300 mb-1">{{ $t('exception.newEndTime') }}</label>
                 <input type="datetime-local" v-model="form.new_end_at" class="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:border-primary-500" />
               </div>
             </div>
@@ -82,43 +80,43 @@
           <!-- 代課老師選擇 -->
           <div v-if="form.type === 'REPLACE_TEACHER'" class="space-y-4">
             <div>
-              <label class="block text-sm font-medium text-slate-300 mb-2">代課方式</label>
+              <label class="block text-sm font-medium text-slate-300 mb-2">{{ $t('exception.replaceTeacherMode') }}</label>
               <div class="space-y-2">
                 <label class="flex items-center gap-2 cursor-pointer">
                   <input type="radio" v-model="replaceTeacherMode" value="center" class="accent-primary-500" />
-                  <span class="text-white">由中心幫我找代課老師</span>
+                  <span class="text-white">{{ $t('exception.centerFindTeacher') }}</span>
                 </label>
                 <label class="flex items-center gap-2 cursor-pointer">
                   <input type="radio" v-model="replaceTeacherMode" value="manual" class="accent-primary-500" />
-                  <span class="text-white">我已找到代課老師</span>
+                  <span class="text-white">{{ $t('exception.foundTeacher') }}</span>
                 </label>
               </div>
             </div>
 
             <!-- 手動輸入代課老師姓名 -->
             <div v-if="replaceTeacherMode === 'manual'">
-              <label class="block text-sm font-medium text-slate-300 mb-1">代課老師姓名</label>
+              <label class="block text-sm font-medium text-slate-300 mb-1">{{ $t('exception.replaceTeacherName') }}</label>
               <input
                 v-model="form.new_teacher_name"
                 type="text"
-                placeholder="請輸入代課老師姓名"
+                :placeholder="$t('exception.replaceTeacherNamePlaceholder')"
                 class="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-primary-500"
               />
-              <p class="text-xs text-slate-500 mt-1">請輸入您已聯繫好的代課老師姓名</p>
+              <p class="text-xs text-slate-500 mt-1">{{ $t('exception.replaceTeacherNameHelp') }}</p>
             </div>
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-slate-300 mb-1">原因</label>
+            <label class="block text-sm font-medium text-slate-300 mb-1">{{ $t('exception.reason') }}</label>
             <textarea v-model="form.reason" rows="3" class="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:border-primary-500 resize-none" required></textarea>
           </div>
 
           <div class="flex gap-3 pt-4">
             <button type="button" @click="$emit('close')" class="flex-1 px-4 py-2 rounded-lg bg-white/5 text-white hover:bg-white/10 transition-colors">
-              取消
+              {{ $t('common.cancel') }}
             </button>
             <button type="submit" :disabled="loading" class="flex-1 px-4 py-2 rounded-lg bg-primary-500 text-white hover:bg-primary-600 transition-colors disabled:opacity-50">
-              {{ loading ? '提交中...' : '提交申請' }}
+              {{ loading ? $t('common.submitting') : $t('exception.submitRequest') }}
             </button>
           </div>
         </form>
@@ -131,6 +129,7 @@
 import type { ScheduleException } from '~/types'
 import { alertError } from '~/composables/useAlert'
 import { getTodayString, formatDateToString, formatDate } from '~/composables/useTaiwanTime'
+import Icon from '~/components/base/Icon.vue'
 
 interface ScheduleRuleData {
   id: number

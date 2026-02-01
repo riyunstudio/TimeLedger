@@ -524,6 +524,7 @@
 </template>
 
 <script setup lang="ts">
+import NotificationDropdown from '~/components/Navigation/NotificationDropdown.vue'
 import { SKILL_CATEGORIES } from '~/types'
 import { formatDateToString, getTodayString } from '~/composables/useTaiwanTime'
 import AdminRecentSearches from '~/components/Admin/RecentSearches.vue'

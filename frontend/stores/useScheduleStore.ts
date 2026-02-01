@@ -1,6 +1,11 @@
 import { defineStore } from 'pinia'
 import type { CenterMembership, Center, WeekSchedule, ScheduleException, SessionNote, PersonalEvent, RecurrenceRule, Invitation } from '~/types'
+import {
+  TeacherScheduleDataSchema,
+  ScheduleExceptionListDataSchema,
+} from '~/types/schemas'
 import { formatDateToString } from '~/composables/useTaiwanTime'
+import { expandRecurrenceEvents } from '~/composables/useRecurrence'
 import { withLoading } from '~/utils/loadingHelper'
 
 export interface TeacherScheduleItem {
@@ -30,6 +35,7 @@ export const useScheduleStore = defineStore('schedule', () => {
   const sessionNote = ref<SessionNote | null>(null)
   const invitations = ref<Invitation[]>([])
   const pendingInvitationsCount = ref(0)
+  const subscriptionUrl = ref<string | null>(null)
 
   // Loading 狀態
   const isLoading = ref(false)
@@ -44,6 +50,9 @@ export const useScheduleStore = defineStore('schedule', () => {
   const isRevokingException = ref(false)
   const isSavingNote = ref(false)
   const isRespondingInvitation = ref(false)
+  const isCreatingSubscription = ref(false)
+  const isDeletingSubscription = ref(false)
+  const isDownloadingImage = ref(false)
 
   // 日期週次相關
   const getWeekStart = (date: Date): Date => {
@@ -91,13 +100,19 @@ export const useScheduleStore = defineStore('schedule', () => {
     return withLoading(isFetching, async () => {
       try {
         const api = useApi()
-        const response = await api.get<{ code: number; message: string; datas: CenterMembership[] }>('/teacher/me/centers')
-        centers.value = response.datas || []
+        const response = await api.get<{ code: number; message: string; data: CenterMembership[] } | null>('/teacher/me/centers')
+        // 處理 null response 或 data 為 null 的情況
+        if (!response || !response.data) {
+          centers.value = []
+          return
+        }
+        centers.value = response.data || []
         if (centers.value.length > 0 && !currentCenter.value && centers.value[0].center_id) {
           currentCenter.value = { id: centers.value[0].center_id, name: centers.value[0].center_name || '' } as any
         }
       } catch (error) {
         console.error('Failed to fetch centers:', error)
+        centers.value = [] // 確保即使失敗也設定為空陣列
         throw error
       }
     })
@@ -110,10 +125,13 @@ export const useScheduleStore = defineStore('schedule', () => {
     return withLoading(isLoading, async () => {
       try {
         const api = useApi()
-        const response = await api.get<{ code: number; message: string; datas: TeacherScheduleItem[] }>(
-          `/teacher/me/schedule?from=${formatDate(weekStart.value)}&to=${formatDate(weekEnd.value)}`
+        const response = await api.get<any[]>(
+          `/teacher/me/schedule?from=${formatDate(weekStart.value!)}&to=${formatDate(weekEnd.value!)}`,
+          undefined,
+          undefined,
+          TeacherScheduleDataSchema
         )
-        schedule.value = transformToWeekSchedule(response.datas || [])
+        schedule.value = transformToWeekSchedule(response || [])
       } catch (error) {
         console.error('Failed to fetch schedule:', error)
         throw error
@@ -182,8 +200,13 @@ export const useScheduleStore = defineStore('schedule', () => {
         const endpoint = status
           ? `/teacher/exceptions?status=${status}`
           : '/teacher/exceptions'
-        const response = await api.get<{ code: number; message: string; datas: ScheduleException[] }>(endpoint)
-        exceptions.value = response.datas || []
+        const response = await api.get<any[]>(
+          endpoint,
+          undefined,
+          undefined,
+          ScheduleExceptionListDataSchema
+        )
+        exceptions.value = response || []
       } catch (error) {
         console.error('Failed to fetch exceptions:', error)
         throw error
@@ -262,7 +285,7 @@ export const useScheduleStore = defineStore('schedule', () => {
       try {
         const api = useApi()
         const response = await api.get<{ code: number; message: string; datas: PersonalEvent[] }>(
-          `/teacher/me/personal-events?from=${formatDate(weekStart.value)}&to=${formatDate(weekEnd.value)}`
+          `/teacher/me/personal-events?from=${formatDate(weekStart.value!)}&to=${formatDate(weekEnd.value!)}`
         )
         const events = response.datas || []
 
@@ -270,56 +293,13 @@ export const useScheduleStore = defineStore('schedule', () => {
         const currentWeekEnd = new Date(weekEnd.value!)
         currentWeekEnd.setHours(23, 59, 59, 999)
 
-        const expandedEvents: PersonalEvent[] = []
-
-        events.forEach(event => {
-          if (!event.recurrence_rule) {
-            expandedEvents.push(event)
-            return
-          }
-
-          const { frequency, interval = 1 } = event.recurrence_rule
-          const startDate = new Date(event.start_at)
-          const endDate = new Date(event.end_at)
-          const duration = endDate.getTime() - startDate.getTime()
-
-          let currentDate = new Date(startDate)
-
-          while (currentDate <= currentWeekEnd) {
-            if (currentDate >= currentWeekStart) {
-              const instanceEnd = new Date(currentDate.getTime() + duration)
-              expandedEvents.push({
-                ...event,
-                id: `${event.id}_${formatDateToString(currentDate)}`,
-                originalId: event.id,
-                start_at: formatDateTimeForApi(currentDate),
-                end_at: formatDateTimeForApi(instanceEnd),
-              })
-            }
-
-            switch (frequency) {
-              case 'DAILY':
-                currentDate.setDate(currentDate.getDate() + interval)
-                break
-              case 'WEEKLY':
-                currentDate.setDate(currentDate.getDate() + (7 * interval))
-                break
-              case 'BIWEEKLY':
-                currentDate.setDate(currentDate.getDate() + (14 * interval))
-                break
-              case 'MONTHLY':
-                currentDate.setMonth(currentDate.getMonth() + interval)
-                break
-              default:
-                currentDate = new Date(currentWeekEnd.getTime() + 1)
-            }
-          }
-        })
+        // 使用 composable 展開循環事件
+        const expandedEvents = expandRecurrenceEvents(events, currentWeekStart, currentWeekEnd)
 
         personalEvents.value = expandedEvents.filter(event => {
           const eventStart = new Date(event.start_at)
           return eventStart >= currentWeekStart && eventStart <= currentWeekEnd
-        })
+        }) as any[]
       } catch (error) {
         console.error('Failed to fetch personal events:', error)
         throw error
@@ -454,6 +434,69 @@ export const useScheduleStore = defineStore('schedule', () => {
     }
   }
 
+  // 訂閱相關
+  const createSubscription = async () => {
+    return withLoading(isCreatingSubscription, async () => {
+      try {
+        const api = useApi()
+        const response = await api.post<{ code: number; message: string; datas: { subscription_url: string } }>(
+          '/teacher/me/schedule/subscription',
+          {}
+        )
+        subscriptionUrl.value = response.datas?.subscription_url || null
+        return subscriptionUrl.value
+      } catch (error) {
+        console.error('Failed to create subscription:', error)
+        throw error
+      }
+    })
+  }
+
+  const deleteSubscription = async () => {
+    return withLoading(isDeletingSubscription, async () => {
+      try {
+        const api = useApi()
+        await api.delete('/teacher/me/schedule/subscription')
+        subscriptionUrl.value = null
+      } catch (error) {
+        console.error('Failed to delete subscription:', error)
+        throw error
+      }
+    })
+  }
+
+  // 下載課表圖片
+  const downloadImage = async (startDate?: string, endDate?: string) => {
+    return withLoading(isDownloadingImage, async () => {
+      try {
+        const api = useApi()
+        // 支援傳遞日期範圍參數
+        const dateParams = startDate && endDate
+          ? `?start_date=${startDate}&end_date=${endDate}`
+          : ''
+        const response = await api.raw<Blob>(`/teacher/me/schedule/image${dateParams}`)
+
+        // 建立下載連結
+        const url = URL.createObjectURL(response)
+        const link = document.createElement('a')
+        link.href = url
+
+        // 產生檔案名稱
+        const today = new Date().toISOString().split('T')[0]
+        link.download = `課表-${today}.png`
+
+        // 觸發下載
+        link.click()
+
+        // 清理
+        URL.revokeObjectURL(url)
+      } catch (error) {
+        console.error('Failed to download image:', error)
+        throw error
+      }
+    })
+  }
+
   return {
     // 資料狀態
     centers,
@@ -464,6 +507,7 @@ export const useScheduleStore = defineStore('schedule', () => {
     sessionNote,
     invitations,
     pendingInvitationsCount,
+    subscriptionUrl,
     weekStart,
     weekEnd,
     weekLabel,
@@ -481,6 +525,9 @@ export const useScheduleStore = defineStore('schedule', () => {
     isRevokingException,
     isSavingNote,
     isRespondingInvitation,
+    isCreatingSubscription,
+    isDeletingSubscription,
+    isDownloadingImage,
 
     // 方法
     fetchCenters,
@@ -500,5 +547,8 @@ export const useScheduleStore = defineStore('schedule', () => {
     respondToInvitation,
     fetchPendingCount,
     moveScheduleItem,
+    createSubscription,
+    deleteSubscription,
+    downloadImage,
   }
 })

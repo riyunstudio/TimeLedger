@@ -3,25 +3,27 @@ import type { Teacher, AuthResponse } from '~/types'
 import { withLoading } from '~/utils/loadingHelper'
 
 export const useAuthStore = defineStore('auth', () => {
-  // 資料狀態
+  // State
   const user = ref<Teacher | null>(null)
   const token = ref<string | null>(null)
   const refreshToken = ref<string | null>(null)
-
-  // Loading 狀態
   const isLoading = ref(false)
   const isRefreshing = ref(false)
 
-  // Computed 狀態
+  // Getters
   const isAuthenticated = computed(() => !!token.value)
-  const isTeacher = computed(() => !!user.value && !isAdmin.value)
+
+  const isTeacher = computed(() => {
+    const userData = user.value as any
+    return !!user.value && !userData?.user_type && !userData?.role
+  })
+
   const isAdmin = computed(() => {
     if (!user.value) {
       console.log('[DEBUG isAdmin] user.value is null, returning false')
       return false
     }
     const userData = user.value as any
-    // 同時支援 user_type（來自登入 API）和 role（來自 /admin/me/profile API）
     const role = userData.user_type || userData.role
     console.log('[DEBUG isAdmin] userData:', JSON.stringify(userData))
     console.log('[DEBUG isAdmin] role:', role)
@@ -30,96 +32,49 @@ export const useAuthStore = defineStore('auth', () => {
     return result
   })
 
-  const login = (authData: AuthResponse) => {
+  // Actions
+  function login(authData: AuthResponse) {
     console.log('[DEBUG login] authData:', JSON.stringify(authData))
     console.log('[DEBUG login] authData.token:', authData.token)
     console.log('[DEBUG login] authData.user:', JSON.stringify(authData.user))
+
+    // 保存 token 到 localStorage（用於 API 請求認證）
+    const userType = authData.user?.user_type || authData.teacher?.user_type || 'ADMIN'
+    const storageKey = userType === 'ADMIN' || userType === 'OWNER' || userType === 'STAFF' 
+      ? 'admin_token' 
+      : 'teacher_token'
+    localStorage.setItem(storageKey, authData.token)
+    console.log('[DEBUG login] saved token to localStorage:', storageKey)
 
     token.value = authData.token
     refreshToken.value = authData.refresh_token
 
     if (authData.teacher) {
       user.value = authData.teacher
-      localStorage.setItem('teacher_user', JSON.stringify(authData.teacher))
-      localStorage.setItem('teacher_token', authData.token)
-      localStorage.setItem('teacher_refresh_token', authData.refresh_token || '')
-      localStorage.removeItem('admin_token')
-      localStorage.removeItem('admin_refresh_token')
-      localStorage.removeItem('admin_user')
     } else if (authData.user) {
       user.value = authData.user as any
       console.log('[DEBUG login] user.value after assignment:', JSON.stringify(user.value))
-      localStorage.setItem('admin_user', JSON.stringify(authData.user))
-      localStorage.setItem('admin_token', authData.token)
-      console.log('[DEBUG login] saved admin_token:', authData.token)
-      localStorage.setItem('admin_refresh_token', authData.refresh_token || '')
-      localStorage.removeItem('teacher_token')
-      localStorage.removeItem('teacher_refresh_token')
-      localStorage.removeItem('teacher_user')
     }
-
-    localStorage.setItem('current_user_type', authData.teacher ? 'teacher' : 'admin')
   }
 
-  const logout = () => {
+  function logout() {
+    // 清除 localStorage 中的 token
+    const userType = user.value?.user_type
+    const storageKey = userType === 'ADMIN' || userType === 'OWNER' || userType === 'STAFF'
+      ? 'admin_token'
+      : 'teacher_token'
+    localStorage.removeItem(storageKey)
+    localStorage.removeItem('token') // 清除可能的其他 token key
+
     user.value = null
     token.value = null
     refreshToken.value = null
-    localStorage.removeItem('admin_token')
-    localStorage.removeItem('admin_refresh_token')
-    localStorage.removeItem('admin_user')
-    localStorage.removeItem('teacher_token')
-    localStorage.removeItem('teacher_refresh_token')
-    localStorage.removeItem('teacher_user')
-    localStorage.removeItem('current_user_type')
   }
 
-  const initFromStorage = () => {
-    const userType = localStorage.getItem('current_user_type')
-
-    if (userType === 'admin') {
-      const storedToken = localStorage.getItem('admin_token')
-      const storedUser = localStorage.getItem('admin_user')
-      const storedRefresh = localStorage.getItem('admin_refresh_token')
-
-      if (storedToken) {
-        token.value = storedToken
-      }
-      if (storedRefresh) {
-        refreshToken.value = storedRefresh
-      }
-      if (storedUser) {
-        try {
-          user.value = JSON.parse(storedUser)
-        } catch (e) {
-          localStorage.removeItem('admin_user')
-        }
-      }
-    } else if (userType === 'teacher') {
-      const storedToken = localStorage.getItem('teacher_token')
-      const storedUser = localStorage.getItem('teacher_user')
-      const storedRefresh = localStorage.getItem('teacher_refresh_token')
-
-      if (storedToken) {
-        token.value = storedToken
-      }
-      if (storedRefresh) {
-        refreshToken.value = storedRefresh
-      }
-      if (storedUser) {
-        try {
-          user.value = JSON.parse(storedUser)
-        } catch (e) {
-          localStorage.removeItem('teacher_user')
-        }
-      }
-    }
-  }
-
-  const refreshAccessToken = async () => {
+  async function refreshAccessToken(): Promise<boolean> {
     if (!refreshToken.value) return false
 
-    return withLoading(isRefreshing, async () => {
+    return withLoading(isRefreshing.value, async () => {
       try {
         const api = useApi()
         const response = await api.post<{ code: number; message: string; datas: { token: string; refresh_token: string } }>('/auth/refresh', {
@@ -128,15 +83,6 @@ export const useAuthStore = defineStore('auth', () => {
 
         token.value = response.datas?.token || ''
         refreshToken.value = response.datas?.refresh_token || ''
-
-        const userType = localStorage.getItem('current_user_type')
-        if (userType === 'admin') {
-          localStorage.setItem('admin_token', response.datas?.token || '')
-          localStorage.setItem('admin_refresh_token', response.datas?.refresh_token || '')
-        } else if (userType === 'teacher') {
-          localStorage.setItem('teacher_token', response.datas?.token || '')
-          localStorage.setItem('teacher_refresh_token', response.datas?.refresh_token || '')
-        }
 
         return true
       } catch (error) {
@@ -147,24 +93,20 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   return {
-    // 資料狀態
     user,
     token,
     refreshToken,
-
-    // Loading 狀態
     isLoading,
     isRefreshing,
-
-    // Computed 狀態
     isAuthenticated,
     isTeacher,
     isAdmin,
-
-    // 方法
     login,
     logout,
     refreshAccessToken,
-    initFromStorage,
   }
+}, {
+  persist: {
+    paths: ['user', 'token', 'refreshToken'],
+  },
 })

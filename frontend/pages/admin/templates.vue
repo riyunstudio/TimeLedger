@@ -514,27 +514,47 @@
 
       <!-- 衝突警告區域 -->
       <div
-        v-if="applyConflicts.length > 0"
+        v-if="applyConflicts.length > 0 || validationWarnings.length > 0"
         class="mb-4 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg"
       >
         <div class="flex items-center gap-2 mb-2">
           <svg class="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
-          <span class="text-yellow-500 font-medium">檢測到 {{ applyConflicts.length }} 個衝突</span>
+          <span class="text-yellow-500 font-medium">
+            檢測到 {{ applyConflicts.length }} 個衝突、{{ validationWarnings.length }} 個警告
+          </span>
         </div>
-        <div class="space-y-2 max-h-48 overflow-y-auto">
+
+        <!-- 衝突列表 -->
+        <div v-if="applyConflicts.length > 0" class="space-y-2 mb-3 max-h-48 overflow-y-auto">
           <div
             v-for="(conflict, index) in applyConflicts"
-            :key="index"
-            class="text-sm p-2 rounded bg-yellow-500/5"
+            :key="'conflict-' + index"
+            class="text-sm p-2 rounded"
+            :class="conflict.can_override ? 'bg-yellow-500/10' : 'bg-red-500/10'"
           >
             <div class="font-medium" :class="conflict.can_override ? 'text-yellow-400' : 'text-red-400'">
-              {{ getConflictTypeLabel(conflict.conflict_type) }}
+              {{ getConflictTypeLabel(conflict.conflict_type || conflict.type) }}
             </div>
             <div class="text-slate-400 mt-1 text-xs">{{ conflict.message }}</div>
           </div>
         </div>
+
+        <!-- 警告列表 -->
+        <div v-if="validationWarnings.length > 0" class="space-y-2 max-h-48 overflow-y-auto">
+          <div
+            v-for="(warning, index) in validationWarnings"
+            :key="'warning-' + index"
+            class="text-sm p-2 rounded bg-blue-500/10"
+          >
+            <div class="font-medium text-blue-400">
+              {{ getConflictTypeLabel(warning.warning_type || warning.type) }}
+            </div>
+            <div class="text-slate-400 mt-1 text-xs">{{ warning.message }}</div>
+          </div>
+        </div>
+
         <div v-if="hasOverrideableConflicts" class="mt-3 p-2 bg-yellow-500/10 rounded text-xs text-yellow-400">
           💡 提示：可勾選「允許覆蓋 Buffer 衝突」來強制套用
         </div>
@@ -546,18 +566,29 @@
             選擇課程
             <span class="text-red-400 ml-1">*必選</span>
           </label>
-          <select
-            id="offering-select"
-            v-model="applyForm.offeringId"
-            class="input-field"
-            required
-          >
-            <option value="">請選擇課程</option>
-            <option v-for="offering in offerings" :key="offering.id" :value="offering.id">
-              {{ offering.name }}
-            </option>
-          </select>
-          <p v-if="offerings.length === 0" class="text-xs text-yellow-500 mt-1">尚無課程資料，請先至「課程管理」建立課程</p>
+          <div class="relative">
+            <select
+              id="offering-select"
+              v-model="applyForm.offeringId"
+              class="input-field"
+              :disabled="offeringsLoading"
+              required
+            >
+              <option value="">請選擇課程 ({{ offerings.length }} 筆資料)</option>
+              <option v-for="offering in offerings" :key="offering.id" :value="offering.id">
+                {{ offering.name }}
+              </option>
+            </select>
+            <!-- 載入指示器 -->
+            <div v-if="offeringsLoading" class="absolute right-10 top-1/2 -translate-y-1/2">
+              <svg class="w-5 h-5 text-primary-500 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+              </svg>
+            </div>
+          </div>
+          <p v-if="offeringsLoading" class="text-xs text-slate-500 mt-1">載入課程資料中...</p>
+          <p v-else-if="offerings.length === 0" class="text-xs text-yellow-500 mt-1">尚無課程資料，請先至「課程管理」建立課程</p>
         </div>
 
         <div class="grid grid-cols-2 gap-4 mb-4">
@@ -656,13 +687,17 @@
           </button>
           <button
             type="submit"
-            :disabled="applying || !canApply"
+            :disabled="applying || isValidating || !canApply"
             class="flex-1 px-4 py-2 rounded-lg bg-primary-500 text-white hover:bg-primary-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg v-if="isValidating" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+            </svg>
+            <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            {{ applying ? '套用中...' : '確認套用' }}
+            {{ isValidating ? '檢查中...' : applying ? '套用中...' : '確認套用' }}
           </button>
         </div>
       </form>
@@ -676,10 +711,11 @@
 </template>
 
 <script setup lang="ts">
- definePageMeta({
-   middleware: 'auth-admin',
-   layout: 'admin',
- })
+import NotificationDropdown from '~/components/Navigation/NotificationDropdown.vue'
+definePageMeta({
+  auth: 'ADMIN',
+  layout: 'admin',
+})
 
  const notificationUI = useNotification()
 const showModal = ref(false)
@@ -689,9 +725,12 @@ const selectedTemplate = ref<any>(null)
 const templates = ref<any[]>([])
 const cells = ref<any[]>([])
 const offerings = ref<any[]>([])
+const offeringsLoading = ref(true)
 const rooms = ref<any[]>([])
 const teachers = ref<any[]>([])
 const applyConflicts = ref<any[]>([])
+const validationWarnings = ref<any[]>([])
+const isValidating = ref(false)
 const creating = ref(false)
 const applying = ref(false)
 const addingCell = ref(false)
@@ -869,16 +908,66 @@ const getCellResourceClass = (cell: any): string => {
   return 'text-yellow-500'
 }
 
-// 取得衝突類型標籤
+// 衝突警告類型標籤
 const getConflictTypeLabel = (conflictType: string): string => {
   const labels: Record<string, string> = {
     'ROOM_OVERLAP': '教室時間衝突',
     'TEACHER_OVERLAP': '老師時間衝突',
     'PERSONAL_EVENT': '老師私人行程衝突',
     'TEACHER_BUFFER': '老師緩衝時間不足',
-    'ROOM_BUFFER': '教室緩衝時間不足'
+    'ROOM_BUFFER': '教室緩衝時間不足',
+    'WARNING': '警告',
+    'SCHEDULE_WARNING': '課表警告',
+    'CAPACITY_WARNING': '容量警告'
   }
   return labels[conflictType] || conflictType
+}
+
+// 驗證套用模板（預檢查）
+const validateApplyTemplate = async (): Promise<{ hasConflicts: boolean; conflicts: any[]; warnings: any[] }> => {
+  const conflicts: any[] = []
+  const warnings: any[] = []
+
+  try {
+    const api = useApi()
+    const response = await api.post<any>(`/admin/templates/${applyForm.value.templateId}/validate-apply`, {
+      offering_id: Number(applyForm.value.offeringId),
+      start_date: applyForm.value.startDate,
+      end_date: applyForm.value.endDate,
+      weekdays: applyForm.value.weekdays,
+      duration: applyForm.value.duration,
+      override_buffer: applyForm.value.override_buffer
+    })
+
+    // 解析驗證回應
+    if (response.datas) {
+      if (Array.isArray(response.datas.conflicts)) {
+        conflicts.push(...response.datas.conflicts)
+      }
+      if (Array.isArray(response.datas.warnings)) {
+        warnings.push(...response.datas.warnings)
+      }
+    }
+
+    return { hasConflicts: conflicts.length > 0, conflicts, warnings }
+  } catch (error: any) {
+    console.error('Failed to validate template apply:', error)
+
+    // 嘗試從錯誤回應中解析衝突資訊
+    try {
+      const errorData = (error as any).data || {}
+      if (errorData.datas?.conflicts) {
+        conflicts.push(...errorData.datas.conflicts)
+      }
+      if (errorData.datas?.warnings) {
+        warnings.push(...errorData.datas.warnings)
+      }
+    } catch {
+      // 忽略解析錯誤
+    }
+
+    return { hasConflicts: conflicts.length > 0, conflicts, warnings }
+  }
 }
 
 // 取得教室列表
@@ -920,8 +1009,9 @@ const fetchTeachers = async () => {
 const fetchTemplates = async () => {
   try {
     const api = useApi()
-    const response = await api.get<{ code: number; datas: any[] }>('/admin/templates')
-    templates.value = response.datas || []
+    // parseResponse 已經提取了 datas 欄位，所以 response 就是模板陣列本身
+    const response = await api.get<any[]>('/admin/templates')
+    templates.value = response || []
   } catch (error) {
     console.error('Failed to fetch templates:', error)
   }
@@ -1035,27 +1125,48 @@ const deleteCell = async (cellId: number) => {
 }
 
 const fetchOfferings = async () => {
+  offeringsLoading.value = true
   try {
     const api = useApi()
     const response = await api.get<any>('/admin/offerings')
+    console.log('Offerings API response:', JSON.stringify(response, null, 2))
 
-    // 處理不同格式的 API 回應
-    if (response.datas?.offerings) {
-      offerings.value = response.datas.offerings
-    } else if (response.datas) {
-      offerings.value = response.datas
-    } else if (Array.isArray(response)) {
-      offerings.value = response
+    // useApi 的 parseResponse 已經提取了 datas 欄位
+    // API 回應格式: { Offerings: [...], Pagination: {...} }
+    // 注意：使用駝峰式命名 (Offerings 不是 offerings)
+    if (response && typeof response === 'object') {
+      if (Array.isArray(response)) {
+        // 直接是陣列格式
+        offerings.value = response
+        console.log('Parsed from direct array:', offerings.value)
+      } else if (Array.isArray(response.Offerings)) {
+        // { Offerings: [...] } 格式
+        offerings.value = response.Offerings
+        console.log('Parsed from Offerings array:', offerings.value)
+      } else if (Array.isArray(response.offerings)) {
+        // { offerings: [...] } 格式（小寫）
+        offerings.value = response.offerings
+        console.log('Parsed from offerings array:', offerings.value)
+      } else {
+        console.warn('Unexpected offerings format:', response)
+        offerings.value = []
+      }
     } else {
+      console.warn('No offerings data found in response:', response)
       offerings.value = []
     }
+
+    // 除錯：顯示最終結果
+    console.log('Final offerings:', offerings.value)
   } catch (error) {
     console.error('Failed to fetch offerings:', error)
     offerings.value = []
+  } finally {
+    offeringsLoading.value = false
   }
 }
 
-const openApplyModal = (template: any) => {
+const openApplyModal = async (template: any) => {
   selectedTemplate.value = null
   applyForm.value = {
     templateId: template.id,
@@ -1068,12 +1179,19 @@ const openApplyModal = (template: any) => {
     override_buffer: false
   }
   applyConflicts.value = []
+  validationWarnings.value = []
   showApplyModal.value = true
+
+  // 確保課程資料已載入
+  if (offerings.value.length === 0 && !offeringsLoading.value) {
+    await fetchOfferings()
+  }
 }
 
 const closeApplyModal = () => {
   showApplyModal.value = false
   applyConflicts.value = []
+  validationWarnings.value = []
 }
 
 const applyTemplate = async () => {
@@ -1082,9 +1200,39 @@ const applyTemplate = async () => {
     return
   }
 
-  applying.value = true
-  applyConflicts.value = [] // 清空衝突顯示
+  // 先進行驗證
+  isValidating.value = true
+  applyConflicts.value = []
+  validationWarnings.value = []
+
   try {
+    const validationResult = await validateApplyTemplate()
+    isValidating.value = false
+
+    // 如果有衝突或警告，顯示在對話框中並讓用戶確認
+    if (validationResult.hasConflicts || validationResult.warnings.length > 0) {
+      applyConflicts.value = validationResult.conflicts
+      validationWarnings.value = validationResult.warnings
+
+      // 構建確認訊息
+      let confirmMessage = '偵測到以下問題：\n\n'
+      if (validationResult.conflicts.length > 0) {
+        confirmMessage += `⚠️ ${validationResult.conflicts.length} 個衝突\n`
+      }
+      if (validationResult.warnings.length > 0) {
+        confirmMessage += `💡 ${validationResult.warnings.length} 個警告\n`
+      }
+      confirmMessage += '\n是否仍要套用模板？'
+
+      // 讓用戶確認是否繼續
+      if (!await alertConfirm(confirmMessage)) {
+        return
+      }
+    }
+
+    // 用戶確認或無問題，執行套用
+    applying.value = true
+
     const api = useApi()
     const response = await api.post<any>(`/admin/templates/${applyForm.value.templateId}/apply`, {
       offering_id: Number(applyForm.value.offeringId),
@@ -1126,6 +1274,8 @@ const applyTemplate = async () => {
     notificationUI.showSuccess('模板套用成功')
   } catch (error: any) {
     console.error('Failed to apply template:', error)
+    applying.value = false
+    isValidating.value = false
 
     // 嘗試解析錯誤回應
     try {
@@ -1154,6 +1304,7 @@ const applyTemplate = async () => {
     }
   } finally {
     applying.value = false
+    isValidating.value = false
   }
 }
 

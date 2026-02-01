@@ -76,7 +76,7 @@
       <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
     </div>
 
-    <div v-else-if="holidays.length === 0" class="text-center py-16">
+    <div v-else-if="currentMonthHolidays.length === 0" class="text-center py-16">
       <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-white/5 flex items-center justify-center">
         <svg class="w-8 h-8 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -93,7 +93,7 @@
 
     <div v-else class="grid gap-3">
       <div
-        v-for="holiday in holidays"
+        v-for="holiday in currentMonthHolidays"
         :key="holiday.id"
         class="glass-card p-4 flex items-center justify-between"
       >
@@ -118,9 +118,9 @@
     </div>
 
     <!-- 統計資訊 -->
-    <div v-if="holidays.length > 0" class="mt-6 p-4 rounded-xl bg-white/5 border border-white/10">
+    <div v-if="currentMonthHolidays.length > 0" class="mt-6 p-4 rounded-xl bg-white/5 border border-white/10">
       <div class="flex items-center justify-between text-sm">
-        <span class="text-slate-400">本年度已設定 {{ holidays.length }} 天假日</span>
+        <span class="text-slate-400">本月已設定 {{ currentMonthHolidays.length }} 天假日</span>
         <span class="text-slate-500">提醒：假日期間的課程將自動停課</span>
       </div>
     </div>
@@ -185,9 +185,18 @@
         </div>
         <div class="p-4 space-y-4">
           <div class="p-4 rounded-xl bg-blue-500/10 border border-blue-500/30">
-            <p class="text-sm text-blue-400">
+            <p class="text-sm text-blue-400 mb-2">
               支援 JSON 格式，每筆需包含 <code class="px-1 bg-blue-500/20 rounded">date</code> 與 <code class="px-1 bg-blue-500/20 rounded">name</code> 欄位
             </p>
+            <p class="text-xs text-blue-300">
+              💡 提示：請使用標準的半形雙引號 (")，不要使用中文引號「」或全形引號
+            </p>
+            <button
+              @click="bulkForm.jsonData = defaultHolidayJSON"
+              class="mt-2 text-xs text-blue-400 hover:text-blue-300 underline"
+            >
+              填入範例資料
+            </button>
           </div>
           <div>
             <label class="block text-sm font-medium text-slate-300 mb-1">假日列表 (JSON)</label>
@@ -221,8 +230,9 @@
 </template>
 
 <script setup lang="ts">
+import NotificationDropdown from '~/components/Navigation/NotificationDropdown.vue'
 definePageMeta({
-  middleware: 'auth-admin',
+  auth: 'ADMIN',
   layout: 'admin',
 })
 
@@ -248,7 +258,31 @@ const bulkForm = reactive({
   jsonData: ''
 })
 
+// 預設的假日 JSON 範例
+const defaultHolidayJSON = JSON.stringify([
+  { "date": "2026-01-01", "name": "元旦" },
+  { "date": "2026-02-11", "name": "春節" },
+  { "date": "2026-02-12", "name": "春節初二" },
+  { "date": "2026-02-13", "name": "春節初三" },
+  { "date": "2026-02-14", "name": "春節初四" },
+  { "date": "2026-02-28", "name": "和平紀念日" },
+  { "date": "2026-04-03", "name": "清明節" },
+  { "date": "2026-04-04", "name": "清明節連假" },
+  { "date": "2026-05-01", "name": "勞動節" },
+  { "date": "2026-05-05", "name": "端午節" },
+  { "date": "2026-06-20", "name": "中秋節" },
+  { "date": "2026-10-10", "name": "國慶日" }
+], null, 2)
+
 const currentYear = computed(() => selectedYear.value)
+
+// 修復：新增 computed property 來過濾當月假日
+const currentMonthHolidays = computed(() => {
+  return holidays.value.filter(holiday => {
+    const holidayDate = new Date(holiday.date)
+    return holidayDate.getMonth() === currentMonth.value
+  })
+})
 
 const yearOptions = computed(() => {
   const years = []
@@ -265,10 +299,11 @@ const fetchHolidays = async () => {
     const centerId = getCenterId()
     const startDate = `${selectedYear.value}-01-01`
     const endDate = `${selectedYear.value}-12-31`
-    const response = await api.get<{ code: number; datas: any[] }>(
+    // parseResponse 已經提取了 datas 欄位，所以 response 就是假日陣列本身
+    const response = await api.get<any[]>(
       `/admin/centers/${centerId}/holidays?start_date=${startDate}&end_date=${endDate}`
     )
-    holidays.value = response.datas || []
+    holidays.value = response || []
   } catch (error) {
     console.error('Failed to fetch holidays:', error)
     notificationUI.error('載入假日失敗')
@@ -305,25 +340,54 @@ const handleBulkImport = async () => {
     let holidaysData
     try {
       holidaysData = JSON.parse(bulkForm.jsonData)
-    } catch {
-      notificationUI.error('JSON 格式錯誤')
+    } catch (e: any) {
+      console.error('JSON parse error:', e)
+      // 提供更詳細的錯誤訊息
+      let errorMsg = 'JSON 格式錯誤'
+      if (e.message) {
+        errorMsg += `：${e.message}`
+      }
+      // 檢查常見問題
+      const text = bulkForm.jsonData
+      if (text.includes('「') || text.includes('」') || text.includes('"')) {
+        errorMsg += '。注意：請使用標準的雙引號 (")，不要使用中文引號「」或全形引號'
+      }
+      notificationUI.error(errorMsg)
+      saving.value = false
       return
     }
 
     if (!Array.isArray(holidaysData)) {
       notificationUI.error('資料必須是陣列格式')
+      saving.value = false
       return
     }
 
+    // 驗證每筆資料
+    for (let i = 0; i < holidaysData.length; i++) {
+      const item = holidaysData[i]
+      if (!item.date || !item.name) {
+        notificationUI.error(`第 ${i + 1} 筆資料缺少必要欄位 (date, name)`)
+        saving.value = false
+        return
+      }
+    }
+
     const centerId = getCenterId()
-    await api.post(`/admin/centers/${centerId}/holidays/bulk`, { holidays: holidaysData })
+    console.log('Calling API with centerId:', centerId)
+    console.log('Request data:', { holidays: holidaysData })
+
+    const response = await api.post(`/admin/centers/${centerId}/holidays/bulk`, { holidays: holidaysData })
+    console.log('API response:', response)
     notificationUI.success(`已成功匯入 ${holidaysData.length} 天假日`)
     showBulkModal.value = false
     bulkForm.jsonData = ''
     await fetchHolidays()
-  } catch (error) {
-    console.error('Failed to bulk import holidays:', error)
-    notificationUI.error('匯入失敗')
+  } catch (error: any) {
+    console.error('Bulk import error:', error)
+    console.error('Error message:', error?.message)
+    console.error('Error status:', error?.status)
+    notificationUI.error(error?.message?.includes('404') ? 'API 端點不存在，請聯絡管理員' : '匯入失敗，請稍後再試')
   } finally {
     saving.value = false
   }
@@ -343,28 +407,31 @@ const deleteHoliday = async (id: number) => {
   }
 }
 
-const prevMonth = () => {
+const prevMonth = async () => {
   if (currentMonth.value === 0) {
     currentMonth.value = 11
     selectedYear.value--
   } else {
     currentMonth.value--
   }
+  await fetchHolidays()
 }
 
-const nextMonth = () => {
+const nextMonth = async () => {
   if (currentMonth.value === 11) {
     currentMonth.value = 0
     selectedYear.value++
   } else {
     currentMonth.value++
   }
+  await fetchHolidays()
 }
 
-const goToToday = () => {
+const goToToday = async () => {
   const now = new Date()
   currentMonth.value = now.getMonth()
   selectedYear.value = now.getFullYear()
+  await fetchHolidays()
 }
 
 const formatFullDate = (dateStr: string) => {

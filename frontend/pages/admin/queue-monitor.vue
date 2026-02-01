@@ -226,8 +226,8 @@
 
 <script setup lang="ts">
 definePageMeta({
-  middleware: 'auth-admin',
-  layout: 'admin'
+  auth: 'ADMIN',
+  layout: 'admin',
 })
 
 const { warning: alertWarning } = useAlert()
@@ -306,17 +306,19 @@ const fetchRedisStatus = async () => {
   try {
     // 嘗試取得 Redis 健康檢查
     const startTime = Date.now()
-    const response = await api.get<{ code: number; datas: any }>(
+    // parseResponse 已經提取了 datas 欄位，所以 response 就是 {redis_connected, status, memory_usage}
+    const response = await api.get<{ redis_connected: boolean; status: string; memory_usage?: string }>(
       '/admin/health/redis'
     )
     const latency = Date.now() - startTime
 
     redisStatus.value = {
-      connected: response.code === 0,
+      connected: response.redis_connected,
       latency: latency,
-      memoryUsage: response.datas?.memory_usage || 'N/A'
+      memoryUsage: response.memory_usage || 'N/A'
     }
   } catch (error) {
+    console.error('Failed to fetch Redis status:', error)
     redisStatus.value = {
       connected: false,
       latency: 0,
@@ -331,15 +333,14 @@ const fetchInvitationStats = async () => {
     const { getCenterId } = useCenterId()
     const centerId = getCenterId()
 
-    const response = await api.get<{ code: number; datas: any }>(
+    // parseResponse 已經提取了 datas 欄位，所以 response 就是資料本身
+    const response = await api.get<{ pending_invites: number; accepted_invites: number; declined_invites: number }>(
       '/admin/smart-matching/talent/stats'
     )
-    if (response.code === 0 && response.datas) {
-      invitationStats.value = {
-        pending: response.datas.pending_invites || 0,
-        accepted: response.datas.accepted_invites || 0,
-        declined: response.datas.declined_invites || 0
-      }
+    invitationStats.value = {
+      pending: response.pending_invites || 0,
+      accepted: response.accepted_invites || 0,
+      declined: response.declined_invites || 0
     }
   } catch (error) {
     console.error('Failed to fetch invitation stats:', error)

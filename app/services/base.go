@@ -289,7 +289,7 @@ func NewServiceLogger(component string) *ServiceLogger {
 
 // Debug 記錄除錯訊息
 func (sl *ServiceLogger) Debug(message string, keysAndValues ...interface{}) {
-	if !sl.enabled {
+	if !sl.enabled || sl.logger == nil {
 		return
 	}
 	sl.logger.ForComponent(sl.component).Debugw(message, keysAndValues...)
@@ -297,7 +297,7 @@ func (sl *ServiceLogger) Debug(message string, keysAndValues ...interface{}) {
 
 // Info 記錄資訊訊息
 func (sl *ServiceLogger) Info(message string, keysAndValues ...interface{}) {
-	if !sl.enabled {
+	if !sl.enabled || sl.logger == nil {
 		return
 	}
 	sl.logger.ForComponent(sl.component).Infow(message, keysAndValues...)
@@ -305,7 +305,7 @@ func (sl *ServiceLogger) Info(message string, keysAndValues ...interface{}) {
 
 // Warn 記錄警告訊息
 func (sl *ServiceLogger) Warn(message string, keysAndValues ...interface{}) {
-	if !sl.enabled {
+	if !sl.enabled || sl.logger == nil {
 		return
 	}
 	sl.logger.ForComponent(sl.component).Warnw(message, keysAndValues...)
@@ -313,7 +313,7 @@ func (sl *ServiceLogger) Warn(message string, keysAndValues ...interface{}) {
 
 // Error 記錄錯誤訊息
 func (sl *ServiceLogger) Error(message string, keysAndValues ...interface{}) {
-	if !sl.enabled {
+	if !sl.enabled || sl.logger == nil {
 		return
 	}
 	sl.logger.ForComponent(sl.component).Errorw(message, keysAndValues...)
@@ -321,7 +321,7 @@ func (sl *ServiceLogger) Error(message string, keysAndValues ...interface{}) {
 
 // ErrorWithErr 記錄錯誤訊息（含錯誤物件）
 func (sl *ServiceLogger) ErrorWithErr(message string, err error, keysAndValues ...interface{}) {
-	if !sl.enabled {
+	if !sl.enabled || sl.logger == nil {
 		return
 	}
 	sl.logger.ForComponent(sl.component).Errorw(message, append(keysAndValues, "error", err.Error())...)

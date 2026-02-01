@@ -9,9 +9,11 @@ export default defineConfig({
     globals: true,
     include: [
       'tests/**/*.test.ts',
+      'tests/**/*.spec.ts',
       'tests/components/**/*.spec.ts',
       'tests/pages/**/*.spec.ts',
       'tests/layouts/**/*.spec.ts',
+      'tests/bench/**/*.test.ts',
     ],
     exclude: [
       'tests/e2e.spec.ts',
@@ -19,6 +21,16 @@ export default defineConfig({
       'tests/approval-flow.spec.ts',
       'tests/admin-course-test.spec.ts',
     ],
+    benchmark: {
+      enabled: true,
+      include: ['tests/bench/**/*.test.ts'],
+      reporter: ['text', 'json', 'html'],
+      outputFile: {
+        text: 'tests/benchmark-results.txt',
+        json: 'tests/benchmark-results.json',
+        html: 'tests/benchmark-results.html',
+      },
+    },
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],

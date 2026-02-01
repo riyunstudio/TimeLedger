@@ -46,12 +46,16 @@ export function useAuthHeaders() {
 
   /**
    * Builds combined headers for standard API requests.
-   * Includes both authorization and content type headers.
+   * Includes both authorization, content type, and cache-control headers.
    */
   function buildStandardHeaders(): Record<string, string> {
     return {
       ...getAuthHeader(),
       ...getContentTypeHeader(),
+      // 防止瀏覽器快取 GET 請求
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
     }
   }
 

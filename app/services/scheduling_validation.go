@@ -156,7 +156,7 @@ func (s *ScheduleValidationServiceImpl) CheckRoomBuffer(ctx context.Context, cen
 	return result, nil
 }
 
-func (s *ScheduleValidationServiceImpl) ValidateFull(ctx context.Context, centerID uint, teacherID *uint, roomID uint, courseID uint, startTime, endTime time.Time, excludeRuleID *uint, allowBufferOverride bool) (ValidationResult, error) {
+func (s *ScheduleValidationServiceImpl) ValidateFull(ctx context.Context, centerID uint, teacherID *uint, roomID uint, courseID uint, startTime, endTime time.Time, excludeRuleID *uint, allowBufferOverride bool, prevEndTime, nextStartTime *time.Time) (ValidationResult, error) {
 	result := ValidationResult{Valid: true}
 
 	// 計算 weekday
@@ -178,10 +178,27 @@ func (s *ScheduleValidationServiceImpl) ValidateFull(ctx context.Context, center
 		}
 	}
 
+	// 處理教師緩衝時間
+	// 如果提供了 prevEndTime 和 nextStartTime，直接使用
+	// 否則自動計算上一堂課的結束時間
 	if teacherID != nil {
-		prevEndTime, _ := s.getPreviousSessionEndTime(ctx, centerID, *teacherID, startTime)
-		if !prevEndTime.IsZero() {
-			teacherBufferResult, err := s.CheckTeacherBuffer(ctx, centerID, *teacherID, prevEndTime, startTime, courseID)
+		var teacherPrevEndTime time.Time
+		if prevEndTime != nil && !prevEndTime.IsZero() {
+			teacherPrevEndTime = *prevEndTime
+		} else {
+			// 自動計算：查詢該教師在同一天 startTime 之前的上一堂課
+			calculatedPrevEndTime, _ := s.getPreviousSessionEndTime(ctx, centerID, *teacherID, startTime)
+			teacherPrevEndTime = calculatedPrevEndTime
+		}
+
+		// 使用 nextStartTime 或 startTime 作為檢查點
+		checkTime := startTime
+		if nextStartTime != nil && !nextStartTime.IsZero() {
+			checkTime = *nextStartTime
+		}
+
+		if !teacherPrevEndTime.IsZero() {
+			teacherBufferResult, err := s.CheckTeacherBuffer(ctx, centerID, *teacherID, teacherPrevEndTime, checkTime, courseID)
 			if err != nil {
 				return ValidationResult{}, err
 			}
@@ -199,9 +216,26 @@ func (s *ScheduleValidationServiceImpl) ValidateFull(ctx context.Context, center
 		}
 	}
 
-	prevRoomEndTime, _ := s.getPreviousSessionEndTimeByRoom(ctx, centerID, roomID, startTime)
-	if !prevRoomEndTime.IsZero() {
-		roomBufferResult, err := s.CheckRoomBuffer(ctx, centerID, roomID, prevRoomEndTime, startTime, courseID)
+	// 處理教室緩衝時間
+	// 如果提供了 prevEndTime 和 nextStartTime，直接使用
+	// 否則自動計算上一堂課的結束時間
+	var roomPrevEndTime time.Time
+	if prevEndTime != nil && !prevEndTime.IsZero() {
+		roomPrevEndTime = *prevEndTime
+	} else {
+		// 自動計算：查詢該教室在同一天 startTime 之前的上一堂課
+		calculatedPrevEndTime, _ := s.getPreviousSessionEndTimeByRoom(ctx, centerID, roomID, startTime)
+		roomPrevEndTime = calculatedPrevEndTime
+	}
+
+	// 使用 nextStartTime 或 startTime 作為檢查點
+	checkTime := startTime
+	if nextStartTime != nil && !nextStartTime.IsZero() {
+		checkTime = *nextStartTime
+	}
+
+	if !roomPrevEndTime.IsZero() {
+		roomBufferResult, err := s.CheckRoomBuffer(ctx, centerID, roomID, roomPrevEndTime, checkTime, courseID)
 		if err != nil {
 			return ValidationResult{}, err
 		}

@@ -160,14 +160,21 @@
         <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
           <div class="flex-1">
             <h3 class="text-lg font-semibold text-slate-100 mb-1">
-              {{ exception.offering_name || '課程變更' }}
+              {{ exception.rule?.name || '課程變更' }}
             </h3>
             <div class="flex flex-wrap items-center gap-2 text-sm text-slate-400">
+              <span class="text-slate-300">{{ exception.rule?.teacher?.name || '-' }}</span>
+              <span>·</span>
               <span>{{ formatDate(exception.original_date) }}</span>
               <span class="px-2 py-1 rounded-full text-xs font-medium"
                 :class="getStatusClass(exception.status)"
               >
                 {{ getStatusText(exception.status) }}
+              </span>
+              <span v-if="exception.exception_type" class="px-2 py-1 rounded-full text-xs font-medium"
+                :class="getTypeClass(exception.exception_type)"
+              >
+                {{ getTypeText(exception.exception_type) }}
               </span>
             </div>
           </div>
@@ -192,7 +199,7 @@
           </div>
         </div>
 
-        <div v-if="exception.type === 'RESCHEDULE'" class="space-y-2">
+        <div v-if="exception.exception_type === 'RESCHEDULE'" class="space-y-2">
           <div class="flex flex-col sm:flex-row sm:items-center gap-2">
             <span class="text-slate-400 text-sm">原時間：</span>
             <span class="text-critical-500 text-sm line-through">{{ getOriginalTimeText(exception) }}</span>
@@ -238,10 +245,13 @@
 </template>
 
 <script setup lang="ts">
+import NotificationDropdown from '~/components/Navigation/NotificationDropdown.vue'
+import ReviewModal from '~/components/Admin/ReviewModal.vue'
+import ExceptionDetailModal from '~/components/Scheduling/ExceptionDetailModal.vue'
 import { formatDate, formatDateTime } from '~/composables/useTaiwanTime'
 
 definePageMeta({
-  middleware: 'auth-admin',
+  auth: 'ADMIN',
   layout: 'admin',
 })
 
@@ -335,8 +345,9 @@ const fetchExceptions = async () => {
   try {
     const api = useApi()
     // 查詢所有例外申請（不再只查待審核）
-    const response = await api.get<{ code: number; datas: any[] }>('/admin/exceptions/all')
-    exceptions.value = response.datas || []
+    // parseResponse 已經提取了 datas 欄位，所以 response 就是例外陣列本身
+    const response = await api.get<any[]>('/admin/exceptions/all')
+    exceptions.value = response || []
     // 更新最後刷新時間
     lastUpdated.value = new Date()
   } catch (error) {
@@ -440,6 +451,38 @@ const getStatusText = (status: string): string => {
   }
 }
 
+// 取得申請類型文字
+const getTypeText = (type: string): string => {
+  switch (type) {
+    case 'CANCEL':
+      return '停課'
+    case 'RESCHEDULE':
+      return '調課'
+    case 'SUBSTITUTE':
+      return '代課'
+    case 'ADD':
+      return '加課'
+    default:
+      return type
+  }
+}
+
+// 取得申請類型樣式
+const getTypeClass = (type: string): string => {
+  switch (type) {
+    case 'CANCEL':
+      return 'bg-critical-500/20 text-critical-500'
+    case 'RESCHEDULE':
+      return 'bg-primary-500/20 text-primary-500'
+    case 'SUBSTITUTE':
+      return 'bg-secondary-500/20 text-secondary-500'
+    case 'ADD':
+      return 'bg-success-500/20 text-success-500'
+    default:
+      return 'bg-slate-500/20 text-slate-400'
+  }
+}
+
 const getEmptyMessage = (): string => {
   switch (activeFilter.value) {
     case 'pending':
@@ -456,8 +499,14 @@ const getEmptyMessage = (): string => {
 }
 
 const getOriginalTimeText = (exception: any): string => {
-  if (exception.original_time) {
-    return exception.original_time
+  // 檢查 rule 中是否有時間資訊
+  if (exception.rule && exception.original_date) {
+    const startTime = exception.rule.start_time || ''
+    const endTime = exception.rule.end_time || ''
+    const date = exception.original_date.split('T')[0]
+    if (startTime && endTime) {
+      return `${date} ${startTime} - ${endTime}`
+    }
   }
   if (exception.rule) {
     const startTime = exception.rule.start_time || ''

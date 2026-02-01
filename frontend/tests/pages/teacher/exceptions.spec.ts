@@ -8,7 +8,7 @@ vi.mock('vue', async () => {
     ref: (v: any) => ({ value: v }),
     computed: (fn: () => any) => ({ value: fn() }),
     onMounted: (fn: () => void) => fn(),
-    watch: (fn: () => void) => {},
+    watch: (fn: () => void) => { },
   }
 })
 

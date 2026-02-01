@@ -2,18 +2,16 @@
   <div class="p-4 border-b border-white/10 shrink-0">
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div class="flex items-center gap-4">
-        <!-- 週導航區域 -->
-        <div class="flex items-center gap-2">
+        <!-- 週導航區域（僅在大螢幕顯示，小螢幕由 MobileWeekView 顯示） -->
+        <div class="hidden md:flex items-center gap-2">
           <button
             @click="$emit('change-week', -1)"
             class="p-2 rounded-lg hover:bg-white/10 transition-colors"
           >
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-            </svg>
+            <Icon icon="chevron-left" size="lg" />
           </button>
 
-          <h2 class="text-lg font-semibold text-slate-100">
+          <h2 class="text-lg font-semibold text-slate-100 whitespace-nowrap mx-2">
             {{ weekLabel }}
           </h2>
 
@@ -21,59 +19,57 @@
             @click="$emit('change-week', 1)"
             class="p-2 rounded-lg hover:bg-white/10 transition-colors"
           >
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-            </svg>
+            <Icon icon="chevron-right" size="lg" />
           </button>
 
           <HelpTooltip
             v-if="showHelpTooltip"
             placement="bottom"
-            title="週期導航"
-            description="查看不同週期的排課狀況，預設顯示本週。"
+            :title="$t('help.weekNavigation')"
+            :description="$t('help.weekNavigationHelp')"
             :usage="['點擊左右箭頭切換上週/下週', '可跨月、跨年查看', '所有視角共用同一週期']"
           />
         </div>
 
         <!-- 資源篩選器（僅管理員模式） -->
-        <div v-if="mode === 'admin'" class="flex items-center gap-3">
+        <div v-if="mode === 'admin'" class="flex flex-wrap justify-center items-center gap-2 md:gap-3 w-full">
           <!-- 老師篩選 -->
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-1 md:gap-2 w-full sm:w-auto justify-center">
             <select
-              :value="selectedTeacherId ?? null"
-              @change="$emit('update:selected-teacher-id', Number($event.target) || null)"
-              class="px-3 py-1.5 rounded-lg text-sm bg-slate-800/80 border border-white/10 text-slate-300 focus:outline-none focus:border-primary-500 min-w-[120px]"
+              :value="selectedTeacherId ?? -1"
+              @change="$emit('update:selected-teacher-id', Number($event.target.value) === -1 ? null : Number($event.target.value))"
+              class="w-full sm:w-auto px-2 py-1.5 md:px-3 md:py-1.5 rounded-lg text-xs md:text-sm bg-slate-800/80 border border-white/10 text-slate-300 focus:outline-none focus:border-primary-500 min-w-[100px] md:min-w-[120px] max-w-[150px] md:max-w-none overflow-hidden text-ellipsis text-center"
             >
-              <option :value="null">所有老師</option>
+              <option :value="-1">{{ $t('schedule.allTeachers') }}</option>
               <option v-for="teacher in teacherList" :key="'teacher-' + teacher.id" :value="teacher.id">
                 {{ teacher.name }}
               </option>
             </select>
             <HelpTooltip
               v-if="showHelpTooltip"
-              title="老師篩選"
-              description="選擇特定老師，過濾顯示該老師的課程。"
-              :usage="['選擇「所有老師」顯示所有課程', '選擇老師僅顯示該老師的課程']"
+              :title="$t('filter.teacherFilter')"
+              :description="$t('filter.filterByTeacher')"
+              :usage="[$t('filter.showAllCourses'), $t('filter.showTeacherCourses')]"
             />
           </div>
 
           <!-- 教室篩選 -->
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-1 md:gap-2 w-full sm:w-auto justify-center">
             <select
-              :value="selectedRoomId ?? null"
-              @change="$emit('update:selected-room-id', Number($event.target) || null)"
-              class="px-3 py-1.5 rounded-lg text-sm bg-slate-800/80 border border-white/10 text-slate-300 focus:outline-none focus:border-primary-500 min-w-[120px]"
+              :value="selectedRoomId ?? -1"
+              @change="$emit('update:selected-room-id', Number($event.target.value) === -1 ? null : Number($event.target.value))"
+              class="w-full sm:w-auto px-2 py-1.5 md:px-3 md:py-1.5 rounded-lg text-xs md:text-sm bg-slate-800/80 border border-white/10 text-slate-300 focus:outline-none focus:border-primary-500 min-w-[100px] md:min-w-[120px] max-w-[150px] md:max-w-none overflow-hidden text-ellipsis text-center"
             >
-              <option :value="null">所有教室</option>
+              <option :value="-1">{{ $t('schedule.allRooms') }}</option>
               <option v-for="room in roomList" :key="'room-' + room.id" :value="room.id">
                 {{ room.name }}
               </option>
             </select>
             <HelpTooltip
               v-if="showHelpTooltip"
-              title="教室篩選"
-              description="選擇特定教室，過濾顯示該教室的課程。"
-              :usage="['選擇「所有教室」顯示所有課程', '選擇教室僅顯示該教室的課程']"
+              :title="$t('filter.roomFilter')"
+              :description="$t('filter.filterByRoom')"
+              :usage="[$t('filter.showAllRooms'), $t('filter.showRoomCourses')]"
             />
           </div>
         </div>
@@ -87,12 +83,12 @@
             @click="$emit('create-schedule')"
             class="btn-primary px-4 py-2 text-sm font-medium"
           >
-            + 新增排課規則
+            + {{ $t('schedule.addScheduleRule') }}
           </button>
           <HelpTooltip
             v-if="showHelpTooltip"
-            title="新增排課規則"
-            description="建立新的課程排課規則，設定課程、老師、教室、時間等資訊。"
+            :title="$t('schedule.addScheduleRule')"
+            :description="$t('help.addScheduleRuleHelp')"
             :usage="['點擊按鈕開啟新增表單', '選擇課程、老師、教室', '設定每週固定上課日與時段', '設定有效期限後儲存']"
             shortcut="Ctrl + N"
           />
@@ -104,10 +100,8 @@
             @click="$emit('add-personal-event')"
             class="px-4 py-2 rounded-lg bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 transition-colors flex items-center gap-2 text-sm"
           >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-            </svg>
-            個人行程
+            <Icon icon="plus" size="md" />
+            {{ $t('schedule.personalEvent') }}
           </button>
         </template>
 
@@ -117,10 +111,8 @@
             @click="$emit('add-exception')"
             class="px-4 py-2 rounded-lg bg-warning-500/20 text-warning-400 hover:bg-warning-500/30 transition-colors flex items-center gap-2 text-sm"
           >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01" />
-            </svg>
-            請假/調課
+            <Icon icon="warning" size="md" />
+            {{ $t('schedule.leaveSwap') }}
           </button>
         </template>
 
@@ -130,10 +122,8 @@
             @click="$emit('export')"
             class="px-4 py-2 rounded-lg bg-secondary-500/20 text-secondary-500 hover:bg-secondary-500/30 transition-colors flex items-center gap-2 text-sm"
           >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
-            匯出
+            <Icon icon="download" size="md" />
+            {{ $t('schedule.export') }}
           </button>
         </template>
       </div>
@@ -141,32 +131,28 @@
 
     <!-- 篩選提示（僅管理員模式） -->
     <div
-      v-if="mode === 'admin' && (selectedTeacherId !== null || selectedRoomId !== null)"
+      v-if="mode === 'admin' && (selectedTeacherId > 0 || selectedRoomId > 0)"
       class="mt-3 flex items-center gap-2 px-3 py-2 bg-primary-500/10 border border-primary-500/30 rounded-lg"
     >
-      <span class="text-sm text-primary-400">已篩選：</span>
-      <span v-if="selectedTeacherId !== null" class="inline-flex items-center gap-1 px-2 py-1 bg-primary-500/20 rounded text-sm">
+      <span class="text-sm text-primary-400">{{ $t('filter.filtered') }}</span>
+      <span v-if="selectedTeacherId > 0" class="inline-flex items-center gap-1 px-2 py-1 bg-primary-500/20 rounded text-sm">
         <span class="text-white">{{ selectedTeacherName }}</span>
         <button @click="$emit('clear-teacher-filter')" class="hover:text-primary-300">
-          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
+          <Icon icon="close" size="xs" />
         </button>
       </span>
-      <span v-if="selectedRoomId !== null" class="inline-flex items-center gap-1 px-2 py-1 bg-primary-500/20 rounded text-sm">
+      <span v-if="selectedRoomId > 0" class="inline-flex items-center gap-1 px-2 py-1 bg-primary-500/20 rounded text-sm">
         <span class="text-white">{{ selectedRoomName }}</span>
         <button @click="$emit('clear-room-filter')" class="hover:text-primary-300">
-          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
+          <Icon icon="close" size="xs" />
         </button>
       </span>
       <button
-        v-if="selectedTeacherId !== null || selectedRoomId !== null"
+        v-if="selectedTeacherId > 0 || selectedRoomId > 0"
         @click="$emit('clear-all-filters')"
         class="ml-auto text-xs text-slate-400 hover:text-white transition-colors"
       >
-        清除全部
+        {{ $t('common.clearAll') }}
       </button>
     </div>
   </div>
@@ -174,6 +160,10 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+
+// 引入圖示和提示元件
+import Icon from '~/components/base/Icon.vue'
+import HelpTooltip from '~/components/base/HelpTooltip.vue'
 
 // ============================================
 // Props 定義

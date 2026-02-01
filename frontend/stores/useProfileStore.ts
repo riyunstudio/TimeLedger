@@ -2,11 +2,18 @@ import { defineStore } from 'pinia'
 import type { TeacherSkill, TeacherCertificate, Teacher, Hashtag } from '~/types'
 import { withLoading } from '~/utils/loadingHelper'
 
+export interface BackgroundImage {
+  path: string
+  filename: string
+  url: string
+}
+
 export const useProfileStore = defineStore('profile', () => {
   // 資料狀態
   const skills = ref<TeacherSkill[]>([])
   const certificates = ref<TeacherCertificate[]>([])
   const profile = ref<Teacher | null>(null)
+  const backgrounds = ref<BackgroundImage[]>([])
 
   // Loading 狀態
   const isFetching = ref(false)
@@ -16,6 +23,9 @@ export const useProfileStore = defineStore('profile', () => {
   const isDeletingSkill = ref(false)
   const isCreatingCertificate = ref(false)
   const isDeletingCertificate = ref(false)
+  const isFetchingBackgrounds = ref(false)
+  const isUploadingBackground = ref(false)
+  const isDeletingBackground = ref(false)
 
   // 技能操作
   const fetchSkills = async () => {
@@ -171,11 +181,56 @@ export const useProfileStore = defineStore('profile', () => {
     }
   }
 
+  // 背景圖片操作
+  const fetchBackgrounds = async () => {
+    return withLoading(isFetchingBackgrounds, async () => {
+      try {
+        const api = useApi()
+        const config = useRuntimeConfig()
+        const response = await api.get<string[]>('/teacher/me/backgrounds')
+        // 轉換為完整的 URL 陣列
+        backgrounds.value = (response || []).map((path: string) => ({
+          path,
+          filename: path.split('/').pop() || path,
+          url: `${config.public.apiBase}/${path}`,
+        }))
+      } catch (error) {
+        console.error('Failed to fetch backgrounds:', error)
+        throw error
+      }
+    })
+  }
+
+  const uploadBackground = async (file: File): Promise<BackgroundImage> => {
+    return withLoading(isUploadingBackground, async () => {
+      const api = useApi()
+      const config = useRuntimeConfig()
+      const response = await api.upload<{ image_path: string }>('/teacher/me/backgrounds', file)
+
+      const newImage: BackgroundImage = {
+        path: response.image_path,
+        filename: response.image_path.split('/').pop() || response.image_path,
+        url: `${config.public.apiBase}/${response.image_path}`,
+      }
+      backgrounds.value.push(newImage)
+      return newImage
+    })
+  }
+
+  const deleteBackground = async (path: string) => {
+    return withLoading(isDeletingBackground, async () => {
+      const api = useApi()
+      await api.delete(`/teacher/me/backgrounds?path=${encodeURIComponent(path)}`)
+      backgrounds.value = backgrounds.value.filter(b => b.path !== path)
+    })
+  }
+
   return {
     // 資料狀態
     skills,
     certificates,
     profile,
+    backgrounds,
 
     // Loading 狀態
     isFetching,
@@ -185,6 +240,9 @@ export const useProfileStore = defineStore('profile', () => {
     isDeletingSkill,
     isCreatingCertificate,
     isDeletingCertificate,
+    isFetchingBackgrounds,
+    isUploadingBackground,
+    isDeletingBackground,
 
     // 技能方法
     fetchSkills,
@@ -205,5 +263,15 @@ export const useProfileStore = defineStore('profile', () => {
     searchHashtags,
     createHashtag,
     processHashtag,
+
+    // 背景圖片方法
+    fetchBackgrounds,
+    uploadBackground,
+    deleteBackground,
   }
+}, {
+  persist: {
+    key: 'timeledger-profile',
+    paths: ['skills', 'certificates', 'profile'],
+  },
 })

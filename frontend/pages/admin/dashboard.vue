@@ -1,7 +1,18 @@
 <template>
   <div class="p-4 md:p-6">
-    <!-- 今日課表摘要 -->
-    <div class="mb-6">
+    <!-- Loading 遮罩（初始載入時顯示） -->
+    <BaseLoading
+      v-if="isInitialLoading"
+      :loading="true"
+      size="lg"
+      text="載入課表中..."
+      full-screen
+    />
+
+    <!-- 儀表板主要內容 -->
+    <div v-else class="dashboard-content">
+      <!-- 今日課表摘要 -->
+      <div class="mb-6">
       <div class="flex items-center justify-between mb-4">
         <h2 class="text-lg font-semibold text-white">今日課表摘要</h2>
         <span class="text-sm text-slate-400">{{ formatDate(today) }}</span>
@@ -125,6 +136,7 @@
       mode="admin"
       api-endpoint="/admin/expand-rules"
     />
+    </div>
   </div>
 
   <NotificationDropdown
@@ -134,14 +146,21 @@
 </template>
 
 <script setup lang="ts">
+import ScheduleGrid from '~/components/Scheduling/ScheduleGrid.vue'
+import NotificationDropdown from '~/components/Navigation/NotificationDropdown.vue'
+import BaseLoading from '~/components/base/BaseLoading.vue'
+
 definePageMeta({
-  middleware: 'auth-admin',
+  auth: 'ADMIN',
   layout: 'admin',
 })
 
 const notificationStore = useNotificationStore()
 const notificationUI = useNotification()
 const router = useRouter()
+
+// Loading 狀態
+const isInitialLoading = ref(true)
 
 // 跳轉到審核頁面
 const navigateToApproval = () => {
@@ -258,8 +277,12 @@ const viewAllUpcoming = () => {
 }
 
 onMounted(async () => {
-  notificationStore.fetchNotifications()
-  await fetchTodayStats()
+  try {
+    notificationStore.fetchNotifications()
+    await fetchTodayStats()
+  } finally {
+    isInitialLoading.value = false
+  }
 })
 </script>
 

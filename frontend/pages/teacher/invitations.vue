@@ -166,9 +166,10 @@
 <script setup lang="ts">
 import { alertError, alertSuccess } from '~/composables/useAlert'
 import type { Invitation } from '~/types'
+import GlobalAlert from '~/components/base/GlobalAlert.vue'
 
 definePageMeta({
-  middleware: 'auth-teacher',
+  auth: 'TEACHER',
   layout: 'default',
 })
 

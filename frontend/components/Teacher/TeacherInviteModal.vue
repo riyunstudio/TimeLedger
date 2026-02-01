@@ -24,10 +24,13 @@
 
         <div>
           <label class="block text-slate-300 mb-2 font-medium">角色</label>
-          <select v-model="form.role" class="input-field">
-            <option value="TEACHER">老師</option>
-            <option value="SUBSTITUTE">代課老師</option>
-          </select>
+          <input
+            type="text"
+            value="老師"
+            readonly
+            class="input-field bg-slate-800 cursor-not-allowed"
+          />
+          <p class="text-xs text-slate-500 mt-1">僅支援老師角色</p>
         </div>
 
         <div v-if="inviteLink" class="p-3 rounded-xl bg-success-500/10 border border-success-500/20">
@@ -84,7 +87,6 @@ const inviteLink = ref('')
 const { getCenterId } = useCenterId()
 const form = ref({
   email: '',
-  role: 'TEACHER' as 'TEACHER' | 'SUBSTITUTE',
   message: '',
 })
 
@@ -96,7 +98,7 @@ const handleSubmit = async () => {
     const centerId = getCenterId()
     const response = await api.post<any>(`/admin/invitations`, {
       email: form.value.email,
-      role: form.value.role,
+      role: 'TEACHER',
       message: form.value.message,
     })
 

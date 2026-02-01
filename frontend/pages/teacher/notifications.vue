@@ -123,7 +123,7 @@
 
 <script setup lang="ts">
 definePageMeta({
-  middleware: 'auth-teacher',
+  auth: 'TEACHER',
   layout: 'default',
 })
 

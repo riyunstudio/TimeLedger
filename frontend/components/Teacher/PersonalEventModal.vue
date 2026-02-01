@@ -157,7 +157,7 @@ const initializeForm = () => {
       start_time: startDate.toTimeString().slice(0, 5),
       end_date: formatDateToString(endDate),
       end_time: endDate.toTimeString().slice(0, 5),
-      recurrence: props.editingEvent.recurrence_rule?.frequency || 'NONE',
+      recurrence: props.editingEvent.recurrence_rule?.type || 'NONE',
       color_hex: props.editingEvent.color || '#6366F1',
     }
   } else {
@@ -207,7 +207,7 @@ const handleSubmit = async () => {
 
     if (form.value.recurrence !== 'NONE') {
       (data as any).recurrence_rule = {
-        frequency: form.value.recurrence,
+        type: form.value.recurrence,
         interval: 1,
       }
     }

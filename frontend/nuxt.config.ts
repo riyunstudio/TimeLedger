@@ -3,17 +3,37 @@ export default defineNuxtConfig({
   compatibilityDate: '2024-11-01',
   devtools: { enabled: false },
 
-  modules: [
-    '@pinia/nuxt',
-    '@nuxtjs/tailwindcss',
-    'nuxt-headlessui',
-    '@vite-pwa/nuxt',
-  ],
+  // @vite-pwa/nuxt temporarily disabled due to #app-manifest import error
+  // modules: ['@pinia/nuxt', '@nuxtjs/tailwindcss', 'nuxt-headlessui', '@vite-pwa/nuxt', '@nuxtjs/storybook', '@nuxtjs/i18n'],
+  modules: ['@pinia/nuxt', '@nuxtjs/tailwindcss', 'nuxt-headlessui', '@nuxtjs/i18n'],
+
+  i18n: {
+    locales: [
+      {
+        code: 'zh',
+        file: 'zh-TW.json',
+        name: '繁體中文',
+      },
+    ],
+    defaultLocale: 'zh',
+    lazy: true,
+    langDir: 'locales',
+    strategy: 'no_prefix',
+    bundle: {
+      optimizeTranslationDirective: false,
+    },
+    detectBrowserLanguage: {
+      useCookie: true,
+      cookieKey: 'i18n_redirected',
+      redirectOn: 'root',
+    },
+  },
 
   css: ['~/assets/css/main.css'],
 
   plugins: [
     { src: '~/plugins/virtual-scroller.ts', mode: 'client' },
+    { src: '~/plugins/pinia-persistedstate.ts', mode: 'all' },
   ],
 
   tailwindcss: {
@@ -22,7 +42,6 @@ export default defineNuxtConfig({
 
   app: {
     buildAssetsDir: '/_nuxt/',
-    buildId: 'dev-' + Date.now(),
     head: {
       title: 'TimeLedger - 教師排課平台',
       meta: [
@@ -126,8 +145,9 @@ export default defineNuxtConfig({
 
   vite: {
     server: {
+      port: 3456,
       hmr: {
-        overlay: false,
+        port: 3456,
       },
       proxy: {
         '/api': {

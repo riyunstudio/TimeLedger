@@ -119,6 +119,53 @@
           </svg>
           <span class="text-slate-400">尚未上傳任何證照</span>
         </div>
+
+        <!-- 評分與備註區塊 -->
+        <div v-if="teacherNote" class="border-t border-white/10 pt-4 mt-4">
+          <h5 class="text-sm font-medium text-slate-400 mb-3">評分與備註</h5>
+
+          <!-- 評分顯示 -->
+          <div class="flex items-center gap-3 mb-3">
+            <div class="flex items-center gap-1">
+              <template v-for="star in 5" :key="star">
+                <svg
+                  class="w-5 h-5"
+                  :class="star <= (teacherNote.rating || 0) ? 'text-warning-500' : 'text-slate-600'"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                </svg>
+              </template>
+            </div>
+            <span class="text-sm text-slate-300">
+              {{ teacherNote.rating || 0 }} / 5
+              <span v-if="teacherNote.rating > 0" class="text-warning-400 ml-1">
+                ({{ ratingLabels[teacherNote.rating] }})
+              </span>
+            </span>
+          </div>
+
+          <!-- 內部備註 -->
+          <div v-if="teacherNote.internal_note" class="p-3 rounded-lg bg-primary-500/10 border border-primary-500/20">
+            <p class="text-sm text-slate-300 whitespace-pre-wrap">{{ teacherNote.internal_note }}</p>
+          </div>
+
+          <!-- 無備註提示 -->
+          <div v-else class="text-sm text-slate-500 italic">
+            尚未設定內部備註
+          </div>
+        </div>
+
+        <!-- 載入中狀態 -->
+        <div v-else-if="loadingNote" class="border-t border-white/10 pt-4 mt-4">
+          <div class="animate-pulse flex items-center gap-3">
+            <div class="flex gap-1">
+              <div v-for="i in 5" :key="i" class="w-5 h-5 bg-white/10 rounded"></div>
+            </div>
+            <div class="h-4 w-20 bg-white/10 rounded"></div>
+          </div>
+        </div>
       </div>
 
       <div class="p-4 border-t border-white/10">
@@ -149,6 +196,12 @@ interface Certificate {
   created_at: string
 }
 
+interface TeacherNote {
+  id?: number
+  rating: number
+  internal_note: string
+}
+
 interface TeacherProfile {
   id: number
   name: string
@@ -159,6 +212,7 @@ interface TeacherProfile {
   is_active: boolean
   skills?: TeacherSkill[]
   certificates?: Certificate[]
+  note?: TeacherNote
 }
 
 const props = defineProps<{
@@ -168,6 +222,9 @@ const props = defineProps<{
 const emit = defineEmits<{
   close: []
 }>()
+
+const teacherNote = ref<TeacherNote | null>(null)
+const loadingNote = ref(false)
 
 // 取得證照圖示類型
 const getCertIcon = (name: string): string => {
@@ -185,5 +242,42 @@ const formatDate = (dateStr: string): string => {
     month: 'long',
     day: 'numeric'
   })
+}
+
+// 獲取老師評分資料
+const fetchTeacherNote = async () => {
+  if (!props.teacher?.id) return
+
+  loadingNote.value = true
+  try {
+    const api = useApi()
+    const response = await api.get<{ code: number; datas: TeacherNote }>(
+      `/admin/teachers/${props.teacher.id}/note`
+    )
+    if (response.datas) {
+      teacherNote.value = response.datas
+    }
+  } catch (err) {
+    console.error('Failed to fetch teacher note:', err)
+  } finally {
+    loadingNote.value = false
+  }
+}
+
+// 監聽 teacher 變化，獲取評分資料
+watch(() => props.teacher, async (newTeacher) => {
+  if (newTeacher?.id) {
+    await fetchTeacherNote()
+  }
+}, { immediate: true })
+
+// 評分標籤文字
+const ratingLabels: Record<number, string> = {
+  0: '未評分',
+  1: '需改進',
+  2: '一般',
+  3: '良好',
+  4: '優良',
+  5: '優秀'
 }
 </script>

@@ -1,0 +1,2124 @@
+[
+  {
+    "path": "/admin/admins",
+    "method": "GET",
+    "summary": "取得管理員列表",
+    "schema": "services.AdminListItem",
+    "expectedFields": [
+      "created_at",
+      "email",
+      "id",
+      "line_bound_at",
+      "line_notify_enabled",
+      "line_user_id",
+      "name",
+      "role",
+      "status"
+    ],
+    "integrated": true,
+    "matches": [
+      "pages\\admin\\admin-list.vue"
+    ],
+    "fieldUsage": {
+      "created_at": [],
+      "email": [
+        "pages\\admin\\admin-list.vue"
+      ],
+      "id": [
+        "pages\\admin\\admin-list.vue"
+      ],
+      "line_bound_at": [],
+      "line_notify_enabled": [],
+      "line_user_id": [
+        "pages\\admin\\admin-list.vue"
+      ],
+      "name": [
+        "pages\\admin\\admin-list.vue"
+      ],
+      "role": [
+        "pages\\admin\\admin-list.vue"
+      ],
+      "status": [
+        "pages\\admin\\admin-list.vue"
+      ]
+    }
+  },
+  {
+    "path": "/admin/admins",
+    "method": "POST",
+    "summary": "建立管理員",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": true,
+    "matches": [
+      "pages\\admin\\admin-list.vue"
+    ],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/admin/admins/change-role",
+    "method": "POST",
+    "summary": "修改管理員角色",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": true,
+    "matches": [
+      "pages\\admin\\admin-list.vue"
+    ],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/admin/admins/reset-password",
+    "method": "POST",
+    "summary": "重設管理員密碼",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": true,
+    "matches": [
+      "pages\\admin\\admin-list.vue"
+    ],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/admin/admins/toggle-status",
+    "method": "POST",
+    "summary": "停用/啟用管理員",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": true,
+    "matches": [
+      "pages\\admin\\admin-list.vue"
+    ],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/admin/me/change-password",
+    "method": "POST",
+    "summary": "修改管理員密碼",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": true,
+    "matches": [
+      "pages\\admin\\settings.vue"
+    ],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/admin/me/line-binding",
+    "method": "GET",
+    "summary": "取得 LINE 綁定狀態",
+    "schema": "controllers.LINEBindingResponse",
+    "expectedFields": [
+      "bound_at",
+      "is_bound",
+      "line_user_id",
+      "notify_enabled",
+      "welcome_sent"
+    ],
+    "integrated": true,
+    "matches": [
+      "pages\\admin\\line-bind.vue",
+      "pages\\admin\\settings.vue"
+    ],
+    "fieldUsage": {
+      "bound_at": [
+        "pages\\admin\\settings.vue"
+      ],
+      "is_bound": [
+        "pages\\admin\\settings.vue"
+      ],
+      "line_user_id": [
+        "pages\\admin\\settings.vue"
+      ],
+      "notify_enabled": [
+        "pages\\admin\\line-bind.vue",
+        "pages\\admin\\settings.vue"
+      ],
+      "welcome_sent": []
+    }
+  },
+  {
+    "path": "/admin/me/line/bind",
+    "method": "POST",
+    "summary": "初始化 LINE 綁定",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": true,
+    "matches": [
+      "pages\\admin\\line-bind.vue"
+    ],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/admin/me/line/notify-settings",
+    "method": "PATCH",
+    "summary": "更新 LINE 通知設定",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": true,
+    "matches": [
+      "pages\\admin\\line-bind.vue",
+      "pages\\admin\\settings.vue"
+    ],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/admin/me/line/unbind",
+    "method": "DELETE",
+    "summary": "解除 LINE 綁定",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": true,
+    "matches": [
+      "pages\\admin\\admin-list.vue",
+      "pages\\admin\\line-bind.vue"
+    ],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/admin/me/profile",
+    "method": "GET",
+    "summary": "取得管理員個人資料",
+    "schema": "models.AdminUser",
+    "expectedFields": [
+      "center_id",
+      "created_at",
+      "email",
+      "id",
+      "line_bound_at",
+      "line_notify_enabled",
+      "name",
+      "role",
+      "status",
+      "updated_at"
+    ],
+    "integrated": true,
+    "matches": [
+      "pages\\admin\\admin-list.vue",
+      "pages\\admin\\settings.vue"
+    ],
+    "fieldUsage": {
+      "center_id": [],
+      "created_at": [],
+      "email": [
+        "pages\\admin\\admin-list.vue",
+        "pages\\admin\\settings.vue"
+      ],
+      "id": [
+        "pages\\admin\\admin-list.vue",
+        "pages\\admin\\settings.vue"
+      ],
+      "line_bound_at": [],
+      "line_notify_enabled": [],
+      "name": [
+        "pages\\admin\\admin-list.vue",
+        "pages\\admin\\settings.vue"
+      ],
+      "role": [
+        "pages\\admin\\admin-list.vue",
+        "pages\\admin\\settings.vue"
+      ],
+      "status": [
+        "pages\\admin\\admin-list.vue"
+      ],
+      "updated_at": []
+    }
+  },
+  {
+    "path": "/admin/notifications/queue-stats",
+    "method": "GET",
+    "summary": "取得通知佇列統計",
+    "schema": "global.ApiResponse",
+    "expectedFields": [
+      "code",
+      "datas",
+      "message",
+      "warnings"
+    ],
+    "integrated": true,
+    "matches": [
+      "pages\\admin\\queue-monitor.vue"
+    ],
+    "fieldUsage": {
+      "code": [
+        "pages\\admin\\queue-monitor.vue"
+      ],
+      "datas": [
+        "pages\\admin\\queue-monitor.vue"
+      ],
+      "message": [],
+      "warnings": []
+    }
+  },
+  {
+    "path": "/admin/smart-matching/alternatives",
+    "method": "POST",
+    "summary": "取得替代時段建議",
+    "schema": "global.ApiResponse",
+    "expectedFields": [
+      "code",
+      "datas",
+      "message",
+      "warnings"
+    ],
+    "integrated": true,
+    "matches": [
+      "stores\\smartMatching.ts"
+    ],
+    "fieldUsage": {
+      "code": [
+        "stores\\smartMatching.ts"
+      ],
+      "datas": [
+        "stores\\smartMatching.ts"
+      ],
+      "message": [
+        "stores\\smartMatching.ts"
+      ],
+      "warnings": []
+    }
+  },
+  {
+    "path": "/admin/smart-matching/matches",
+    "method": "POST",
+    "summary": "智慧媒合搜尋",
+    "schema": "global.ApiResponse",
+    "expectedFields": [
+      "code",
+      "datas",
+      "message",
+      "warnings"
+    ],
+    "integrated": true,
+    "matches": [
+      "stores\\smartMatching.ts"
+    ],
+    "fieldUsage": {
+      "code": [
+        "stores\\smartMatching.ts"
+      ],
+      "datas": [
+        "stores\\smartMatching.ts"
+      ],
+      "message": [
+        "stores\\smartMatching.ts"
+      ],
+      "warnings": []
+    }
+  },
+  {
+    "path": "/admin/smart-matching/suggestions",
+    "method": "GET",
+    "summary": "取得搜尋建議",
+    "schema": "global.ApiResponse",
+    "expectedFields": [
+      "code",
+      "datas",
+      "message",
+      "warnings"
+    ],
+    "integrated": true,
+    "matches": [
+      "components\\Admin\\SearchSuggestions.vue"
+    ],
+    "fieldUsage": {
+      "code": [
+        "components\\Admin\\SearchSuggestions.vue"
+      ],
+      "datas": [
+        "components\\Admin\\SearchSuggestions.vue"
+      ],
+      "message": [],
+      "warnings": []
+    }
+  },
+  {
+    "path": "/admin/smart-matching/talent/invite",
+    "method": "POST",
+    "summary": "邀請人才合作",
+    "schema": "controllers.InviteTalentResponse",
+    "expectedFields": [
+      "failed_count",
+      "failed_ids",
+      "invitation_ids",
+      "invited_count"
+    ],
+    "integrated": true,
+    "matches": [
+      "stores\\smartMatching.ts"
+    ],
+    "fieldUsage": {
+      "failed_count": [
+        "stores\\smartMatching.ts"
+      ],
+      "failed_ids": [
+        "stores\\smartMatching.ts"
+      ],
+      "invitation_ids": [],
+      "invited_count": []
+    }
+  },
+  {
+    "path": "/admin/smart-matching/talent/search",
+    "method": "GET",
+    "summary": "人才庫搜尋",
+    "schema": "global.ApiResponse",
+    "expectedFields": [
+      "code",
+      "datas",
+      "message",
+      "warnings"
+    ],
+    "integrated": true,
+    "matches": [
+      "stores\\smartMatching.ts"
+    ],
+    "fieldUsage": {
+      "code": [
+        "stores\\smartMatching.ts"
+      ],
+      "datas": [
+        "stores\\smartMatching.ts"
+      ],
+      "message": [
+        "stores\\smartMatching.ts"
+      ],
+      "warnings": []
+    }
+  },
+  {
+    "path": "/admin/smart-matching/talent/stats",
+    "method": "GET",
+    "summary": "取得人才庫統計資料",
+    "schema": "controllers.TalentStatsResponse",
+    "expectedFields": [
+      "accepted_invites",
+      "average_rating",
+      "city_distribution",
+      "declined_invites",
+      "member_count",
+      "monthly_change",
+      "monthly_trend",
+      "open_hiring_count",
+      "pending_invites",
+      "top_skills",
+      "total_count"
+    ],
+    "integrated": true,
+    "matches": [
+      "pages\\admin\\queue-monitor.vue",
+      "stores\\smartMatching.ts"
+    ],
+    "fieldUsage": {
+      "accepted_invites": [
+        "pages\\admin\\queue-monitor.vue"
+      ],
+      "average_rating": [],
+      "city_distribution": [
+        "stores\\smartMatching.ts"
+      ],
+      "declined_invites": [
+        "pages\\admin\\queue-monitor.vue"
+      ],
+      "member_count": [],
+      "monthly_change": [],
+      "monthly_trend": [],
+      "open_hiring_count": [],
+      "pending_invites": [
+        "pages\\admin\\queue-monitor.vue"
+      ],
+      "top_skills": [
+        "stores\\smartMatching.ts"
+      ],
+      "total_count": []
+    }
+  },
+  {
+    "path": "/admin/smart-matching/teachers/{teacher_id}/sessions",
+    "method": "GET",
+    "summary": "取得教師課表",
+    "schema": "controllers.TeacherSessionResponse",
+    "expectedFields": [
+      "sessions",
+      "teacher_id",
+      "teacher_name"
+    ],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {
+      "sessions": [],
+      "teacher_id": [],
+      "teacher_name": []
+    }
+  },
+  {
+    "path": "/api/v1/admin/centers",
+    "method": "GET",
+    "summary": "取得中心列表",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": true,
+    "matches": [
+      "tests\\admin-course-test.spec.ts",
+      "tests\\e2e.spec.ts",
+      "tests\\login-flow.spec.ts"
+    ],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/admin/centers",
+    "method": "POST",
+    "summary": "新增中心",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": true,
+    "matches": [
+      "tests\\admin-course-test.spec.ts",
+      "tests\\e2e.spec.ts",
+      "tests\\login-flow.spec.ts"
+    ],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/admin/centers/{id}/holidays",
+    "method": "GET",
+    "summary": "取得假日列表",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/admin/centers/{id}/holidays",
+    "method": "POST",
+    "summary": "新增假日",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/admin/centers/{id}/holidays/bulk",
+    "method": "POST",
+    "summary": "批次建立假日",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/admin/centers/{id}/holidays/{holiday_id}",
+    "method": "DELETE",
+    "summary": "刪除假日",
+    "schema": "global.ApiResponse",
+    "expectedFields": [
+      "code",
+      "datas",
+      "message",
+      "warnings"
+    ],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {
+      "code": [],
+      "datas": [],
+      "message": [],
+      "warnings": []
+    }
+  },
+  {
+    "path": "/api/v1/admin/centers/{id}/invitations",
+    "method": "GET",
+    "summary": "取得邀請列表",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/admin/centers/{id}/invitations",
+    "method": "POST",
+    "summary": "邀請老師加入中心",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/admin/centers/{id}/invitations/generate-link",
+    "method": "POST",
+    "summary": "產生邀請連結",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/admin/centers/{id}/invitations/links",
+    "method": "GET",
+    "summary": "取得邀請連結列表",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/admin/centers/{id}/invitations/stats",
+    "method": "GET",
+    "summary": "取得邀請統計資料",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/admin/centers/{id}/offerings/{offering_id}/copy",
+    "method": "POST",
+    "summary": "複製班別",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/admin/courses",
+    "method": "GET",
+    "summary": "取得課程列表",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/admin/courses",
+    "method": "POST",
+    "summary": "新增課程",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/admin/courses/active",
+    "method": "GET",
+    "summary": "取得已啟用的課程列表",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/admin/courses/{course_id}",
+    "method": "PUT",
+    "summary": "更新課程",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/admin/courses/{course_id}",
+    "method": "DELETE",
+    "summary": "刪除課程",
+    "schema": "global.ApiResponse",
+    "expectedFields": [
+      "code",
+      "datas",
+      "message",
+      "warnings"
+    ],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {
+      "code": [],
+      "datas": [],
+      "message": [],
+      "warnings": []
+    }
+  },
+  {
+    "path": "/api/v1/admin/courses/{course_id}/toggle-active",
+    "method": "PATCH",
+    "summary": "切換課程啟用狀態",
+    "schema": "global.ApiResponse",
+    "expectedFields": [
+      "code",
+      "datas",
+      "message",
+      "warnings"
+    ],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {
+      "code": [],
+      "datas": [],
+      "message": [],
+      "warnings": []
+    }
+  },
+  {
+    "path": "/api/v1/admin/dashboard/today-summary",
+    "method": "GET",
+    "summary": "取得管理員後台首頁的今日課表摘要",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/admin/invitations/links/{id}",
+    "method": "DELETE",
+    "summary": "撤回邀請連結",
+    "schema": "global.ApiResponse",
+    "expectedFields": [
+      "code",
+      "datas",
+      "message",
+      "warnings"
+    ],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {
+      "code": [],
+      "datas": [],
+      "message": [],
+      "warnings": []
+    }
+  },
+  {
+    "path": "/api/v1/admin/me/line/qrcode",
+    "method": "GET",
+    "summary": "產生 LINE 官方帳號 QR Code",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/admin/me/line/qrcode-with-code",
+    "method": "GET",
+    "summary": "產生包含驗證碼的 QR Code",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/admin/offerings",
+    "method": "GET",
+    "summary": "取得班別列表",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/admin/offerings",
+    "method": "POST",
+    "summary": "新增班別",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/admin/offerings/active",
+    "method": "GET",
+    "summary": "取得啟用的班別列表",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/admin/offerings/{offering_id}",
+    "method": "PUT",
+    "summary": "更新班別",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/admin/offerings/{offering_id}",
+    "method": "DELETE",
+    "summary": "刪除班別",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/admin/offerings/{offering_id}/toggle-active",
+    "method": "PATCH",
+    "summary": "切換班別啟用狀態",
+    "schema": "global.ApiResponse",
+    "expectedFields": [
+      "code",
+      "datas",
+      "message",
+      "warnings"
+    ],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {
+      "code": [],
+      "datas": [],
+      "message": [],
+      "warnings": []
+    }
+  },
+  {
+    "path": "/api/v1/admin/rooms",
+    "method": "GET",
+    "summary": "取得教室列表",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/admin/rooms",
+    "method": "POST",
+    "summary": "新增教室",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/admin/rooms/active",
+    "method": "GET",
+    "summary": "取得已啟用的教室列表",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/admin/rooms/{room_id}",
+    "method": "PUT",
+    "summary": "更新教室",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/admin/rooms/{room_id}/toggle-active",
+    "method": "PATCH",
+    "summary": "切換教室啟用狀態",
+    "schema": "global.ApiResponse",
+    "expectedFields": [
+      "code",
+      "datas",
+      "message",
+      "warnings"
+    ],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {
+      "code": [],
+      "datas": [],
+      "message": [],
+      "warnings": []
+    }
+  },
+  {
+    "path": "/api/v1/admin/scheduling/check-overlap",
+    "method": "POST",
+    "summary": "檢查課程時間是否與現有排程衝突",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/admin/scheduling/check-room-buffer",
+    "method": "POST",
+    "summary": "檢查教室的緩衝時間是否足夠",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/admin/scheduling/check-teacher-buffer",
+    "method": "POST",
+    "summary": "檢查老師的緩衝時間是否足夠",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/admin/scheduling/exceptions",
+    "method": "GET",
+    "summary": "取得指定日期範圍內的所有例外申請",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": true,
+    "matches": [
+      "tests\\approval-flow.spec.ts"
+    ],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/admin/scheduling/exceptions/all",
+    "method": "GET",
+    "summary": "取得所有例外申請（可依狀態篩選）",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/admin/scheduling/exceptions/pending",
+    "method": "GET",
+    "summary": "取得所有待審核的例外申請",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": true,
+    "matches": [
+      "tests\\approval-flow.spec.ts"
+    ],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/admin/scheduling/exceptions/{id}/review",
+    "method": "POST",
+    "summary": "審核例外申請（核准/拒絕）",
+    "schema": "global.ApiResponse",
+    "expectedFields": [
+      "code",
+      "datas",
+      "message",
+      "warnings"
+    ],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {
+      "code": [],
+      "datas": [],
+      "message": [],
+      "warnings": []
+    }
+  },
+  {
+    "path": "/api/v1/admin/scheduling/expand",
+    "method": "POST",
+    "summary": "展開排課規則為具體課程場次",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/admin/scheduling/phase-transitions",
+    "method": "POST",
+    "summary": "偵測課程序列中的階段轉換點",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/admin/scheduling/rules",
+    "method": "GET",
+    "summary": "取得中心的所有排課規則",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/admin/scheduling/rules",
+    "method": "POST",
+    "summary": "建立新的排課規則",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/admin/scheduling/rules/check-lock",
+    "method": "POST",
+    "summary": "檢查規則是否已超過異動截止日",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/admin/scheduling/rules/{id}",
+    "method": "PUT",
+    "summary": "更新排課規則",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/admin/scheduling/rules/{id}",
+    "method": "DELETE",
+    "summary": "刪除排課規則",
+    "schema": "global.ApiResponse",
+    "expectedFields": [
+      "code",
+      "datas",
+      "message",
+      "warnings"
+    ],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {
+      "code": [],
+      "datas": [],
+      "message": [],
+      "warnings": []
+    }
+  },
+  {
+    "path": "/api/v1/admin/scheduling/rules/{id}/exceptions",
+    "method": "GET",
+    "summary": "取得指定規則的所有例外申請",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/admin/scheduling/validate",
+    "method": "POST",
+    "summary": "完整驗證排課（硬衝突 + 緩衝檢查）",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/admin/teachers",
+    "method": "GET",
+    "summary": "取得中心的老師列表",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/admin/teachers/{teacher_id}/note",
+    "method": "GET",
+    "summary": "取得老師評分與備註",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/admin/teachers/{teacher_id}/note",
+    "method": "PUT",
+    "summary": "新增或更新老師評分與備註",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/admin/teachers/{teacher_id}/note",
+    "method": "DELETE",
+    "summary": "刪除老師評分與備註",
+    "schema": "global.ApiResponse",
+    "expectedFields": [
+      "code",
+      "datas",
+      "message",
+      "warnings"
+    ],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {
+      "code": [],
+      "datas": [],
+      "message": [],
+      "warnings": []
+    }
+  },
+  {
+    "path": "/api/v1/admin/templates",
+    "method": "GET",
+    "summary": "取得課表模板列表",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/admin/templates",
+    "method": "POST",
+    "summary": "新增課表模板",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/admin/templates/{template_id}",
+    "method": "PUT",
+    "summary": "更新課表模板",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/admin/templates/{template_id}",
+    "method": "DELETE",
+    "summary": "刪除課表模板",
+    "schema": "global.ApiResponse",
+    "expectedFields": [
+      "code",
+      "datas",
+      "message",
+      "warnings"
+    ],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {
+      "code": [],
+      "datas": [],
+      "message": [],
+      "warnings": []
+    }
+  },
+  {
+    "path": "/api/v1/admin/templates/{template_id}/apply",
+    "method": "POST",
+    "summary": "套用課表模板",
+    "schema": "global.ApiResponse",
+    "expectedFields": [
+      "code",
+      "datas",
+      "message",
+      "warnings"
+    ],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {
+      "code": [],
+      "datas": [],
+      "message": [],
+      "warnings": []
+    }
+  },
+  {
+    "path": "/api/v1/admin/templates/{template_id}/cells",
+    "method": "GET",
+    "summary": "取得模板中的格子",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/admin/templates/{template_id}/cells",
+    "method": "POST",
+    "summary": "新增模板中的格子",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/admin/templates/{template_id}/cells/reorder",
+    "method": "PUT",
+    "summary": "重新排序模板中的格子",
+    "schema": "global.ApiResponse",
+    "expectedFields": [
+      "code",
+      "datas",
+      "message",
+      "warnings"
+    ],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {
+      "code": [],
+      "datas": [],
+      "message": [],
+      "warnings": []
+    }
+  },
+  {
+    "path": "/api/v1/admin/templates/{template_id}/cells/{cell_id}",
+    "method": "DELETE",
+    "summary": "刪除格子",
+    "schema": "global.ApiResponse",
+    "expectedFields": [
+      "code",
+      "datas",
+      "message",
+      "warnings"
+    ],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {
+      "code": [],
+      "datas": [],
+      "message": [],
+      "warnings": []
+    }
+  },
+  {
+    "path": "/api/v1/admin/templates/{template_id}/validate-apply",
+    "method": "POST",
+    "summary": "驗證套用模板",
+    "schema": "global.ApiResponse",
+    "expectedFields": [
+      "code",
+      "datas",
+      "message",
+      "warnings"
+    ],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {
+      "code": [],
+      "datas": [],
+      "message": [],
+      "warnings": []
+    }
+  },
+  {
+    "path": "/api/v1/auth/admin/login",
+    "method": "POST",
+    "summary": "管理員登入",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": true,
+    "matches": [
+      "tests\\admin-course-test.spec.ts",
+      "tests\\approval-flow.spec.ts",
+      "tests\\e2e.spec.ts",
+      "tests\\login-flow.spec.ts"
+    ],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/auth/logout",
+    "method": "POST",
+    "summary": "登出",
+    "schema": "global.ApiResponse",
+    "expectedFields": [
+      "code",
+      "datas",
+      "message",
+      "warnings"
+    ],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {
+      "code": [],
+      "datas": [],
+      "message": [],
+      "warnings": []
+    }
+  },
+  {
+    "path": "/api/v1/auth/refresh",
+    "method": "POST",
+    "summary": "刷新 Token",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/auth/teacher/line/login",
+    "method": "POST",
+    "summary": "老師 LINE 登入",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": true,
+    "matches": [
+      "pages\\teacher\\login.vue"
+    ],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/calendar/subscribe/{token}.ics",
+    "method": "GET",
+    "summary": "透過 Token 訂閱課表",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/geo/cities",
+    "method": "GET",
+    "summary": "取得城市列表",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/hashtags",
+    "method": "POST",
+    "summary": "建立新標籤",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/hashtags/search",
+    "method": "GET",
+    "summary": "搜尋標籤",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/invitations/{token}",
+    "method": "GET",
+    "summary": "取得公開邀請資訊",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/invitations/{token}/accept",
+    "method": "POST",
+    "schema": "global.ApiResponse",
+    "expectedFields": [
+      "code",
+      "datas",
+      "message",
+      "warnings"
+    ],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {
+      "code": [],
+      "datas": [],
+      "message": [],
+      "warnings": []
+    }
+  },
+  {
+    "path": "/api/v1/teacher/exceptions",
+    "method": "GET",
+    "summary": "老師查看自己的例外申請列表",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/teacher/exceptions",
+    "method": "POST",
+    "summary": "老師提出停課/改期申請",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/teacher/exceptions/{id}/revoke",
+    "method": "POST",
+    "summary": "老師撤回待審核的例外申請",
+    "schema": "global.ApiResponse",
+    "expectedFields": [
+      "code",
+      "datas",
+      "message",
+      "warnings"
+    ],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {
+      "code": [],
+      "datas": [],
+      "message": [],
+      "warnings": []
+    }
+  },
+  {
+    "path": "/api/v1/teacher/me/backgrounds",
+    "method": "GET",
+    "summary": "取得自訂背景圖列表",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/teacher/me/backgrounds",
+    "method": "POST",
+    "summary": "上傳自訂背景圖",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/teacher/me/backgrounds",
+    "method": "DELETE",
+    "summary": "刪除自訂背景圖",
+    "schema": "global.ApiResponse",
+    "expectedFields": [
+      "code",
+      "datas",
+      "message",
+      "warnings"
+    ],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {
+      "code": [],
+      "datas": [],
+      "message": [],
+      "warnings": []
+    }
+  },
+  {
+    "path": "/api/v1/teacher/me/centers",
+    "method": "GET",
+    "summary": "取得老師已加入的中心列表",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": true,
+    "matches": [
+      "stores\\useScheduleStore.ts"
+    ],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/teacher/me/centers/{center_id}/schedule-rules",
+    "method": "GET",
+    "summary": "獲取老師在指定中心的排課規則",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/teacher/me/certificates",
+    "method": "GET",
+    "summary": "取得老師證照列表",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/teacher/me/certificates",
+    "method": "POST",
+    "summary": "新增老師證照",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/teacher/me/certificates/upload",
+    "method": "POST",
+    "summary": "上傳證照檔案",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/teacher/me/certificates/{id}",
+    "method": "DELETE",
+    "summary": "刪除老師證照",
+    "schema": "global.ApiResponse",
+    "expectedFields": [
+      "code",
+      "datas",
+      "message",
+      "warnings"
+    ],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {
+      "code": [],
+      "datas": [],
+      "message": [],
+      "warnings": []
+    }
+  },
+  {
+    "path": "/api/v1/teacher/me/exceptions",
+    "method": "POST",
+    "summary": "建立新的例外申請",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": true,
+    "matches": [
+      "stores\\useScheduleStore.ts"
+    ],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/teacher/me/invitations",
+    "method": "GET",
+    "summary": "取得老師的邀請列表",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": true,
+    "matches": [
+      "stores\\useScheduleStore.ts"
+    ],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/teacher/me/invitations/pending-count",
+    "method": "GET",
+    "summary": "取得待處理邀請數量",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": true,
+    "matches": [
+      "stores\\useScheduleStore.ts"
+    ],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/teacher/me/invitations/respond",
+    "method": "POST",
+    "summary": "老師回應邀請",
+    "schema": "global.ApiResponse",
+    "expectedFields": [
+      "code",
+      "datas",
+      "message",
+      "warnings"
+    ],
+    "integrated": true,
+    "matches": [
+      "stores\\useScheduleStore.ts"
+    ],
+    "fieldUsage": {
+      "code": [
+        "stores\\useScheduleStore.ts"
+      ],
+      "datas": [
+        "stores\\useScheduleStore.ts"
+      ],
+      "message": [
+        "stores\\useScheduleStore.ts"
+      ],
+      "warnings": []
+    }
+  },
+  {
+    "path": "/api/v1/teacher/me/personal-events",
+    "method": "GET",
+    "summary": "取得老師個人行程列表",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": true,
+    "matches": [
+      "stores\\useScheduleStore.ts"
+    ],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/teacher/me/personal-events",
+    "method": "POST",
+    "summary": "新增老師個人行程",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": true,
+    "matches": [
+      "stores\\useScheduleStore.ts"
+    ],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/teacher/me/personal-events/{id}",
+    "method": "DELETE",
+    "summary": "刪除老師個人行程",
+    "schema": "global.ApiResponse",
+    "expectedFields": [
+      "code",
+      "datas",
+      "message",
+      "warnings"
+    ],
+    "integrated": true,
+    "matches": [
+      "stores\\useScheduleStore.ts"
+    ],
+    "fieldUsage": {
+      "code": [
+        "stores\\useScheduleStore.ts"
+      ],
+      "datas": [
+        "stores\\useScheduleStore.ts"
+      ],
+      "message": [
+        "stores\\useScheduleStore.ts"
+      ],
+      "warnings": []
+    }
+  },
+  {
+    "path": "/api/v1/teacher/me/personal-events/{id}",
+    "method": "PATCH",
+    "summary": "更新老師個人行程",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": true,
+    "matches": [
+      "stores\\useScheduleStore.ts"
+    ],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/teacher/me/personal-events/{id}/note",
+    "method": "GET",
+    "summary": "取得個人行程備註",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/teacher/me/personal-events/{id}/note",
+    "method": "PUT",
+    "summary": "更新個人行程備註",
+    "schema": "global.ApiResponse",
+    "expectedFields": [
+      "code",
+      "datas",
+      "message",
+      "warnings"
+    ],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {
+      "code": [],
+      "datas": [],
+      "message": [],
+      "warnings": []
+    }
+  },
+  {
+    "path": "/api/v1/teacher/me/profile",
+    "method": "GET",
+    "summary": "取得老師個人資料",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/teacher/me/profile",
+    "method": "PUT",
+    "summary": "更新老師個人資料",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/teacher/me/schedule",
+    "method": "GET",
+    "summary": "取得老師的綜合課表",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": true,
+    "matches": [
+      "pages\\teacher\\export.vue",
+      "stores\\useScheduleStore.ts"
+    ],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/teacher/me/schedule.ics",
+    "method": "GET",
+    "summary": "匯出課表為 iCalendar 格式",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": true,
+    "matches": [
+      "pages\\teacher\\export.vue"
+    ],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/teacher/me/schedule/image",
+    "method": "GET",
+    "summary": "匯出課表為圖片",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": true,
+    "matches": [
+      "stores\\useScheduleStore.ts"
+    ],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/teacher/me/schedule/subscription",
+    "method": "POST",
+    "summary": "建立課表訂閱連結",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": true,
+    "matches": [
+      "stores\\useScheduleStore.ts"
+    ],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/teacher/me/schedule/subscription",
+    "method": "DELETE",
+    "summary": "取消課表訂閱",
+    "schema": "global.ApiResponse",
+    "expectedFields": [
+      "code",
+      "datas",
+      "message",
+      "warnings"
+    ],
+    "integrated": true,
+    "matches": [
+      "stores\\useScheduleStore.ts"
+    ],
+    "fieldUsage": {
+      "code": [
+        "stores\\useScheduleStore.ts"
+      ],
+      "datas": [
+        "stores\\useScheduleStore.ts"
+      ],
+      "message": [
+        "stores\\useScheduleStore.ts"
+      ],
+      "warnings": []
+    }
+  },
+  {
+    "path": "/api/v1/teacher/me/skills",
+    "method": "GET",
+    "summary": "取得老師技能列表",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/teacher/me/skills",
+    "method": "POST",
+    "summary": "新增老師技能",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/teacher/me/skills/{id}",
+    "method": "PUT",
+    "summary": "更新老師技能",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/teacher/me/skills/{id}",
+    "method": "DELETE",
+    "summary": "刪除老師技能",
+    "schema": "global.ApiResponse",
+    "expectedFields": [
+      "code",
+      "datas",
+      "message",
+      "warnings"
+    ],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {
+      "code": [],
+      "datas": [],
+      "message": [],
+      "warnings": []
+    }
+  },
+  {
+    "path": "/api/v1/teacher/schedules",
+    "method": "GET",
+    "summary": "取得老師的課表",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/teacher/scheduling/check-rule-lock",
+    "method": "POST",
+    "summary": "檢查老師規則鎖定狀態",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/teacher/scheduling/delete-recurring",
+    "method": "POST",
+    "summary": "刪除循環排課",
+    "schema": "global.ApiResponse",
+    "expectedFields": [
+      "code",
+      "datas",
+      "message",
+      "warnings"
+    ],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {
+      "code": [],
+      "datas": [],
+      "message": [],
+      "warnings": []
+    }
+  },
+  {
+    "path": "/api/v1/teacher/scheduling/edit-recurring",
+    "method": "POST",
+    "summary": "編輯循環排課",
+    "schema": "global.ApiResponse",
+    "expectedFields": [
+      "code",
+      "datas",
+      "message",
+      "warnings"
+    ],
+    "integrated": true,
+    "matches": [
+      "stores\\useScheduleStore.ts"
+    ],
+    "fieldUsage": {
+      "code": [
+        "stores\\useScheduleStore.ts"
+      ],
+      "datas": [
+        "stores\\useScheduleStore.ts"
+      ],
+      "message": [
+        "stores\\useScheduleStore.ts"
+      ],
+      "warnings": []
+    }
+  },
+  {
+    "path": "/api/v1/teacher/scheduling/preview-recurrence-edit",
+    "method": "POST",
+    "summary": "預覽循環編輯影響範圍",
+    "schema": "global.ApiResponse",
+    "expectedFields": [
+      "code",
+      "datas",
+      "message",
+      "warnings"
+    ],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {
+      "code": [],
+      "datas": [],
+      "message": [],
+      "warnings": []
+    }
+  },
+  {
+    "path": "/api/v1/teacher/sessions/note",
+    "method": "GET",
+    "summary": "取得課堂筆記",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": true,
+    "matches": [
+      "stores\\useScheduleStore.ts"
+    ],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/teacher/sessions/note",
+    "method": "PUT",
+    "summary": "新增或更新課堂筆記",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": true,
+    "matches": [
+      "stores\\useScheduleStore.ts"
+    ],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/teachers",
+    "method": "GET",
+    "summary": "取得老師列表",
+    "schema": null,
+    "expectedFields": [],
+    "integrated": true,
+    "matches": [
+      "composables\\useResourceCache.ts",
+      "tests\\e2e.spec.ts"
+    ],
+    "fieldUsage": {}
+  },
+  {
+    "path": "/api/v1/teachers/{id}",
+    "method": "DELETE",
+    "summary": "刪除老師",
+    "schema": "global.ApiResponse",
+    "expectedFields": [
+      "code",
+      "datas",
+      "message",
+      "warnings"
+    ],
+    "integrated": true,
+    "matches": [
+      "composables\\useResourceCache.ts",
+      "tests\\e2e.spec.ts"
+    ],
+    "fieldUsage": {
+      "code": [
+        "tests\\e2e.spec.ts"
+      ],
+      "datas": [
+        "composables\\useResourceCache.ts",
+        "tests\\e2e.spec.ts"
+      ],
+      "message": [],
+      "warnings": []
+    }
+  },
+  {
+    "path": "/notifications",
+    "method": "GET",
+    "summary": "取得通知列表",
+    "schema": "global.ApiResponse",
+    "expectedFields": [
+      "code",
+      "datas",
+      "message",
+      "warnings"
+    ],
+    "integrated": true,
+    "matches": [
+      "layouts\\default.vue",
+      "pages\\admin\\queue-monitor.vue",
+      "pages\\teacher\\notifications.vue",
+      "stores\\useNotificationStore.ts"
+    ],
+    "fieldUsage": {
+      "code": [
+        "pages\\admin\\queue-monitor.vue",
+        "pages\\teacher\\notifications.vue",
+        "stores\\useNotificationStore.ts"
+      ],
+      "datas": [
+        "pages\\admin\\queue-monitor.vue",
+        "pages\\teacher\\notifications.vue",
+        "stores\\useNotificationStore.ts"
+      ],
+      "message": [
+        "pages\\teacher\\notifications.vue",
+        "stores\\useNotificationStore.ts"
+      ],
+      "warnings": []
+    }
+  },
+  {
+    "path": "/notifications/read-all",
+    "method": "POST",
+    "summary": "標記所有通知為已讀",
+    "schema": "global.ApiResponse",
+    "expectedFields": [
+      "code",
+      "datas",
+      "message",
+      "warnings"
+    ],
+    "integrated": true,
+    "matches": [
+      "stores\\useNotificationStore.ts"
+    ],
+    "fieldUsage": {
+      "code": [
+        "stores\\useNotificationStore.ts"
+      ],
+      "datas": [
+        "stores\\useNotificationStore.ts"
+      ],
+      "message": [
+        "stores\\useNotificationStore.ts"
+      ],
+      "warnings": []
+    }
+  },
+  {
+    "path": "/notifications/test",
+    "method": "POST",
+    "summary": "發送測試通知",
+    "schema": "global.ApiResponse",
+    "expectedFields": [
+      "code",
+      "datas",
+      "message",
+      "warnings"
+    ],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {
+      "code": [],
+      "datas": [],
+      "message": [],
+      "warnings": []
+    }
+  },
+  {
+    "path": "/notifications/token",
+    "method": "POST",
+    "summary": "設定通知 Token",
+    "schema": "global.ApiResponse",
+    "expectedFields": [
+      "code",
+      "datas",
+      "message",
+      "warnings"
+    ],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {
+      "code": [],
+      "datas": [],
+      "message": [],
+      "warnings": []
+    }
+  },
+  {
+    "path": "/notifications/unread-count",
+    "method": "GET",
+    "summary": "取得未讀通知數量",
+    "schema": "global.ApiResponse",
+    "expectedFields": [
+      "code",
+      "datas",
+      "message",
+      "warnings"
+    ],
+    "integrated": true,
+    "matches": [
+      "stores\\useNotificationStore.ts"
+    ],
+    "fieldUsage": {
+      "code": [
+        "stores\\useNotificationStore.ts"
+      ],
+      "datas": [
+        "stores\\useNotificationStore.ts"
+      ],
+      "message": [
+        "stores\\useNotificationStore.ts"
+      ],
+      "warnings": []
+    }
+  },
+  {
+    "path": "/notifications/{id}/read",
+    "method": "POST",
+    "summary": "標記通知為已讀",
+    "schema": "global.ApiResponse",
+    "expectedFields": [
+      "code",
+      "datas",
+      "message",
+      "warnings"
+    ],
+    "integrated": false,
+    "matches": [],
+    "fieldUsage": {
+      "code": [],
+      "datas": [],
+      "message": [],
+      "warnings": []
+    }
+  }
+]

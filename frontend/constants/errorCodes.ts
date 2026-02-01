@@ -9,6 +9,7 @@
 
 export const SUCCESS_CODES = {
   SUCCESS: '操作成功',
+  '0': '操作成功', // API 成功回應使用 code: "0"
 } as const
 
 // ==================== 系統錯誤 (1xxxx) ====================
@@ -171,8 +172,9 @@ export const ERROR_MESSAGES: Record<string, string> = {
 /**
  * 檢查錯誤碼是否為成功
  */
-export const isSuccessCode = (code: string): boolean => {
-  return Object.keys(SUCCESS_CODES).includes(code)
+export const isSuccessCode = (code: string | number): boolean => {
+  // 同時處理字符串 '0'/'SUCCESS' 和數字 0
+  return code === 0 || code === '0' || code === 'SUCCESS'
 }
 
 /**

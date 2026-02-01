@@ -57,5 +57,7 @@ const sidebarStore = useSidebar()
 
 onMounted(() => {
   notificationDataStore.fetchNotifications()
+  // 同時獲取未讀數量以確保徽章顯示正確
+  notificationDataStore.fetchUnreadCount()
 })
 </script>

@@ -110,6 +110,25 @@
             {{ teacher.certificates.length }} 張證照
           </div>
 
+          <!-- 評分顯示 -->
+          <div class="flex items-center gap-2">
+            <div class="flex items-center gap-0.5">
+              <template v-for="star in 5" :key="star">
+                <svg
+                  class="w-4 h-4"
+                  :class="star <= (teacher.note?.rating || 0) ? 'text-warning-500' : 'text-slate-600'"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                </svg>
+              </template>
+            </div>
+            <span class="text-xs text-slate-500">
+              {{ teacher.note?.rating || 0 }}
+            </span>
+          </div>
+
           <div class="flex items-center gap-2">
             <span class="px-2 py-1 rounded-full text-xs font-medium"
               :class="teacher.is_active ? 'bg-success-500/20 text-success-500' : 'bg-warning-500/20 text-warning-500'"
@@ -164,6 +183,9 @@ import { computed } from 'vue'
 // Alert composable
 const { error: alertError, confirm: alertConfirm } = useAlert()
 
+// 資源快取
+const { invalidate } = useResourceCache()
+
 const showInviteModal = ref(false)
 const searchQuery = ref('')
 const showMenu = ref<Record<number, boolean>>({})
@@ -186,8 +208,24 @@ const fetchTeachers = async () => {
   loading.value = true
   try {
     const api = useApi()
-    const response = await api.get<{ code: number; datas: any[] }>('/teachers')
-    teachers.value = response.datas || []
+    const result = await api.get<any[]>('/admin/teachers')
+    teachers.value = result
+
+    // 背景抓取每位老師的評分資料以填充 UI 中的星星
+    await Promise.all(
+      teachers.value.map(async (teacher) => {
+        try {
+          const noteResponse = await api.get<any>(
+            `/admin/teachers/${teacher.id}/note`
+          )
+          if (noteResponse) {
+            teacher.note = noteResponse
+          }
+        } catch {
+          // 無評分資料為正常情況
+        }
+      })
+    )
   } catch (error) {
     console.error('Failed to fetch teachers:', error)
     teachers.value = []
@@ -217,6 +255,8 @@ const removeTeacher = async (teacher: any) => {
     const api = useApi()
     await api.delete(`/teachers/${teacher.id}`)
     await fetchTeachers()
+    // 清除老師快取，下次存取會自動重新載入
+    invalidate('teachers')
     showMenu.value[teacher.id] = false
   } catch (err) {
     console.error('Failed to remove teacher:', err)

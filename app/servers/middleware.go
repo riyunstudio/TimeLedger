@@ -1,6 +1,7 @@
 package servers
 
 import (
+	"fmt"
 	"net/http"
 	"timeLedger/global/errInfos"
 	"timeLedger/app/services"
@@ -23,11 +24,25 @@ func (s *Server) RecoverMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		defer func() {
 			if err := recover(); err != nil {
+				// 取得完整的 stack trace
 				e := s.app.Tools.PanicParser(err)
+				
+				// 使用 fmt.Printf 輸出到標準輸出（會被日誌系統捕獲）
+				fmt.Printf("[PANIC] URL: %s | Method: %s | Error: %v | Stack: %s\n",
+					c.Request.URL.String(),
+					c.Request.Method,
+					err,
+					e.StackTrace,
+				)
+				
 				// 紀錄 TraceLog
 				s.writePanicLog(c, e)
+				
 				// 回傳統一錯誤給 client
-				c.JSON(http.StatusInternalServerError, gin.H{"code": errInfos.SYSTEM_ERROR})
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"code":    errInfos.SYSTEM_ERROR,
+					"message": "系統錯誤，請稍後再試",
+				})
 				c.Abort()
 			}
 		}()

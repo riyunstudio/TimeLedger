@@ -5,9 +5,9 @@
 Object.defineProperty(window, 'localStorage', {
   value: {
     getItem: () => null,
-    setItem: () => {},
-    removeItem: () => {},
-    clear: () => {},
+    setItem: () => { },
+    removeItem: () => { },
+    clear: () => { },
   },
   writable: true,
 })
@@ -16,32 +16,32 @@ Object.defineProperty(window, 'localStorage', {
 Object.defineProperty(window, 'sessionStorage', {
   value: {
     getItem: () => null,
-    setItem: () => {},
-    removeItem: () => {},
-    clear: () => {},
+    setItem: () => { },
+    removeItem: () => { },
+    clear: () => { },
   },
   writable: true,
 })
 
 // Mock scrollTo
-window.scrollTo = () => {}
+window.scrollTo = () => { }
 
 // Mock $alert for toast fallback
-window.$alert = () => {}
+window.$alert = () => { }
 
 // Mock ResizeObserver
 global.ResizeObserver = vi?.fn?.()?.mockImplementation(() => ({
-  observe: () => {},
-  unobserve: () => {},
-  disconnect: () => {},
-})) || function() {}
+  observe: () => { },
+  unobserve: () => { },
+  disconnect: () => { },
+})) || function () { }
 
 // Mock IntersectionObserver  
 global.IntersectionObserver = vi?.fn?.()?.mockImplementation(() => ({
-  observe: () => {},
-  unobserve: () => {},
-  disconnect: () => {},
-})) || function() {}
+  observe: () => { },
+  unobserve: () => { },
+  disconnect: () => { },
+})) || function () { }
 
 // Global component stubs for Transition and Teleport
 import { config } from '@vue/test-utils'

@@ -1,0 +1,4319 @@
+{
+  "timestamp": "2026-02-01T05:08:14.405Z",
+  "summary": {
+    "totalEndpoints": 140,
+    "integratedEndpoints": 0,
+    "missingEndpoints": 140,
+    "skippedEndpoints": 0
+  },
+  "endpoints": [
+    {
+      "path": "/admin/admins",
+      "method": "GET",
+      "summary": "取得管理員列表",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/admin/admins",
+      "method": "POST",
+      "summary": "建立管理員",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/admin/admins/change-role",
+      "method": "POST",
+      "summary": "修改管理員角色",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/admin/admins/reset-password",
+      "method": "POST",
+      "summary": "重設管理員密碼",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/admin/admins/toggle-status",
+      "method": "POST",
+      "summary": "停用/啟用管理員",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/admin/me/change-password",
+      "method": "POST",
+      "summary": "修改管理員密碼",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/admin/me/line-binding",
+      "method": "GET",
+      "summary": "取得 LINE 綁定狀態",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/admin/me/line/bind",
+      "method": "POST",
+      "summary": "初始化 LINE 綁定",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/admin/me/line/notify-settings",
+      "method": "PATCH",
+      "summary": "更新 LINE 通知設定",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/admin/me/line/unbind",
+      "method": "DELETE",
+      "summary": "解除 LINE 綁定",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/admin/me/profile",
+      "method": "GET",
+      "summary": "取得管理員個人資料",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/admin/notifications/queue-stats",
+      "method": "GET",
+      "summary": "取得通知佇列統計",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/admin/smart-matching/alternatives",
+      "method": "POST",
+      "summary": "取得替代時段建議",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/admin/smart-matching/matches",
+      "method": "POST",
+      "summary": "智慧媒合搜尋",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/admin/smart-matching/suggestions",
+      "method": "GET",
+      "summary": "取得搜尋建議",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/admin/smart-matching/talent/invite",
+      "method": "POST",
+      "summary": "邀請人才合作",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/admin/smart-matching/talent/search",
+      "method": "GET",
+      "summary": "人才庫搜尋",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/admin/smart-matching/talent/stats",
+      "method": "GET",
+      "summary": "取得人才庫統計資料",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/admin/smart-matching/teachers/{teacher_id}/sessions",
+      "method": "GET",
+      "summary": "取得教師課表",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/centers",
+      "method": "GET",
+      "summary": "取得中心列表",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/centers",
+      "method": "POST",
+      "summary": "新增中心",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/centers/{id}/holidays",
+      "method": "GET",
+      "summary": "取得假日列表",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/centers/{id}/holidays",
+      "method": "POST",
+      "summary": "新增假日",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/centers/{id}/holidays/bulk",
+      "method": "POST",
+      "summary": "批次建立假日",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/centers/{id}/holidays/{holiday_id}",
+      "method": "DELETE",
+      "summary": "刪除假日",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/centers/{id}/invitations",
+      "method": "GET",
+      "summary": "取得邀請列表",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/centers/{id}/invitations",
+      "method": "POST",
+      "summary": "邀請老師加入中心",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/centers/{id}/invitations/generate-link",
+      "method": "POST",
+      "summary": "產生邀請連結",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/centers/{id}/invitations/links",
+      "method": "GET",
+      "summary": "取得邀請連結列表",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/centers/{id}/invitations/stats",
+      "method": "GET",
+      "summary": "取得邀請統計資料",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/centers/{id}/offerings/{offering_id}/copy",
+      "method": "POST",
+      "summary": "複製班別",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/courses",
+      "method": "GET",
+      "summary": "取得課程列表",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/courses",
+      "method": "POST",
+      "summary": "新增課程",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/courses/active",
+      "method": "GET",
+      "summary": "取得已啟用的課程列表",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/courses/{course_id}",
+      "method": "PUT",
+      "summary": "更新課程",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/courses/{course_id}",
+      "method": "DELETE",
+      "summary": "刪除課程",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/courses/{course_id}/toggle-active",
+      "method": "PATCH",
+      "summary": "切換課程啟用狀態",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/dashboard/today-summary",
+      "method": "GET",
+      "summary": "取得管理員後台首頁的今日課表摘要",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/invitations/links/{id}",
+      "method": "DELETE",
+      "summary": "撤回邀請連結",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/me/line/qrcode",
+      "method": "GET",
+      "summary": "產生 LINE 官方帳號 QR Code",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/me/line/qrcode-with-code",
+      "method": "GET",
+      "summary": "產生包含驗證碼的 QR Code",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/offerings",
+      "method": "GET",
+      "summary": "取得班別列表",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/offerings",
+      "method": "POST",
+      "summary": "新增班別",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/offerings/active",
+      "method": "GET",
+      "summary": "取得啟用的班別列表",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/offerings/{offering_id}",
+      "method": "PUT",
+      "summary": "更新班別",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/offerings/{offering_id}",
+      "method": "DELETE",
+      "summary": "刪除班別",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/offerings/{offering_id}/toggle-active",
+      "method": "PATCH",
+      "summary": "切換班別啟用狀態",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/rooms",
+      "method": "GET",
+      "summary": "取得教室列表",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/rooms",
+      "method": "POST",
+      "summary": "新增教室",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/rooms/active",
+      "method": "GET",
+      "summary": "取得已啟用的教室列表",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/rooms/{room_id}",
+      "method": "PUT",
+      "summary": "更新教室",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/rooms/{room_id}/toggle-active",
+      "method": "PATCH",
+      "summary": "切換教室啟用狀態",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/scheduling/check-overlap",
+      "method": "POST",
+      "summary": "檢查課程時間是否與現有排程衝突",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/scheduling/check-room-buffer",
+      "method": "POST",
+      "summary": "檢查教室的緩衝時間是否足夠",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/scheduling/check-teacher-buffer",
+      "method": "POST",
+      "summary": "檢查老師的緩衝時間是否足夠",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/scheduling/exceptions",
+      "method": "GET",
+      "summary": "取得指定日期範圍內的所有例外申請",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/scheduling/exceptions/all",
+      "method": "GET",
+      "summary": "取得所有例外申請（可依狀態篩選）",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/scheduling/exceptions/pending",
+      "method": "GET",
+      "summary": "取得所有待審核的例外申請",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/scheduling/exceptions/{id}/review",
+      "method": "POST",
+      "summary": "審核例外申請（核准/拒絕）",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/scheduling/expand",
+      "method": "POST",
+      "summary": "展開排課規則為具體課程場次",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/scheduling/phase-transitions",
+      "method": "POST",
+      "summary": "偵測課程序列中的階段轉換點",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/scheduling/rules",
+      "method": "GET",
+      "summary": "取得中心的所有排課規則",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/scheduling/rules",
+      "method": "POST",
+      "summary": "建立新的排課規則",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/scheduling/rules/check-lock",
+      "method": "POST",
+      "summary": "檢查規則是否已超過異動截止日",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/scheduling/rules/{id}",
+      "method": "PUT",
+      "summary": "更新排課規則",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/scheduling/rules/{id}",
+      "method": "DELETE",
+      "summary": "刪除排課規則",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/scheduling/rules/{id}/exceptions",
+      "method": "GET",
+      "summary": "取得指定規則的所有例外申請",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/scheduling/validate",
+      "method": "POST",
+      "summary": "完整驗證排課（硬衝突 + 緩衝檢查）",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/teachers",
+      "method": "GET",
+      "summary": "取得中心的老師列表",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/teachers/{teacher_id}/note",
+      "method": "GET",
+      "summary": "取得老師評分與備註",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/teachers/{teacher_id}/note",
+      "method": "PUT",
+      "summary": "新增或更新老師評分與備註",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/teachers/{teacher_id}/note",
+      "method": "DELETE",
+      "summary": "刪除老師評分與備註",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/templates",
+      "method": "GET",
+      "summary": "取得課表模板列表",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/templates",
+      "method": "POST",
+      "summary": "新增課表模板",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/templates/{template_id}",
+      "method": "PUT",
+      "summary": "更新課表模板",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/templates/{template_id}",
+      "method": "DELETE",
+      "summary": "刪除課表模板",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/templates/{template_id}/apply",
+      "method": "POST",
+      "summary": "套用課表模板",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/templates/{template_id}/cells",
+      "method": "GET",
+      "summary": "取得模板中的格子",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/templates/{template_id}/cells",
+      "method": "POST",
+      "summary": "新增模板中的格子",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/templates/{template_id}/cells/reorder",
+      "method": "PUT",
+      "summary": "重新排序模板中的格子",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/templates/{template_id}/cells/{cell_id}",
+      "method": "DELETE",
+      "summary": "刪除格子",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/admin/templates/{template_id}/validate-apply",
+      "method": "POST",
+      "summary": "驗證套用模板",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/auth/admin/login",
+      "method": "POST",
+      "summary": "管理員登入",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/auth/logout",
+      "method": "POST",
+      "summary": "登出",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/auth/refresh",
+      "method": "POST",
+      "summary": "刷新 Token",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/auth/teacher/line/login",
+      "method": "POST",
+      "summary": "老師 LINE 登入",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/calendar/subscribe/{token}.ics",
+      "method": "GET",
+      "summary": "透過 Token 訂閱課表",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/geo/cities",
+      "method": "GET",
+      "summary": "取得城市列表",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/hashtags",
+      "method": "POST",
+      "summary": "建立新標籤",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/hashtags/search",
+      "method": "GET",
+      "summary": "搜尋標籤",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/invitations/{token}",
+      "method": "GET",
+      "summary": "取得公開邀請資訊",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/invitations/{token}/accept",
+      "method": "POST",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/teacher/exceptions",
+      "method": "GET",
+      "summary": "老師查看自己的例外申請列表",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/teacher/exceptions",
+      "method": "POST",
+      "summary": "老師提出停課/改期申請",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/teacher/exceptions/{id}/revoke",
+      "method": "POST",
+      "summary": "老師撤回待審核的例外申請",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/teacher/me/backgrounds",
+      "method": "GET",
+      "summary": "取得自訂背景圖列表",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/teacher/me/backgrounds",
+      "method": "POST",
+      "summary": "上傳自訂背景圖",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/teacher/me/backgrounds",
+      "method": "DELETE",
+      "summary": "刪除自訂背景圖",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/teacher/me/centers",
+      "method": "GET",
+      "summary": "取得老師已加入的中心列表",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/teacher/me/centers/{center_id}/schedule-rules",
+      "method": "GET",
+      "summary": "獲取老師在指定中心的排課規則",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/teacher/me/certificates",
+      "method": "GET",
+      "summary": "取得老師證照列表",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/teacher/me/certificates",
+      "method": "POST",
+      "summary": "新增老師證照",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/teacher/me/certificates/upload",
+      "method": "POST",
+      "summary": "上傳證照檔案",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/teacher/me/certificates/{id}",
+      "method": "DELETE",
+      "summary": "刪除老師證照",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/teacher/me/exceptions",
+      "method": "POST",
+      "summary": "建立新的例外申請",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/teacher/me/invitations",
+      "method": "GET",
+      "summary": "取得老師的邀請列表",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/teacher/me/invitations/pending-count",
+      "method": "GET",
+      "summary": "取得待處理邀請數量",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/teacher/me/invitations/respond",
+      "method": "POST",
+      "summary": "老師回應邀請",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/teacher/me/personal-events",
+      "method": "GET",
+      "summary": "取得老師個人行程列表",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/teacher/me/personal-events",
+      "method": "POST",
+      "summary": "新增老師個人行程",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/teacher/me/personal-events/{id}",
+      "method": "DELETE",
+      "summary": "刪除老師個人行程",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/teacher/me/personal-events/{id}",
+      "method": "PATCH",
+      "summary": "更新老師個人行程",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/teacher/me/personal-events/{id}/note",
+      "method": "GET",
+      "summary": "取得個人行程備註",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/teacher/me/personal-events/{id}/note",
+      "method": "PUT",
+      "summary": "更新個人行程備註",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/teacher/me/profile",
+      "method": "GET",
+      "summary": "取得老師個人資料",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/teacher/me/profile",
+      "method": "PUT",
+      "summary": "更新老師個人資料",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/teacher/me/schedule",
+      "method": "GET",
+      "summary": "取得老師的綜合課表",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/teacher/me/schedule.ics",
+      "method": "GET",
+      "summary": "匯出課表為 iCalendar 格式",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/teacher/me/schedule/image",
+      "method": "GET",
+      "summary": "匯出課表為圖片",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/teacher/me/schedule/subscription",
+      "method": "POST",
+      "summary": "建立課表訂閱連結",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/teacher/me/schedule/subscription",
+      "method": "DELETE",
+      "summary": "取消課表訂閱",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/teacher/me/skills",
+      "method": "GET",
+      "summary": "取得老師技能列表",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/teacher/me/skills",
+      "method": "POST",
+      "summary": "新增老師技能",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/teacher/me/skills/{id}",
+      "method": "PUT",
+      "summary": "更新老師技能",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/teacher/me/skills/{id}",
+      "method": "DELETE",
+      "summary": "刪除老師技能",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/teacher/schedules",
+      "method": "GET",
+      "summary": "取得老師的課表",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/teacher/scheduling/check-rule-lock",
+      "method": "POST",
+      "summary": "檢查老師規則鎖定狀態",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/teacher/scheduling/delete-recurring",
+      "method": "POST",
+      "summary": "刪除循環排課",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/teacher/scheduling/edit-recurring",
+      "method": "POST",
+      "summary": "編輯循環排課",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/teacher/scheduling/preview-recurrence-edit",
+      "method": "POST",
+      "summary": "預覽循環編輯影響範圍",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/teacher/sessions/note",
+      "method": "GET",
+      "summary": "取得課堂筆記",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/teacher/sessions/note",
+      "method": "PUT",
+      "summary": "新增或更新課堂筆記",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/teachers",
+      "method": "GET",
+      "summary": "取得老師列表",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/api/v1/teachers/{id}",
+      "method": "DELETE",
+      "summary": "刪除老師",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/notifications",
+      "method": "GET",
+      "summary": "取得通知列表",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/notifications/read-all",
+      "method": "POST",
+      "summary": "標記所有通知為已讀",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/notifications/test",
+      "method": "POST",
+      "summary": "發送測試通知",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/notifications/token",
+      "method": "POST",
+      "summary": "設定通知 Token",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/notifications/unread-count",
+      "method": "GET",
+      "summary": "取得未讀通知數量",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    },
+    {
+      "path": "/notifications/{id}/read",
+      "method": "POST",
+      "summary": "標記通知為已讀",
+      "integrated": false,
+      "files": [],
+      "fields": []
+    }
+  ],
+  "fieldUsage": {
+    "allAccessPatterns": {},
+    "dataPatterns": {},
+    "apiResponseUsage": {
+      "responseFields": {},
+      "codeAccess": {},
+      "destructuring": []
+    },
+    "stats": {}
+  },
+  "swaggerSchemas": {
+    "controllers.AcceptInvitationByLinkRequest": {
+      "line_user_id": {
+        "type": "string",
+        "_path": "line_user_id",
+        "required": true
+      }
+    },
+    "controllers.AdminLoginRequest": {
+      "email": {
+        "type": "string",
+        "_path": "email",
+        "required": true
+      },
+      "password": {
+        "type": "string",
+        "_path": "password",
+        "required": true
+      }
+    },
+    "controllers.ApplyTemplateRequest": {
+      "duration": {
+        "type": "integer",
+        "_path": "duration",
+        "required": false
+      },
+      "end_date": {
+        "type": "string",
+        "_path": "end_date",
+        "required": true
+      },
+      "offering_id": {
+        "type": "integer",
+        "_path": "offering_id",
+        "required": true
+      },
+      "override_buffer": {
+        "type": "boolean",
+        "_path": "override_buffer",
+        "required": false
+      },
+      "start_date": {
+        "type": "string",
+        "_path": "start_date",
+        "required": true
+      },
+      "weekdays": {
+        "_array": {},
+        "_path": "weekdays"
+      }
+    },
+    "controllers.ChangeAdminRoleRequest": {
+      "new_role": {
+        "type": "string",
+        "_path": "new_role",
+        "required": true
+      },
+      "target_admin_id": {
+        "type": "integer",
+        "_path": "target_admin_id",
+        "required": true
+      }
+    },
+    "controllers.CheckTeacherRuleLockRequest": {
+      "exception_date": {
+        "type": "string",
+        "_path": "exception_date",
+        "required": true
+      },
+      "rule_id": {
+        "type": "integer",
+        "_path": "rule_id",
+        "required": true
+      }
+    },
+    "controllers.CheckTeacherRuleLockResponse": {
+      "days_remaining": {
+        "type": "integer",
+        "_path": "days_remaining"
+      },
+      "deadline": {
+        "type": "string",
+        "_path": "deadline"
+      },
+      "is_locked": {
+        "type": "boolean",
+        "_path": "is_locked"
+      },
+      "lock_reason": {
+        "type": "string",
+        "_path": "lock_reason"
+      }
+    },
+    "controllers.CityDistributionItem": {
+      "count": {
+        "type": "integer",
+        "_path": "count"
+      },
+      "name": {
+        "type": "string",
+        "_path": "name"
+      }
+    },
+    "controllers.CopyOfferingRequest": {
+      "copy_teacher": {
+        "type": "boolean",
+        "_path": "copy_teacher",
+        "required": false
+      },
+      "new_name": {
+        "type": "string",
+        "_path": "new_name",
+        "required": true
+      }
+    },
+    "controllers.CopyOfferingResponse": {
+      "course_id": {
+        "type": "integer",
+        "_path": "course_id"
+      },
+      "id": {
+        "type": "integer",
+        "_path": "id"
+      },
+      "name": {
+        "type": "string",
+        "_path": "name"
+      },
+      "rules_copied": {
+        "type": "integer",
+        "_path": "rules_copied"
+      }
+    },
+    "controllers.CreateAdminRequest": {
+      "email": {
+        "type": "string",
+        "_path": "email",
+        "required": true
+      },
+      "name": {
+        "type": "string",
+        "_path": "name",
+        "required": true
+      },
+      "password": {
+        "type": "string",
+        "_path": "password",
+        "required": true
+      },
+      "role": {
+        "type": "string",
+        "_path": "role",
+        "required": true
+      }
+    },
+    "controllers.CreateCellRequest": {
+      "col_no": {
+        "type": "integer",
+        "_path": "col_no"
+      },
+      "end_time": {
+        "type": "string",
+        "_path": "end_time"
+      },
+      "room_id": {
+        "type": "integer",
+        "_path": "room_id"
+      },
+      "row_no": {
+        "type": "integer",
+        "_path": "row_no"
+      },
+      "start_time": {
+        "type": "string",
+        "_path": "start_time"
+      },
+      "teacher_id": {
+        "type": "integer",
+        "_path": "teacher_id"
+      }
+    },
+    "controllers.CreateCenterRequest": {
+      "allow_public_register": {
+        "type": "boolean",
+        "_path": "allow_public_register",
+        "required": false
+      },
+      "name": {
+        "type": "string",
+        "_path": "name",
+        "required": true
+      },
+      "plan_level": {
+        "type": "string",
+        "_path": "plan_level",
+        "required": true
+      }
+    },
+    "controllers.CreateCertificateRequest": {
+      "file_url": {
+        "type": "string",
+        "_path": "file_url",
+        "required": true
+      },
+      "issued_at": {
+        "type": "string",
+        "_path": "issued_at",
+        "required": true
+      },
+      "name": {
+        "type": "string",
+        "_path": "name",
+        "required": true
+      }
+    },
+    "controllers.CreateHashtagRequest": {
+      "name": {
+        "type": "string",
+        "_path": "name",
+        "required": true
+      }
+    },
+    "controllers.CreateOfferingRequest": {
+      "allow_buffer_override": {
+        "type": "boolean",
+        "_path": "allow_buffer_override",
+        "required": false
+      },
+      "course_id": {
+        "type": "integer",
+        "_path": "course_id",
+        "required": true
+      },
+      "default_room_id": {
+        "type": "integer",
+        "_path": "default_room_id",
+        "required": false
+      },
+      "default_teacher_id": {
+        "type": "integer",
+        "_path": "default_teacher_id",
+        "required": false
+      }
+    },
+    "controllers.CreateSkillRequest": {
+      "category": {
+        "type": "string",
+        "_path": "category",
+        "required": true
+      },
+      "hashtag_ids": {
+        "_array": {},
+        "_path": "hashtag_ids"
+      },
+      "level": {
+        "type": "string",
+        "_path": "level",
+        "required": false
+      },
+      "skill_name": {
+        "type": "string",
+        "_path": "skill_name",
+        "required": true
+      }
+    },
+    "controllers.CreateTemplateRequest": {
+      "name": {
+        "type": "string",
+        "_path": "name",
+        "required": true
+      },
+      "row_type": {
+        "type": "string",
+        "_path": "row_type",
+        "required": false
+      }
+    },
+    "controllers.DeleteRecurringScheduleRequest": {
+      "edit_date": {
+        "type": "string",
+        "_path": "edit_date",
+        "required": true
+      },
+      "mode": {
+        "type": "string",
+        "_path": "mode",
+        "required": true
+      },
+      "reason": {
+        "type": "string",
+        "_path": "reason",
+        "required": false
+      },
+      "rule_id": {
+        "type": "integer",
+        "_path": "rule_id",
+        "required": true
+      }
+    },
+    "controllers.FindMatchesRequest": {
+      "end_time": {
+        "type": "string",
+        "_path": "end_time",
+        "required": true
+      },
+      "exclude_teacher_ids": {
+        "_array": {},
+        "_path": "exclude_teacher_ids"
+      },
+      "required_skills": {
+        "_array": {},
+        "_path": "required_skills"
+      },
+      "room_id": {
+        "type": "integer",
+        "_path": "room_id",
+        "required": true
+      },
+      "start_time": {
+        "type": "string",
+        "_path": "start_time",
+        "required": true
+      },
+      "teacher_id": {
+        "type": "integer",
+        "_path": "teacher_id",
+        "required": false
+      }
+    },
+    "controllers.GetAlternativeSlotsRequest": {
+      "duration": {
+        "type": "integer",
+        "_path": "duration",
+        "required": false
+      },
+      "original_end": {
+        "type": "string",
+        "_path": "original_end",
+        "required": true
+      },
+      "original_start": {
+        "type": "string",
+        "_path": "original_start",
+        "required": true
+      },
+      "teacher_id": {
+        "type": "integer",
+        "_path": "teacher_id",
+        "required": true
+      }
+    },
+    "controllers.InvitationStatsResponse": {
+      "accepted": {
+        "type": "integer",
+        "_path": "accepted"
+      },
+      "expired": {
+        "type": "integer",
+        "_path": "expired"
+      },
+      "pending": {
+        "type": "integer",
+        "_path": "pending"
+      },
+      "recent_pending": {
+        "type": "integer",
+        "_path": "recent_pending"
+      },
+      "rejected": {
+        "type": "integer",
+        "_path": "rejected"
+      },
+      "total": {
+        "type": "integer",
+        "_path": "total"
+      }
+    },
+    "controllers.InviteTalentRequest": {
+      "message": {
+        "type": "string",
+        "_path": "message",
+        "required": false
+      },
+      "teacher_ids": {
+        "_array": {},
+        "_path": "teacher_ids"
+      }
+    },
+    "controllers.InviteTalentResponse": {
+      "failed_count": {
+        "type": "integer",
+        "_path": "failed_count"
+      },
+      "failed_ids": {
+        "_array": {},
+        "_path": "failed_ids"
+      },
+      "invitation_ids": {
+        "_array": {},
+        "_path": "invitation_ids"
+      },
+      "invited_count": {
+        "type": "integer",
+        "_path": "invited_count"
+      }
+    },
+    "controllers.LINEBindingResponse": {
+      "bound_at": {
+        "type": "string",
+        "_path": "bound_at"
+      },
+      "is_bound": {
+        "type": "boolean",
+        "_path": "is_bound"
+      },
+      "line_user_id": {
+        "type": "string",
+        "_path": "line_user_id"
+      },
+      "notify_enabled": {
+        "type": "boolean",
+        "_path": "notify_enabled"
+      },
+      "welcome_sent": {
+        "type": "boolean",
+        "_path": "welcome_sent"
+      }
+    },
+    "controllers.PaginationResponse": {
+      "data": {
+        "_path": "data"
+      },
+      "limit": {
+        "type": "integer",
+        "_path": "limit"
+      },
+      "page": {
+        "type": "integer",
+        "_path": "page"
+      },
+      "total": {
+        "type": "integer",
+        "_path": "total"
+      },
+      "total_pages": {
+        "type": "integer",
+        "_path": "total_pages"
+      }
+    },
+    "controllers.PreviewRecurrenceEditRequest": {
+      "edit_date": {
+        "type": "string",
+        "_path": "edit_date",
+        "required": true
+      },
+      "mode": {
+        "type": "string",
+        "_path": "mode",
+        "required": true
+      },
+      "rule_id": {
+        "type": "integer",
+        "_path": "rule_id",
+        "required": true
+      }
+    },
+    "controllers.ResetAdminPasswordRequest": {
+      "new_password": {
+        "type": "string",
+        "_path": "new_password",
+        "required": true
+      },
+      "target_admin_id": {
+        "type": "integer",
+        "_path": "target_admin_id",
+        "required": true
+      }
+    },
+    "controllers.SessionItem": {
+      "course_name": {
+        "type": "string",
+        "_path": "course_name"
+      },
+      "end_time": {
+        "type": "string",
+        "_path": "end_time"
+      },
+      "id": {
+        "type": "integer",
+        "_path": "id"
+      },
+      "room_name": {
+        "type": "string",
+        "_path": "room_name"
+      },
+      "start_time": {
+        "type": "string",
+        "_path": "start_time"
+      },
+      "status": {
+        "type": "string",
+        "_path": "status"
+      }
+    },
+    "controllers.SkillCountItem": {
+      "count": {
+        "type": "integer",
+        "_path": "count"
+      },
+      "name": {
+        "type": "string",
+        "_path": "name"
+      }
+    },
+    "controllers.TalentStatsResponse": {
+      "accepted_invites": {
+        "type": "integer",
+        "_path": "accepted_invites"
+      },
+      "average_rating": {
+        "type": "number",
+        "_path": "average_rating"
+      },
+      "city_distribution": {
+        "_arrayOf": "controllers.CityDistributionItem",
+        "_path": "city_distribution"
+      },
+      "declined_invites": {
+        "type": "integer",
+        "_path": "declined_invites"
+      },
+      "member_count": {
+        "type": "integer",
+        "_path": "member_count"
+      },
+      "monthly_change": {
+        "type": "integer",
+        "_path": "monthly_change"
+      },
+      "monthly_trend": {
+        "_array": {},
+        "_path": "monthly_trend"
+      },
+      "open_hiring_count": {
+        "type": "integer",
+        "_path": "open_hiring_count"
+      },
+      "pending_invites": {
+        "type": "integer",
+        "_path": "pending_invites"
+      },
+      "top_skills": {
+        "_arrayOf": "controllers.SkillCountItem",
+        "_path": "top_skills"
+      },
+      "total_count": {
+        "type": "integer",
+        "_path": "total_count"
+      }
+    },
+    "controllers.TeacherCreateExceptionRequest": {
+      "center_id": {
+        "type": "integer",
+        "_path": "center_id",
+        "required": true
+      },
+      "new_end_at": {
+        "type": "string",
+        "_path": "new_end_at",
+        "required": false
+      },
+      "new_start_at": {
+        "type": "string",
+        "_path": "new_start_at",
+        "required": false
+      },
+      "new_teacher_id": {
+        "type": "integer",
+        "_path": "new_teacher_id",
+        "required": false
+      },
+      "new_teacher_name": {
+        "type": "string",
+        "_path": "new_teacher_name",
+        "required": false
+      },
+      "original_date": {
+        "type": "string",
+        "_path": "original_date",
+        "required": true
+      },
+      "reason": {
+        "type": "string",
+        "_path": "reason",
+        "required": true
+      },
+      "rule_id": {
+        "type": "integer",
+        "_path": "rule_id",
+        "required": true
+      },
+      "type": {
+        "type": "string",
+        "_path": "type",
+        "required": true
+      }
+    },
+    "controllers.TeacherLineLoginRequest": {
+      "access_token": {
+        "type": "string",
+        "_path": "access_token"
+      },
+      "line_user_id": {
+        "type": "string",
+        "_path": "line_user_id"
+      }
+    },
+    "controllers.TeacherNotifyTokenRequest": {
+      "token": {
+        "type": "string",
+        "_path": "token",
+        "required": true
+      }
+    },
+    "controllers.TeacherSessionResponse": {
+      "sessions": {
+        "_arrayOf": "controllers.SessionItem",
+        "_path": "sessions"
+      },
+      "teacher_id": {
+        "type": "integer",
+        "_path": "teacher_id"
+      },
+      "teacher_name": {
+        "type": "string",
+        "_path": "teacher_name"
+      }
+    },
+    "controllers.ToggleActiveRequest": {
+      "is_active": {
+        "type": "boolean",
+        "_path": "is_active"
+      }
+    },
+    "controllers.ToggleAdminStatusRequest": {
+      "new_status": {
+        "type": "string",
+        "_path": "new_status",
+        "required": true
+      },
+      "target_admin_id": {
+        "type": "integer",
+        "_path": "target_admin_id",
+        "required": true
+      }
+    },
+    "controllers.UpdateNotifySettingsRequest": {
+      "enabled": {
+        "type": "boolean",
+        "_path": "enabled",
+        "required": true
+      }
+    },
+    "controllers.UpdateOfferingRequest": {
+      "allow_buffer_override": {
+        "type": "boolean",
+        "_path": "allow_buffer_override"
+      },
+      "default_room_id": {
+        "type": "integer",
+        "_path": "default_room_id"
+      },
+      "default_teacher_id": {
+        "type": "integer",
+        "_path": "default_teacher_id"
+      },
+      "name": {
+        "type": "string",
+        "_path": "name"
+      }
+    },
+    "controllers.UpdateSkillRequest": {
+      "category": {
+        "type": "string",
+        "_path": "category",
+        "required": true
+      },
+      "hashtags": {
+        "_array": {},
+        "_path": "hashtags"
+      },
+      "skill_name": {
+        "type": "string",
+        "_path": "skill_name",
+        "required": true
+      }
+    },
+    "controllers.UpdateTeacherProfileRequest": {
+      "bio": {
+        "type": "string",
+        "_path": "bio"
+      },
+      "city": {
+        "type": "string",
+        "_path": "city"
+      },
+      "district": {
+        "type": "string",
+        "_path": "district"
+      },
+      "is_open_to_hiring": {
+        "type": "boolean",
+        "_path": "is_open_to_hiring"
+      },
+      "personal_hashtags": {
+        "_array": {},
+        "_path": "personal_hashtags"
+      },
+      "public_contact_info": {
+        "type": "string",
+        "_path": "public_contact_info"
+      }
+    },
+    "controllers.UpdateTemplateRequest": {
+      "name": {
+        "type": "string",
+        "_path": "name"
+      }
+    },
+    "controllers.UploadBackgroundResponse": {
+      "file_name": {
+        "type": "string",
+        "_path": "file_name"
+      },
+      "image_path": {
+        "type": "string",
+        "_path": "image_path"
+      }
+    },
+    "controllers.UploadFileResponse": {
+      "file_name": {
+        "type": "string",
+        "_path": "file_name"
+      },
+      "file_size": {
+        "type": "integer",
+        "_path": "file_size"
+      },
+      "file_url": {
+        "type": "string",
+        "_path": "file_url"
+      }
+    },
+    "controllers.UpsertTeacherNoteRequest": {
+      "internal_note": {
+        "type": "string",
+        "_path": "internal_note",
+        "required": false
+      },
+      "rating": {
+        "type": "integer",
+        "_path": "rating",
+        "required": true
+      }
+    },
+    "controllers.ValidateApplyTemplateRequest": {
+      "end_date": {
+        "type": "string",
+        "_path": "end_date",
+        "required": true
+      },
+      "offering_id": {
+        "type": "integer",
+        "_path": "offering_id",
+        "required": true
+      },
+      "override_buffer": {
+        "type": "boolean",
+        "_path": "override_buffer",
+        "required": false
+      },
+      "start_date": {
+        "type": "string",
+        "_path": "start_date",
+        "required": true
+      },
+      "weekdays": {
+        "_array": {},
+        "_path": "weekdays"
+      }
+    },
+    "errInfos.ErrCode": {},
+    "global.ApiResponse": {
+      "code": {
+        "_ref": "errInfos.ErrCode",
+        "_path": "code"
+      },
+      "datas": {
+        "_path": "datas"
+      },
+      "message": {
+        "type": "string",
+        "_path": "message"
+      },
+      "warnings": {
+        "_arrayOf": "global.Warning",
+        "_path": "warnings"
+      }
+    },
+    "global.Pagination": {
+      "has_next": {
+        "type": "boolean",
+        "_path": "has_next"
+      },
+      "has_prev": {
+        "type": "boolean",
+        "_path": "has_prev"
+      },
+      "limit": {
+        "type": "integer",
+        "_path": "limit"
+      },
+      "page": {
+        "type": "integer",
+        "_path": "page"
+      },
+      "total": {
+        "type": "integer",
+        "_path": "total"
+      },
+      "total_pages": {
+        "type": "integer",
+        "_path": "total_pages"
+      }
+    },
+    "global.Warning": {
+      "details": {
+        "type": "string",
+        "_path": "details"
+      },
+      "message": {
+        "type": "string",
+        "_path": "message"
+      },
+      "type": {
+        "type": "string",
+        "_path": "type"
+      }
+    },
+    "models.AdminUser": {
+      "center_id": {
+        "type": "integer",
+        "_path": "center_id"
+      },
+      "created_at": {
+        "type": "string",
+        "_path": "created_at"
+      },
+      "email": {
+        "type": "string",
+        "_path": "email"
+      },
+      "id": {
+        "type": "integer",
+        "_path": "id"
+      },
+      "line_bound_at": {
+        "type": "string",
+        "_path": "line_bound_at"
+      },
+      "line_notify_enabled": {
+        "type": "boolean",
+        "_path": "line_notify_enabled"
+      },
+      "name": {
+        "type": "string",
+        "_path": "name"
+      },
+      "role": {
+        "type": "string",
+        "_path": "role"
+      },
+      "status": {
+        "type": "string",
+        "_path": "status"
+      },
+      "updated_at": {
+        "type": "string",
+        "_path": "updated_at"
+      }
+    },
+    "models.CenterHoliday": {
+      "center_id": {
+        "type": "integer",
+        "_path": "center_id"
+      },
+      "created_at": {
+        "type": "string",
+        "_path": "created_at"
+      },
+      "date": {
+        "type": "string",
+        "_path": "date"
+      },
+      "id": {
+        "type": "integer",
+        "_path": "id"
+      },
+      "name": {
+        "type": "string",
+        "_path": "name"
+      },
+      "updated_at": {
+        "type": "string",
+        "_path": "updated_at"
+      }
+    },
+    "models.CenterInvitation": {
+      "center_id": {
+        "type": "integer",
+        "_path": "center_id"
+      },
+      "created_at": {
+        "type": "string",
+        "_path": "created_at"
+      },
+      "email": {
+        "type": "string",
+        "_path": "email"
+      },
+      "expires_at": {
+        "type": "string",
+        "_path": "expires_at"
+      },
+      "id": {
+        "type": "integer",
+        "_path": "id"
+      },
+      "invite_type": {
+        "_ref": "models.InvitationType",
+        "_path": "invite_type"
+      },
+      "invited_by": {
+        "type": "integer",
+        "_path": "invited_by"
+      },
+      "message": {
+        "type": "string",
+        "_path": "message"
+      },
+      "responded_at": {
+        "type": "string",
+        "_path": "responded_at"
+      },
+      "role": {
+        "type": "string",
+        "_path": "role"
+      },
+      "status": {
+        "_ref": "models.InvitationStatus",
+        "_path": "status"
+      },
+      "teacher_id": {
+        "type": "integer",
+        "_path": "teacher_id"
+      },
+      "token": {
+        "type": "string",
+        "_path": "token"
+      }
+    },
+    "models.DateRange": {
+      "end_date": {
+        "type": "string",
+        "_path": "end_date"
+      },
+      "start_date": {
+        "type": "string",
+        "_path": "start_date"
+      }
+    },
+    "models.Hashtag": {
+      "id": {
+        "type": "integer",
+        "_path": "id"
+      },
+      "name": {
+        "type": "string",
+        "_path": "name"
+      },
+      "usage_count": {
+        "type": "integer",
+        "_path": "usage_count"
+      }
+    },
+    "models.InvitationStatus": {},
+    "models.InvitationType": {},
+    "models.Offering": {
+      "allow_buffer_override": {
+        "type": "boolean",
+        "_path": "allow_buffer_override"
+      },
+      "center_id": {
+        "type": "integer",
+        "_path": "center_id"
+      },
+      "course_id": {
+        "type": "integer",
+        "_path": "course_id"
+      },
+      "created_at": {
+        "type": "string",
+        "_path": "created_at"
+      },
+      "default_room_id": {
+        "type": "integer",
+        "_path": "default_room_id"
+      },
+      "default_teacher_id": {
+        "type": "integer",
+        "_path": "default_teacher_id"
+      },
+      "id": {
+        "type": "integer",
+        "_path": "id"
+      },
+      "is_active": {
+        "type": "boolean",
+        "_path": "is_active"
+      },
+      "name": {
+        "type": "string",
+        "_path": "name"
+      },
+      "updated_at": {
+        "type": "string",
+        "_path": "updated_at"
+      }
+    },
+    "models.PersonalEvent": {
+      "color_hex": {
+        "type": "string",
+        "_path": "color_hex"
+      },
+      "created_at": {
+        "type": "string",
+        "_path": "created_at"
+      },
+      "end_at": {
+        "type": "string",
+        "_path": "end_at"
+      },
+      "id": {
+        "type": "integer",
+        "_path": "id"
+      },
+      "is_all_day": {
+        "type": "boolean",
+        "_path": "is_all_day"
+      },
+      "note": {
+        "type": "string",
+        "_path": "note"
+      },
+      "recurrence_rule": {
+        "_ref": "models.RecurrenceRule",
+        "_path": "recurrence_rule"
+      },
+      "start_at": {
+        "type": "string",
+        "_path": "start_at"
+      },
+      "teacher_id": {
+        "type": "integer",
+        "_path": "teacher_id"
+      },
+      "title": {
+        "type": "string",
+        "_path": "title"
+      },
+      "updated_at": {
+        "type": "string",
+        "_path": "updated_at"
+      }
+    },
+    "models.RecurrenceRule": {
+      "count": {
+        "type": "integer",
+        "_path": "count"
+      },
+      "interval": {
+        "type": "integer",
+        "_path": "interval"
+      },
+      "type": {
+        "type": "string",
+        "_path": "type"
+      },
+      "until": {
+        "type": "string",
+        "_path": "until"
+      },
+      "weekdays": {
+        "_array": {},
+        "_path": "weekdays"
+      }
+    },
+    "models.Room": {
+      "capacity": {
+        "type": "integer",
+        "_path": "capacity"
+      },
+      "center_id": {
+        "type": "integer",
+        "_path": "center_id"
+      },
+      "created_at": {
+        "type": "string",
+        "_path": "created_at"
+      },
+      "id": {
+        "type": "integer",
+        "_path": "id"
+      },
+      "is_active": {
+        "type": "boolean",
+        "_path": "is_active"
+      },
+      "name": {
+        "type": "string",
+        "_path": "name"
+      },
+      "updated_at": {
+        "type": "string",
+        "_path": "updated_at"
+      }
+    },
+    "models.ScheduleException": {
+      "center_id": {
+        "type": "integer",
+        "_path": "center_id"
+      },
+      "created_at": {
+        "type": "string",
+        "_path": "created_at"
+      },
+      "exception_type": {
+        "type": "string",
+        "_path": "exception_type"
+      },
+      "id": {
+        "type": "integer",
+        "_path": "id"
+      },
+      "new_end_at": {
+        "type": "string",
+        "_path": "new_end_at"
+      },
+      "new_room_id": {
+        "type": "integer",
+        "_path": "new_room_id"
+      },
+      "new_start_at": {
+        "type": "string",
+        "_path": "new_start_at"
+      },
+      "new_teacher_id": {
+        "type": "integer",
+        "_path": "new_teacher_id"
+      },
+      "original_date": {
+        "type": "string",
+        "_path": "original_date"
+      },
+      "reason": {
+        "type": "string",
+        "_path": "reason"
+      },
+      "review_note": {
+        "type": "string",
+        "_path": "review_note"
+      },
+      "reviewed_at": {
+        "type": "string",
+        "_path": "reviewed_at"
+      },
+      "reviewed_by": {
+        "type": "integer",
+        "_path": "reviewed_by"
+      },
+      "rule": {
+        "_path": "rule"
+      },
+      "rule_id": {
+        "type": "integer",
+        "_path": "rule_id"
+      },
+      "status": {
+        "type": "string",
+        "_path": "status"
+      },
+      "updated_at": {
+        "type": "string",
+        "_path": "updated_at"
+      }
+    },
+    "models.ScheduleRule": {
+      "center_id": {
+        "type": "integer",
+        "_path": "center_id"
+      },
+      "created_at": {
+        "type": "string",
+        "_path": "created_at"
+      },
+      "duration": {
+        "type": "integer",
+        "_path": "duration"
+      },
+      "effective_range": {
+        "_ref": "models.DateRange",
+        "_path": "effective_range"
+      },
+      "end_time": {
+        "type": "string",
+        "_path": "end_time"
+      },
+      "exceptions": {
+        "_arrayOf": "models.ScheduleException",
+        "_path": "exceptions"
+      },
+      "id": {
+        "type": "integer",
+        "_path": "id"
+      },
+      "is_cross_day": {
+        "type": "boolean",
+        "_path": "is_cross_day"
+      },
+      "lock_at": {
+        "type": "string",
+        "_path": "lock_at"
+      },
+      "name": {
+        "type": "string",
+        "_path": "name"
+      },
+      "offering": {
+        "_path": "offering"
+      },
+      "offering_id": {
+        "type": "integer",
+        "_path": "offering_id"
+      },
+      "room": {
+        "_ref": "models.Room",
+        "_path": "room"
+      },
+      "room_id": {
+        "type": "integer",
+        "_path": "room_id"
+      },
+      "start_time": {
+        "type": "string",
+        "_path": "start_time"
+      },
+      "teacher": {
+        "_ref": "models.Teacher",
+        "_path": "teacher"
+      },
+      "teacher_id": {
+        "type": "integer",
+        "_path": "teacher_id"
+      },
+      "updated_at": {
+        "type": "string",
+        "_path": "updated_at"
+      },
+      "weekday": {
+        "type": "integer",
+        "_path": "weekday"
+      }
+    },
+    "models.Teacher": {
+      "avatar_url": {
+        "type": "string",
+        "_path": "avatar_url"
+      },
+      "bio": {
+        "type": "string",
+        "_path": "bio"
+      },
+      "certificates": {
+        "_arrayOf": "models.TeacherCertificate",
+        "_path": "certificates"
+      },
+      "city": {
+        "type": "string",
+        "_path": "city"
+      },
+      "created_at": {
+        "type": "string",
+        "_path": "created_at"
+      },
+      "district": {
+        "type": "string",
+        "_path": "district"
+      },
+      "email": {
+        "type": "string",
+        "_path": "email"
+      },
+      "id": {
+        "type": "integer",
+        "_path": "id"
+      },
+      "is_open_to_hiring": {
+        "type": "boolean",
+        "_path": "is_open_to_hiring"
+      },
+      "line_notify_token": {
+        "type": "string",
+        "_path": "line_notify_token"
+      },
+      "line_user_id": {
+        "type": "string",
+        "_path": "line_user_id"
+      },
+      "name": {
+        "type": "string",
+        "_path": "name"
+      },
+      "personal_hashtags": {
+        "_arrayOf": "models.TeacherPersonalHashtag",
+        "_path": "personal_hashtags"
+      },
+      "public_contact_info": {
+        "type": "string",
+        "_path": "public_contact_info"
+      },
+      "skills": {
+        "_arrayOf": "models.TeacherSkill",
+        "_path": "skills"
+      },
+      "updated_at": {
+        "type": "string",
+        "_path": "updated_at"
+      }
+    },
+    "models.TeacherCertificate": {
+      "created_at": {
+        "type": "string",
+        "_path": "created_at"
+      },
+      "file_url": {
+        "type": "string",
+        "_path": "file_url"
+      },
+      "id": {
+        "type": "integer",
+        "_path": "id"
+      },
+      "is_verified": {
+        "type": "boolean",
+        "_path": "is_verified"
+      },
+      "issued_at": {
+        "type": "string",
+        "_path": "issued_at"
+      },
+      "name": {
+        "type": "string",
+        "_path": "name"
+      },
+      "teacher_id": {
+        "type": "integer",
+        "_path": "teacher_id"
+      },
+      "updated_at": {
+        "type": "string",
+        "_path": "updated_at"
+      }
+    },
+    "models.TeacherPersonalHashtag": {
+      "hashtag": {
+        "_ref": "models.Hashtag",
+        "_path": "hashtag"
+      },
+      "hashtag_id": {
+        "type": "integer",
+        "_path": "hashtag_id"
+      },
+      "sort_order": {
+        "type": "integer",
+        "_path": "sort_order"
+      },
+      "teacher_id": {
+        "type": "integer",
+        "_path": "teacher_id"
+      }
+    },
+    "models.TeacherSkill": {
+      "category": {
+        "type": "string",
+        "_path": "category"
+      },
+      "created_at": {
+        "type": "string",
+        "_path": "created_at"
+      },
+      "hashtags": {
+        "_arrayOf": "models.TeacherSkillHashtag",
+        "_path": "hashtags"
+      },
+      "id": {
+        "type": "integer",
+        "_path": "id"
+      },
+      "level": {
+        "type": "string",
+        "_path": "level"
+      },
+      "skill_name": {
+        "type": "string",
+        "_path": "skill_name"
+      },
+      "teacher_id": {
+        "type": "integer",
+        "_path": "teacher_id"
+      },
+      "updated_at": {
+        "type": "string",
+        "_path": "updated_at"
+      }
+    },
+    "models.TeacherSkillHashtag": {
+      "hashtag": {
+        "_ref": "models.Hashtag",
+        "_path": "hashtag"
+      },
+      "hashtag_id": {
+        "type": "integer",
+        "_path": "hashtag_id"
+      },
+      "teacher_skill_id": {
+        "type": "integer",
+        "_path": "teacher_skill_id"
+      }
+    },
+    "models.TimetableCell": {
+      "col_no": {
+        "type": "integer",
+        "_path": "col_no"
+      },
+      "created_at": {
+        "type": "string",
+        "_path": "created_at"
+      },
+      "end_time": {
+        "type": "string",
+        "_path": "end_time"
+      },
+      "id": {
+        "type": "integer",
+        "_path": "id"
+      },
+      "is_active": {
+        "type": "boolean",
+        "_path": "is_active"
+      },
+      "room_id": {
+        "type": "integer",
+        "_path": "room_id"
+      },
+      "row_no": {
+        "type": "integer",
+        "_path": "row_no"
+      },
+      "sort_order": {
+        "type": "integer",
+        "_path": "sort_order"
+      },
+      "start_time": {
+        "type": "string",
+        "_path": "start_time"
+      },
+      "teacher_id": {
+        "type": "integer",
+        "_path": "teacher_id"
+      },
+      "template_id": {
+        "type": "integer",
+        "_path": "template_id"
+      },
+      "updated_at": {
+        "type": "string",
+        "_path": "updated_at"
+      }
+    },
+    "models.TimetableTemplate": {
+      "cells": {
+        "_arrayOf": "models.TimetableCell",
+        "_path": "cells"
+      },
+      "center_id": {
+        "type": "integer",
+        "_path": "center_id"
+      },
+      "created_at": {
+        "type": "string",
+        "_path": "created_at"
+      },
+      "id": {
+        "type": "integer",
+        "_path": "id"
+      },
+      "is_active": {
+        "type": "boolean",
+        "_path": "is_active"
+      },
+      "name": {
+        "type": "string",
+        "_path": "name"
+      },
+      "row_type": {
+        "type": "string",
+        "_path": "row_type"
+      },
+      "updated_at": {
+        "type": "string",
+        "_path": "updated_at"
+      }
+    },
+    "repositories.ReorderCellRequest": {
+      "id": {
+        "type": "integer",
+        "_path": "id",
+        "required": true
+      },
+      "sort_order": {
+        "type": "integer",
+        "_path": "sort_order",
+        "required": true
+      }
+    },
+    "requests.CheckBufferRequest": {
+      "course_id": {
+        "type": "integer",
+        "_path": "course_id",
+        "required": true
+      },
+      "next_start_time": {
+        "type": "string",
+        "_path": "next_start_time",
+        "required": true
+      },
+      "prev_end_time": {
+        "type": "string",
+        "_path": "prev_end_time",
+        "required": true
+      },
+      "room_id": {
+        "type": "integer",
+        "_path": "room_id",
+        "required": true
+      },
+      "teacher_id": {
+        "type": "integer",
+        "_path": "teacher_id",
+        "required": true
+      }
+    },
+    "requests.CheckOverlapRequest": {
+      "end_time": {
+        "type": "string",
+        "_path": "end_time",
+        "required": true
+      },
+      "exclude_rule_id": {
+        "type": "integer",
+        "_path": "exclude_rule_id",
+        "required": false
+      },
+      "room_id": {
+        "type": "integer",
+        "_path": "room_id",
+        "required": true
+      },
+      "start_time": {
+        "type": "string",
+        "_path": "start_time",
+        "required": true
+      },
+      "teacher_id": {
+        "type": "integer",
+        "_path": "teacher_id",
+        "required": false
+      },
+      "weekday": {
+        "type": "integer",
+        "_path": "weekday",
+        "required": false
+      }
+    },
+    "requests.CheckRuleLockStatusRequest": {
+      "exception_date": {
+        "type": "string",
+        "_path": "exception_date",
+        "required": true
+      },
+      "rule_id": {
+        "type": "integer",
+        "_path": "rule_id",
+        "required": true
+      }
+    },
+    "requests.CreateExceptionRequest": {
+      "new_end_at": {
+        "type": "string",
+        "_path": "new_end_at",
+        "required": false
+      },
+      "new_room_id": {
+        "type": "integer",
+        "_path": "new_room_id",
+        "required": false
+      },
+      "new_start_at": {
+        "type": "string",
+        "_path": "new_start_at",
+        "required": false
+      },
+      "new_teacher_id": {
+        "type": "integer",
+        "_path": "new_teacher_id",
+        "required": false
+      },
+      "new_teacher_name": {
+        "type": "string",
+        "_path": "new_teacher_name",
+        "required": false
+      },
+      "original_date": {
+        "type": "string",
+        "_path": "original_date",
+        "required": true
+      },
+      "reason": {
+        "type": "string",
+        "_path": "reason",
+        "required": true
+      },
+      "rule_id": {
+        "type": "integer",
+        "_path": "rule_id",
+        "required": true
+      },
+      "type": {
+        "type": "string",
+        "_path": "type",
+        "required": true
+      }
+    },
+    "requests.CreatePersonalEventRequest": {
+      "color_hex": {
+        "type": "string",
+        "_path": "color_hex",
+        "required": false
+      },
+      "end_at": {
+        "type": "string",
+        "_path": "end_at",
+        "required": true
+      },
+      "is_all_day": {
+        "type": "boolean",
+        "_path": "is_all_day",
+        "required": false
+      },
+      "recurrence_rule": {
+        "_ref": "models.RecurrenceRule",
+        "_path": "recurrence_rule"
+      },
+      "start_at": {
+        "type": "string",
+        "_path": "start_at",
+        "required": true
+      },
+      "title": {
+        "type": "string",
+        "_path": "title",
+        "required": true
+      }
+    },
+    "requests.CreateRuleRequest": {
+      "duration": {
+        "type": "integer",
+        "_path": "duration",
+        "required": true
+      },
+      "end_date": {
+        "type": "string",
+        "_path": "end_date",
+        "required": false
+      },
+      "end_time": {
+        "type": "string",
+        "_path": "end_time",
+        "required": true
+      },
+      "name": {
+        "type": "string",
+        "_path": "name",
+        "required": true
+      },
+      "offering_id": {
+        "type": "integer",
+        "_path": "offering_id",
+        "required": true
+      },
+      "override_buffer": {
+        "type": "boolean",
+        "_path": "override_buffer",
+        "required": false
+      },
+      "room_id": {
+        "type": "integer",
+        "_path": "room_id",
+        "required": true
+      },
+      "start_date": {
+        "type": "string",
+        "_path": "start_date",
+        "required": true
+      },
+      "start_time": {
+        "type": "string",
+        "_path": "start_time",
+        "required": true
+      },
+      "teacher_id": {
+        "type": "integer",
+        "_path": "teacher_id",
+        "required": false
+      },
+      "weekdays": {
+        "_array": {},
+        "_path": "weekdays"
+      }
+    },
+    "requests.DetectPhaseTransitionsRequest": {
+      "end_date": {
+        "type": "string",
+        "_path": "end_date",
+        "required": true
+      },
+      "offering_id": {
+        "type": "integer",
+        "_path": "offering_id",
+        "required": true
+      },
+      "start_date": {
+        "type": "string",
+        "_path": "start_date",
+        "required": true
+      }
+    },
+    "requests.ExpandRulesRequest": {
+      "end_date": {
+        "type": "string",
+        "_path": "end_date",
+        "required": true
+      },
+      "rule_ids": {
+        "_array": {},
+        "_path": "rule_ids"
+      },
+      "start_date": {
+        "type": "string",
+        "_path": "start_date",
+        "required": true
+      }
+    },
+    "requests.PersonalEventNoteResponse": {
+      "content": {
+        "type": "string",
+        "_path": "content"
+      }
+    },
+    "requests.ReviewExceptionRequest": {
+      "action": {
+        "type": "string",
+        "_path": "action",
+        "required": true
+      },
+      "override_buffer": {
+        "type": "boolean",
+        "_path": "override_buffer",
+        "required": false
+      },
+      "reason": {
+        "type": "string",
+        "_path": "reason",
+        "required": false
+      }
+    },
+    "requests.UpdatePersonalEventNoteRequest": {
+      "content": {
+        "type": "string",
+        "_path": "content",
+        "required": true
+      }
+    },
+    "requests.UpdatePersonalEventRequest": {
+      "color_hex": {
+        "type": "string",
+        "_path": "color_hex",
+        "required": false
+      },
+      "end_at": {
+        "type": "string",
+        "_path": "end_at",
+        "required": false
+      },
+      "is_all_day": {
+        "type": "boolean",
+        "_path": "is_all_day",
+        "required": false
+      },
+      "recurrence_rule": {
+        "_ref": "models.RecurrenceRule",
+        "_path": "recurrence_rule"
+      },
+      "start_at": {
+        "type": "string",
+        "_path": "start_at",
+        "required": false
+      },
+      "title": {
+        "type": "string",
+        "_path": "title",
+        "required": false
+      },
+      "update_mode": {
+        "type": "string",
+        "_path": "update_mode",
+        "required": true
+      }
+    },
+    "requests.UpdatePersonalEventResponse": {
+      "message": {
+        "type": "string",
+        "_path": "message"
+      },
+      "updated_count": {
+        "type": "integer",
+        "_path": "updated_count"
+      }
+    },
+    "requests.UpdateRuleRequest": {
+      "duration": {
+        "type": "integer",
+        "_path": "duration"
+      },
+      "end_date": {
+        "type": "string",
+        "_path": "end_date"
+      },
+      "end_time": {
+        "type": "string",
+        "_path": "end_time"
+      },
+      "name": {
+        "type": "string",
+        "_path": "name"
+      },
+      "offering_id": {
+        "type": "integer",
+        "_path": "offering_id"
+      },
+      "room_id": {
+        "type": "integer",
+        "_path": "room_id"
+      },
+      "start_date": {
+        "type": "string",
+        "_path": "start_date"
+      },
+      "start_time": {
+        "type": "string",
+        "_path": "start_time"
+      },
+      "teacher_id": {
+        "type": "integer",
+        "_path": "teacher_id"
+      },
+      "update_mode": {
+        "type": "string",
+        "_path": "update_mode"
+      },
+      "weekdays": {
+        "_array": {},
+        "_path": "weekdays"
+      }
+    },
+    "requests.UpsertSessionNoteRequest": {
+      "content": {
+        "type": "string",
+        "_path": "content",
+        "required": false
+      },
+      "prep_note": {
+        "type": "string",
+        "_path": "prep_note",
+        "required": false
+      },
+      "rule_id": {
+        "type": "integer",
+        "_path": "rule_id",
+        "required": true
+      },
+      "session_date": {
+        "type": "string",
+        "_path": "session_date",
+        "required": true
+      }
+    },
+    "requests.ValidateFullRequest": {
+      "allow_buffer_override": {
+        "type": "boolean",
+        "_path": "allow_buffer_override",
+        "required": false
+      },
+      "course_id": {
+        "type": "integer",
+        "_path": "course_id",
+        "required": true
+      },
+      "end_time": {
+        "type": "string",
+        "_path": "end_time",
+        "required": true
+      },
+      "exclude_rule_id": {
+        "type": "integer",
+        "_path": "exclude_rule_id",
+        "required": false
+      },
+      "room_id": {
+        "type": "integer",
+        "_path": "room_id",
+        "required": true
+      },
+      "start_time": {
+        "type": "string",
+        "_path": "start_time",
+        "required": true
+      },
+      "teacher_id": {
+        "type": "integer",
+        "_path": "teacher_id",
+        "required": false
+      }
+    },
+    "resources.AdminCertificateResponse": {
+      "created_at": {
+        "type": "string",
+        "_path": "created_at"
+      },
+      "file_url": {
+        "type": "string",
+        "_path": "file_url"
+      },
+      "id": {
+        "type": "integer",
+        "_path": "id"
+      },
+      "issued_at": {
+        "type": "string",
+        "_path": "issued_at"
+      },
+      "name": {
+        "type": "string",
+        "_path": "name"
+      }
+    },
+    "resources.AdminTeacherResponse": {
+      "bio": {
+        "type": "string",
+        "_path": "bio"
+      },
+      "certificates": {
+        "_arrayOf": "resources.AdminCertificateResponse",
+        "_path": "certificates"
+      },
+      "city": {
+        "type": "string",
+        "_path": "city"
+      },
+      "created_at": {
+        "type": "string",
+        "_path": "created_at"
+      },
+      "district": {
+        "type": "string",
+        "_path": "district"
+      },
+      "email": {
+        "type": "string",
+        "_path": "email"
+      },
+      "id": {
+        "type": "integer",
+        "_path": "id"
+      },
+      "is_active": {
+        "type": "boolean",
+        "_path": "is_active"
+      },
+      "name": {
+        "type": "string",
+        "_path": "name"
+      },
+      "phone": {
+        "type": "string",
+        "_path": "phone"
+      },
+      "skills": {
+        "_arrayOf": "resources.AdminTeacherSkillResponse",
+        "_path": "skills"
+      }
+    },
+    "resources.AdminTeacherSkillResponse": {
+      "category": {
+        "type": "string",
+        "_path": "category"
+      },
+      "id": {
+        "type": "integer",
+        "_path": "id"
+      },
+      "level": {
+        "type": "string",
+        "_path": "level"
+      },
+      "skill_name": {
+        "type": "string",
+        "_path": "skill_name"
+      }
+    },
+    "resources.CenterMembershipResource": {
+      "center_id": {
+        "type": "integer",
+        "_path": "center_id"
+      },
+      "center_name": {
+        "type": "string",
+        "_path": "center_name"
+      },
+      "created_at": {
+        "type": "string",
+        "_path": "created_at"
+      },
+      "id": {
+        "type": "integer",
+        "_path": "id"
+      },
+      "status": {
+        "type": "string",
+        "_path": "status"
+      }
+    },
+    "resources.CenterResponse": {
+      "created_at": {
+        "type": "string",
+        "_path": "created_at"
+      },
+      "id": {
+        "type": "integer",
+        "_path": "id"
+      },
+      "name": {
+        "type": "string",
+        "_path": "name"
+      },
+      "plan_level": {
+        "type": "string",
+        "_path": "plan_level"
+      },
+      "settings": {
+        "_ref": "resources.CenterSettings",
+        "_path": "settings"
+      }
+    },
+    "resources.CenterSettings": {
+      "allow_public_register": {
+        "type": "boolean",
+        "_path": "allow_public_register"
+      },
+      "default_language": {
+        "type": "string",
+        "_path": "default_language"
+      },
+      "exception_lead_days": {
+        "type": "integer",
+        "_path": "exception_lead_days"
+      }
+    },
+    "resources.CourseResponse": {
+      "center_id": {
+        "type": "integer",
+        "_path": "center_id"
+      },
+      "color_hex": {
+        "type": "string",
+        "_path": "color_hex"
+      },
+      "created_at": {
+        "type": "string",
+        "_path": "created_at"
+      },
+      "default_duration": {
+        "type": "integer",
+        "_path": "default_duration"
+      },
+      "id": {
+        "type": "integer",
+        "_path": "id"
+      },
+      "is_active": {
+        "type": "boolean",
+        "_path": "is_active"
+      },
+      "name": {
+        "type": "string",
+        "_path": "name"
+      },
+      "room_buffer_min": {
+        "type": "integer",
+        "_path": "room_buffer_min"
+      },
+      "teacher_buffer_min": {
+        "type": "integer",
+        "_path": "teacher_buffer_min"
+      }
+    },
+    "resources.GeoCityResource": {
+      "districts": {
+        "_arrayOf": "resources.GeoDistrictResource",
+        "_path": "districts"
+      },
+      "id": {
+        "type": "integer",
+        "_path": "id"
+      },
+      "name": {
+        "type": "string",
+        "_path": "name"
+      }
+    },
+    "resources.GeoDistrictResource": {
+      "city_id": {
+        "type": "integer",
+        "_path": "city_id"
+      },
+      "id": {
+        "type": "integer",
+        "_path": "id"
+      },
+      "name": {
+        "type": "string",
+        "_path": "name"
+      }
+    },
+    "resources.HashtagResource": {
+      "id": {
+        "type": "integer",
+        "_path": "id"
+      },
+      "name": {
+        "type": "string",
+        "_path": "name"
+      },
+      "usage_count": {
+        "type": "integer",
+        "_path": "usage_count"
+      }
+    },
+    "resources.InvitationResponse": {
+      "center_id": {
+        "type": "integer",
+        "_path": "center_id"
+      },
+      "center_name": {
+        "type": "string",
+        "_path": "center_name"
+      },
+      "created_at": {
+        "type": "string",
+        "_path": "created_at"
+      },
+      "expires_at": {
+        "type": "string",
+        "_path": "expires_at"
+      },
+      "id": {
+        "type": "integer",
+        "_path": "id"
+      },
+      "invite_type": {
+        "type": "string",
+        "_path": "invite_type"
+      },
+      "message": {
+        "type": "string",
+        "_path": "message"
+      },
+      "responded_at": {
+        "type": "string",
+        "_path": "responded_at"
+      },
+      "status": {
+        "type": "string",
+        "_path": "status"
+      }
+    },
+    "resources.PersonalHashtag": {
+      "hashtag_id": {
+        "type": "integer",
+        "_path": "hashtag_id"
+      },
+      "name": {
+        "type": "string",
+        "_path": "name"
+      },
+      "sort_order": {
+        "type": "integer",
+        "_path": "sort_order"
+      }
+    },
+    "resources.PublicInvitationInfo": {
+      "center_id": {
+        "type": "integer",
+        "_path": "center_id"
+      },
+      "center_name": {
+        "type": "string",
+        "_path": "center_name"
+      },
+      "expires_at": {
+        "type": "string",
+        "_path": "expires_at"
+      },
+      "id": {
+        "type": "integer",
+        "_path": "id"
+      },
+      "message": {
+        "type": "string",
+        "_path": "message"
+      },
+      "role": {
+        "type": "string",
+        "_path": "role"
+      },
+      "status": {
+        "type": "string",
+        "_path": "status"
+      }
+    },
+    "resources.RoomResponse": {
+      "capacity": {
+        "type": "integer",
+        "_path": "capacity"
+      },
+      "center_id": {
+        "type": "integer",
+        "_path": "center_id"
+      },
+      "created_at": {
+        "type": "string",
+        "_path": "created_at"
+      },
+      "id": {
+        "type": "integer",
+        "_path": "id"
+      },
+      "is_active": {
+        "type": "boolean",
+        "_path": "is_active"
+      },
+      "name": {
+        "type": "string",
+        "_path": "name"
+      }
+    },
+    "resources.SessionNoteResource": {
+      "content": {
+        "type": "string",
+        "_path": "content"
+      },
+      "id": {
+        "type": "integer",
+        "_path": "id"
+      },
+      "prep_note": {
+        "type": "string",
+        "_path": "prep_note"
+      },
+      "rule_id": {
+        "type": "integer",
+        "_path": "rule_id"
+      },
+      "session_date": {
+        "type": "string",
+        "_path": "session_date"
+      },
+      "updated_at": {
+        "type": "string",
+        "_path": "updated_at"
+      }
+    },
+    "resources.TeacherNoteResponse": {
+      "created_at": {
+        "type": "string",
+        "_path": "created_at"
+      },
+      "id": {
+        "type": "integer",
+        "_path": "id"
+      },
+      "internal_note": {
+        "type": "string",
+        "_path": "internal_note"
+      },
+      "rating": {
+        "type": "integer",
+        "_path": "rating"
+      },
+      "teacher_id": {
+        "type": "integer",
+        "_path": "teacher_id"
+      },
+      "updated_at": {
+        "type": "string",
+        "_path": "updated_at"
+      }
+    },
+    "resources.TeacherProfileResource": {
+      "bio": {
+        "type": "string",
+        "_path": "bio"
+      },
+      "city": {
+        "type": "string",
+        "_path": "city"
+      },
+      "district": {
+        "type": "string",
+        "_path": "district"
+      },
+      "email": {
+        "type": "string",
+        "_path": "email"
+      },
+      "id": {
+        "type": "integer",
+        "_path": "id"
+      },
+      "is_open_to_hiring": {
+        "type": "boolean",
+        "_path": "is_open_to_hiring"
+      },
+      "line_user_id": {
+        "type": "string",
+        "_path": "line_user_id"
+      },
+      "name": {
+        "type": "string",
+        "_path": "name"
+      },
+      "personal_hashtags": {
+        "_arrayOf": "resources.PersonalHashtag",
+        "_path": "personal_hashtags"
+      },
+      "public_contact_info": {
+        "type": "string",
+        "_path": "public_contact_info"
+      }
+    },
+    "services.AdminListItem": {
+      "created_at": {
+        "type": "string",
+        "_path": "created_at"
+      },
+      "email": {
+        "type": "string",
+        "_path": "email"
+      },
+      "id": {
+        "type": "integer",
+        "_path": "id"
+      },
+      "line_bound_at": {
+        "type": "string",
+        "_path": "line_bound_at"
+      },
+      "line_notify_enabled": {
+        "type": "boolean",
+        "_path": "line_notify_enabled"
+      },
+      "line_user_id": {
+        "type": "string",
+        "_path": "line_user_id"
+      },
+      "name": {
+        "type": "string",
+        "_path": "name"
+      },
+      "role": {
+        "type": "string",
+        "_path": "role"
+      },
+      "status": {
+        "type": "string",
+        "_path": "status"
+      }
+    },
+    "services.BufferCheckResult": {
+      "conflicts": {
+        "_arrayOf": "services.ValidationConflict",
+        "_path": "conflicts"
+      },
+      "valid": {
+        "type": "boolean",
+        "_path": "valid"
+      }
+    },
+    "services.BulkCreateHolidaysRequest": {
+      "holidays": {
+        "_arrayOf": "services.HolidayItem",
+        "_path": "holidays"
+      }
+    },
+    "services.BulkCreateHolidaysResponse": {
+      "holidays": {
+        "_arrayOf": "models.CenterHoliday",
+        "_path": "holidays"
+      },
+      "total_created": {
+        "type": "integer",
+        "_path": "total_created"
+      },
+      "total_requested": {
+        "type": "integer",
+        "_path": "total_requested"
+      },
+      "total_skipped": {
+        "type": "integer",
+        "_path": "total_skipped"
+      }
+    },
+    "services.ChangePasswordRequest": {
+      "new_password": {
+        "type": "string",
+        "_path": "new_password",
+        "required": true
+      },
+      "old_password": {
+        "type": "string",
+        "_path": "old_password",
+        "required": true
+      }
+    },
+    "services.CreateCourseRequest": {
+      "color_hex": {
+        "type": "string",
+        "_path": "color_hex",
+        "required": true
+      },
+      "duration": {
+        "type": "integer",
+        "_path": "duration",
+        "required": true
+      },
+      "name": {
+        "type": "string",
+        "_path": "name",
+        "required": true
+      },
+      "room_buffer_min": {
+        "type": "integer",
+        "_path": "room_buffer_min",
+        "required": false
+      },
+      "teacher_buffer_min": {
+        "type": "integer",
+        "_path": "teacher_buffer_min",
+        "required": false
+      }
+    },
+    "services.CreateHolidayRequest": {
+      "date": {
+        "type": "string",
+        "_path": "date",
+        "required": true
+      },
+      "name": {
+        "type": "string",
+        "_path": "name",
+        "required": true
+      }
+    },
+    "services.CreateRoomRequest": {
+      "capacity": {
+        "type": "integer",
+        "_path": "capacity",
+        "required": true
+      },
+      "name": {
+        "type": "string",
+        "_path": "name",
+        "required": true
+      }
+    },
+    "services.ExpandedException": {
+      "id": {
+        "type": "integer",
+        "_path": "id"
+      },
+      "new_end_at": {
+        "type": "string",
+        "_path": "new_end_at"
+      },
+      "new_start_at": {
+        "type": "string",
+        "_path": "new_start_at"
+      },
+      "new_teacher_id": {
+        "type": "integer",
+        "_path": "new_teacher_id"
+      },
+      "status": {
+        "type": "string",
+        "_path": "status"
+      },
+      "type": {
+        "type": "string",
+        "_path": "type"
+      }
+    },
+    "services.ExpandedSchedule": {
+      "date": {
+        "type": "string",
+        "_path": "date"
+      },
+      "effective_range": {
+        "_ref": "models.DateRange",
+        "_path": "effective_range"
+      },
+      "end_time": {
+        "type": "string",
+        "_path": "end_time"
+      },
+      "exception_info": {
+        "_ref": "services.ExpandedException",
+        "_path": "exception_info"
+      },
+      "has_exception": {
+        "type": "boolean",
+        "_path": "has_exception"
+      },
+      "is_cross_day_part": {
+        "type": "boolean",
+        "_path": "is_cross_day_part"
+      },
+      "is_holiday": {
+        "type": "boolean",
+        "_path": "is_holiday"
+      },
+      "offering_id": {
+        "type": "integer",
+        "_path": "offering_id"
+      },
+      "offering_name": {
+        "type": "string",
+        "_path": "offering_name"
+      },
+      "room_id": {
+        "type": "integer",
+        "_path": "room_id"
+      },
+      "room_name": {
+        "type": "string",
+        "_path": "room_name"
+      },
+      "rule_id": {
+        "type": "integer",
+        "_path": "rule_id"
+      },
+      "start_time": {
+        "type": "string",
+        "_path": "start_time"
+      },
+      "teacher_id": {
+        "type": "integer",
+        "_path": "teacher_id"
+      },
+      "teacher_name": {
+        "type": "string",
+        "_path": "teacher_name"
+      }
+    },
+    "services.FullValidationResult": {
+      "conflicts": {
+        "_arrayOf": "services.ValidationConflict",
+        "_path": "conflicts"
+      },
+      "valid": {
+        "type": "boolean",
+        "_path": "valid"
+      }
+    },
+    "services.GenerateInvitationLinkRequest": {
+      "adminID": {
+        "type": "integer",
+        "_path": "adminID"
+      },
+      "centerID": {
+        "type": "integer",
+        "_path": "centerID"
+      },
+      "email": {
+        "type": "string",
+        "_path": "email"
+      },
+      "message": {
+        "type": "string",
+        "_path": "message"
+      },
+      "role": {
+        "type": "string",
+        "_path": "role"
+      }
+    },
+    "services.HolidayItem": {
+      "date": {
+        "type": "string",
+        "_path": "date",
+        "required": true
+      },
+      "name": {
+        "type": "string",
+        "_path": "name",
+        "required": true
+      }
+    },
+    "services.IdentInfo": {
+      "center_id": {
+        "type": "integer",
+        "_path": "center_id"
+      },
+      "email": {
+        "type": "string",
+        "_path": "email"
+      },
+      "id": {
+        "type": "integer",
+        "_path": "id"
+      },
+      "line_user_id": {
+        "type": "string",
+        "_path": "line_user_id"
+      },
+      "name": {
+        "type": "string",
+        "_path": "name"
+      },
+      "user_type": {
+        "type": "string",
+        "_path": "user_type"
+      }
+    },
+    "services.InvitationLinkResponse": {
+      "center_id": {
+        "type": "integer",
+        "_path": "center_id"
+      },
+      "center_name": {
+        "type": "string",
+        "_path": "center_name"
+      },
+      "created_at": {
+        "type": "string",
+        "_path": "created_at"
+      },
+      "email": {
+        "type": "string",
+        "_path": "email"
+      },
+      "expires_at": {
+        "type": "string",
+        "_path": "expires_at"
+      },
+      "id": {
+        "type": "integer",
+        "_path": "id"
+      },
+      "invite_link": {
+        "type": "string",
+        "_path": "invite_link"
+      },
+      "message": {
+        "type": "string",
+        "_path": "message"
+      },
+      "role": {
+        "type": "string",
+        "_path": "role"
+      },
+      "status": {
+        "type": "string",
+        "_path": "status"
+      },
+      "token": {
+        "type": "string",
+        "_path": "token"
+      }
+    },
+    "services.InviteTeacherRequest": {
+      "adminID": {
+        "type": "integer",
+        "_path": "adminID"
+      },
+      "centerID": {
+        "type": "integer",
+        "_path": "centerID"
+      },
+      "email": {
+        "type": "string",
+        "_path": "email"
+      },
+      "message": {
+        "type": "string",
+        "_path": "message"
+      },
+      "role": {
+        "type": "string",
+        "_path": "role"
+      }
+    },
+    "services.ListOfferingsOutput": {
+      "offerings": {
+        "_arrayOf": "models.Offering",
+        "_path": "offerings"
+      },
+      "pagination": {
+        "_ref": "global.Pagination",
+        "_path": "pagination"
+      }
+    },
+    "services.LoginResponse": {
+      "token": {
+        "type": "string",
+        "_path": "token"
+      },
+      "user": {
+        "_ref": "services.IdentInfo",
+        "_path": "user"
+      }
+    },
+    "services.OverlapCheckResult": {
+      "conflicts": {
+        "_arrayOf": "services.ValidationConflict",
+        "_path": "conflicts"
+      },
+      "valid": {
+        "type": "boolean",
+        "_path": "valid"
+      }
+    },
+    "services.PhaseTransition": {
+      "date": {
+        "type": "string",
+        "_path": "date"
+      },
+      "has_gap": {
+        "type": "boolean",
+        "_path": "has_gap"
+      },
+      "next_end_time": {
+        "type": "string",
+        "_path": "next_end_time"
+      },
+      "next_room_id": {
+        "type": "integer",
+        "_path": "next_room_id"
+      },
+      "next_rule_id": {
+        "type": "integer",
+        "_path": "next_rule_id"
+      },
+      "next_start_time": {
+        "type": "string",
+        "_path": "next_start_time"
+      },
+      "next_teacher_id": {
+        "type": "integer",
+        "_path": "next_teacher_id"
+      },
+      "prev_end_time": {
+        "type": "string",
+        "_path": "prev_end_time"
+      },
+      "prev_room_id": {
+        "type": "integer",
+        "_path": "prev_room_id"
+      },
+      "prev_rule_id": {
+        "type": "integer",
+        "_path": "prev_rule_id"
+      },
+      "prev_start_time": {
+        "type": "string",
+        "_path": "prev_start_time"
+      },
+      "prev_teacher_id": {
+        "type": "integer",
+        "_path": "prev_teacher_id"
+      }
+    },
+    "services.RecurrenceEditMode": {},
+    "services.RecurrenceEditRequest": {
+      "edit_date": {
+        "type": "string",
+        "_path": "edit_date",
+        "required": true
+      },
+      "mode": {
+        "_path": "mode",
+        "required": true
+      },
+      "new_end_time": {
+        "type": "string",
+        "_path": "new_end_time",
+        "required": false
+      },
+      "new_room_id": {
+        "type": "integer",
+        "_path": "new_room_id",
+        "required": false
+      },
+      "new_start_time": {
+        "type": "string",
+        "_path": "new_start_time",
+        "required": false
+      },
+      "new_teacher_id": {
+        "type": "integer",
+        "_path": "new_teacher_id",
+        "required": false
+      },
+      "reason": {
+        "type": "string",
+        "_path": "reason",
+        "required": false
+      },
+      "rule_id": {
+        "type": "integer",
+        "_path": "rule_id",
+        "required": true
+      }
+    },
+    "services.RespondToInvitationRequest": {
+      "invitationID": {
+        "type": "integer",
+        "_path": "invitationID"
+      },
+      "response": {
+        "type": "string",
+        "_path": "response"
+      },
+      "teacherID": {
+        "type": "integer",
+        "_path": "teacherID"
+      }
+    },
+    "services.RuleLockStatus": {
+      "days_remaining": {
+        "type": "integer",
+        "_path": "days_remaining"
+      },
+      "deadline": {
+        "type": "string",
+        "_path": "deadline"
+      },
+      "is_locked": {
+        "type": "boolean",
+        "_path": "is_locked"
+      },
+      "lock_at": {
+        "type": "string",
+        "_path": "lock_at"
+      },
+      "lock_reason": {
+        "type": "string",
+        "_path": "lock_reason"
+      }
+    },
+    "services.SubscriptionInfo": {
+      "center_id": {
+        "type": "integer",
+        "_path": "center_id"
+      },
+      "center_name": {
+        "type": "string",
+        "_path": "center_name"
+      },
+      "created_at": {
+        "type": "string",
+        "_path": "created_at"
+      },
+      "expires_at": {
+        "type": "string",
+        "_path": "expires_at"
+      },
+      "teacher_id": {
+        "type": "integer",
+        "_path": "teacher_id"
+      },
+      "teacher_name": {
+        "type": "string",
+        "_path": "teacher_name"
+      },
+      "token": {
+        "type": "string",
+        "_path": "token"
+      },
+      "url": {
+        "type": "string",
+        "_path": "url"
+      }
+    },
+    "services.TeacherScheduleItem": {
+      "center_id": {
+        "type": "integer",
+        "_path": "center_id"
+      },
+      "center_name": {
+        "type": "string",
+        "_path": "center_name"
+      },
+      "date": {
+        "type": "string",
+        "_path": "date"
+      },
+      "end_time": {
+        "type": "string",
+        "_path": "end_time"
+      },
+      "id": {
+        "type": "string",
+        "_path": "id"
+      },
+      "is_cross_day_part": {
+        "type": "boolean",
+        "_path": "is_cross_day_part"
+      },
+      "room_id": {
+        "type": "integer",
+        "_path": "room_id"
+      },
+      "rule_id": {
+        "type": "integer",
+        "_path": "rule_id"
+      },
+      "start_time": {
+        "type": "string",
+        "_path": "start_time"
+      },
+      "status": {
+        "type": "string",
+        "_path": "status"
+      },
+      "teacher_id": {
+        "type": "integer",
+        "_path": "teacher_id"
+      },
+      "title": {
+        "type": "string",
+        "_path": "title"
+      },
+      "type": {
+        "type": "string",
+        "_path": "type"
+      }
+    },
+    "services.TodayOffering": {
+      "id": {
+        "type": "integer",
+        "_path": "id"
+      },
+      "name": {
+        "type": "string",
+        "_path": "name"
+      }
+    },
+    "services.TodayRoom": {
+      "id": {
+        "type": "integer",
+        "_path": "id"
+      },
+      "name": {
+        "type": "string",
+        "_path": "name"
+      }
+    },
+    "services.TodaySession": {
+      "end_time": {
+        "type": "string",
+        "_path": "end_time"
+      },
+      "id": {
+        "type": "integer",
+        "_path": "id"
+      },
+      "offering": {
+        "_ref": "services.TodayOffering",
+        "_path": "offering"
+      },
+      "room": {
+        "_ref": "services.TodayRoom",
+        "_path": "room"
+      },
+      "start_time": {
+        "type": "string",
+        "_path": "start_time"
+      },
+      "status": {
+        "type": "string",
+        "_path": "status"
+      },
+      "teacher": {
+        "_ref": "services.TodayTeacher",
+        "_path": "teacher"
+      }
+    },
+    "services.TodaySummary": {
+      "changes_count": {
+        "type": "integer",
+        "_path": "changes_count"
+      },
+      "completed_sessions": {
+        "type": "integer",
+        "_path": "completed_sessions"
+      },
+      "has_schedule_changes": {
+        "type": "boolean",
+        "_path": "has_schedule_changes"
+      },
+      "in_progress_sessions": {
+        "type": "integer",
+        "_path": "in_progress_sessions"
+      },
+      "in_progress_teacher_names": {
+        "_array": {},
+        "_path": "in_progress_teacher_names"
+      },
+      "pending_exceptions": {
+        "type": "integer",
+        "_path": "pending_exceptions"
+      },
+      "sessions": {
+        "_arrayOf": "services.TodaySession",
+        "_path": "sessions"
+      },
+      "total_sessions": {
+        "type": "integer",
+        "_path": "total_sessions"
+      },
+      "upcoming_sessions": {
+        "type": "integer",
+        "_path": "upcoming_sessions"
+      }
+    },
+    "services.TodayTeacher": {
+      "id": {
+        "type": "integer",
+        "_path": "id"
+      },
+      "name": {
+        "type": "string",
+        "_path": "name"
+      }
+    },
+    "services.ToggleActiveRequest": {
+      "is_active": {
+        "type": "boolean",
+        "_path": "is_active"
+      }
+    },
+    "services.UpdateCourseRequest": {
+      "color_hex": {
+        "type": "string",
+        "_path": "color_hex",
+        "required": true
+      },
+      "duration": {
+        "type": "integer",
+        "_path": "duration",
+        "required": true
+      },
+      "name": {
+        "type": "string",
+        "_path": "name",
+        "required": true
+      },
+      "room_buffer_min": {
+        "type": "integer",
+        "_path": "room_buffer_min",
+        "required": false
+      },
+      "teacher_buffer_min": {
+        "type": "integer",
+        "_path": "teacher_buffer_min",
+        "required": false
+      }
+    },
+    "services.UpdateRoomRequest": {
+      "capacity": {
+        "type": "integer",
+        "_path": "capacity",
+        "required": true
+      },
+      "name": {
+        "type": "string",
+        "_path": "name",
+        "required": true
+      }
+    },
+    "services.ValidationConflict": {
+      "can_override": {
+        "type": "boolean",
+        "_path": "can_override"
+      },
+      "conflict_source": {
+        "type": "string",
+        "_path": "conflict_source"
+      },
+      "conflict_source_id": {
+        "type": "integer",
+        "_path": "conflict_source_id"
+      },
+      "details": {
+        "type": "string",
+        "_path": "details"
+      },
+      "diff_minutes": {
+        "type": "integer",
+        "_path": "diff_minutes"
+      },
+      "message": {
+        "type": "string",
+        "_path": "message"
+      },
+      "require_approval": {
+        "type": "boolean",
+        "_path": "require_approval"
+      },
+      "required_minutes": {
+        "type": "integer",
+        "_path": "required_minutes"
+      },
+      "type": {
+        "type": "string",
+        "_path": "type"
+      }
+    }
+  }
+}

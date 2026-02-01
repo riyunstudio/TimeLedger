@@ -203,10 +203,15 @@
 import { formatDateTime } from '~/composables/useTaiwanTime'
 import type { ScheduleException } from '~/types'
 
- definePageMeta({
-   middleware: 'auth-teacher',
-   layout: 'default',
- })
+// 明確導入組件（確保 Nuxt 可以解析）
+import ExceptionModal from '~/components/Scheduling/ExceptionModal.vue'
+import NotificationDropdown from '~/components/Navigation/NotificationDropdown.vue'
+import TeacherSidebar from '~/components/Teacher/TeacherSidebar.vue'
+
+definePageMeta({
+  auth: 'TEACHER',
+  layout: 'default',
+})
 
  const route = useRoute()
  const router = useRouter()

@@ -177,6 +177,9 @@ func (s *TeacherProfileService) updatePersonalHashtagsWithTx(tx *gorm.DB, ctx co
 		return fmt.Errorf("failed to delete personal hashtags: %w", err)
 	}
 
+	// 創建交易感知的 HashtagRepository，使用交易 DB 連線
+	hashtagTxRepo := repositories.NewTransactionRepo[models.Hashtag](ctx, tx, "hashtags")
+
 	sortOrder := 0
 	for _, tagName := range tags {
 		// 確保 # 符號存在
@@ -185,18 +188,21 @@ func (s *TeacherProfileService) updatePersonalHashtagsWithTx(tx *gorm.DB, ctx co
 			name = "#" + name
 		}
 
-		// 查找或創建標籤
+		// 查找標籤
 		hashtag, err := s.hashtagRepo.GetByName(ctx, name)
 		if err != nil {
-			// 創建新標籤
+			// 標籤不存在，創建新標籤
 			hashtagModel := models.Hashtag{Name: name, UsageCount: 1}
-			_, err := s.hashtagRepo.Create(ctx, hashtagModel)
-			if err == nil {
-				hashtag = &hashtagModel
+			createdHashtag, err := hashtagTxRepo.Create(ctx, hashtagModel)
+			if err != nil {
+				return fmt.Errorf("failed to create hashtag '%s': %w", name, err)
 			}
+			hashtag = &createdHashtag
 		} else {
-			// 更新使用次數
-			s.hashtagRepo.IncrementUsage(ctx, name)
+			// 標籤存在，更新使用次數（使用交易連線）
+			if err := tx.WithContext(ctx).Model(&models.Hashtag{}).Where("id = ?", hashtag.ID).UpdateColumn("usage_count", "usage_count + 1").Error; err != nil {
+				return fmt.Errorf("failed to increment hashtag usage: %w", err)
+			}
 		}
 
 		// 創建關聯
@@ -215,9 +221,11 @@ func (s *TeacherProfileService) updatePersonalHashtagsWithTx(tx *gorm.DB, ctx co
 }
 
 // updatePersonalHashtags 更新個人標籤
-func (s *TeacherProfileService) updatePersonalHashtags(ctx context.Context, teacherID uint, tags []string) {
+func (s *TeacherProfileService) updatePersonalHashtags(ctx context.Context, teacherID uint, tags []string) error {
 	// 刪除現有標籤
-	s.teacherRepo.DeleteAllPersonalHashtags(ctx, teacherID)
+	if err := s.teacherRepo.DeleteAllPersonalHashtags(ctx, teacherID); err != nil {
+		return fmt.Errorf("failed to delete personal hashtags: %w", err)
+	}
 
 	sortOrder := 0
 	for _, tagName := range tags {
@@ -227,24 +235,31 @@ func (s *TeacherProfileService) updatePersonalHashtags(ctx context.Context, teac
 			name = "#" + name
 		}
 
-		// 查找或創建標籤
+		// 查找標籤
 		hashtag, err := s.hashtagRepo.GetByName(ctx, name)
 		if err != nil {
-			// 創建新標籤
+			// 標籤不存在，創建新標籤
 			hashtagModel := models.Hashtag{Name: name, UsageCount: 1}
-			_, err := s.hashtagRepo.Create(ctx, hashtagModel)
-			if err == nil {
-				hashtag = &hashtagModel
+			createdHashtag, err := s.hashtagRepo.Create(ctx, hashtagModel)
+			if err != nil {
+				return fmt.Errorf("failed to create hashtag '%s': %w", name, err)
 			}
+			hashtag = &createdHashtag
 		} else {
-			// 更新使用次數
-			s.hashtagRepo.IncrementUsage(ctx, name)
+			// 標籤存在，更新使用次數
+			if err := s.hashtagRepo.IncrementUsage(ctx, name); err != nil {
+				return fmt.Errorf("failed to increment hashtag usage: %w", err)
+			}
 		}
 
 		// 創建關聯
-		s.teacherRepo.CreatePersonalHashtag(ctx, teacherID, hashtag.ID, sortOrder)
+		if err := s.teacherRepo.CreatePersonalHashtag(ctx, teacherID, hashtag.ID, sortOrder); err != nil {
+			return fmt.Errorf("failed to create personal hashtag: %w", err)
+		}
 		sortOrder++
 	}
+
+	return nil
 }
 
 // GetCenters 取得老師已加入的中心列表
@@ -359,16 +374,20 @@ func (s *TeacherProfileService) UpdateSkill(ctx context.Context, skillID, teache
 
 	// 更新技能標籤
 	if len(req.Hashtags) > 0 {
-		s.updateSkillHashtags(ctx, skill.ID, req.Hashtags)
+		if err := s.updateSkillHashtags(ctx, skill.ID, req.Hashtags); err != nil {
+			return nil, s.app.Err.New(errInfos.SQL_ERROR), err
+		}
 	}
 
 	return &skill, nil, nil
 }
 
 // updateSkillHashtags 更新技能標籤
-func (s *TeacherProfileService) updateSkillHashtags(ctx context.Context, skillID uint, tags []string) {
+func (s *TeacherProfileService) updateSkillHashtags(ctx context.Context, skillID uint, tags []string) error {
 	// 刪除現有標籤
-	s.skillRepo.DeleteAllHashtags(ctx, skillID)
+	if err := s.skillRepo.DeleteAllHashtags(ctx, skillID); err != nil {
+		return fmt.Errorf("failed to delete skill hashtags: %w", err)
+	}
 
 	for _, tagName := range tags {
 		// 確保 # 符號存在
@@ -377,21 +396,30 @@ func (s *TeacherProfileService) updateSkillHashtags(ctx context.Context, skillID
 			name = "#" + name
 		}
 
-		// 查找或創建標籤
+		// 查找標籤
 		hashtag, err := s.hashtagRepo.GetByName(ctx, name)
 		if err != nil {
+			// 標籤不存在，創建新標籤
 			hashtagModel := models.Hashtag{Name: name, UsageCount: 1}
-			_, err := s.hashtagRepo.Create(ctx, hashtagModel)
-			if err == nil {
-				hashtag = &hashtagModel
+			createdHashtag, err := s.hashtagRepo.Create(ctx, hashtagModel)
+			if err != nil {
+				return fmt.Errorf("failed to create hashtag '%s': %w", name, err)
 			}
+			hashtag = &createdHashtag
 		} else {
-			s.hashtagRepo.IncrementUsage(ctx, name)
+			// 標籤存在，更新使用次數
+			if err := s.hashtagRepo.IncrementUsage(ctx, name); err != nil {
+				return fmt.Errorf("failed to increment hashtag usage: %w", err)
+			}
 		}
 
 		// 創建關聯
-		s.skillRepo.CreateHashtag(ctx, skillID, hashtag.ID)
+		if err := s.skillRepo.CreateHashtag(ctx, skillID, hashtag.ID); err != nil {
+			return fmt.Errorf("failed to create skill hashtag: %w", err)
+		}
 	}
+
+	return nil
 }
 
 // DeleteSkill 刪除老師技能

@@ -3,7 +3,7 @@
     <div class="glass-card w-full max-w-md max-h-[90vh] overflow-y-auto animate-spring" @click.stop>
       <div class="flex items-center justify-between p-4 border-b border-white/10 sticky top-0 bg-slate-900/95 backdrop-blur-sm z-10">
         <h3 class="text-lg font-semibold text-slate-100">
-          {{ offering ? '編輯待排課程' : '新增待排課程' }}
+          {{ offering ? $t('schedule.editOffering') : $t('schedule.addOffering') }}
         </h3>
         <button @click="emit('close')" class="p-2 rounded-lg hover:bg-white/10 transition-colors">
           <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -19,16 +19,16 @@
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
-          <span>載入中...</span>
+          <span>{{ $t('common.loading') }}</span>
         </div>
       </div>
 
       <!-- 表單 -->
       <form v-else @submit.prevent="handleSubmit" class="p-4 space-y-4">
         <div>
-          <label class="block text-slate-300 mb-2 font-medium text-sm">課程</label>
+          <label class="block text-slate-300 mb-2 font-medium text-sm">{{ $t('schedule.course') }}</label>
           <select v-model="form.course_id" class="input-field text-sm" required>
-            <option value="">請選擇課程</option>
+            <option value="">{{ $t('schedule.selectCourse') }}</option>
             <option v-for="course in courses" :key="course.id" :value="course.id">
               {{ course.name }}
             </option>
@@ -36,20 +36,20 @@
         </div>
 
         <div>
-          <label class="block text-slate-300 mb-2 font-medium text-sm">名稱（可選）</label>
+          <label class="block text-slate-300 mb-2 font-medium text-sm">{{ $t('schedule.offeringName') }}</label>
           <input
             v-model="form.name"
             type="text"
-            placeholder="例：週一鋼琴班"
+            :placeholder="$t('schedule.offeringNamePlaceholder')"
             class="input-field text-sm"
           />
-          <p class="text-xs text-slate-500 mt-1">留空將自動使用課程名稱</p>
+          <p class="text-xs text-slate-500 mt-1">{{ $t('schedule.offeringNameHelp') }}</p>
         </div>
 
         <div>
-          <label class="block text-slate-300 mb-2 font-medium text-sm">預設老師（可選）</label>
+          <label class="block text-slate-300 mb-2 font-medium text-sm">{{ $t('schedule.defaultTeacher') }}</label>
           <select v-model="form.default_teacher_id" class="input-field text-sm">
-            <option :value="null">未指定</option>
+            <option :value="null">{{ $t('common.none') }}</option>
             <option v-for="teacher in teachers" :key="teacher.id" :value="teacher.id">
               {{ teacher.name }}
             </option>
@@ -57,9 +57,9 @@
         </div>
 
         <div>
-          <label class="block text-slate-300 mb-2 font-medium text-sm">預設教室（可選）</label>
+          <label class="block text-slate-300 mb-2 font-medium text-sm">{{ $t('schedule.defaultRoom') }}</label>
           <select v-model="form.default_room_id" class="input-field text-sm">
-            <option :value="null">未指定</option>
+            <option :value="null">{{ $t('common.none') }}</option>
             <option v-for="room in rooms" :key="room.id" :value="room.id">
               {{ room.name }}
             </option>
@@ -74,7 +74,7 @@
             class="w-4 h-4 rounded bg-slate-800 border-slate-600 text-primary-500 focus:ring-primary-500"
           />
           <label for="allow_buffer_override" class="text-sm text-slate-300">
-            允許覆蓋緩衝時間
+            {{ $t('validation.bufferOverride') }}
           </label>
         </div>
 
@@ -84,14 +84,14 @@
             @click="emit('close')"
             class="flex-1 glass-btn py-2.5 rounded-xl font-medium text-sm"
           >
-            取消
+            {{ $t('common.cancel') }}
           </button>
           <button
             type="submit"
             :disabled="submitting"
             class="flex-1 btn-primary py-2.5 rounded-xl font-medium text-sm"
           >
-            {{ submitting ? '儲存中...' : '儲存' }}
+            {{ submitting ? $t('common.saving') : $t('common.save') }}
           </button>
         </div>
       </form>
@@ -101,6 +101,9 @@
 
 <script setup lang="ts">
 import { alertError } from '~/composables/useAlert'
+
+// 資源快取
+const { invalidate } = useResourceCache()
 
 const props = defineProps<{
   offering?: any
@@ -134,14 +137,14 @@ const fetchData = async () => {
     const centerId = getCenterId()
 
     const [coursesRes, teachersRes, roomsRes] = await Promise.all([
-      api.get<{ code: number; datas: any[] }>(`/admin/courses`),
-      api.get<{ code: number; datas: any[] }>('/teachers'),
-      api.get<{ code: number; datas: any[] }>(`/admin/rooms`)
+      api.get<any[]>(`/admin/courses`),
+      api.get<any[]>('/teachers'),
+      api.get<any[]>(`/admin/rooms`)
     ])
 
-    courses.value = coursesRes.datas || []
-    teachers.value = teachersRes.datas || []
-    rooms.value = roomsRes.datas || []
+    courses.value = coursesRes || []
+    teachers.value = teachersRes || []
+    rooms.value = roomsRes || []
 
     // 如果是編輯模式，載入現有資料
     if (props.offering) {
@@ -181,6 +184,8 @@ const handleSubmit = async () => {
       await api.post(`/admin/offerings`, data)
     }
 
+    // 清除待排課程快取，確保下次存取取得最新資料
+    invalidate('offerings')
     emit('saved')
     emit('close')
   } catch (error) {

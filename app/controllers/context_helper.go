@@ -325,6 +325,15 @@ func (h *ContextHelper) ErrorWithCode(status int, code errInfos.ErrCode, message
 
 // ErrorWithInfo 回傳使用 errInfos.Res 的錯誤
 func (h *ContextHelper) ErrorWithInfo(errInfo *errInfos.Res) {
+	// 檢查 errInfo 是否為 nil
+	if errInfo == nil {
+		// PANIC: 追蹤問題根源
+		panic(fmt.Sprintf("FATAL: ErrorWithInfo received nil errInfo! \nPath: %s \nMethod: %s \nStack: %s",
+			h.ctx.Request.URL.Path,
+			h.ctx.Request.Method,
+			string(h.ctx.Request.URL.RawQuery)))
+	}
+
 	// 根據錯誤碼決定 HTTP 狀態碼
 	status := http.StatusInternalServerError
 	switch errInfo.Code {

@@ -23,15 +23,18 @@ const (
 
 // CacheService 快取服務
 type CacheService struct {
-	app   *app.App
-	redis *redis.Client
+	BaseService
+	app    *app.App
+	redis  *redis.Client
 }
 
 // NewCacheService 建立 Cache Service
 func NewCacheService(app *app.App) *CacheService {
+	baseSvc := NewBaseService(app, "CacheService")
 	return &CacheService{
-		app:   app,
-		redis: app.Redis.DB0,
+		BaseService: *baseSvc,
+		app:         app,
+		redis:       app.Redis.DB0,
 	}
 }
 
@@ -112,13 +115,21 @@ func (s *CacheService) Delete(ctx context.Context, category string, keys ...stri
 
 // DeleteByPattern 依 Pattern 刪除快取
 func (s *CacheService) DeleteByPattern(ctx context.Context, category string, pattern string) error {
-	key := s.buildKey(category, pattern)
-	keys, err := s.redis.Keys(ctx, key).Result()
+	// 組合前綴和 pattern，使用通配符匹配
+	fullPattern := fmt.Sprintf("%s:%s:%s", CacheKeyPrefix, category, pattern)
+	s.Logger.Debug("deleting cache by pattern", "pattern", fullPattern)
+	keys, err := s.redis.Keys(ctx, fullPattern).Result()
 	if err != nil {
+		s.Logger.Error("failed to get keys for deletion", "error", err)
 		return err
 	}
+	s.Logger.Debug("found keys to delete", "keys", keys, "count", len(keys))
 	if len(keys) > 0 {
-		return s.redis.Del(ctx, keys...).Err()
+		delErr := s.redis.Del(ctx, keys...).Err()
+		if delErr != nil {
+			s.Logger.Error("failed to delete keys", "error", delErr, "keys", keys)
+		}
+		return delErr
 	}
 	return nil
 }
@@ -372,17 +383,27 @@ type CenterBasicInfo struct {
 func (s *CacheService) GetCourseList(ctx context.Context, centerID uint) ([]CourseCacheItem, error) {
 	var courses []CourseCacheItem
 	err := s.GetJSON(ctx, &courses, CacheCategoryCourse, fmt.Sprintf("list:%d", centerID))
-	return courses, err
+	
+	// 快取不存在或解析失敗時，返回空切片而非錯誤
+	if err != nil {
+		s.Logger.Debug("course cache miss or parse error", "center_id", centerID, "error", err)
+		return []CourseCacheItem{}, nil
+	}
+	
+	return courses, nil
 }
 
 // SetCourseList 設定課程列表（快取）
 func (s *CacheService) SetCourseList(ctx context.Context, centerID uint, courses []CourseCacheItem) error {
+	s.Logger.Debug("caching course list", "center_id", centerID, "count", len(courses))
 	return s.SetWithTTL(ctx, CacheDurationMedium, CacheCategoryCourse, courses, fmt.Sprintf("list:%d", centerID))
 }
 
 // InvalidateCourseList 使課程列表快取失效
 func (s *CacheService) InvalidateCourseList(ctx context.Context, centerID uint) error {
-	return s.DeleteByPattern(ctx, CacheCategoryCourse, fmt.Sprintf("%d:*", centerID))
+	pattern := fmt.Sprintf("list:%d", centerID)
+	s.Logger.Debug("invalidating course list cache", "center_id", centerID, "pattern", pattern)
+	return s.DeleteByPattern(ctx, CacheCategoryCourse, pattern)
 }
 
 // CourseCacheItem 課程快取項目
@@ -409,12 +430,15 @@ func (s *CacheService) GetRoomList(ctx context.Context, centerID uint) ([]RoomCa
 
 // SetRoomList 設定教室列表（快取）
 func (s *CacheService) SetRoomList(ctx context.Context, centerID uint, rooms []RoomCacheItem) error {
+	s.Logger.Debug("caching room list", "center_id", centerID, "count", len(rooms))
 	return s.SetWithTTL(ctx, CacheDurationMedium, CacheCategoryRoom, rooms, fmt.Sprintf("list:%d", centerID))
 }
 
 // InvalidateRoomList 使教室列表快取失效
 func (s *CacheService) InvalidateRoomList(ctx context.Context, centerID uint) error {
-	return s.DeleteByPattern(ctx, CacheCategoryRoom, fmt.Sprintf("%d:*", centerID))
+	pattern := fmt.Sprintf("list:%d", centerID)
+	s.Logger.Debug("invalidating room list cache", "center_id", centerID, "pattern", pattern)
+	return s.DeleteByPattern(ctx, CacheCategoryRoom, pattern)
 }
 
 // RoomCacheItem 教室快取項目

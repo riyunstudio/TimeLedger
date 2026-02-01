@@ -16,35 +16,35 @@
         <div class="space-y-3">
           <div>
             <h4 class="text-sm font-medium text-slate-300 mb-1">課程</h4>
-            <p class="text-slate-100 text-sm sm:text-base">{{ props.exception?.offering_name }}</p>
+            <p class="text-slate-100 text-sm sm:text-base">{{ props.exception?.rule?.name || '-' }}</p>
           </div>
 
           <div>
             <h4 class="text-sm font-medium text-slate-300 mb-1">老師</h4>
-            <p class="text-slate-100 text-sm sm:text-base">{{ props.exception?.teacher_name }}</p>
+            <p class="text-slate-100 text-sm sm:text-base">{{ props.exception?.rule?.teacher?.name || '-' }}</p>
           </div>
 
           <div>
             <h4 class="text-sm font-medium text-slate-300 mb-1">申請類型</h4>
             <span
               class="px-3 py-1 rounded-full text-sm font-medium"
-              :class="getTypeClass(props.exception?.type)"
+              :class="getTypeClass(props.exception?.exception_type)"
             >
-              {{ getTypeText(props.exception?.type) }}
+              {{ getTypeText(props.exception?.exception_type) }}
             </span>
           </div>
 
-          <div v-if="props.exception?.type === 'RESCHEDULE'" class="space-y-2">
+          <div v-if="props.exception?.exception_type === 'RESCHEDULE'" class="space-y-2">
             <div class="flex items-center gap-2">
               <span class="text-slate-400 text-sm">原時間：</span>
               <span class="text-critical-500 text-sm line-through">{{ getOriginalTimeText(props.exception) }}</span>
             </div>
             <div class="flex items-center gap-2">
               <span class="text-slate-400 text-sm">新時間：</span>
-              <span class="text-success-500 text-sm">{{ props.exception?.new_time }}</span>
+              <span class="text-success-500 text-sm">{{ formatNewTime(props.exception) }}</span>
             </div>
             <div v-if="props.exception?.new_teacher_name" class="flex items-center gap-2">
-              <span class="text-slate-400 text-sm">代課老師：</span>
+              <span class="text-slate-400 text-sm">老師：</span>
               <span class="text-primary-500 text-sm">{{ props.exception?.new_teacher_name }}</span>
             </div>
           </div>
@@ -52,7 +52,7 @@
           <div>
             <h4 class="text-sm font-medium text-slate-300 mb-1">申請原因</h4>
             <p class="text-slate-300 bg-slate-700/50 rounded-xl p-3 text-sm sm:text-base">
-              {{ props.exception?.reason }}
+              {{ props.exception?.reason || '-' }}
             </p>
           </div>
         </div>
@@ -122,8 +122,13 @@ const getTypeText = (type: string): string => {
 }
 
 const getOriginalTimeText = (exception: any): string => {
-  if (exception.original_time) {
-    return exception.original_time
+  if (exception.rule && exception.original_date) {
+    const startTime = exception.rule.start_time || ''
+    const endTime = exception.rule.end_time || ''
+    const date = exception.original_date.split('T')[0]
+    if (startTime && endTime) {
+      return `${date} ${startTime} - ${endTime}`
+    }
   }
   if (exception.rule) {
     const startTime = exception.rule.start_time || ''
@@ -133,6 +138,19 @@ const getOriginalTimeText = (exception: any): string => {
     }
   }
   return '-'
+}
+
+// 格式化新時間（調課申請）
+const formatNewTime = (exception: any): string => {
+  if (exception.new_start_at && exception.new_end_at) {
+    const date = exception.new_start_at.split('T')[0]
+    const time = exception.new_start_at.split('T')[1]?.substring(0, 5)
+    const endTime = exception.new_end_at.split('T')[1]?.substring(0, 5)
+    if (time && endTime) {
+      return `${date} ${time} - ${endTime}`
+    }
+  }
+  return exception.new_time || '-'
 }
 
 const handleApprove = () => {

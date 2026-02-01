@@ -163,6 +163,8 @@
 </template>
 
 <script setup lang="ts">
+import RoomModal from '~/components/Scheduling/RoomModal.vue'
+
 const showCreateModal = ref(false)
 const showEditModal = ref(false)
 const editingRoom = ref<any>(null)
@@ -172,15 +174,16 @@ const { getCenterId } = useCenterId()
 // Alert composable
 const { error: alertError, confirm: alertConfirm } = useAlert()
 
+// 資源快取
+const { invalidate } = useResourceCache()
+
 const rooms = ref<any[]>([])
 
 const fetchRooms = async () => {
   loading.value = true
   try {
     const api = useApi()
-    const centerId = getCenterId()
-    const response = await api.get<{ code: number; datas: any[] }>(`/admin/rooms`)
-    rooms.value = response.datas || []
+    rooms.value = await api.get<any[]>('/admin/rooms')
   } catch (error) {
     console.error('Failed to fetch rooms:', error)
     rooms.value = []
@@ -204,7 +207,11 @@ const deleteRoom = async (id: number) => {
       const api = useApi()
       const centerId = getCenterId()
       await api.delete(`/admin/rooms/${id}`)
-      rooms.value = rooms.value.filter(r => r.id !== id)
+      // 清除教室快取
+      invalidate('rooms')
+      // 重新載入確保資料一致
+      rooms.value = []
+      await fetchRooms()
     } catch (err) {
       console.error('Failed to delete room:', err)
       await alertError('刪除失敗，請稍後再試')
@@ -224,6 +231,11 @@ const toggleRoom = async (room: any) => {
     const api = useApi()
     await api.patch(`/admin/rooms/${room.id}/toggle-active`, { is_active: room.status !== 'ACTIVE' })
     room.status = newStatus
+    // 清除教室快取
+    invalidate('rooms')
+    // 重新載入確保資料一致
+    rooms.value = []
+    await fetchRooms()
   } catch (err) {
     console.error('Failed to toggle room:', err)
     await alertError(`${actionText}失敗，請稍後再試`)

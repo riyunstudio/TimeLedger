@@ -1,0 +1,1262 @@
+[
+  {
+    "method": "GET",
+    "path": "/admin/admins",
+    "summary": "??蝞∠??∪?銵?,
+    "description": "???桀?銝剖????恣??”",
+    "tags": [
+      "Admin - Management"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/admin/admins",
+    "summary": "撱箇?蝞∠???,
+    "description": "?湔撱箇?蝞∠??∪董????OWNER ?臬銵?",
+    "tags": [
+      "Admin - Management"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/admin/admins/change-role",
+    "summary": "靽格蝞∠??∟???,
+    "description": "靽格??蝞∠??∠?閫嚗? OWNER ?臬銵?銝??賭耨?寡撌梧?",
+    "tags": [
+      "Admin - Management"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/admin/admins/reset-password",
+    "summary": "?身蝞∠??∪?蝣?,
+    "description": "?身??蝞∠??∠?撖Ⅳ嚗? OWNER ?臬銵?",
+    "tags": [
+      "Admin - Management"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/admin/admins/toggle-status",
+    "summary": "?/?蝞∠???,
+    "description": "????冽?摰?蝞∠??∪董????OWNER ?臬銵?",
+    "tags": [
+      "Admin - Management"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/admin/me/change-password",
+    "summary": "靽格蝞∠??∪?蝣?,
+    "description": "靽格?桀??餃蝞∠??∠?撖Ⅳ",
+    "tags": [
+      "Admin - Profile"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/admin/me/line-binding",
+    "summary": "?? LINE 蝬????,
+    "description": "???桀?蝞∠??∠? LINE 蝬????,
+    "tags": [
+      "Admin - LINE"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/admin/me/line/bind",
+    "summary": "????LINE 蝬?",
+    "description": "?Ｙ?蝬?撽?蝣潘??? LINE 蝬?瘚?",
+    "tags": [
+      "Admin - LINE"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/admin/me/line/notify-settings",
+    "summary": "?湔 LINE ?閮剖?",
+    "description": "?湔蝞∠??∠? LINE ???",
+    "tags": [
+      "Admin - LINE"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/admin/me/line/unbind",
+    "summary": "閫? LINE 蝬?",
+    "description": "閫?蝞∠??∠? LINE 蝬?",
+    "tags": [
+      "Admin - LINE"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/admin/me/profile",
+    "summary": "??蝞∠??∪犖鞈?",
+    "description": "???桀??餃蝞∠??∠??犖鞈?",
+    "tags": [
+      "Admin - Profile"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/admin/notifications/queue-stats",
+    "summary": "???雿?蝯梯?",
+    "description": "???雿??絞閮?閮?,
+    "tags": [
+      "Admin - Notifications"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/admin/smart-matching/alternatives",
+    "summary": "???蹂誨?挾撱箄降",
+    "description": "???蹂誨?挾撱箄降",
+    "tags": [
+      "Smart Matching"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/admin/smart-matching/matches",
+    "summary": "?箸慦???",
+    "description": "?寞?璇辣???舫????葦",
+    "tags": [
+      "Smart Matching"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/admin/smart-matching/suggestions",
+    "summary": "????撱箄降",
+    "description": "????撱箄降?摮?,
+    "tags": [
+      "Smart Matching"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/admin/smart-matching/talent/invite",
+    "summary": "?隢犖??雿?,
+    "description": "?隢葦?鈭箸?摨?,
+    "tags": [
+      "Smart Matching"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/admin/smart-matching/talent/search",
+    "summary": "鈭箸?摨急?撠?,
+    "description": "??蝚血?璇辣?犖??,
+    "tags": [
+      "Smart Matching"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/admin/smart-matching/talent/stats",
+    "summary": "??鈭箸?摨怎絞閮???,
+    "description": "??鈭箸?摨怎?蝯梯?鞈?",
+    "tags": [
+      "Smart Matching"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/admin/smart-matching/teachers/{teacher_id}/sessions",
+    "summary": "???葦隤脰”",
+    "description": "?????葦?玨銵?,
+    "tags": [
+      "Smart Matching"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/admin/centers",
+    "summary": "??銝剖??”",
+    "description": "",
+    "tags": [
+      "Admin"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/admin/centers",
+    "summary": "?啣?銝剖?",
+    "description": "",
+    "tags": [
+      "Admin"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/admin/centers/{id}/holidays",
+    "summary": "????”",
+    "description": "",
+    "tags": [
+      "Admin"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/admin/centers/{id}/holidays",
+    "summary": "?啣??",
+    "description": "",
+    "tags": [
+      "Admin"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/admin/centers/{id}/holidays/bulk",
+    "summary": "?寞活撱箇??",
+    "description": "",
+    "tags": [
+      "Admin"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/admin/centers/{id}/holidays/{holiday_id}",
+    "summary": "?芷?",
+    "description": "",
+    "tags": [
+      "Admin"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/admin/centers/{id}/invitations",
+    "summary": "???隢?銵?,
+    "description": "",
+    "tags": [
+      "Admin - Invitations"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/admin/centers/{id}/invitations",
+    "summary": "?隢葦?銝剖?",
+    "description": "",
+    "tags": [
+      "Admin"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/admin/centers/{id}/invitations/generate-link",
+    "summary": "?Ｙ??隢??",
+    "description": "",
+    "tags": [
+      "Admin - Invitations"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/admin/centers/{id}/invitations/links",
+    "summary": "???隢???”",
+    "description": "",
+    "tags": [
+      "Admin - Invitations"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/admin/centers/{id}/invitations/stats",
+    "summary": "???隢絞閮???,
+    "description": "",
+    "tags": [
+      "Admin - Invitations"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/admin/centers/{id}/offerings/{offering_id}/copy",
+    "summary": "銴ˊ?剖",
+    "description": "",
+    "tags": [
+      "Admin"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/admin/courses",
+    "summary": "??隤脩??”",
+    "description": "",
+    "tags": [
+      "Admin"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/admin/courses",
+    "summary": "?啣?隤脩?",
+    "description": "",
+    "tags": [
+      "Admin"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/admin/courses/active",
+    "summary": "??撌脣??函?隤脩??”",
+    "description": "",
+    "tags": [
+      "Admin"
+    ]
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/admin/courses/{course_id}",
+    "summary": "?湔隤脩?",
+    "description": "",
+    "tags": [
+      "Admin"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/admin/courses/{course_id}",
+    "summary": "?芷隤脩?",
+    "description": "",
+    "tags": [
+      "Admin"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/admin/courses/{course_id}/toggle-active",
+    "summary": "??隤脩?????,
+    "description": "",
+    "tags": [
+      "Admin"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/admin/dashboard/today-summary",
+    "summary": "??蝞∠??∪??圈???隞隤脰”??",
+    "description": "",
+    "tags": [
+      "Admin - Dashboard"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/admin/invitations/links/{id}",
+    "summary": "?文??隢??",
+    "description": "",
+    "tags": [
+      "Admin - Invitations"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/admin/me/line/qrcode",
+    "summary": "?Ｙ? LINE 摰撣唾? QR Code",
+    "description": "?Ｙ??舀?????LINE 摰撣唾??予??QR Code",
+    "tags": [
+      "LINE"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/admin/me/line/qrcode-with-code",
+    "summary": "?Ｙ??撽?蝣潛? QR Code",
+    "description": "?Ｙ???敺??芸?撣嗅撽?蝣潭?摮? QR Code",
+    "tags": [
+      "LINE"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/admin/offerings",
+    "summary": "???剖?”",
+    "description": "",
+    "tags": [
+      "Admin"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/admin/offerings",
+    "summary": "?啣??剖",
+    "description": "",
+    "tags": [
+      "Admin"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/admin/offerings/active",
+    "summary": "?????亙?銵?,
+    "description": "",
+    "tags": [
+      "Admin"
+    ]
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/admin/offerings/{offering_id}",
+    "summary": "?湔?剖",
+    "description": "",
+    "tags": [
+      "Admin"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/admin/offerings/{offering_id}",
+    "summary": "?芷?剖",
+    "description": "",
+    "tags": [
+      "Admin"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/admin/offerings/{offering_id}/toggle-active",
+    "summary": "???剖????,
+    "description": "",
+    "tags": [
+      "Admin"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/admin/rooms",
+    "summary": "???恕?”",
+    "description": "",
+    "tags": [
+      "Admin"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/admin/rooms",
+    "summary": "?啣??恕",
+    "description": "",
+    "tags": [
+      "Admin"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/admin/rooms/active",
+    "summary": "??撌脣??函??恕?”",
+    "description": "",
+    "tags": [
+      "Admin"
+    ]
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/admin/rooms/{room_id}",
+    "summary": "?湔?恕",
+    "description": "",
+    "tags": [
+      "Admin"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/admin/rooms/{room_id}/toggle-active",
+    "summary": "???恕????,
+    "description": "",
+    "tags": [
+      "Admin"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/admin/scheduling/check-overlap",
+    "summary": "瑼Ｘ隤脩????臬???蝔?蝒?,
+    "description": "",
+    "tags": [
+      "Admin - Scheduling"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/admin/scheduling/check-room-buffer",
+    "summary": "瑼Ｘ?恕?楨銵???西雲憭?,
+    "description": "",
+    "tags": [
+      "Admin - Scheduling"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/admin/scheduling/check-teacher-buffer",
+    "summary": "瑼Ｘ?葦?楨銵???西雲憭?,
+    "description": "",
+    "tags": [
+      "Admin - Scheduling"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/admin/scheduling/exceptions",
+    "summary": "?????交?蝭??抒????憭隢?,
+    "description": "",
+    "tags": [
+      "Admin - Scheduling"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/admin/scheduling/exceptions/all",
+    "summary": "?????憭隢??臭???祟?賂?",
+    "description": "",
+    "tags": [
+      "Admin - Scheduling"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/admin/scheduling/exceptions/pending",
+    "summary": "?????撖拇??憭隢?,
+    "description": "",
+    "tags": [
+      "Admin - Scheduling"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/admin/scheduling/exceptions/{id}/review",
+    "summary": "撖拇靘??唾?嚗????嚗?,
+    "description": "",
+    "tags": [
+      "Admin - Scheduling"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/admin/scheduling/expand",
+    "summary": "撅??玨閬??箏擃玨蝔甈?,
+    "description": "",
+    "tags": [
+      "Admin - Scheduling"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/admin/scheduling/phase-transitions",
+    "summary": "?菜葫隤脩?摨?銝剔??挾頧?暺?,
+    "description": "",
+    "tags": [
+      "Admin - Scheduling"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/admin/scheduling/rules",
+    "summary": "??銝剖?????隤脰???,
+    "description": "",
+    "tags": [
+      "Admin - Scheduling"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/admin/scheduling/rules",
+    "summary": "撱箇??啁??玨閬?",
+    "description": "",
+    "tags": [
+      "Admin - Scheduling"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/admin/scheduling/rules/check-lock",
+    "summary": "瑼Ｘ閬??臬撌脰???甇Ｘ",
+    "description": "",
+    "tags": [
+      "Admin - Scheduling"
+    ]
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/admin/scheduling/rules/{id}",
+    "summary": "?湔?玨閬?",
+    "description": "",
+    "tags": [
+      "Admin - Scheduling"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/admin/scheduling/rules/{id}",
+    "summary": "?芷?玨閬?",
+    "description": "",
+    "tags": [
+      "Admin - Scheduling"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/admin/scheduling/rules/{id}/exceptions",
+    "summary": "????閬?????憭隢?,
+    "description": "",
+    "tags": [
+      "Admin - Scheduling"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/admin/scheduling/validate",
+    "summary": "摰撽??玨嚗′銵? + 蝺抵?瑼Ｘ嚗?,
+    "description": "",
+    "tags": [
+      "Admin - Scheduling"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/admin/teachers",
+    "summary": "??銝剖??葦?”",
+    "description": "",
+    "tags": [
+      "Admin"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/admin/teachers/{teacher_id}/note",
+    "summary": "???葦閰???閮?,
+    "description": "",
+    "tags": [
+      "Admin"
+    ]
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/admin/teachers/{teacher_id}/note",
+    "summary": "?啣???啗葦閰???閮?,
+    "description": "",
+    "tags": [
+      "Admin"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/admin/teachers/{teacher_id}/note",
+    "summary": "?芷?葦閰???閮?,
+    "description": "",
+    "tags": [
+      "Admin"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/admin/templates",
+    "summary": "??隤脰”璅⊥?”",
+    "description": "",
+    "tags": [
+      "Admin"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/admin/templates",
+    "summary": "?啣?隤脰”璅⊥",
+    "description": "",
+    "tags": [
+      "Admin"
+    ]
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/admin/templates/{template_id}",
+    "summary": "?湔隤脰”璅⊥",
+    "description": "",
+    "tags": [
+      "Admin"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/admin/templates/{template_id}",
+    "summary": "?芷隤脰”璅⊥",
+    "description": "",
+    "tags": [
+      "Admin"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/admin/templates/{template_id}/apply",
+    "summary": "憟隤脰”璅⊥",
+    "description": "",
+    "tags": [
+      "Admin"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/admin/templates/{template_id}/cells",
+    "summary": "??璅⊥銝剔??澆?",
+    "description": "",
+    "tags": [
+      "Admin"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/admin/templates/{template_id}/cells",
+    "summary": "?啣?璅⊥銝剔??澆?",
+    "description": "",
+    "tags": [
+      "Admin"
+    ]
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/admin/templates/{template_id}/cells/reorder",
+    "summary": "???璅⊥銝剔??澆?",
+    "description": "",
+    "tags": [
+      "Admin"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/admin/templates/{template_id}/cells/{cell_id}",
+    "summary": "?芷?澆?",
+    "description": "",
+    "tags": [
+      "Admin"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/admin/templates/{template_id}/validate-apply",
+    "summary": "撽?憟璅⊥",
+    "description": "",
+    "tags": [
+      "Admin"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/admin/login",
+    "summary": "蝞∠??∠??,
+    "description": "",
+    "tags": [
+      "Auth"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/logout",
+    "summary": "?餃",
+    "description": "",
+    "tags": [
+      "Auth"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/refresh",
+    "summary": "?瑟 Token",
+    "description": "",
+    "tags": [
+      "Auth"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/teacher/line/login",
+    "summary": "?葦 LINE ?餃",
+    "description": "",
+    "tags": [
+      "Auth"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/calendar/subscribe/{token}.ics",
+    "summary": "?? Token 閮隤脰”",
+    "description": "",
+    "tags": [
+      "Export"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/geo/cities",
+    "summary": "?????”",
+    "description": "",
+    "tags": [
+      "Geo"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/hashtags",
+    "summary": "撱箇??唳?蝐?,
+    "description": "",
+    "tags": [
+      "Hashtag"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/hashtags/search",
+    "summary": "??璅惜",
+    "description": "",
+    "tags": [
+      "Hashtag"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/invitations/{token}",
+    "summary": "???祇??隢?閮?,
+    "description": "",
+    "tags": [
+      "Invitations"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/invitations/{token}/accept",
+    "summary": "",
+    "description": "",
+    "tags": [
+      "Invitations"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/teacher/exceptions",
+    "summary": "?葦?亦??芸楛??憭隢?銵?,
+    "description": "",
+    "tags": [
+      "Teacher"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/teacher/exceptions",
+    "summary": "?葦??玨/?寞??唾?",
+    "description": "",
+    "tags": [
+      "Teacher"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/teacher/exceptions/{id}/revoke",
+    "summary": "?葦?文?敺祟?貊?靘??唾?",
+    "description": "",
+    "tags": [
+      "Teacher"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/teacher/me/backgrounds",
+    "summary": "???芾????銵?,
+    "description": "",
+    "tags": [
+      "Teacher - Export"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/teacher/me/backgrounds",
+    "summary": "銝?芾????,
+    "description": "",
+    "tags": [
+      "Teacher - Export"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/teacher/me/backgrounds",
+    "summary": "?芷?芾????,
+    "description": "",
+    "tags": [
+      "Teacher - Export"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/teacher/me/centers",
+    "summary": "???葦撌脣??亦?銝剖??”",
+    "description": "",
+    "tags": [
+      "Teacher"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/teacher/me/centers/{center_id}/schedule-rules",
+    "summary": "?脣??葦?冽?摰葉敹??玨閬?",
+    "description": "",
+    "tags": [
+      "Teacher"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/teacher/me/certificates",
+    "summary": "???葦霅?”",
+    "description": "",
+    "tags": [
+      "Teacher"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/teacher/me/certificates",
+    "summary": "?啣??葦霅",
+    "description": "",
+    "tags": [
+      "Teacher"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/teacher/me/certificates/upload",
+    "summary": "銝霅瑼?",
+    "description": "",
+    "tags": [
+      "Teacher"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/teacher/me/certificates/{id}",
+    "summary": "?芷?葦霅",
+    "description": "",
+    "tags": [
+      "Teacher"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/teacher/me/exceptions",
+    "summary": "撱箇??啁?靘??唾?",
+    "description": "",
+    "tags": [
+      "Teacher - Scheduling"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/teacher/me/invitations",
+    "summary": "???葦??隢?銵?,
+    "description": "",
+    "tags": [
+      "Teacher - Invitations"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/teacher/me/invitations/pending-count",
+    "summary": "??敺???隢??,
+    "description": "",
+    "tags": [
+      "Teacher - Invitations"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/teacher/me/invitations/respond",
+    "summary": "?葦???隢?,
+    "description": "",
+    "tags": [
+      "Teacher - Invitations"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/teacher/me/personal-events",
+    "summary": "???葦?犖銵??”",
+    "description": "",
+    "tags": [
+      "Teacher - Events"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/teacher/me/personal-events",
+    "summary": "?啣??葦?犖銵?",
+    "description": "",
+    "tags": [
+      "Teacher - Events"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/teacher/me/personal-events/{id}",
+    "summary": "?芷?葦?犖銵?",
+    "description": "",
+    "tags": [
+      "Teacher - Events"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/teacher/me/personal-events/{id}",
+    "summary": "?湔?葦?犖銵?",
+    "description": "",
+    "tags": [
+      "Teacher - Events"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/teacher/me/personal-events/{id}/note",
+    "summary": "???犖銵??酉",
+    "description": "",
+    "tags": [
+      "Teacher - Events"
+    ]
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/teacher/me/personal-events/{id}/note",
+    "summary": "?湔?犖銵??酉",
+    "description": "",
+    "tags": [
+      "Teacher - Events"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/teacher/me/profile",
+    "summary": "???葦?犖鞈?",
+    "description": "",
+    "tags": [
+      "Teacher"
+    ]
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/teacher/me/profile",
+    "summary": "?湔?葦?犖鞈?",
+    "description": "",
+    "tags": [
+      "Teacher"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/teacher/me/schedule",
+    "summary": "???葦???玨銵?,
+    "description": "",
+    "tags": [
+      "Teacher"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/teacher/me/schedule.ics",
+    "summary": "?臬隤脰”??iCalendar ?澆?",
+    "description": "",
+    "tags": [
+      "Teacher - Export"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/teacher/me/schedule/image",
+    "summary": "?臬隤脰”?箏???,
+    "description": "",
+    "tags": [
+      "Teacher - Export"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/teacher/me/schedule/subscription",
+    "summary": "撱箇?隤脰”閮???",
+    "description": "",
+    "tags": [
+      "Teacher - Export"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/teacher/me/schedule/subscription",
+    "summary": "??隤脰”閮",
+    "description": "",
+    "tags": [
+      "Teacher - Export"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/teacher/me/skills",
+    "summary": "???葦??賢?銵?,
+    "description": "",
+    "tags": [
+      "Teacher"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/teacher/me/skills",
+    "summary": "?啣??葦???,
+    "description": "",
+    "tags": [
+      "Teacher"
+    ]
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/teacher/me/skills/{id}",
+    "summary": "?湔?葦???,
+    "description": "",
+    "tags": [
+      "Teacher"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/teacher/me/skills/{id}",
+    "summary": "?芷?葦???,
+    "description": "",
+    "tags": [
+      "Teacher"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/teacher/schedules",
+    "summary": "???葦?玨銵?,
+    "description": "",
+    "tags": [
+      "Teacher"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/teacher/scheduling/check-rule-lock",
+    "summary": "瑼Ｘ?葦閬??????,
+    "description": "",
+    "tags": [
+      "Teacher"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/teacher/scheduling/delete-recurring",
+    "summary": "?芷敺芰?玨",
+    "description": "",
+    "tags": [
+      "Teacher"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/teacher/scheduling/edit-recurring",
+    "summary": "蝺刻摩敺芰?玨",
+    "description": "",
+    "tags": [
+      "Teacher"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/teacher/scheduling/preview-recurrence-edit",
+    "summary": "?汗敺芰蝺刻摩敶梢蝭?",
+    "description": "",
+    "tags": [
+      "Teacher"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/teacher/sessions/note",
+    "summary": "??隤脣?蝑?",
+    "description": "",
+    "tags": [
+      "Teacher - Sessions"
+    ]
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/teacher/sessions/note",
+    "summary": "?啣???啗玨??閮?,
+    "description": "",
+    "tags": [
+      "Teacher - Sessions"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/teachers",
+    "summary": "???葦?”",
+    "description": "",
+    "tags": [
+      "Admin"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/teachers/{id}",
+    "summary": "?芷?葦",
+    "description": "",
+    "tags": [
+      "Admin"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/notifications",
+    "summary": "????”",
+    "description": "???桀?雿輻????”",
+    "tags": [
+      "Notifications"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/notifications/read-all",
+    "summary": "璅????箏歇霈",
+    "description": "撠??璅??箏歇霈",
+    "tags": [
+      "Notifications"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/notifications/test",
+    "summary": "?潮葫閰阡",
+    "description": "?潮?璇葫閰阡蝯衣?蝙?刻?,
+    "tags": [
+      "Notifications"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/notifications/token",
+    "summary": "閮剖?? Token",
+    "description": "閮剖??葦??LINE Notify Token",
+    "tags": [
+      "Notifications"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/notifications/unread-count",
+    "summary": "???芾???賊?",
+    "description": "???桀?雿輻???芾???賊?",
+    "tags": [
+      "Notifications"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/notifications/{id}/read",
+    "summary": "璅???箏歇霈",
+    "description": "撠?摰璅??箏歇霈",
+    "tags": [
+      "Notifications"
+    ]
+  }
+]

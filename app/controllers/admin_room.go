@@ -34,6 +34,11 @@ func NewAdminRoomController(app *app.App) *AdminRoomController {
 func (ctl *AdminRoomController) GetRooms(ctx *gin.Context) {
 	helper := NewContextHelper(ctx)
 
+	// 防止瀏覽器快取
+	ctx.Header("Cache-Control", "no-cache, no-store, must-revalidate")
+	ctx.Header("Pragma", "no-cache")
+	ctx.Header("Expires", "0")
+
 	centerID := helper.MustCenterID()
 	if centerID == 0 {
 		return
@@ -139,6 +144,11 @@ func (ctl *AdminRoomController) UpdateRoom(ctx *gin.Context) {
 // @Router /api/v1/admin/rooms/active [get]
 func (ctl *AdminRoomController) GetActiveRooms(ctx *gin.Context) {
 	helper := NewContextHelper(ctx)
+
+	// 防止瀏覽器快取
+	ctx.Header("Cache-Control", "no-cache, no-store, must-revalidate")
+	ctx.Header("Pragma", "no-cache")
+	ctx.Header("Expires", "0")
 
 	centerID := helper.MustCenterID()
 	if centerID == 0 {

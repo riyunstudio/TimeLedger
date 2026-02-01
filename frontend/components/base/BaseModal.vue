@@ -1,27 +1,41 @@
 <template>
   <Teleport to="body">
     <Transition name="modal">
-      <div v-if="modelValue" class="fixed inset-0 z-50 flex items-center justify-center">
-        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="closeOnBackdrop ? $emit('update:modelValue', false) : null" />
+      <div v-if="modelValue" class="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div
-          class="relative glass-card max-h-[90vh] overflow-y-auto"
+          class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+          :class="{ 'cursor-pointer': closeOnBackdrop }"
+          @click="closeOnBackdrop ? handleClose() : null"
+        />
+        <div
+          class="relative glass-card w-full overflow-y-auto"
           :class="[
             sizeClasses,
             mobilePositionClasses
           ]"
+          @click.stop
         >
-          <div class="flex items-center justify-between mb-4">
-            <h2 v-if="title" class="text-xl font-bold text-white">{{ title }}</h2>
+          <!-- Header -->
+          <div v-if="title || $slots.header" class="flex items-center justify-between mb-4">
+            <slot name="header">
+              <h2 v-if="title" class="text-xl font-bold text-white">{{ title }}</h2>
+            </slot>
             <button
-              class="text-slate-400 hover:text-white transition-colors"
-              @click="$emit('update:modelValue', false)"
+              v-if="showCloseButton"
+              class="text-slate-400 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10"
+              @click="handleClose"
             >
               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12M6 6v12" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           </div>
+          <!-- Body -->
           <slot />
+          <!-- Footer -->
+          <div v-if="$slots.footer" class="mt-6 pt-4 border-t border-white/10">
+            <slot name="footer" />
+          </div>
         </div>
       </div>
     </Transition>
@@ -35,17 +49,25 @@ interface Props {
   size?: 'sm' | 'md' | 'lg' | 'xl'
   closeOnBackdrop?: boolean
   mobilePosition?: 'center' | 'bottom'
+  showCloseButton?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   size: 'md',
   closeOnBackdrop: true,
   mobilePosition: 'bottom',
+  showCloseButton: true,
 })
 
-defineEmits<{
+const emit = defineEmits<{
   'update:modelValue': [value: boolean]
+  'close': []
 }>()
+
+const handleClose = () => {
+  emit('update:modelValue', false)
+  emit('close')
+}
 
 const sizeClasses = computed(() => {
   const sizes = {

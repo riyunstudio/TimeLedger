@@ -591,6 +591,8 @@ func (s *ScheduleExceptionServiceImpl) ReviewException(ctx context.Context, exce
 				endAt,
 				nil,
 				overrideBuffer,
+				nil,
+				nil,
 			)
 			if err != nil {
 				return fmt.Errorf("validation failed: %w", err)

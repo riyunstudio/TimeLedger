@@ -49,13 +49,13 @@
 </template>
 
 <script setup lang="ts">
-import RoomsTab from '~/components/RoomsTab.vue'
-import CoursesTab from '~/components/CoursesTab.vue'
-import OfferingsTab from '~/components/OfferingsTab.vue'
-import TeachersTab from '~/components/TeachersTab.vue'
+import RoomsTab from '~/components/Admin/RoomsTab.vue'
+import CoursesTab from '~/components/Admin/CoursesTab.vue'
+import OfferingsTab from '~/components/Admin/OfferingsTab.vue'
+import TeachersTab from '~/components/Admin/TeachersTab.vue'
 
 definePageMeta({
-  middleware: 'auth-admin',
+  auth: 'ADMIN',
   layout: 'admin',
 })
 

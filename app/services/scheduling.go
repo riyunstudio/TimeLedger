@@ -17,7 +17,9 @@ type ScheduleServiceInterface interface {
 	CheckOverlap(ctx context.Context, centerID uint, teacherID *uint, roomID uint, startTime, endTime time.Time, weekday int, excludeRuleID *uint) (*OverlapCheckResult, error)
 	CheckTeacherBuffer(ctx context.Context, centerID, teacherID uint, prevEndTime, nextStartTime time.Time, courseID uint) (*BufferCheckResult, error)
 	CheckRoomBuffer(ctx context.Context, centerID, roomID uint, prevEndTime, nextStartTime time.Time, courseID uint) (*BufferCheckResult, error)
-	ValidateFull(ctx context.Context, centerID uint, teacherID *uint, roomID, courseID uint, startTime, endTime time.Time, excludeRuleID *uint, allowBufferOverride bool) (*FullValidationResult, error)
+	// ValidateFull 完整驗證
+	// 如果 prevEndTime 和 nextStartTime 為 nil，系統會自動計算上一堂課的結束時間
+	ValidateFull(ctx context.Context, centerID uint, teacherID *uint, roomID, courseID uint, startTime, endTime time.Time, excludeRuleID *uint, allowBufferOverride bool, prevEndTime, nextStartTime *time.Time) (*FullValidationResult, error)
 
 	// 規則管理
 	GetRules(ctx context.Context, centerID uint) ([]models.ScheduleRule, error)
@@ -1120,8 +1122,8 @@ func (s *ScheduleService) CheckRoomBuffer(ctx context.Context, centerID, roomID 
 	return &result, nil
 }
 
-func (s *ScheduleService) ValidateFull(ctx context.Context, centerID uint, teacherID *uint, roomID, courseID uint, startTime, endTime time.Time, excludeRuleID *uint, allowBufferOverride bool) (*FullValidationResult, error) {
-	result, err := s.validationSvc.ValidateFull(ctx, centerID, teacherID, roomID, courseID, startTime, endTime, excludeRuleID, allowBufferOverride)
+func (s *ScheduleService) ValidateFull(ctx context.Context, centerID uint, teacherID *uint, roomID, courseID uint, startTime, endTime time.Time, excludeRuleID *uint, allowBufferOverride bool, prevEndTime, nextStartTime *time.Time) (*FullValidationResult, error) {
+	result, err := s.validationSvc.ValidateFull(ctx, centerID, teacherID, roomID, courseID, startTime, endTime, excludeRuleID, allowBufferOverride, prevEndTime, nextStartTime)
 	if err != nil {
 		return nil, err
 	}

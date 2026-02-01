@@ -1,6 +1,6 @@
 <template>
   <div class="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 bg-black/50 backdrop-blur-sm" @click.self="emit('close')">
-    <div class="glass-card w-full max-w-lg sm:max-w-xl max-h-[90vh] overflow-visible flex flex-col animate-spring" @click.stop>
+    <div class="glass-card w-full max-w-lg sm:max-w-xl max-h-[90vh] flex flex-col animate-spring" @click.stop>
       <div class="flex items-center justify-between p-4 border-b border-white/10 sticky top-0 bg-slate-900/95 backdrop-blur-sm z-10">
         <h3 class="text-lg font-semibold text-slate-100">
           技能與證照
@@ -119,19 +119,16 @@
               >
                 <img
                   :src="cert.file_url"
-                  :alt="cert.certificate_name"
+                  :alt="cert.name"
                   class="w-full h-full object-cover"
                   @error="($event.target as HTMLImageElement).style.display = 'none'"
                 />
               </div>
               <div class="flex items-start justify-between">
                 <div class="min-w-0 flex-1">
-                  <h5 class="font-medium text-slate-100 text-sm truncate">{{ cert.certificate_name }}</h5>
-                  <p v-if="cert.issued_by" class="text-xs text-slate-400 truncate">
-                    {{ cert.issued_by }}
-                  </p>
-                  <p v-if="cert.issued_date" class="text-xs text-slate-500 mt-1">
-                    {{ formatDate(cert.issued_date) }}
+                  <h5 class="font-medium text-slate-100 text-sm truncate">{{ cert.name }}</h5>
+                  <p v-if="cert.issued_at" class="text-xs text-slate-500 mt-1">
+                    {{ formatDate(cert.issued_at) }}
                   </p>
                 </div>
                 <button
@@ -147,54 +144,51 @@
           </div>
         </div>
       </div>
+    </div>
 
-      <!-- 新增/編輯技能 Modal -->
-      <AddSkillModal
-        v-if="showAddSkill || editingSkill"
-        :skill="editingSkill"
-        :existing-skills="skills"
-        @close="closeSkillModal"
-        @added="fetchData"
-        @updated="fetchData"
-      />
+    <!-- 新增/編輯技能 Modal - 移到覆蓋層的直接子元素，確保正確的 z-index 和 overflow 處理 -->
+    <AddSkillModal
+      v-if="showAddSkill || editingSkill"
+      :skill="editingSkill"
+      :existing-skills="skills"
+      @close="closeSkillModal"
+      @added="fetchData"
+      @updated="fetchData"
+    />
 
-      <!-- 新增證照 Modal -->
-      <AddCertificateModal
-        v-if="showAddCertificate"
-        @close="showAddCertificate = false"
-        @added="fetchData"
-      />
+    <!-- 新增證照 Modal - 移到覆蓋層的直接子元素 -->
+    <AddCertificateModal
+      v-if="showAddCertificate"
+      @close="showAddCertificate = false"
+      @added="fetchData"
+    />
 
-      <!-- 證照圖片預覽 Modal -->
-      <div
-        v-if="previewingCertificate"
-        class="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
-        @click="previewingCertificate = null"
-      >
-        <div class="relative max-w-3xl w-full" @click.stop>
-          <button
-            @click="previewingCertificate = null"
-            class="absolute -top-10 right-0 text-white hover:text-primary-400 transition-colors"
-          >
-            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-          <img
-            v-if="previewingCertificate.file_url"
-            :src="previewingCertificate.file_url"
-            :alt="previewingCertificate.certificate_name"
-            class="w-full h-auto rounded-lg shadow-2xl"
-          />
-          <div class="mt-4 text-center">
-            <h4 class="text-lg font-semibold text-white">{{ previewingCertificate.certificate_name }}</h4>
-            <p v-if="previewingCertificate.issued_by" class="text-sm text-slate-400 mt-1">
-              發證機構：{{ previewingCertificate.issued_by }}
-            </p>
-            <p v-if="previewingCertificate.issued_date" class="text-sm text-slate-500">
-              發證日期：{{ formatDate(previewingCertificate.issued_date) }}
-            </p>
-          </div>
+    <!-- 證照圖片預覽 Modal -->
+    <div
+      v-if="previewingCertificate"
+      class="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+      @click="previewingCertificate = null"
+    >
+      <div class="relative max-w-3xl w-full" @click.stop>
+        <button
+          @click="previewingCertificate = null"
+          class="absolute -top-10 right-0 text-white hover:text-primary-400 transition-colors"
+        >
+          <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+        <img
+          v-if="previewingCertificate.file_url"
+          :src="previewingCertificate.file_url"
+          :alt="previewingCertificate.name"
+          class="w-full h-auto rounded-lg shadow-2xl"
+        />
+        <div class="mt-4 text-center">
+          <h4 class="text-lg font-semibold text-white">{{ previewingCertificate.name }}</h4>
+          <p v-if="previewingCertificate.issued_at" class="text-sm text-slate-500">
+            發證日期：{{ formatDate(previewingCertificate.issued_at) }}
+          </p>
         </div>
       </div>
     </div>
@@ -204,6 +198,8 @@
 <script setup lang="ts">
 import { alertConfirm, alertError, alertWarning } from '~/composables/useAlert'
 import { SKILL_CATEGORIES } from '~/types'
+import AddSkillModal from './AddSkillModal.vue'
+import AddCertificateModal from './AddCertificateModal.vue'
 
 const emit = defineEmits<{
   close: []

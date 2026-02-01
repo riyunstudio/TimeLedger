@@ -506,7 +506,7 @@ import BaseInput from '~/components/base/BaseInput.vue'
 import { alertError, alertSuccess } from '~/composables/useAlert'
 
 definePageMeta({
-  middleware: 'auth-admin',
+  auth: 'ADMIN',
   layout: 'admin',
 })
 

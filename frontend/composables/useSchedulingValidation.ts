@@ -90,6 +90,8 @@ export interface CheckRoomBufferRequest extends BaseValidationRequest {
 export interface FullValidationRequest extends BaseValidationRequest {
   /** 規則 ID（更新時傳入） */
   rule_id?: ID
+  /** 課程 ID（用於獲取緩衝時間設定） */
+  course_id: ID
   /** 是否覆寫緩衝衝突（僅當允許時） */
   override_buffer_conflict?: boolean
 }
@@ -119,17 +121,17 @@ export interface BufferCheckResponse {
 }
 
 /**
- * 完整驗證回應
+ * 完整驗證回應（與後端 ValidationResult 相容）
  */
 export interface ScheduleValidationResponse {
   /** 是否有效（無衝突） */
   valid: boolean
   /** 所有衝突列表 */
   conflicts: ValidationConflictDetail[]
-  /** 硬衝突列表 */
-  hard_conflicts: ValidationConflictDetail[]
-  /** 緩衝衝突列表 */
-  buffer_conflicts: ValidationConflictDetail[]
+  /** 硬衝突列表（後端可能不返回此欄位） */
+  hard_conflicts?: ValidationConflictDetail[]
+  /** 緩衝衝突列表（後端可能不返回此欄位） */
+  buffer_conflicts?: ValidationConflictDetail[]
 }
 
 // ==================== Composable ====================
@@ -209,10 +211,27 @@ export const useSchedulingValidation = () => {
    * @returns 完整驗證回應
    */
   async function validateSchedule(request: FullValidationRequest): Promise<ScheduleValidationResponse> {
+    // 將時間格式轉換為後端所需的完整格式
+    // 後端期望 RFC3339 格式：2006-01-02T15:04:05Z07:00
+    const formatTimeForAPI = (date: string, time: string): string => {
+      // 如果 time 已經是完整格式，直接返回
+      if (time.includes('T') || time.includes('-')) {
+        return time
+      }
+      // 將 "HH:mm" 格式轉換為完整 ISO 格式
+      return `${date}T${time}:00+08:00`
+    }
+
+    const apiRequest = {
+      ...request,
+      start_time: formatTimeForAPI(request.date, request.start_time),
+      end_time: formatTimeForAPI(request.date, request.end_time),
+    }
+
     try {
       const response = await api.post<ScheduleValidationResponse>(
         '/admin/scheduling/validate',
-        request
+        apiRequest
       )
       return response
     } catch (error) {
@@ -224,49 +243,52 @@ export const useSchedulingValidation = () => {
   /**
    * 快速驗證（組合多個檢查）
    *
-   * 在表單提交前進行快速驗證
+   * 使用統一的 ValidateFull API 進行完整驗證
+   * 這個 API 會自動計算所需的緩衝時間資訊
    *
-   * @param request - 基礎驗證請求參數
+   * @param request - 基礎驗證請求參數（需要包含 course_id）
    * @returns 完整驗證回應
    */
-  async function quickValidate(request: BaseValidationRequest & { rule_id?: ID }): Promise<ScheduleValidationResponse> {
-    // 同時發起多個驗證請求
-    const [overlapResult, teacherBufferResult, roomBufferResult] = await Promise.allSettled([
-      checkOverlap(request as CheckOverlapRequest),
-      request.teacher_id ? checkTeacherBuffer(request as CheckTeacherBufferRequest) : null,
-      checkRoomBuffer(request as CheckRoomBufferRequest),
-    ])
-
-    // 收集所有衝突
-    const allConflicts: ValidationConflictDetail[] = []
-    const hardConflicts: ValidationConflictDetail[] = []
-    const bufferConflicts: ValidationConflictDetail[] = []
-
-    // 處理時段重疊檢查結果
-    if (overlapResult.status === 'fulfilled' && overlapResult.value.has_conflict) {
-      allConflicts.push(...overlapResult.value.conflicts)
-      hardConflicts.push(...overlapResult.value.conflicts.filter(
-        c => c.type === 'OVERLAP' || c.type === 'TEACHER_OVERLAP' || c.type === 'ROOM_OVERLAP'
-      ))
+  async function quickValidate(request: BaseValidationRequest & { rule_id?: ID; course_id: ID }): Promise<ScheduleValidationResponse> {
+    // 將時間格式轉換為後端所需的完整格式
+    // 後端期望 RFC3339 格式：2006-01-02T15:04:05Z07:00
+    const formatTimeForAPI = (date: string, time: string): string => {
+      // 如果 time 已經是完整格式，直接返回
+      if (time.includes('T') || time.includes('-')) {
+        return time
+      }
+      // 將 "HH:mm" 格式轉換為完整 ISO 格式
+      return `${date}T${time}:00+08:00`
     }
 
-    // 處理教師緩衝檢查結果
-    if (teacherBufferResult?.status === 'fulfilled' && teacherBufferResult.value.has_buffer_conflict) {
-      allConflicts.push(...teacherBufferResult.value.conflicts)
-      bufferConflicts.push(...teacherBufferResult.value.conflicts)
+    // 構造完整的驗證請求
+    const fullRequest = {
+      center_id: request.center_id,
+      teacher_id: request.teacher_id,
+      room_id: request.room_id,
+      date: request.date,
+      start_time: formatTimeForAPI(request.date, request.start_time),
+      end_time: formatTimeForAPI(request.date, request.end_time),
+      rule_id: request.rule_id,
+      course_id: request.course_id,
     }
 
-    // 處理教室緩衝檢查結果
-    if (roomBufferResult?.status === 'fulfilled' && roomBufferResult.value.has_buffer_conflict) {
-      allConflicts.push(...roomBufferResult.value.conflicts)
-      bufferConflicts.push(...roomBufferResult.value.conflicts)
-    }
-
-    return {
-      valid: allConflicts.length === 0,
-      conflicts: allConflicts,
-      hard_conflicts: hardConflicts,
-      buffer_conflicts: bufferConflicts,
+    try {
+      const response = await api.post<ScheduleValidationResponse>(
+        '/admin/scheduling/validate',
+        fullRequest
+      )
+      return response
+    } catch (error) {
+      console.error('快速驗證失敗:', error)
+      // 返回一個預設的有效結果，讓後端處理實際的衝突檢查
+      // 這樣即使前端驗證失敗，仍然可以繼續提交讓後端處理
+      return {
+        valid: true,
+        conflicts: [],
+        hard_conflicts: [],
+        buffer_conflicts: [],
+      }
     }
   }
 
@@ -306,10 +328,13 @@ export const useSchedulingValidation = () => {
    *
    * 硬衝突（時段重疊）必須處理，無法直接覆寫
    *
-   * @param conflicts - 衝突列表
+   * @param conflicts - 衝突列表（可能包含 hard_conflicts 或在 conflicts 中）
    * @returns 是否存在硬衝突
    */
   function hasHardConflicts(conflicts: ValidationConflictDetail[]): boolean {
+    if (!conflicts || conflicts.length === 0) {
+      return false
+    }
     return conflicts.some(conflict =>
       conflict.type === 'OVERLAP' ||
       conflict.type === 'TEACHER_OVERLAP' ||

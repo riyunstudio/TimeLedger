@@ -1,5 +1,5 @@
 <template>
-  <ScheduleGrid
+  <SchedulingScheduleGrid
     mode="teacher"
     :api-endpoint="apiEndpoint"
     card-info-type="center"
@@ -13,6 +13,7 @@
     :view-mode="viewMode"
     :selected-resource-id="null"
     :schedules="props.schedules"
+    :week-start="props.weekStart"
     @update:week-start="handleWeekStartChange"
     @select-schedule="$emit('select-schedule', $event)"
     @add-personal-event="$emit('add-personal-event')"
@@ -25,7 +26,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
+import { ref, watch, computed, onMounted } from 'vue'
 
 // ============================================
 // Props 定義
@@ -36,6 +37,14 @@ const props = defineProps<{
   weekStart?: Date
   showHelpTooltip?: boolean
 }>()
+
+// 調試：監控 schedules prop 的變化
+watch(() => props.schedules, (newSchedules) => {
+  console.log('[TeacherScheduleGrid] schedules prop changed:', {
+    count: newSchedules?.length || 0,
+    firstItem: newSchedules?.[0] || null
+  })
+}, { immediate: true })
 
 // ============================================
 // Emits 定義
@@ -72,6 +81,7 @@ const effectiveShowHelpTooltip = computed(() => props.showHelpTooltip ?? true)
 // ============================================
 
 const handleWeekStartChange = (date: Date) => {
+  console.log('[TeacherScheduleGrid] handleWeekStartChange:', date)
   emit('update:weekStart', date)
 }
 
@@ -80,9 +90,15 @@ const handleWeekStartChange = (date: Date) => {
 // ============================================
 
 watch(() => props.weekStart, (newVal) => {
-  // 當外部傳入 weekStart 變化時，可以進行相應處理
   if (newVal) {
-    // 可以在這裡重新獲取資料或進行其他同步操作
+    console.log('[TeacherScheduleGrid] weekStart changed:', newVal)
   }
 }, { immediate: true })
+
+// 調試：組件掛載時記錄狀態
+onMounted(() => {
+  console.log('[TeacherScheduleGrid] mounted with schedules:', {
+    count: props.schedules?.length || 0
+  })
+})
 </script>

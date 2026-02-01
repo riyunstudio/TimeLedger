@@ -45,7 +45,7 @@ defineEmits<{
 }>()
 
 // ============================================
-// 計算屬性
+// 計算屬性（Vue computed 自動追蹤依賴）
 // ============================================
 
 const cardClass = computed(() => {
@@ -54,7 +54,6 @@ const cardClass = computed(() => {
 
   // 個人行程使用不同的樣式
   if (schedule.is_personal_event) {
-    const baseColor = schedule.color_hex || '#a855f7' // 紫色預設
     return 'border border-white/20'
   }
 

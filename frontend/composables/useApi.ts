@@ -9,9 +9,16 @@
  * - useAuthHeaders: For building authorization headers
  * - useTokenManager: For token storage and unauthorized handling
  * - errorHandler: For unified error handling
+ *
+ * Schema Validation (Optional):
+ * - Pass a Zod schema as the 4th parameter to validate responses
+ * - Validation only runs in development mode
+ * - Validation failures are logged to console.warn but don't throw
  */
 
 import type { ApiResponse } from '~/types/api'
+import type { ZodSchema, ZodError } from 'zod'
+import { isSuccessCode } from '~/constants/errorCodes'
 import { ErrorHandler, type ApiError, type NetworkError } from '~/utils/errorHandler'
 
 export const useApi = () => {
@@ -21,6 +28,98 @@ export const useApi = () => {
   // Import composable functions
   const { getAuthHeader, buildStandardHeaders } = useAuthHeaders()
   const { handleUnauthorized: clearAndRedirect } = useTokenManager()
+
+  /**
+   * 驗證開發環境
+   */
+  const isDev = () => process.dev
+
+  /**
+   * 取得驗證失敗的視覺化樣式 (開發環境專用)
+   */
+  const getValidationWarningStyle = () =>
+    `
+    background: #fff3cd;
+    border: 2px solid #ffc107;
+    border-radius: 8px;
+    padding: 12px;
+    margin: 8px 0;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    color: #856404;
+    `.trim()
+
+  /**
+   * 取得驗證問題的詳細格式化 (開發環境專用)
+   */
+  const formatValidationIssues = (issues: Array<{
+    path: Array<string | number>
+    message: string
+    expected?: string
+    received?: string
+  }>): string => {
+    return issues.map((issue) => {
+      const path = issue.path.length > 0 ? `.${issue.path.join('.')}` : '(root)'
+      let detail = `  🔸 Path: ${path}`
+      detail += `\n     Message: ${issue.message}`
+      if (issue.expected && issue.received) {
+        detail += `\n     Expected: ${issue.expected}`
+        detail += `\n     Received: ${issue.received}`
+      }
+      return detail
+    }).join('\n')
+  }
+
+  /**
+   * Schema 驗證函數 (開發環境專用)
+   *
+   * @param data - 要驗證的資料
+   * @param schema - Zod schema
+   * @param endpoint - API 端點名稱 (用於錯誤訊息)
+   * @returns 驗證結果 (不拋錯，僅記錄警告)
+   */
+  function validateWithSchema<T>(
+    data: unknown,
+    schema: ZodSchema<T>,
+    endpoint: string
+  ): { success: true; data: T } | { success: false; issues: Array<{ path: string[]; message: string }> } {
+    // 僅在開發環境執行驗證
+    if (!isDev()) {
+      return { success: true, data: data as T }
+    }
+
+    const result = schema.safeParse(data)
+
+    if (result.success) {
+      return { success: true, data: result.data }
+    }
+
+    // 開發環境：顯示顯眼的 console.warn
+    const issues = result.error.issues.map((issue) => ({
+      path: issue.path.map((p) => String(p)),
+      message: issue.message,
+      expected: issue.expected,
+      received: issue.received,
+    }))
+
+    const formattedIssues = formatValidationIssues(issues)
+
+    // eslint-disable-next-line no-console
+    console.warn(
+      `%c⚠️ Schema 驗證失敗 (開發環境僅警告) %c[${endpoint}]`,
+      'font-weight: bold; color: #ffc107; font-size: 14px;',
+      'color: #6c757d; font-size: 12px;'
+    )
+    // eslint-disable-next-line no-console
+    console.warn(getValidationWarningStyle())
+    // eslint-disable-next-line no-console
+    console.warn(`驗證問題 (共 ${issues.length} 項):\n${formattedIssues}`)
+    // eslint-disable-next-line no-console
+    console.warn('─'.repeat(60))
+
+    return { success: false, issues }
+  }
 
   /**
    * Parses the API response and handles errors.
@@ -43,8 +142,8 @@ export const useApi = () => {
     try {
       const data = JSON.parse(text) as ApiResponse<T>
 
-      // Check for API-level error
-      if (data.code !== 'SUCCESS') {
+      // Check for API-level error (use isSuccessCode to handle '0', 'SUCCESS', etc.)
+      if (!isSuccessCode(data.code)) {
         const apiError: ApiError = {
           code: data.code,
           message: data.message || '操作失敗',
@@ -175,12 +274,14 @@ export const useApi = () => {
    * @param endpoint - API endpoint (will be appended to apiBase)
    * @param params - Optional query parameters
    * @param options - Request options (showAlert, context)
+   * @param schema - Optional Zod schema for response validation (dev mode only)
    * @returns Promise resolving to the response data
    */
   async function get<T>(
     endpoint: string,
     params?: Record<string, any>,
-    options?: { showAlert?: boolean; context?: Record<string, unknown> }
+    options?: { showAlert?: boolean; context?: Record<string, unknown> },
+    schema?: ZodSchema<T>
   ): Promise<T> {
     const url = `${apiBase}${endpoint}${buildQueryString(params)}`
     const headers = buildStandardHeaders()
@@ -188,7 +289,16 @@ export const useApi = () => {
     try {
       const response = await fetch(url, { headers })
       await checkResponse(response)
-      return await parseResponse<T>(response)
+      const data = await parseResponse<T>(response)
+
+      // Schema 驗證 (開發環境專用)
+      if (schema) {
+        const validation = validateWithSchema(data, schema, `GET ${endpoint}`)
+        // 驗證失敗時仍回傳原始資料，避免影響功能
+        return validation.success ? validation.data : data
+      }
+
+      return data
     } catch (error) {
       handleError(error, options)
     }
@@ -201,12 +311,14 @@ export const useApi = () => {
    * @param endpoint - API endpoint
    * @param data - Request body data (will be JSON serialized)
    * @param options - Request options (showAlert, context)
+   * @param schema - Optional Zod schema for response validation (dev mode only)
    * @returns Promise resolving to the response data
    */
   async function post<T>(
     endpoint: string,
     data: any,
-    options?: { showAlert?: boolean; context?: Record<string, unknown> }
+    options?: { showAlert?: boolean; context?: Record<string, unknown> },
+    schema?: ZodSchema<T>
   ): Promise<T> {
     const url = `${apiBase}${endpoint}`
     const headers = buildStandardHeaders()
@@ -218,7 +330,15 @@ export const useApi = () => {
         body: JSON.stringify(data),
       })
       await checkResponse(response)
-      return await parseResponse<T>(response)
+      const result = await parseResponse<T>(response)
+
+      // Schema 驗證 (開發環境專用)
+      if (schema) {
+        const validation = validateWithSchema(result, schema, `POST ${endpoint}`)
+        return validation.success ? validation.data : result
+      }
+
+      return result
     } catch (error) {
       handleError(error, options)
     }
@@ -231,12 +351,14 @@ export const useApi = () => {
    * @param endpoint - API endpoint
    * @param data - Request body data
    * @param options - Request options (showAlert, context)
+   * @param schema - Optional Zod schema for response validation (dev mode only)
    * @returns Promise resolving to the response data
    */
   async function put<T>(
     endpoint: string,
     data: any,
-    options?: { showAlert?: boolean; context?: Record<string, unknown> }
+    options?: { showAlert?: boolean; context?: Record<string, unknown> },
+    schema?: ZodSchema<T>
   ): Promise<T> {
     const url = `${apiBase}${endpoint}`
     const headers = buildStandardHeaders()
@@ -248,7 +370,15 @@ export const useApi = () => {
         body: JSON.stringify(data),
       })
       await checkResponse(response)
-      return await parseResponse<T>(response)
+      const result = await parseResponse<T>(response)
+
+      // Schema 驗證 (開發環境專用)
+      if (schema) {
+        const validation = validateWithSchema(result, schema, `PUT ${endpoint}`)
+        return validation.success ? validation.data : result
+      }
+
+      return result
     } catch (error) {
       handleError(error, options)
     }
@@ -261,12 +391,14 @@ export const useApi = () => {
    * @param endpoint - API endpoint
    * @param data - Request body data
    * @param options - Request options (showAlert, context)
+   * @param schema - Optional Zod schema for response validation (dev mode only)
    * @returns Promise resolving to the response data
    */
   async function patch<T>(
     endpoint: string,
     data: any,
-    options?: { showAlert?: boolean; context?: Record<string, unknown> }
+    options?: { showAlert?: boolean; context?: Record<string, unknown> },
+    schema?: ZodSchema<T>
   ): Promise<T> {
     const url = `${apiBase}${endpoint}`
     const headers = buildStandardHeaders()
@@ -278,7 +410,15 @@ export const useApi = () => {
         body: JSON.stringify(data),
       })
       await checkResponse(response)
-      return await parseResponse<T>(response)
+      const result = await parseResponse<T>(response)
+
+      // Schema 驗證 (開發環境專用)
+      if (schema) {
+        const validation = validateWithSchema(result, schema, `PATCH ${endpoint}`)
+        return validation.success ? validation.data : result
+      }
+
+      return result
     } catch (error) {
       handleError(error, options)
     }
@@ -290,11 +430,13 @@ export const useApi = () => {
    * @typeParam T - The expected response data type
    * @param endpoint - API endpoint
    * @param options - Request options (showAlert, context)
+   * @param schema - Optional Zod schema for response validation (dev mode only)
    * @returns Promise resolving to the response data
    */
   async function del<T>(
     endpoint: string,
-    options?: { showAlert?: boolean; context?: Record<string, unknown> }
+    options?: { showAlert?: boolean; context?: Record<string, unknown> },
+    schema?: ZodSchema<T>
   ): Promise<T> {
     const url = `${apiBase}${endpoint}`
     const headers = buildStandardHeaders()
@@ -305,7 +447,15 @@ export const useApi = () => {
         headers,
       })
       await checkResponse(response)
-      return await parseResponse<T>(response)
+      const result = await parseResponse<T>(response)
+
+      // Schema 驗證 (開發環境專用)
+      if (schema) {
+        const validation = validateWithSchema(result, schema, `DELETE ${endpoint}`)
+        return validation.success ? validation.data : result
+      }
+
+      return result
     } catch (error) {
       handleError(error, options)
     }
@@ -319,13 +469,15 @@ export const useApi = () => {
    * @param file - The File object to upload
    * @param fieldName - The form field name for the file (default: 'file')
    * @param options - Request options (showAlert, context)
+   * @param schema - Optional Zod schema for response validation (dev mode only)
    * @returns Promise resolving to the upload response
    */
   async function upload<T>(
     endpoint: string,
     file: File,
     fieldName: string = 'file',
-    options?: { showAlert?: boolean; context?: Record<string, unknown> }
+    options?: { showAlert?: boolean; context?: Record<string, unknown> },
+    schema?: ZodSchema<T>
   ): Promise<T> {
     const url = `${apiBase}${endpoint}`
     const headers = getAuthHeader() // No Content-Type for FormData
@@ -340,7 +492,15 @@ export const useApi = () => {
         body: formData,
       })
       await checkResponse(response)
-      return await parseResponse<T>(response)
+      const result = await parseResponse<T>(response)
+
+      // Schema 驗證 (開發環境專用)
+      if (schema) {
+        const validation = validateWithSchema(result, schema, `UPLOAD ${endpoint}`)
+        return validation.success ? validation.data : result
+      }
+
+      return result
     } catch (error) {
       handleError(error, options)
     }
@@ -352,11 +512,13 @@ export const useApi = () => {
    * @typeParam T - The expected response data type
    * @param endpoint - API endpoint
    * @param options - Request options (showAlert, context)
+   * @param schema - Optional Zod schema for response validation (dev mode only)
    * @returns Promise resolving to the raw response
    */
   async function raw<T>(
     endpoint: string,
-    options?: { showAlert?: boolean; context?: Record<string, unknown> }
+    options?: { showAlert?: boolean; context?: Record<string, unknown> },
+    schema?: ZodSchema<T>
   ): Promise<T> {
     const url = `${apiBase}${endpoint}`
     const headers = buildStandardHeaders()
@@ -364,7 +526,15 @@ export const useApi = () => {
     try {
       const response = await fetch(url, { headers })
       await checkResponse(response)
-      return await parseResponse<T>(response, true)
+      const result = await parseResponse<T>(response, true)
+
+      // Schema 驗證 (開發環境專用)
+      if (schema) {
+        const validation = validateWithSchema(result, schema, `RAW ${endpoint}`)
+        return validation.success ? validation.data : result
+      }
+
+      return result
     } catch (error) {
       handleError(error, options)
     }

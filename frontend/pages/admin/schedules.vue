@@ -143,6 +143,7 @@
     :editing-rule="editingRule"
     @close="handleModalClose"
     @submit="handleModalSubmit"
+    @created="handleRuleCreated"
   />
 
   <UpdateModeModal
@@ -161,10 +162,15 @@
 </template>
 
 <script setup lang="ts">
- definePageMeta({
-   middleware: 'auth-admin',
-   layout: 'admin',
- })
+// 明確導入組件（確保 Nuxt 可以解析）
+import ScheduleRuleModal from '~/components/Scheduling/ScheduleRuleModal.vue'
+import UpdateModeModal from '~/components/Scheduling/UpdateModeModal.vue'
+import NotificationDropdown from '~/components/Navigation/NotificationDropdown.vue'
+
+definePageMeta({
+  auth: 'ADMIN',
+  layout: 'admin',
+})
 
  const notificationUI = useNotification()
 const showModal = ref(false)
@@ -237,8 +243,9 @@ const fetchRules = async () => {
   loading.value = true
   try {
     const api = useApi()
-    const response = await api.get<{ code: number; datas: any[] }>('/admin/rules')
-    rules.value = response.datas || []
+    // API 響應已經被 useApi 解析，直接返回 datas 欄位的資料
+    const response = await api.get<any[]>('/admin/rules')
+    rules.value = response || []
   } catch (error) {
     console.error('Failed to fetch rules:', error)
   } finally {
@@ -289,6 +296,14 @@ const handleModalClose = () => {
   editingRule.value = null
 }
 
+// 處理新規則建立事件
+const handleRuleCreated = async () => {
+  await fetchRules()
+  // 清除資源快取，確保下次開啟 Modal 時載入最新資料
+  const { invalidate } = useResourceCache()
+  invalidate()
+}
+
 const handleModalSubmit = (formData: any) => {
   // 如果編輯模式下有修改日期相關內容，需要詢問更新模式
   if (editingRule.value && formData.start_date) {
@@ -319,6 +334,9 @@ const submitDirectly = async (formData: any) => {
     const api = useApi()
     await api.put(`/admin/rules/${editingRule.value.id}`, formData)
     await fetchRules()
+    // 清除資源快取，確保下次開啟 Modal 時載入最新資料
+    const { invalidate } = useResourceCache()
+    invalidate()
     showModal.value = false
     editingRule.value = null
   } catch (err) {

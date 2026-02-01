@@ -129,6 +129,24 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
         </svg>
       </button>
+
+      <button
+        @click="showBackgroundModal = true"
+        class="glass-card w-full p-4 flex items-center gap-4 hover:bg-white/5 transition-colors"
+      >
+        <div class="p-3 rounded-xl bg-info-500/20">
+          <svg class="w-6 h-6 text-info-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+        </div>
+        <div class="flex-1 text-left">
+          <h3 class="font-medium text-slate-100">背景圖片</h3>
+          <p class="text-sm text-slate-400">管理課表背景</p>
+        </div>
+        <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+        </svg>
+      </button>
     </div>
 
     <div class="mt-8">
@@ -193,6 +211,11 @@
     v-if="showExportModal"
     @close="showExportModal = false"
   />
+  <BackgroundGalleryModal
+    v-model:is-open="showBackgroundModal"
+    title="背景圖片管理"
+    @close="showBackgroundModal = false"
+  />
 
   <NotificationDropdown
     v-if="notificationUI.show.value"
@@ -206,10 +229,17 @@
 </template>
 
 <script setup lang="ts">
- definePageMeta({
-   middleware: 'auth-teacher',
-   layout: 'default',
- })
+import BackgroundGalleryModal from '~/components/Teacher/BackgroundGalleryModal.vue'
+import ProfileModal from '~/components/Teacher/ProfileModal.vue'
+import HiringModal from '~/components/Teacher/HiringModal.vue'
+import SkillsModal from '~/components/Teacher/SkillsModal.vue'
+import ExportModal from '~/components/Teacher/ExportModal.vue'
+import NotificationDropdown from '~/components/Navigation/NotificationDropdown.vue'
+
+definePageMeta({
+  auth: 'TEACHER',
+  layout: 'default',
+})
 
  const authStore = useAuthStore()
  const scheduleStore = useScheduleStore()
@@ -220,6 +250,7 @@
  const showHiringModal = ref(false)
  const showSkillsModal = ref(false)
  const showExportModal = ref(false)
+ const showBackgroundModal = ref(false)
 
  // 計算檔案完整度
  const profileCompleteness = computed(() => {

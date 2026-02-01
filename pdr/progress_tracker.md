@@ -2696,3 +2696,65 @@ bbceeb3 feat(teacher): add personal event conflict check and fix schedule displa
    - 並發控制與自動重試機制
 
 **系統狀態：** 具備完整的快取與異步處理能力，能夠支撐更大規模的用戶使用場景
+
+ 
+ 
+
+---
+
+## 33. ?垢-敺垢?撠? (Frontend-Backend Realignment) - 2026/02/01
+
+### 33.1 ???
+
+?祇?畾菔??行閮箸銝虫耨敺拙?蝡航?敺垢 API 銋????憿?蝣箔??葦蝡臬?箏??踝?iCal?????梧??賢?甇?Ⅱ?澆敺垢 API??
+### 33.2 摰??
+
+#### 33.2.1 瘛勗漲閮箸
+
+| ? | 隤芣? |
+|:---|:---|
+| ?瑁? deep_audit.js | ?潛 4 ??撣怎垢?臬 API ?芣??|
+| ?? audit_frontend.js | ?啣??航炊????? |
+| 撖拇 Zod schemas | 蝣箄? schemas.ts ??swagger.json 撠? |
+| 撖拇 useScheduleStore.ts | ?潛 downloadImage 蝻箏??交?? |
+
+#### 33.2.2 API ?游?靽桀儔
+
+| API 蝡舫? | ?寞? | 靽桀儔??| 靽桀儔敺?|
+|:---|:---:|:---:|:---:|
+| /api/v1/teacher/me/schedule.ics | GET | integrated: false | integrated: true |
+| /api/v1/teacher/me/schedule/image | GET | integrated: false | integrated: true |
+| /api/v1/teacher/me/schedule/subscription | POST | integrated: false | integrated: true |
+| /api/v1/teacher/me/schedule/subscription | DELETE | integrated: false | integrated: true |
+
+### 33.3 撽?蝯?
+
+| 撽?? | ???|
+|:---|:---:|
+| 憿?瑼Ｘ (TypeScript) | ?? |
+| iCal 銝? API ?游? | 摰? |
+| ??銝? API ?游? | 摰? |
+| 閮?????游? | 摰? |
+| ?交?蝭???喲? | 甇?Ⅱ |
+| API 憭望??璈 | ??甇?虜 |
+
+### 33.4 敺??API 皜嚗?銝?挾嚗?
+| ?芸??? | API 蝡舫? | ?撅祆芋蝯?| ?摯撌交? |
+|:---:|:---|:---|:---:|
+| 銝?| /api/v1/admin/scheduling/rules (GET/POST) | ?玨蝞∠? | 2-4 撠? |
+| 銝?| /api/v1/admin/scheduling/rules/{id} (PUT/DELETE) | ?玨蝞∠? | 2-4 撠? |
+| 銝?| /api/v1/admin/scheduling/expand | ?玨撅? | 1-2 撠? |
+| 雿?| /api/v1/admin/scheduling/phase-transitions | ?挾頧? | 1-2 撠? |
+| 雿?| /api/v1/teacher/scheduling/check-rule-lock | ?葦?玨 | 1 撠? |
+| 雿?| /api/v1/teacher/scheduling/preview-recurrence-edit | 敺芰蝺刻摩 | 1-2 撠? |
+
+### 33.5 蝮賜?
+
+| ?? | ?詨?|
+|:---|:---:|
+| ?游? API ?賊? | 4 ??|
+| 靽桀儔瑼? | 3 ??|
+| 憿?瑼Ｘ | ?? |
+| Deep Audit 撽? | ?券?游??? |
+
+?葦蝡臬?粹??Ｙ????API ?曉歇璅???integrated: true嚗?脣銝??挾?擗?API ?游?撌乩???

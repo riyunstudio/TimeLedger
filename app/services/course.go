@@ -19,7 +19,9 @@ type CourseService struct {
 }
 
 func NewCourseService(app *app.App) *CourseService {
+	baseSvc := NewBaseService(app, "CourseService")
 	return &CourseService{
+		BaseService:  *baseSvc,
 		app:          app,
 		courseRepo:   repositories.NewCourseRepository(app),
 		auditLogRepo: repositories.NewAuditLogRepository(app),
@@ -39,14 +41,16 @@ type UpdateCourseRequest struct {
 	Name             string `json:"name" binding:"required"`
 	Duration         int    `json:"duration" binding:"required"`
 	ColorHex         string `json:"color_hex" binding:"required"`
-	RoomBufferMin    int    `json:"room_buffer_min" binding:"gte=0"`
-	TeacherBufferMin int    `json:"teacher_buffer_min" binding:"gte=0"`
+	RoomBufferMin    *int   `json:"room_buffer_min"`    // 可選指標，如果為 nil 不更新
+	TeacherBufferMin *int   `json:"teacher_buffer_min"` // 可選指標，如果為 nil 不更新
+	IsActive         *bool  `json:"is_active"`          // 可選，如果提供則更新啟用狀態
 }
 
 func (s *CourseService) GetCourses(ctx context.Context, centerID uint) ([]models.Course, *errInfos.Res, error) {
 	// 先從快取取得
-	cached, err := s.cacheService.GetCourseList(ctx, centerID)
-	if err == nil && cached != nil {
+	cached, cacheErr := s.cacheService.GetCourseList(ctx, centerID)
+	if cacheErr == nil && len(cached) > 0 {
+		s.Logger.Debug("course cache hit", "center_id", centerID, "count", len(cached))
 		// 將快取項目轉換為 models.Course
 		courses := make([]models.Course, 0, len(cached))
 		for _, item := range cached {
@@ -64,13 +68,23 @@ func (s *CourseService) GetCourses(ctx context.Context, centerID uint) ([]models
 		return courses, nil, nil
 	}
 
-	// 快取未命中，從資料庫取得
+	// 快取未命中或讀取失敗，從資料庫取得
+	s.Logger.Debug("course cache miss or error, fetching from database", "center_id", centerID, "cache_error", cacheErr)
 	courses, err := s.courseRepo.ListByCenterID(ctx, centerID)
 	if err != nil {
-		return nil, s.app.Err.New(errInfos.SQL_ERROR), err
+		// 確保 errInfo 不為 nil
+		errInfo := s.app.Err.New(errInfos.SQL_ERROR)
+		if errInfo == nil {
+			// Fallback 如果 app.Err 初始化失敗
+			errInfo = &errInfos.Res{
+				Code: errInfos.SQL_ERROR,
+				Msg:  "資料庫操作失敗",
+			}
+		}
+		return nil, errInfo, err
 	}
 
-	// 存入快取
+	// 存入快取（非同步，不影響主要流程）
 	cacheItems := make([]CourseCacheItem, 0, len(courses))
 	for _, c := range courses {
 		cacheItems = append(cacheItems, CourseCacheItem{
@@ -83,7 +97,9 @@ func (s *CourseService) GetCourses(ctx context.Context, centerID uint) ([]models
 			IsActive:         c.IsActive,
 		})
 	}
-	_ = s.cacheService.SetCourseList(ctx, centerID, cacheItems)
+	if err := s.cacheService.SetCourseList(ctx, centerID, cacheItems); err != nil {
+		s.Logger.Warn("failed to cache course list", "error", err)
+	}
 
 	return courses, nil, nil
 }
@@ -141,7 +157,9 @@ func (s *CourseService) CreateCourse(ctx context.Context, centerID, adminID uint
 	}
 
 	// 清除課程列表快取
-	_ = s.cacheService.InvalidateCourseList(ctx, centerID)
+	if err := s.cacheService.InvalidateCourseList(ctx, centerID); err != nil {
+		s.Logger.Warn("failed to invalidate course cache", "error", err)
+	}
 
 	return &createdCourse, nil, nil
 }
@@ -162,13 +180,24 @@ func (s *CourseService) UpdateCourse(ctx context.Context, centerID, adminID, cou
 
 		before := course
 
-		// 更新
+		// 更新基本欄位
 		course.Name = req.Name
 		course.DefaultDuration = req.Duration
 		course.ColorHex = req.ColorHex
-		course.RoomBufferMin = req.RoomBufferMin
-		course.TeacherBufferMin = req.TeacherBufferMin
 		course.UpdatedAt = time.Now()
+
+		// 只有提供了才更新緩衝時間
+		if req.RoomBufferMin != nil {
+			course.RoomBufferMin = *req.RoomBufferMin
+		}
+		if req.TeacherBufferMin != nil {
+			course.TeacherBufferMin = *req.TeacherBufferMin
+		}
+
+		// 如果提供了 IsActive，則更新啟用狀態
+		if req.IsActive != nil {
+			course.IsActive = *req.IsActive
+		}
 
 		if err := txRepo.Update(ctx, course); err != nil {
 			return err
@@ -204,7 +233,9 @@ func (s *CourseService) UpdateCourse(ctx context.Context, centerID, adminID, cou
 	}
 
 	// 清除課程列表快取
-	_ = s.cacheService.InvalidateCourseList(ctx, centerID)
+	if err := s.cacheService.InvalidateCourseList(ctx, centerID); err != nil {
+		s.Logger.Warn("failed to invalidate course cache", "error", err)
+	}
 
 	return &updatedCourse, nil, nil
 }
@@ -254,7 +285,9 @@ func (s *CourseService) DeleteCourse(ctx context.Context, centerID, adminID, cou
 	}
 
 	// 清除課程列表快取
-	_ = s.cacheService.InvalidateCourseList(ctx, centerID)
+	if err := s.cacheService.InvalidateCourseList(ctx, centerID); err != nil {
+		s.Logger.Warn("failed to invalidate course cache", "error", err)
+	}
 
 	return nil, nil
 }
@@ -304,7 +337,9 @@ func (s *CourseService) ToggleCourseActive(ctx context.Context, centerID, adminI
 	}
 
 	// 清除課程列表快取
-	_ = s.cacheService.InvalidateCourseList(ctx, centerID)
+	if err := s.cacheService.InvalidateCourseList(ctx, centerID); err != nil {
+		s.Logger.Warn("failed to invalidate course cache", "error", err)
+	}
 
 	return nil, nil
 }

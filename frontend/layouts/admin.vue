@@ -554,6 +554,8 @@
 </template>
 
 <script setup lang="ts">
+import ToastNotification from '~/components/base/ToastNotification.vue'
+import NotificationDropdown from '~/components/Navigation/NotificationDropdown.vue'
 import { registerToast } from '~/composables/useToast'
 import { alertConfirm } from '~/composables/useAlert'
 

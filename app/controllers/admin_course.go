@@ -34,6 +34,11 @@ func NewAdminCourseController(app *app.App) *AdminCourseController {
 func (ctl *AdminCourseController) GetCourses(ctx *gin.Context) {
 	helper := NewContextHelper(ctx)
 
+	// 防止瀏覽器快取
+	ctx.Header("Cache-Control", "no-cache, no-store, must-revalidate")
+	ctx.Header("Pragma", "no-cache")
+	ctx.Header("Expires", "0")
+
 	centerID := helper.MustCenterID()
 	if centerID == 0 {
 		return
@@ -175,6 +180,11 @@ func (ctl *AdminCourseController) DeleteCourse(ctx *gin.Context) {
 // @Router /api/v1/admin/courses/active [get]
 func (ctl *AdminCourseController) GetActiveCourses(ctx *gin.Context) {
 	helper := NewContextHelper(ctx)
+
+	// 防止瀏覽器快取
+	ctx.Header("Cache-Control", "no-cache, no-store, must-revalidate")
+	ctx.Header("Pragma", "no-cache")
+	ctx.Header("Expires", "0")
 
 	centerID := helper.MustCenterID()
 	if centerID == 0 {

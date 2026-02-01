@@ -158,7 +158,7 @@
 
       <!-- 課表載入中狀態 -->
       <div v-else-if="scheduleStore.isLoading" class="glass-card p-4">
-        <Skeleton type="table" :table-columns="5" :table-rows="5" />
+        <BaseSkeleton type="table" :table-columns="5" :table-rows="5" />
       </div>
 
       <!-- 無課表資料 -->
@@ -184,14 +184,14 @@
       <BaseLoading v-else :loading="true" size="sm" />
     </button>
 
-    <PersonalEventModal
+    <TeacherPersonalEventModal
       v-if="showPersonalEventModal"
       :editing-event="editingEvent"
       @close="showPersonalEventModal = false; editingEvent = null"
       @saved="handlePersonalEventSaved"
     />
 
-    <NotificationDropdown
+    <NavigationNotificationDropdown
       v-if="notificationUI.show.value"
       @close="notificationUI.close()"
     />
@@ -200,14 +200,14 @@
       v-if="sidebarStore.isOpen.value"
       @close="sidebarStore.close()"
     />
-    <SessionNoteModal
+    <SchedulingSessionNoteModal
       :is-open="showSessionNoteModal"
       :schedule-item="selectedScheduleItem"
       @close="handleNoteModalClose"
       @saved="handleNoteModalSaved"
     />
 
-    <PersonalEventNoteModal
+    <TeacherPersonalEventNoteModal
       :is-open="showPersonalEventNoteModal"
       :event="selectedPersonalEvent"
       @close="showPersonalEventNoteModal = false; selectedPersonalEvent = null"
@@ -222,7 +222,7 @@ import { alertError } from '~/composables/useAlert'
 import { formatDateToString } from '~/composables/useTaiwanTime'
 
 definePageMeta({
-  middleware: 'auth-teacher',
+  auth: 'TEACHER',
   layout: 'default',
 })
 
@@ -256,9 +256,22 @@ const transformedSchedules = computed(() => {
 
   const result: any[] = []
 
+  console.log('[dashboard] scheduleStore.weekStart:', scheduleStore.weekStart)
+  console.log('[dashboard] scheduleStore.schedule.days:', scheduleStore.schedule.days.map(d => ({
+    date: d.date,
+    day_of_week: d.day_of_week,
+    itemsCount: d.items.length
+  })))
+
   scheduleStore.schedule.days.forEach(day => {
     const date = new Date(day.date)
     const weekday = date.getDay() === 0 ? 7 : date.getDay()
+
+    console.log('[dashboard] Processing day:', {
+      date: day.date,
+      day_of_week: day.day_of_week,
+      calculated_weekday: weekday
+    })
 
     // 處理中心課程
     day.items.forEach(item => {
@@ -266,26 +279,32 @@ const transformedSchedules = computed(() => {
       const [endHour, endMinute] = item.end_time.split(':').map(Number)
       const durationMinutes = (endHour * 60 + endMinute) - (startHour * 60 + startMinute)
 
-      result.push({
+      // 確保 weekday 從 date 正確計算（而不是依賴後端可能錯誤的 weekday 欄位）
+      const itemDate = new Date(item.date + 'T00:00:00+08:00')
+      const calculatedWeekday = itemDate.getDay() === 0 ? 7 : itemDate.getDay()
+
+      const scheduleItem = {
         id: item.id,
-        key: `${item.id}-${weekday}-${item.start_time}`,
+        key: `${item.id}-${calculatedWeekday}-${item.start_time}`,
         offering_name: item.title,
         center_name: (item.data as any)?.center_name || '',
         teacher_name: '',
-        weekday: weekday,
+        weekday: calculatedWeekday, // 從 date 計算，而非使用後端可能錯誤的 weekday
         start_time: item.start_time,
         end_time: item.end_time,
         start_hour: startHour,
         start_minute: startMinute,
         duration_minutes: durationMinutes,
-        date: day.date,
+        date: item.date,
         has_exception: (item.data as any)?.has_exception || false,
         exception_type: (item.data as any)?.exception_type || null,
         data: item.data,
         is_personal_event: false,
         type: item.type,
         rule_id: item.rule_id, // 確保 rule_id 可用於課堂備註
-      })
+      }
+
+      result.push(scheduleItem)
     })
 
     // 處理個人行程
@@ -319,7 +338,7 @@ const transformedSchedules = computed(() => {
         data: event,
         is_personal_event: true,
         type: 'PERSONAL_EVENT',
-        color_hex: event.color_hex,
+        color_hex: (event as any).color_hex,
       })
     })
   })
@@ -484,6 +503,18 @@ const goToExceptions = () => {
 // 跳轉到匯出頁面
 const goToExport = () => {
   router.push('/teacher/export')
+}
+
+// 開啟項目詳情
+const openItemDetail = (item: any) => {
+  if (item.data?.is_personal_event) {
+    handleEditPersonalEvent(item.data)
+  } else {
+    handleScheduleNoteAction({
+      ...item,
+      action: 'note'
+    })
+  }
 }
 
 const showSessionNoteModal = ref(false)

@@ -137,9 +137,25 @@ const getDayDate = (weekday: number): string => {
   return formatDate(date)
 }
 
-// 取得某個星期幾的所有課程
+// 取得某個星期幾的所有課程（過濾到當前週）
 const getDaySchedules = (weekday: number) => {
-  return props.schedules.filter((schedule: any) => schedule.weekday === weekday)
+  if (!props.weekStart) return []
+  
+  const weekEnd = new Date(props.weekStart)
+  weekEnd.setDate(weekEnd.getDate() + 6)
+  
+  return props.schedules.filter((schedule: any) => {
+    // 檢查星期幾
+    if (schedule.weekday !== weekday) return false
+    
+    // 檢查日期是否在當前週範圍內
+    if (schedule.date) {
+      const scheduleDate = new Date(schedule.date)
+      return scheduleDate >= props.weekStart && scheduleDate <= weekEnd
+    }
+    
+    return true
+  })
 }
 
 // 取得某個星期幾的課程數量

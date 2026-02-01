@@ -143,16 +143,16 @@
 </template>
 
 <script setup lang="ts">
-import { alertConfirm, alertError } from '~/composables/useAlert'
+import { alertConfirm, alertError, alertSuccess } from '~/composables/useAlert'
+import OfferingModal from '~/components/Scheduling/OfferingModal.vue'
 
 const showModal = ref(false)
 const editingOffering = ref<any>(null)
 const offerings = ref<any[]>([])
 const loading = ref(false)
 
-// 資源快取
-const teachersCache = ref<Map<number, any>>(new Map())
-const roomsCache = ref<Map<number, any>>(new Map())
+// 使用共享的資源快取
+const { getTeacherName, getRoomName, invalidate, fetchIfExpired } = useResourceCache()
 
 const { getCenterId } = useCenterId()
 
@@ -164,48 +164,19 @@ const handleDragStart = (offering: any, event: DragEvent) => {
   event.dataTransfer.effectAllowed = 'copy'
 }
 
-// 取得老師名稱
-const getTeacherName = (teacherId: number): string => {
-  const teacher = teachersCache.value.get(teacherId)
-  return teacher?.name || `老師 ${teacherId}`
-}
-
-// 取得教室名稱
-const getRoomName = (roomId: number): string => {
-  const room = roomsCache.value.get(roomId)
-  return room?.name || `教室 ${roomId}`
-}
-
+// 載入資源到共享快取
 const fetchResources = async () => {
-  try {
-    const api = useApi()
-    const [teachersRes, roomsRes] = await Promise.all([
-      api.get<{ code: number; datas: any[] }>('/teachers'),
-      api.get<{ code: number; datas: any[] }>(`/admin/rooms`)
-    ])
-
-    teachersRes.datas?.forEach((t: any) => {
-      teachersCache.value.set(t.id, t)
-    })
-    roomsRes.datas?.forEach((r: any) => {
-      roomsCache.value.set(r.id, r)
-    })
-  } catch (error) {
-    console.error('Failed to fetch resources:', error)
-  }
+  await fetchIfExpired()
 }
 
 const fetchOfferings = async () => {
   loading.value = true
   try {
     const api = useApi()
-    const centerId = getCenterId()
-    const response = await api.get<{ code: number; datas: any }>(`/admin/offerings`)
-    if (response.datas?.offerings) {
-      offerings.value = response.datas.offerings
-    } else {
-      offerings.value = []
-    }
+    // 後端返回 ListOfferingsOutput 結構，使用駝峰式 Offerings
+    const result = await api.get<{ Offerings: any[]; Pagination: any }>('/admin/offerings')
+    // 如果 result 是陣列，則直接賦值；如果是結構則取 Offerings
+    offerings.value = Array.isArray(result) ? result : (result?.Offerings || [])
   } catch (error) {
     console.error('Failed to fetch offerings:', error)
     offerings.value = []
@@ -234,6 +205,8 @@ const deleteOffering = async (offering: any) => {
     const centerId = getCenterId()
     await api.delete(`/admin/offerings/${offering.id}`)
     await fetchOfferings()
+    // 清除待排課程快取
+    invalidate('offerings')
   } catch (error) {
     console.error('Failed to delete offering:', error)
     await alertError('刪除失敗，請稍後再試')
@@ -252,6 +225,8 @@ const toggleOffering = async (offering: any) => {
     const api = useApi()
     await api.patch(`/admin/offerings/${offering.id}/toggle-active`, { is_active: offering.status !== 'ACTIVE' })
     offering.status = newStatus
+    // 清除待排課程快取
+    invalidate('offerings')
   } catch (error) {
     console.error('Failed to toggle offering:', error)
     await alertError(`${actionText}失敗，請稍後再試`)
@@ -273,6 +248,8 @@ const copyOffering = async (offering: any) => {
     })
     await fetchOfferings()
     await alertSuccess('複製成功')
+    // 清除待排課程快取
+    invalidate('offerings')
   } catch (error) {
     console.error('Failed to copy offering:', error)
     await alertError('複製失敗，請稍後再試')

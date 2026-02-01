@@ -22,8 +22,8 @@
       @export="$emit('export')"
       @update:selected-teacher-id="selectedTeacherId = $event"
       @update:selected-room-id="selectedRoomId = $event"
-      @clear-teacher-filter="selectedTeacherId = null"
-      @clear-room-filter="selectedRoomId = null"
+      @clear-teacher-filter="selectedTeacherId = -1"
+      @clear-room-filter="selectedRoomId = -1"
       @clear-all-filters="clearAllFilters"
     />
 
@@ -33,27 +33,97 @@
       @dragover.prevent="handleDragOver"
       @drop="handleDrop"
     >
-      <!-- 桌面版週曆視圖 -->
-      <WeekGrid
-        :schedules="filteredSchedules"
-        :week-label="weekLabel"
-        :card-info-type="effectiveCardInfoType"
-        :validation-results="validationResults"
-        :slot-width="slotWidth"
-        @drag-enter="handleDragEnter"
-        @drag-leave="handleDragLeave"
-        @select-schedule="selectSchedule"
-        @overlap-click="handleOverlapClick"
-      />
+      <!-- 調試資訊（臨時，開發用） -->
+      <div v-if="false" class="p-4 bg-slate-900 text-xs text-green-400 font-mono">
+        <p>isLoading: {{ isLoading }}</p>
+        <p>hasError: {{ hasError }}</p>
+        <p>schedules.length: {{ schedules.length }}</p>
+        <p>filteredSchedules.length: {{ filteredSchedules.length }}</p>
+        <p>weekStart: {{ weekStart }}</p>
+        <p>weekEnd: {{ weekEnd }}</p>
+        <p v-if="filteredSchedules.length > 0">
+          First schedule: {{ JSON.stringify(filteredSchedules[0], null, 2) }}
+        </p>
+      </div>
 
-      <!-- 手機版日曆列表視圖 -->
-      <MobileWeekView
-        :schedules="filteredSchedules"
-        :week-label="weekLabel"
-        :week-start="weekStart"
-        @change-week="changeWeek"
-        @select-schedule="selectSchedule"
-      />
+      <!-- 載入中狀態 -->
+      <div v-if="isLoading" class="flex items-center justify-center h-64">
+        <div class="flex flex-col items-center gap-3">
+          <div class="w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
+          <p class="text-sm text-slate-400">載入課表中...</p>
+        </div>
+      </div>
+
+      <!-- 錯誤狀態 -->
+      <div v-else-if="hasError" class="flex items-center justify-center h-64">
+        <div class="flex flex-col items-center gap-3">
+          <div class="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center">
+            <svg class="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <p class="text-white font-medium">載入失敗</p>
+          <p class="text-sm text-slate-400">{{ errorMessage }}</p>
+          <button
+            @click="retryFetch"
+            class="mt-2 px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors"
+          >
+            重試
+          </button>
+        </div>
+      </div>
+
+      <!-- 空狀態 -->
+      <div v-else-if="filteredSchedules.length === 0" class="flex items-center justify-center h-64">
+        <div class="flex flex-col items-center gap-3">
+          <div class="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center">
+            <svg class="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+          </div>
+          <p class="text-white font-medium">暫無課表資料</p>
+          <p class="text-sm text-slate-400">請確認日期範圍內是否有排課規則</p>
+        </div>
+      </div>
+
+      <!-- 正常課表視圖 -->
+      <template v-else>
+        <!-- 桌面版週曆視圖 (lg 以上) -->
+        <WeekGrid
+          v-if="isDesktop && weekStart"
+          :schedules="filteredSchedules"
+          :week-label="weekLabel"
+          :week-start="weekStart"
+          :card-info-type="effectiveCardInfoType"
+          :validation-results="validationResults"
+          :slot-width="slotWidth"
+          @drag-enter="handleDragEnter"
+          @drag-leave="handleDragLeave"
+          @select-schedule="selectSchedule"
+          @overlap-click="handleOverlapClick"
+        />
+
+        <!-- 平板版緊湊視圖 (md 到 lg) -->
+        <CompactWeekView
+          v-else-if="isTablet"
+          :schedules="filteredSchedules"
+          :week-label="weekLabel"
+          :week-start="weekStart"
+          :card-info-type="effectiveCardInfoType"
+          @change-week="changeWeek"
+          @select-schedule="selectSchedule"
+        />
+
+        <!-- 手機版日曆列表視圖 (md 以下) -->
+        <MobileWeekView
+          v-else
+          :schedules="filteredSchedules"
+          :week-label="weekLabel"
+          :week-start="weekStart"
+          @change-week="changeWeek"
+          @select-schedule="selectSchedule"
+        />
+      </template>
     </div>
 
     <!-- 管理員專屬彈窗 -->
@@ -120,11 +190,15 @@ import { formatDateToString, formatDate } from '~/composables/useTaiwanTime'
 import { nextTick, ref, computed, watch, onMounted, onUnmounted } from 'vue'
 
 // 引入子組件
-import CalendarHeader from './Schedule/CalendarHeader.vue'
-import WeekGrid from './Schedule/WeekGrid.vue'
-import MobileWeekView from './Schedule/MobileWeekView.vue'
-import ActionDialog from './Schedule/ActionDialog.vue'
-import OverlapDialog from './Schedule/OverlapDialog.vue'
+import CalendarHeader from './CalendarHeader.vue'
+import WeekGrid from './WeekGrid.vue'
+import CompactWeekView from './CompactWeekView.vue'
+import MobileWeekView from './MobileWeekView.vue'
+import ActionDialog from './ActionDialog.vue'
+import OverlapDialog from './OverlapDialog.vue'
+import ScheduleDetailPanel from './ScheduleDetailPanel.vue'
+import UpdateModeModal from './UpdateModeModal.vue'
+import ScheduleRuleModal from './ScheduleRuleModal.vue'
 
 // ============================================
 // Props 定義
@@ -135,6 +209,8 @@ const props = defineProps<{
   mode: 'admin' | 'teacher'
   // 排課資料（可選，如果提供則使用此資料，否則自動獲取）
   schedules?: any[]
+  // 週起始日期（可選，如果提供則使用此日期）
+  weekStart?: Date
   // API 端點
   apiEndpoint: string
   // 卡片顯示類型：'teacher' 顯示老師名稱，'center' 顯示中心名稱
@@ -199,6 +275,10 @@ const effectiveShowHelpTooltip = computed(() => props.showHelpTooltip ?? true)
 
 // 週起始日期計算
 const getWeekStart = (date: Date): Date => {
+  if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
+    // 如果日期無效，使用今天的日期
+    date = new Date()
+  }
   const d = new Date(date)
   const day = d.getDay()
   const diff = d.getDate() - day + (day === 0 ? -6 : 1)
@@ -206,7 +286,8 @@ const getWeekStart = (date: Date): Date => {
 }
 
 // 週相關狀態
-const weekStart = ref(getWeekStart(new Date()))
+// 優先使用外部傳入的 weekStart，否則使用今天日期
+const weekStart = ref(props.weekStart ? getWeekStart(props.weekStart) : getWeekStart(new Date()))
 
 const weekEnd = computed(() => {
   const end = new Date(weekStart.value)
@@ -220,9 +301,24 @@ const weekLabel = computed(() => {
   return `${start} - ${end}`
 })
 
-// 篩選狀態
-const selectedTeacherId = ref<number | null>(null)
-const selectedRoomId = ref<number | null>(null)
+// ============================================
+// 篩選狀態 - 修復：確保刷新頁面時預設為 -1（顯示全部）
+// ============================================
+
+const selectedTeacherId = ref<number>(-1)
+const selectedRoomId = ref<number>(-1)
+
+// 確保刷新頁面時下拉選單顯示"全部"選項
+// 使用 watch 監控初始渲染，確保 selectedTeacherId 和 selectedRoomId 正確初始化為 -1
+onMounted(() => {
+  // 強制確保初始值為 -1（顯示全部）
+  if (selectedTeacherId.value !== -1) {
+    selectedTeacherId.value = -1
+  }
+  if (selectedRoomId.value !== -1) {
+    selectedRoomId.value = -1
+  }
+})
 
 // 彈窗狀態
 const showCreateModal = ref(false)
@@ -232,7 +328,7 @@ const editingRule = ref<any>(null)
 const pendingUpdateMode = ref<string>('')
 const selectedSchedule = ref<any>(null)
 const validationResults = ref<Record<string, any>>({})
-const slotWidth = ref(100)
+const slotWidth = ref(120) // 預設值，WeekGrid 自己會計算實際值
 
 // 老師端動作選擇對話框狀態
 const showActionDialog = ref(false)
@@ -246,8 +342,21 @@ const overlapTimeSlot = ref<{ weekday: number; start_hour: number; start_minute:
 // 排課資料
 const schedules = ref<any[]>([])
 
-// ResizeObserver 引用
-const resizeObserver = ref<ResizeObserver | null>(null)
+// 載入狀態
+const isLoading = ref(false)
+const hasError = ref(false)
+const errorMessage = ref('')
+
+// 響應式視圖狀態
+const isDesktop = ref(false)
+const isTablet = ref(false)
+
+// 更新視圖狀態
+const updateViewState = () => {
+  const width = window.innerWidth
+  isDesktop.value = width >= 1024 // lg breakpoint
+  isTablet.value = width >= 768 && width < 1024 // md to lg
+}
 
 // ============================================
 // 資源列表計算屬性
@@ -267,8 +376,8 @@ const selectedRoomName = computed(() => {
 })
 
 const clearAllFilters = () => {
-  selectedTeacherId.value = null
-  selectedRoomId.value = null
+  selectedTeacherId.value = -1
+  selectedRoomId.value = -1
 }
 
 // ============================================
@@ -279,6 +388,13 @@ const displaySchedules = computed(() => {
   const sourceSchedules = props.schedules && props.schedules.length > 0
     ? props.schedules
     : schedules.value
+
+  console.log('[ScheduleGrid] displaySchedules - source:', {
+    fromProps: !!(props.schedules && props.schedules.length > 0),
+    propsLength: props.schedules?.length || 0,
+    internalLength: schedules.value.length,
+    totalSourceLength: sourceSchedules.length
+  })
 
   const seen = new Set<string>()
   const result: any[] = []
@@ -295,15 +411,17 @@ const displaySchedules = computed(() => {
 })
 
 const filteredSchedules = computed(() => {
-  if (!selectedTeacherId.value && !selectedRoomId.value) {
-    return displaySchedules.value
-  }
+  const displayResult = displaySchedules.value
 
-  return displaySchedules.value.filter(schedule => {
-    const teacherMatch = !selectedTeacherId.value || schedule.teacher_id === selectedTeacherId.value
-    const roomMatch = !selectedRoomId.value || schedule.room_id === selectedRoomId.value
-    return teacherMatch && roomMatch
-  })
+  const result = selectedTeacherId.value <= 0 && selectedRoomId.value <= 0
+    ? displayResult
+    : displayResult.filter(schedule => {
+      const teacherMatch = selectedTeacherId.value <= 0 || schedule.teacher_id === selectedTeacherId.value
+      const roomMatch = selectedRoomId.value <= 0 || schedule.room_id === selectedRoomId.value
+      return teacherMatch && roomMatch
+    })
+
+  return result
 })
 
 // ============================================
@@ -311,6 +429,8 @@ const filteredSchedules = computed(() => {
 // ============================================
 
 const changeWeek = (delta: number) => {
+  isLoading.value = true
+  hasError.value = false
   weekStart.value = getWeekStart(new Date(weekStart.value.getTime() + delta * 7 * 24 * 60 * 60 * 1000))
   emit('update:weekStart', weekStart.value)
 }
@@ -320,6 +440,10 @@ const changeWeek = (delta: number) => {
 // ============================================
 
 const fetchSchedules = async () => {
+  isLoading.value = true
+  hasError.value = false
+  errorMessage.value = ''
+
   try {
     const api = useApi()
 
@@ -340,63 +464,195 @@ const fetchSchedules = async () => {
       })
     }
 
-    const expandedSchedules = response.datas || []
-
-    const scheduleList = expandedSchedules.map((schedule: any) => {
-      const date = new Date(schedule.date)
-      const weekday = date.getDay() === 0 ? 7 : date.getDay()
-      const startTime = schedule.start_time || '09:00'
-      const endTime = schedule.end_time || '10:00'
-      const [startHour, startMinute] = startTime.split(':').map(Number)
-      const durationMinutes = calculateDurationMinutes(startTime, endTime)
-
-      return {
-        id: schedule.rule_id || schedule.id,
-        key: `${schedule.rule_id || schedule.id}-${weekday}-${startTime}-${schedule.date}`,
-        offering_name: schedule.title || schedule.offering_name || '-',
-        teacher_name: schedule.teacher_name || '-',
-        teacher_id: schedule.teacher_id,
-        center_name: schedule.center_name || '-',
-        center_id: schedule.center_id,
-        room_id: schedule.room_id,
-        room_name: schedule.room_name || '-',
-        weekday: weekday,
-        start_time: startTime,
-        end_time: endTime,
-        start_hour: startHour,
-        start_minute: startMinute,
-        duration_minutes: durationMinutes,
-        date: schedule.date,
-        has_exception: schedule.has_exception || false,
-        exception_type: schedule.exception_type || null,
-        exception_info: schedule.exception_info || null,
-        rule: schedule.rule || null,
-        offering_id: schedule.offering_id,
-        effective_range: schedule.effective_range || null,
+    // 處理 API 響應格式
+    let expandedSchedules: any[] = []
+    if (Array.isArray(response)) {
+      // 後端直接返回陣列
+      expandedSchedules = response
+      console.log('[ScheduleGrid] API response is array, length:', expandedSchedules.length)
+      if (expandedSchedules.length > 0) {
+        console.log('[ScheduleGrid] First item sample:', JSON.stringify(expandedSchedules[0], null, 2))
       }
-    })
+    } else if (response?.datas) {
+      // 後端返回 { code, datas } 格式
+      expandedSchedules = response.datas
+      console.log('[ScheduleGrid] API response.datas, length:', expandedSchedules.length)
+      if (expandedSchedules.length > 0) {
+        console.log('[ScheduleGrid] First item sample:', JSON.stringify(expandedSchedules[0], null, 2))
+      }
+    } else if (response?.data) {
+      // 另一種格式 { code, data }
+      expandedSchedules = response.data
+      console.log('[ScheduleGrid] API response.data, length:', expandedSchedules.length)
+      if (expandedSchedules.length > 0) {
+        console.log('[ScheduleGrid] First item sample:', JSON.stringify(expandedSchedules[0], null, 2))
+      }
+    } else {
+      console.log('[ScheduleGrid] API response structure unexpected:', response)
+      console.log('[ScheduleGrid] Response type:', typeof response)
+      if (response) {
+        console.log('[ScheduleGrid] Response keys:', Object.keys(response))
+      }
+      expandedSchedules = []
+    }
 
+    // 如果還是空的，直接調用 /admin/rules API 獲取規則列表
+    if (expandedSchedules.length === 0) {
+      console.log('[ScheduleGrid] expandedSchedules is empty, fetching rules directly...')
+      try {
+        const rulesResponse = await api.post<{ code: number; datas: any[] }>('/admin/rules', {})
+        console.log('[ScheduleGrid] rulesResponse:', rulesResponse)
+        if (rulesResponse?.datas) {
+          expandedSchedules = rulesResponse.datas
+          console.log('[ScheduleGrid] rulesResponse.datas length:', expandedSchedules.length)
+          if (expandedSchedules.length > 0) {
+            console.log('[ScheduleGrid] First rule sample:', JSON.stringify(expandedSchedules[0], null, 2))
+          }
+        }
+      } catch (err) {
+        console.error('[ScheduleGrid] Failed to fetch rules:', err)
+      }
+    }
+
+    // 確保 expandedSchedules 是陣列
+    if (!Array.isArray(expandedSchedules)) {
+      console.log('[ScheduleGrid] expandedSchedules is not an array, resetting to empty')
+      expandedSchedules = []
+    }
+
+    console.log('[ScheduleGrid] Processing', expandedSchedules.length, 'schedules')
+
+    const scheduleList = expandedSchedules.map((schedule: any, index: number) => {
+      try {
+        // 檢測數據格式：後端可能返回排課規則或展開後的課表場次
+        const isExpandedFormat = schedule.date !== undefined
+        const isRuleFormat = schedule.weekday !== undefined
+
+        let date: Date
+        let weekday: number
+
+        if (isExpandedFormat) {
+          // 展開後的課表場次格式：已有 date 欄位
+          // 注意：後端返回的 date 可能是 "2026-02-01" 格式
+          date = new Date(schedule.date + 'T00:00:00+08:00')
+          weekday = date.getDay() === 0 ? 7 : date.getDay()
+        } else if (isRuleFormat) {
+          // 排課規則格式：需要根據 weekday 和 effective_range 計算
+          // 對於週視圖，我們需要計算每個規則在該週的具體日期
+          const effectiveStartDate = schedule.effective_range?.start_date
+          const effectiveEndDate = schedule.effective_range?.end_date
+
+          // 計算規則適用的第一個日期（與週視圖的開始日期最接近的規則日期）
+          const ruleWeekday = schedule.weekday
+          const weekStartDate = new Date(weekStart.value)
+
+          // 找到週開始日期之後第一個符合 weekday 的日期
+          let targetDate = new Date(weekStartDate)
+          const targetDay = ruleWeekday === 7 ? 0 : ruleWeekday
+          while (targetDate.getDay() !== targetDay) {
+            targetDate.setDate(targetDate.getDate() + 1)
+          }
+
+          // 檢查是否在有效範圍內
+          if (effectiveStartDate) {
+            const start = new Date(effectiveStartDate)
+            if (targetDate < start) {
+              targetDate = start
+            }
+          }
+
+          if (effectiveEndDate) {
+            const end = new Date(effectiveEndDate)
+            if (targetDate > end) {
+              console.log(`[ScheduleGrid] Rule ${schedule.id} is beyond effective range, skipping`)
+              return null
+            }
+          }
+
+          date = targetDate
+          // 確保 weekday 從計算出的 date 重新計算，而不是依賴後端可能錯誤的 weekday
+          weekday = date.getDay() === 0 ? 7 : date.getDay()
+        } else {
+          // 無法識別的格式，跳過
+          console.warn('[ScheduleGrid] Unknown schedule format at index', index, schedule)
+          return null
+        }
+
+        const startTime = schedule.start_time || '09:00'
+        const endTime = schedule.end_time || '10:00'
+        const [startHour, startMinute] = startTime.split(':').map(Number)
+        const durationMinutes = calculateDurationMinutes(startTime, endTime)
+
+        // 從關聯資料中取得老師和教室名稱
+        const teacherName = schedule.teacher?.name || schedule.teacher_name || '-'
+        const roomName = schedule.room?.name || schedule.room_name || '-'
+        const offeringName = schedule.offering?.name || schedule.offering_name || schedule.title || '-'
+
+        const dateString = date.toISOString().split('T')[0]
+
+        console.log(`[ScheduleGrid] Processed item ${index}:`, {
+          id: schedule.rule_id || schedule.id,
+          weekday,
+          date: dateString,
+          start_time: startTime,
+          offering_name: offeringName,
+          teacher_name: teacherName,
+          room_name: roomName,
+        })
+
+        return {
+          id: schedule.rule_id || schedule.id,
+          key: `${schedule.rule_id || schedule.id}-${weekday}-${startTime}-${dateString}`,
+          offering_name: offeringName,
+          teacher_name: teacherName,
+          teacher_id: schedule.teacher_id || schedule.teacher?.id,
+          center_name: schedule.center_name || '-',
+          center_id: schedule.center_id,
+          room_id: schedule.room_id || schedule.room?.id,
+          room_name: roomName,
+          weekday: weekday,
+          start_time: startTime,
+          end_time: endTime,
+          start_hour: startHour,
+          start_minute: startMinute,
+          duration_minutes: durationMinutes,
+          date: dateString,
+          has_exception: schedule.has_exception || false,
+          exception_type: schedule.exception_type || null,
+          exception_info: schedule.exception_info || null,
+          rule: schedule.rule || null,
+          offering_id: schedule.offering_id || schedule.offering?.id,
+          effective_range: schedule.effective_range || null,
+        }
+      } catch (err) {
+        console.error('[ScheduleGrid] Error processing schedule at index', index, err)
+        return null
+      }
+    }).filter((item): item is NonNullable<typeof item> => item !== null)
+
+    console.log('[ScheduleGrid] Processed scheduleList length:', scheduleList.length)
     schedules.value = scheduleList
+    console.log('[ScheduleGrid] schedules.value length:', schedules.value.length)
 
-    await nextTick()
-    calculateSlotWidth()
-  } catch (error) {
+    // 注意：slotWidth 現在由 WeekGrid 組件自己計算，不需要在這裡呼叫
+  } catch (error: any) {
     console.error('Failed to fetch schedules:', error)
+    hasError.value = true
+    errorMessage.value = error?.message || '無法載入課表資料，請稍後重試'
     schedules.value = []
+  } finally {
+    isLoading.value = false
   }
+}
+
+// 重試載入
+const retryFetch = async () => {
+  await fetchSchedules()
 }
 
 // ============================================
 // 計算工具函數
 // ============================================
-
-const calculateSlotWidth = () => {
-  const container = document.querySelector('.min-w-\\[800px\\]') as HTMLElement
-  if (container) {
-    const containerWidth = container.offsetWidth
-    slotWidth.value = Math.max(80, (containerWidth - TIME_COLUMN_WIDTH) / 7)
-  }
-}
 
 const calculateDurationMinutes = (startTime: string, endTime: string): number => {
   const [startHour, startMinute] = startTime.split(':').map(Number)
@@ -630,41 +886,68 @@ const handleDrop = async (event: DragEvent) => {
 // 監聽週變化
 // ============================================
 
-watch(weekStart, async () => {
+// 修復：添加標記來區分 schedules 是來自 props 還是內部獲取
+const schedulesFromProps = ref(false)
+
+watch(weekStart, async (newWeekStart, oldWeekStart) => {
+  // 如果 schedules 來自 props，不應該調用 fetchSchedules()
+  // 因為外部會負責提供數據
+  if (schedulesFromProps.value) {
+    return
+  }
+
+  // 如果 schedules 來自內部獲取 (schedules.value)，則重新獲取
   if (!props.schedules || props.schedules.length === 0) {
+    isLoading.value = true
+    hasError.value = false
     await fetchSchedules()
   }
 })
+
+// 監聽 props.schedules 變化，更新標記
+watch(() => props.schedules, (newSchedules) => {
+  schedulesFromProps.value = !!(newSchedules && newSchedules.length > 0)
+  console.log('[ScheduleGrid] schedulesFromProps:', schedulesFromProps.value, 'count:', newSchedules?.length || 0)
+}, { immediate: true })
+
+// 監聽外部傳入的 weekStart 變化，同步到內部狀態
+watch(() => props.weekStart, (newWeekStart) => {
+  if (newWeekStart) {
+    weekStart.value = getWeekStart(newWeekStart)
+    console.log('[ScheduleGrid] weekStart synced from props:', weekStart.value)
+  }
+}, { immediate: true })
 
 // ============================================
 // 生命週期
 // ============================================
 
 onMounted(async () => {
+  // 設置 schedules 來源標記
+  schedulesFromProps.value = !!(props.schedules && props.schedules.length > 0)
+  console.log('[ScheduleGrid] onMounted, schedulesFromProps:', schedulesFromProps.value)
+
   if (!props.schedules || props.schedules.length === 0) {
     await fetchSchedules()
   }
 
-  if (props.mode === 'admin') {
-    fetchAllResources()
-  }
+  // 修復：無論是管理員還是老師模式，都嘗試獲取資源
+  // 這樣下拉選單才能正確渲染
+  fetchAllResources()
 
-  await nextTick()
-  calculateSlotWidth()
-
-  // 監控容器大小變化
-  const container = document.querySelector('.min-w-\\[800px\\]') as HTMLElement
-  if (container) {
-    resizeObserver.value = new ResizeObserver(() => {
-      calculateSlotWidth()
-    })
-    resizeObserver.value.observe(container)
-  }
+  // 初始化響應式狀態
+  updateViewState()
+  window.addEventListener('resize', updateViewState)
 })
 
+// 監控 isDesktop 變化
+watch([isDesktop, weekStart], async ([newIsDesktop, newWeekStart]) => {
+  // 當切換到桌面模式且有週起始日期時，確保週曆視圖能正確渲染
+  // WeekGrid 自己會處理 slotWidth 的計算
+}, { immediate: true })
+
 onUnmounted(() => {
-  if (resizeObserver.value) {
-    resizeObserver.value.disconnect()
-  }
+  // 移除 resize 監聽
+  window.removeEventListener('resize', updateViewState)
 })
 </script>

@@ -249,12 +249,12 @@
 
 <script setup lang="ts">
 import BaseGlassCard from '~/components/base/BaseGlassCard.vue'
-import GlobalAlert from '~/components/GlobalAlert.vue'
+import GlobalAlert from '~/components/base/GlobalAlert.vue'
 import { alertError, alertSuccess, alertWarning, alertConfirm } from '~/composables/useAlert'
 import { useToast } from '~/composables/useToast'
 
 definePageMeta({
-  middleware: 'auth-admin',
+  auth: 'ADMIN',
   layout: 'admin',
 })
 

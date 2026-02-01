@@ -243,8 +243,9 @@
 </template>
 
 <script setup lang="ts">
+import NotificationDropdown from '~/components/Navigation/NotificationDropdown.vue'
 definePageMeta({
-  middleware: 'auth-admin',
+  auth: 'ADMIN',
   layout: 'admin',
 })
 
@@ -331,21 +332,24 @@ const averageRating = computed(() => {
 const fetchTeachers = async () => {
   loading.value = true
   try {
-    const response = await api.get<{ code: number; datas: Teacher[] }>(
+    // parseResponse 已經提取了 datas 欄位，所以 response 就是老師陣列本身
+    const response = await api.get<Teacher[]>(
       '/teachers'
     )
 
-    teachers.value = response.datas || []
+    teachers.value = response || []
 
     // 並行為每位老師取得評分資料
     await Promise.all(
       teachers.value.map(async (teacher) => {
         try {
-          const noteResponse = await api.get<{ code: number; datas: TeacherNote }>(
+          // 取得老師評分資料
+          const noteResponse = await api.get<TeacherNote>(
             `/admin/teachers/${teacher.id}/note`
           )
-          if (noteResponse.datas) {
-            teacher.note = noteResponse.datas
+          // parseResponse 已經提取了資料，所以 noteResponse 就是 TeacherNote 或 null
+          if (noteResponse) {
+            teacher.note = noteResponse
           }
         } catch {
           // 沒有評分資料是正常的
@@ -367,11 +371,12 @@ const openEditModal = async (teacher: Teacher) => {
   // 確保載入最新評分資料
   if (!teacher.note) {
     try {
-      const noteResponse = await api.get<{ code: number; datas: TeacherNote }>(
+      // parseResponse 已經提取了資料，所以 noteResponse 就是 TeacherNote 或 null
+      const noteResponse = await api.get<TeacherNote>(
         `/admin/teachers/${teacher.id}/note`
       )
-      if (noteResponse.datas) {
-        teacher.note = noteResponse.datas
+      if (noteResponse) {
+        teacher.note = noteResponse
       }
     } catch {
       // 沒有評分資料是正常的
@@ -410,6 +415,8 @@ const saveNote = async () => {
     notificationUI.success('評分已儲存')
     closeEditModal()
     await fetchTeachers()
+    // 清除老師快取，讓所有使用老師資料的 UI 組件重新載入
+    invalidate('teachers')
   } catch (error) {
     console.error('Failed to save note:', error)
     notificationUI.error('儲存評分失敗')
@@ -427,6 +434,8 @@ const deleteNote = async () => {
     notificationUI.success('評分已刪除')
     closeEditModal()
     await fetchTeachers()
+    // 清除老師快取，讓所有使用老師資料的 UI 組件重新載入
+    invalidate('teachers')
   } catch (error) {
     console.error('Failed to delete note:', error)
     notificationUI.error('刪除評分失敗')

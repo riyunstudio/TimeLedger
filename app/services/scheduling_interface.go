@@ -39,7 +39,8 @@ type ScheduleValidationService interface {
 
 	// ValidateFull 完整驗證
 	// 執行所有檢查（重疊 + 緩衝）
-	ValidateFull(ctx context.Context, centerID uint, teacherID *uint, roomID uint, courseID uint, startTime, endTime time.Time, excludeRuleID *uint, allowBufferOverride bool) (ValidationResult, error)
+	// 如果 prevEndTime 和 nextStartTime 為 nil，系統會自動計算上一堂課的結束時間
+	ValidateFull(ctx context.Context, centerID uint, teacherID *uint, roomID uint, courseID uint, startTime, endTime time.Time, excludeRuleID *uint, allowBufferOverride bool, prevEndTime, nextStartTime *time.Time) (ValidationResult, error)
 }
 
 type ScheduleExpansionService interface {

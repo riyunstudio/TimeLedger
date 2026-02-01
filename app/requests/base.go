@@ -82,15 +82,38 @@ var DateFormatValidator = func(fl validator.FieldLevel) bool {
 	return err == nil
 }
 
-// TimeFormatValidator 時間格式驗證 (HH:MM 或 HH:MM:SS)
+// TimeFormatValidator 時間格式驗證 (HH:MM, HH:MM:SS, 或 RFC3339 完整格式)
+// 支援前端傳入的時間格式：
+// - "09:00" 或 "09:00:00"（時:分 或 時:分:秒）
+// - "2026-01-01T09:00:00+08:00"（RFC3339 完整格式）
 var TimeFormatValidator = func(fl validator.FieldLevel) bool {
 	timeStr, ok := fl.Field().Interface().(string)
 	if !ok {
 		return false
 	}
-	_, err := time.Parse("15:04", timeStr)
-	if err != nil {
-		_, err = time.Parse("15:04:05", timeStr)
+
+	// 嘗試解析為 HH:MM 格式
+	if _, err := time.Parse("15:04", timeStr); err == nil {
+		return true
 	}
-	return err == nil
+
+	// 嘗試解析為 HH:MM:SS 格式
+	if _, err := time.Parse("15:04:05", timeStr); err == nil {
+		return true
+	}
+
+	// 嘗試解析為 RFC3339 完整格式（包含時區）
+	// 格式範例：2006-01-02T15:04:05Z07:00 或 2006-01-02T15:04:05+08:00
+	layouts := []string{
+		"2006-01-02T15:04:05Z07:00",
+		"2006-01-02T15:04:05+08:00",
+		"2006-01-02T15:04:05",
+	}
+	for _, layout := range layouts {
+		if _, err := time.Parse(layout, timeStr); err == nil {
+			return true
+		}
+	}
+
+	return false
 }

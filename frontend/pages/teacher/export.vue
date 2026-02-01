@@ -43,10 +43,12 @@
       <button
         @click="handleDownloadImage"
         class="px-4 py-2 rounded-lg bg-secondary-500 text-white hover:bg-secondary-600 transition-colors flex items-center gap-2"
+        :disabled="scheduleStore.isDownloadingImage"
       >
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg v-if="!scheduleStore.isDownloadingImage" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
         </svg>
+        <BaseLoading v-else :loading="true" size="sm" />
         下載圖片
       </button>
     </div>
@@ -246,6 +248,59 @@
         </div>
       </div>
 
+      <!-- iCal 訂閱區塊 -->
+      <div class="glass-card p-4">
+        <h3 class="text-white font-semibold mb-4">iCal 訂閱</h3>
+
+        <!-- 尚未建立訂閱 -->
+        <div v-if="!subscriptionUrl" class="space-y-3">
+          <p class="text-slate-400 text-sm">建立課表訂閱連結，同步到您的日曆 App</p>
+          <button
+            @click="handleCreateSubscription"
+            class="w-full px-4 py-2 rounded-lg bg-primary-500 text-white hover:bg-primary-600 transition-colors text-sm flex items-center justify-center gap-2"
+            :disabled="scheduleStore.isCreatingSubscription"
+          >
+            <svg v-if="!scheduleStore.isCreatingSubscription" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            <BaseLoading v-else :loading="true" size="sm" />
+            建立訂閱連結
+          </button>
+        </div>
+
+        <!-- 已建立訂閱 -->
+        <div v-else class="space-y-3">
+          <div class="flex items-center gap-2 p-2 rounded-lg bg-white/5">
+            <div class="flex-1 min-w-0">
+              <p class="text-xs text-slate-400 mb-1">訂閱連結</p>
+              <p class="text-xs text-slate-300 truncate font-mono">{{ subscriptionUrl }}</p>
+            </div>
+          </div>
+
+          <div class="flex gap-2">
+            <button
+              @click="handleCopySubscriptionUrl"
+              class="flex-1 px-3 py-2 rounded-lg bg-white/10 text-white hover:bg-white/20 transition-colors text-sm flex items-center justify-center gap-2"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+              </svg>
+              複製連結
+            </button>
+            <button
+              @click="handleDeleteSubscription"
+              class="px-3 py-2 rounded-lg bg-critical-500/20 text-critical-500 hover:bg-critical-500/30 transition-colors text-sm flex items-center justify-center"
+              :disabled="scheduleStore.isDeletingSubscription"
+            >
+              <svg v-if="!scheduleStore.isDeletingSubscription" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              <BaseLoading v-else :loading="true" size="sm" />
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div class="glass-card p-4">
         <h3 class="text-white font-semibold mb-4">快速操作</h3>
         <div class="space-y-2">
@@ -266,17 +321,19 @@
     </div>
   </div>
 
-  <NotificationDropdown v-if="notificationUI.show.value" @close="notificationUI.close()" />
+  <NavigationNotificationDropdown v-if="notificationUI.show.value" @close="notificationUI.close()" />
   <TeacherSidebar v-if="sidebarStore.isOpen.value" @close="sidebarStore.close()" />
 </template>
 
 <script setup lang="ts">
- definePageMeta({
-   middleware: 'auth-teacher',
-   layout: 'default',
- })
+definePageMeta({
+  auth: 'TEACHER',
+  layout: 'default',
+})
 
- interface Theme {
+import { formatDateToString } from '~/composables/useTaiwanTime'
+
+interface Theme {
   id: string
   name: string
   preview: string
@@ -770,7 +827,7 @@ const getBackgroundColor = () => {
   return '#f8f8f8'
 }
 
-const handleDownloadImage = () => {
+const handleExportAsImage = () => {
   if (scheduleRef.value) {
     import('html2canvas').then(({ default: html2canvas }) => {
       html2canvas(scheduleRef.value!, {
@@ -865,15 +922,45 @@ const generateICalData = (): string => {
   return events.join('\r\n')
 }
 
-// 下載 iCal 檔案
-const handleDownloadICal = () => {
-  const icalData = generateICalData()
-  const blob = new Blob([icalData], { type: 'text/calendar;charset=utf-8' })
-  const link = document.createElement('a')
-  link.href = URL.createObjectURL(blob)
-  link.download = `課表-${weekLabel.value}.ics`
-  link.click()
-  URL.revokeObjectURL(link.href)
+const weekStart = computed(() => scheduleStore.weekStart)
+const weekEnd = computed(() => scheduleStore.weekEnd)
+
+// 使用 API 下載 iCal 檔案
+const handleDownloadICal = async () => {
+  try {
+    const api = useApi()
+    // 從 scheduleStore 取得週開始和結束日期，並格式化為 YYYY-MM-DD
+    const startDate = weekStart.value ? formatDateToString(weekStart.value) : ''
+    const endDate = weekEnd.value ? formatDateToString(weekEnd.value) : ''
+
+    if (!startDate || !endDate) {
+      console.error('Invalid date range')
+      notificationUI.showError('無法取得課表日期範圍')
+      return
+    }
+
+    const response = await api.raw<Blob>(`/api/v1/teacher/me/schedule.ics?start_date=${startDate}&end_date=${endDate}`)
+
+    // 建立下載連結
+    const url = URL.createObjectURL(response)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `課表-${weekLabel.value}.ics`
+    link.click()
+
+    // 清理
+    URL.revokeObjectURL(url)
+  } catch (error) {
+    console.error('Failed to download iCal:', error)
+    // 如果 API 失敗，回退到本地生成
+    const icalData = generateICalData()
+    const blob = new Blob([icalData], { type: 'text/calendar;charset=utf-8' })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = `課表-${weekLabel.value}.ics`
+    link.click()
+    URL.revokeObjectURL(link.href)
+  }
 }
 
 // 分享到 LINE（產生圖片後開啟 LINE）
@@ -905,6 +992,67 @@ const handleShareLINE = async () => {
   } catch (error) {
     console.error('Failed to share to LINE:', error)
     notificationUI.showError('分享失敗，請嘗試下載圖片')
+  }
+}
+
+// 取得訂閱連結
+const subscriptionUrl = computed(() => scheduleStore.subscriptionUrl)
+
+// 建立訂閱連結
+const handleCreateSubscription = async () => {
+  try {
+    await scheduleStore.createSubscription()
+    notificationUI.showSuccess('已建立訂閱連結')
+  } catch (error) {
+    console.error('Failed to create subscription:', error)
+    notificationUI.showError('建立訂閱連結失敗，請稍後再試')
+  }
+}
+
+// 複製訂閱連結
+const handleCopySubscriptionUrl = async () => {
+  if (!subscriptionUrl.value) return
+
+  try {
+    await navigator.clipboard.writeText(subscriptionUrl.value)
+    notificationUI.showSuccess('已複製訂閱連結')
+  } catch (error) {
+    console.error('Failed to copy:', error)
+    notificationUI.showError('複製失敗，請手動複製')
+  }
+}
+
+// 刪除訂閱連結
+const handleDeleteSubscription = async () => {
+  const confirmed = await alertConfirm('確定要取消訂閱嗎？取消後將無法自動同步課表。')
+  if (!confirmed) return
+
+  try {
+    await scheduleStore.deleteSubscription()
+    notificationUI.showSuccess('已取消訂閱')
+  } catch (error) {
+    console.error('Failed to delete subscription:', error)
+    notificationUI.showError('取消訂閱失敗，請稍後再試')
+  }
+}
+
+// 使用 API 下載圖片
+const handleDownloadImage = async () => {
+  try {
+    // 從 scheduleStore 取得週開始和結束日期，並格式化為 YYYY-MM-DD
+    const startDate = weekStart.value ? formatDateToString(weekStart.value) : ''
+    const endDate = weekEnd.value ? formatDateToString(weekEnd.value) : ''
+
+    if (!startDate || !endDate) {
+      console.error('Invalid date range')
+      notificationUI.showError('無法取得課表日期範圍')
+      return
+    }
+
+    await scheduleStore.downloadImage(startDate, endDate)
+  } catch (error) {
+    console.error('Failed to download image:', error)
+    notificationUI.showError('下載失敗，請稍後再試')
   }
 }
 

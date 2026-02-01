@@ -110,12 +110,13 @@ const handleLogin = async () => {
 
   try {
     const api = useApi()
-    const response = await api.post<{ code: number; message: string; datas: any }>('/auth/admin/login', {
+    // api.post 返回的是 datas 字段的值，即 LoginResponse（包含 token 和 user）
+    const response = await api.post<{ token: string; user: any }>('/auth/admin/login', {
       email: email.value,
       password: password.value,
     })
 
-    authStore.login(response.datas)
+    authStore.login(response)
     router.push('/admin/dashboard')
   } catch (error) {
     console.error('Login failed:', error)

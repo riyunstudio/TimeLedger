@@ -1,7 +1,6 @@
 export default defineNuxtPlugin(() => {
   const authStore = useAuthStore()
 
-  if (process.client) {
-    authStore.initFromStorage()
-  }
+  // 認證狀態已由 pinia-plugin-persistedstate 自動恢復
+  // 不需要額外的初始化邏輯
 })

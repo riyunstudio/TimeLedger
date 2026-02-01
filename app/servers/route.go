@@ -136,6 +136,7 @@ func (s *Server) LoadRoutes() {
 		{http.MethodPut, "/api/v1/admin/templates/:templateId/cells/reorder", s.action.timetableTemplate.ReorderCells, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodDelete, "/api/v1/admin/templates/cells/:cellId", s.action.timetableTemplate.DeleteCell, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodPost, "/api/v1/admin/templates/:templateId/apply", s.action.timetableTemplate.ApplyTemplate, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodPost, "/api/v1/admin/templates/:templateId/validate-apply", s.action.timetableTemplate.ValidateApplyTemplate, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 
 		// Admin - LINE 綁定
 		{http.MethodGet, "/api/v1/admin/me/line-binding", s.action.adminUser.GetLINEBindingStatus, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},

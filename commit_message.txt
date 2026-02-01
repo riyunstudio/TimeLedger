@@ -1,6 +1,9 @@
-fix(dashboard): add missing IDs to today-summary API and fix ScheduleGrid
+refactor(frontend): reorganize components into feature directories
 
-- Add ID fields to TodayOffering, TodayTeacher, TodayRoom structs
-- Add Preload to ListByCenterID for related data (Offering, Teacher, Room)
-- Add missing functions in ScheduleGrid: getDayDate, getDaySchedules, getDayScheduleCount
-- Update frontend to correctly map course/teacher/room IDs from API
+- Admin/: 26 management-related components (headers, sidebars, tabs, modals)
+- Teacher/: 11 teacher-related components (profile, skills, schedules)
+- Navigation/: 1 navigation component (notification dropdown)
+- Scheduling/: 18 scheduling components (calendars, grids, modals)
+- Base/: 14 base UI components (buttons, inputs, loading, toasts)
+
+All Nuxt auto-imports preserved as subdirectory components can be imported using their filename without the directory prefix.

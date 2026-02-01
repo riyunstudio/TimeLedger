@@ -7,9 +7,11 @@
           <h3 class="font-semibold text-slate-100">通知</h3>
           <button
             @click="markAllAsRead"
-            class="text-sm text-primary-500 hover:text-primary-400 transition-colors"
+            :disabled="notificationDataStore.unreadCount === 0 || notificationDataStore.isMarkingAllRead"
+            class="text-sm transition-colors"
+            :class="notificationDataStore.unreadCount === 0 ? 'text-slate-600 cursor-not-allowed' : 'text-primary-500 hover:text-primary-400'"
           >
-            全部標記為已讀
+            {{ notificationDataStore.isMarkingAllRead ? '處理中...' : '全部標記為已讀' }}
           </button>
         </div>
       </div>
@@ -80,7 +82,7 @@ watch(
 
 const handleNotificationClick = async (notification: any) => {
   if (!notification.is_read) {
-    await notificationDataStore.markAsRead(notification.id)
+    await notificationDataStore.markNotificationRead(notification.id)
   }
 
   // 根據通知類型跳轉到相應頁面
@@ -107,7 +109,21 @@ const handleNotificationClick = async (notification: any) => {
 }
 
 const markAllAsRead = async () => {
-  await notificationDataStore.markAllAsRead()
+  // 檢查是否有未讀通知
+  if (notificationDataStore.unreadCount === 0) {
+    return
+  }
+
+  // 檢查是否正在處理中
+  if (notificationDataStore.isMarkingAllRead) {
+    return
+  }
+
+  try {
+    await notificationDataStore.markAllAsRead()
+  } catch (error) {
+    console.error('Failed to mark all as read:', error)
+  }
 }
 
 const formatTime = (dateStr: string): string => {
