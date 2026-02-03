@@ -3,6 +3,15 @@ export default defineNuxtConfig({
   compatibilityDate: '2024-11-01',
   devtools: { enabled: false },
 
+  // Production API proxy (Nitro server-side)
+  nitro: {
+    routeRules: {
+      '/api/**': {
+        proxy: process.env.API_TARGET || 'http://localhost:8888/api/**',
+      },
+    },
+  },
+
   // @vite-pwa/nuxt temporarily disabled due to #app-manifest import error
   // modules: ['@pinia/nuxt', '@nuxtjs/tailwindcss', 'nuxt-headlessui', '@vite-pwa/nuxt', '@nuxtjs/storybook', '@nuxtjs/i18n'],
   modules: ['@pinia/nuxt', '@nuxtjs/tailwindcss', 'nuxt-headlessui', '@nuxtjs/i18n'],
