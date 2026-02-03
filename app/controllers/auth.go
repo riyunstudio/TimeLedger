@@ -69,19 +69,14 @@ type AdminLoginRequest struct {
 // @Router /api/v1/auth/teacher/line/login [post]
 func (ctl *AuthController) TeacherLineLogin(ctx *gin.Context) {
 	var req TeacherLineLoginRequest
-	println("[DEBUG] TeacherLineLogin called")
-	
+
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		println("[DEBUG] BindJSON error:", err.Error())
 		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
 			Code:    global.BAD_REQUEST,
 			Message: "Invalid request body: " + err.Error(),
 		})
 		return
 	}
-
-	println("[DEBUG] Parsed req.LineUserID:", req.LineUserID)
-	println("[DEBUG] Parsed req.AccessToken:", req.AccessToken)
 
 	if req.LineUserID == "" || req.AccessToken == "" {
 		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
