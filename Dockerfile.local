@@ -40,6 +40,7 @@ ENV TZ=Asia/Taipei
 # 複製 Backend
 COPY --from=backend-builder /app/main ./backend/main
 COPY --from=backend-builder /app/docs ./backend/docs
+COPY .env.example ./backend/.env
 
 # 複製 Frontend
 COPY --from=frontend-builder /app/.output ./frontend/.output
