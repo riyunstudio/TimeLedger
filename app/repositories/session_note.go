@@ -2,7 +2,6 @@ package repositories
 
 import (
 	"context"
-	"fmt"
 	"time"
 	"timeLedger/app"
 	"timeLedger/app/models"
@@ -39,17 +38,11 @@ func (rp *SessionNoteRepository) GetOrCreate(ctx context.Context, teacherID uint
 	query := rp.app.MySQL.WDB.WithContext(ctx).
 		Where("teacher_id = ? AND rule_id = ? AND session_date = ?", teacherID, ruleID, normalizedDate.Format("2006-01-02"))
 
-	fmt.Printf("[SessionNote] GetOrCreate - teacherID: %d, ruleID: %d, sessionDate: %s, normalizedDate: %s\n",
-		teacherID, ruleID, sessionDate.Format("2006-01-02"), normalizedDate.Format("2006-01-02"))
-
 	err := query.First(&data).Error
 
 	if err == nil {
-		fmt.Printf("[SessionNote] Found existing note - id: %d, content: %s\n", data.ID, data.Content)
 		return data, false, nil
 	}
-
-	fmt.Printf("[SessionNote] Not found, creating new note - error: %v\n", err)
 
 	if data.ID == 0 {
 		newData := models.SessionNote{
@@ -60,10 +53,8 @@ func (rp *SessionNoteRepository) GetOrCreate(ctx context.Context, teacherID uint
 			PrepNote:    "",
 		}
 		if createErr := rp.app.MySQL.WDB.WithContext(ctx).Create(&newData).Error; createErr != nil {
-			fmt.Printf("[SessionNote] Failed to create note - error: %v\n", createErr)
 			return newData, true, createErr
 		}
-		fmt.Printf("[SessionNote] Created new note - id: %d\n", newData.ID)
 		return newData, true, nil
 	}
 

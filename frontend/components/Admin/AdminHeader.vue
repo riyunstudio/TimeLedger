@@ -42,6 +42,15 @@ const notificationStore = useNotificationStore()
 
 const handleLogout = async () => {
   if (await alertConfirm('確定要登出嗎？')) {
+    try {
+      // 呼叫後端登出 API（將 Token 加入黑名單）
+      const api = useApi()
+      await api.post('/auth/logout', {})
+    } catch (error) {
+      // 即使後端呼叫失敗，仍然清除本地狀態
+      console.error('Logout API failed:', error)
+    }
+    
     authStore.logout()
     router.push('/admin/login')
   }
