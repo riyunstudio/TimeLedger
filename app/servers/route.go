@@ -106,6 +106,8 @@ func (s *Server) LoadRoutes() {
 		{http.MethodGet, "/api/v1/teacher/me/invitations", s.action.teacherInvitation.GetTeacherInvitations, []gin.HandlerFunc{authMiddleware.Authenticate()}},
 		{http.MethodPost, "/api/v1/teacher/me/invitations/respond", s.action.teacherInvitation.RespondToInvitation, []gin.HandlerFunc{authMiddleware.Authenticate()}},
 		{http.MethodGet, "/api/v1/teacher/me/invitations/pending-count", s.action.teacherInvitation.GetPendingInvitationsCount, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+		// Teacher - Public Registration (LINE Bot 自主註冊)
+		{http.MethodPost, "/api/v1/teacher/public/register", s.action.teacher.PublicRegister, []gin.HandlerFunc{}},
 
 		// Admin - Teacher Management
 		{http.MethodGet, "/api/v1/teachers", s.action.adminTeacher.ListTeachers, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireAdmin()}},
@@ -203,6 +205,11 @@ func (s *Server) LoadRoutes() {
 		{http.MethodPost, "/api/v1/admin/centers/:id/invitations/generate-link", s.action.teacherInvitation.GenerateInvitationLink, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodGet, "/api/v1/admin/centers/:id/invitations/links", s.action.teacherInvitation.GetInvitationLinks, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodDelete, "/api/v1/admin/invitations/links/:id", s.action.teacherInvitation.RevokeInvitationLink, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		// Admin - General Invitation Links
+		{http.MethodGet, "/api/v1/admin/centers/:id/invitations/general-link", s.action.teacherInvitation.GetGeneralInvitationLink, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodPost, "/api/v1/admin/centers/:id/invitations/general-link", s.action.teacherInvitation.GenerateGeneralInvitationLink, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodPost, "/api/v1/admin/centers/:id/invitations/general-link/toggle", s.action.teacherInvitation.ToggleGeneralInvitationStatus, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodPost, "/api/v1/admin/centers/:id/invitations/general-link/regenerate", s.action.teacherInvitation.RegenerateGeneralInvitationLink, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		// Public Invitation APIs (no auth required)
 		{http.MethodGet, "/api/v1/invitations/:token", s.action.teacherInvitation.GetPublicInvitation, []gin.HandlerFunc{}},
 		{http.MethodPost, "/api/v1/invitations/:token/accept", s.action.teacherInvitation.AcceptInvitationByLink, []gin.HandlerFunc{}},

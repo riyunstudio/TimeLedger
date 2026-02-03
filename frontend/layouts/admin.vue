@@ -124,6 +124,14 @@
               <span class="w-1.5 h-1.5 rounded-full bg-slate-500" />
               老師評價
             </NuxtLink>
+            <NuxtLink
+              to="/admin/invitations"
+              class="flex items-center gap-3 px-4 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700/30 transition-all duration-200 text-sm"
+              active-class="!text-white bg-violet-500/10"
+            >
+              <span class="w-1.5 h-1.5 rounded-full bg-slate-500" />
+              邀請紀錄
+            </NuxtLink>
           </div>
         </div>
 
@@ -368,6 +376,14 @@
                 >
                   老師評價
                 </NuxtLink>
+                <NuxtLink
+                  to="/admin/invitations"
+                  class="flex items-center gap-3 px-4 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700/30 transition-all duration-200 text-sm"
+                  active-class="!text-white bg-violet-500/10"
+                  @click="mobileMenuOpen = false"
+                >
+                  邀請紀錄
+                </NuxtLink>
               </div>
             </div>
 
@@ -591,7 +607,8 @@ const pageTitle = computed(() => {
     '/admin/admin-list': '管理員帳號',
     '/admin/line-bind': 'LINE 綁定',
     '/admin/queue-monitor': '系統監控',
-    '/admin/holidays': '假日設定'
+    '/admin/holidays': '假日設定',
+    '/admin/invitations': '邀請紀錄'
   }
   return titles[route.path] || 'TimeLedger'
 })

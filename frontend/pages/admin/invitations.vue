@@ -62,6 +62,16 @@
             {{ links.length }}
           </span>
         </button>
+        <button
+          @click="activeTab = 'general'"
+          class="px-4 py-2 rounded-t-lg transition-colors"
+          :class="activeTab === 'general' ? 'bg-white/10 text-white' : 'text-slate-400 hover:text-white'"
+        >
+          通用連結
+          <span v-if="generalLink" class="ml-1 px-1.5 py-0.5 text-xs bg-success-500/20 text-success-400 rounded">
+            已啟用
+          </span>
+        </button>
       </div>
     </div>
 
@@ -69,6 +79,15 @@
     <div v-if="activeTab === 'invitations'">
       <!-- 篩選器 -->
       <div class="flex flex-wrap gap-3 mb-6">
+        <select
+          v-model="filters.inviteType"
+          class="px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-slate-300 focus:outline-none focus:border-primary-500"
+        >
+          <option value="">全部類型</option>
+          <option value="GENERAL">通用邀請</option>
+          <option value="TEACHER">指定邀請</option>
+        </select>
+
         <select
           v-model="filters.status"
           class="px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-slate-300 focus:outline-none focus:border-primary-500"
@@ -109,6 +128,7 @@
         <table v-else class="w-full">
           <thead class="bg-white/5">
             <tr>
+              <th class="px-4 py-3 text-left text-sm font-medium text-slate-400">邀請類型</th>
               <th class="px-4 py-3 text-left text-sm font-medium text-slate-400">Email</th>
               <th class="px-4 py-3 text-left text-sm font-medium text-slate-400">狀態</th>
               <th class="px-4 py-3 text-left text-sm font-medium text-slate-400">邀請時間</th>
@@ -118,7 +138,18 @@
           </thead>
           <tbody class="divide-y divide-white/5">
             <tr v-for="invitation in filteredInvitations" :key="invitation.id" class="hover:bg-white/5">
-              <td class="px-4 py-3 text-slate-300">{{ invitation.email }}</td>
+              <td class="px-4 py-3">
+                <span
+                  class="px-2 py-1 rounded-full text-xs font-medium"
+                  :class="{
+                    'bg-primary-500/20 text-primary-400': invitation.invite_type === 'GENERAL',
+                    'bg-slate-500/20 text-slate-400': invitation.invite_type !== 'GENERAL'
+                  }"
+                >
+                  {{ inviteTypeText(invitation.invite_type) }}
+                </span>
+              </td>
+              <td class="px-4 py-3 text-slate-300">{{ invitation.email || '-' }}</td>
               <td class="px-4 py-3">
                 <span
                   class="px-2 py-1 rounded-full text-xs font-medium"
@@ -200,7 +231,7 @@
                 </span>
               </td>
               <td class="px-4 py-3 text-slate-400 text-sm">
-                {{ formatDate(link.expires_at) }}
+                {{ link.expires_at ? formatDate(link.expires_at) : '無期限' }}
               </td>
               <td class="px-4 py-3">
                 <div class="flex gap-2">
@@ -227,6 +258,109 @@
             </tr>
           </tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- 通用邀請連結標籤 -->
+    <div v-if="activeTab === 'general'">
+      <div class="bg-white/5 rounded-xl border border-white/10 overflow-hidden">
+        <div class="p-6">
+          <div class="flex items-start justify-between mb-6">
+            <div>
+              <h3 class="text-lg font-bold text-white mb-2">通用邀請連結</h3>
+              <p class="text-slate-400 text-sm">
+                產生一個不綁定 Email 的通用邀請連結，可分享給多位老師重複使用
+              </p>
+            </div>
+          </div>
+
+          <!-- 通用連結狀態卡片 -->
+          <div v-if="loadingGeneral" class="p-8 text-center">
+            <div class="inline-block w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
+            <p class="text-slate-400 mt-2">載入中...</p>
+          </div>
+
+          <div v-else-if="generalLink" class="space-y-4">
+            <!-- 連結資訊 -->
+            <div class="p-4 bg-success-500/10 border border-success-500/30 rounded-xl">
+              <div class="flex items-center gap-2 mb-3">
+                <span class="px-2 py-1 rounded-full text-xs font-medium bg-success-500/20 text-success-400">
+                  已啟用
+                </span>
+                <span class="text-slate-400 text-sm">
+                  職位：{{ roleText(generalLink.role) }}
+                </span>
+              </div>
+
+              <div class="mb-4">
+                <label class="block text-slate-400 text-sm mb-2">邀請連結</label>
+                <div class="flex gap-2">
+                  <input
+                    :value="generalLink.invite_link"
+                    readonly
+                    class="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-slate-300 text-sm"
+                  />
+                  <button
+                    @click="copyGeneralLink"
+                    class="px-3 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors flex items-center gap-1"
+                  >
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                    </svg>
+                    複製
+                  </button>
+                </div>
+              </div>
+
+              <div class="flex items-center justify-between text-sm">
+                <span class="text-slate-400">
+                  有效期限：無期限
+                </span>
+              </div>
+            </div>
+
+            <!-- 操作按鈕 -->
+            <div class="flex gap-3">
+              <button
+                @click="toggleGeneralLink"
+                class="flex-1 py-3 rounded-xl transition-colors flex items-center justify-center gap-2"
+                :class="generalLink.status === 'PENDING' ? 'bg-warning-500/20 text-warning-400 hover:bg-warning-500/30 border border-warning-500/30' : 'bg-success-500/20 text-success-400 hover:bg-success-500/30 border border-success-500/30'"
+              >
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                </svg>
+                {{ generalLink.status === 'PENDING' ? '停用連結' : '重新啟用' }}
+              </button>
+              <button
+                @click="showGeneralModal = true"
+                class="flex-1 py-3 bg-primary-500/20 text-primary-400 border border-primary-500/30 rounded-xl hover:bg-primary-500/30 transition-colors flex items-center justify-center gap-2"
+              >
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                重新產生
+              </button>
+            </div>
+          </div>
+
+          <div v-else class="p-8 text-center">
+            <div class="mb-4">
+              <svg class="w-12 h-12 mx-auto text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+              </svg>
+            </div>
+            <p class="text-slate-400 mb-4">尚未產生通用邀請連結</p>
+            <button
+              @click="showGeneralModal = true"
+              class="px-6 py-3 bg-primary-500 text-white rounded-xl hover:bg-primary-600 transition-colors flex items-center gap-2 mx-auto"
+            >
+              <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
+              產生通用連結
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -315,6 +449,50 @@
       </div>
     </div>
 
+    <!-- 產生通用邀請連結 Modal -->
+    <div v-if="showGeneralModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <div class="bg-slate-800 rounded-2xl p-6 w-full max-w-md border border-white/10">
+        <div class="flex items-center justify-between mb-6">
+          <h3 class="text-xl font-bold text-white">產生通用邀請連結</h3>
+          <button @click="closeGeneralModal" class="text-slate-400 hover:text-white">
+            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <form @submit.prevent="generateGeneralLink">
+          <div class="mb-6">
+            <label class="block text-slate-400 text-sm mb-2">邀請訊息（選填）</label>
+            <textarea
+              v-model="generalForm.message"
+              rows="3"
+              placeholder="輸入邀請訊息..."
+              class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-primary-500 resize-none"
+            ></textarea>
+          </div>
+
+          <div class="flex gap-3">
+            <button
+              type="button"
+              @click="closeGeneralModal"
+              class="flex-1 py-3 bg-white/10 text-white rounded-xl hover:bg-white/20 transition-colors"
+            >
+              取消
+            </button>
+            <button
+              type="submit"
+              :disabled="generating"
+              class="flex-1 py-3 bg-primary-500 text-white rounded-xl hover:bg-primary-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              <span v-if="generating" class="inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+              {{ generating ? '產生中...' : '產生連結' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <!-- Toast 通知 -->
     <div
       v-if="toast.show"
@@ -348,9 +526,10 @@ interface Invitation {
   id: number
   email: string
   status: string
+  invite_type: string
   created_at: string
   responded_at?: string
-  expires_at: string
+  expires_at: string | null
 }
 
 interface InvitationLink {
@@ -358,7 +537,7 @@ interface InvitationLink {
   email: string
   role: string
   invite_link: string
-  expires_at: string
+  expires_at: string | null
   created_at: string
 }
 
@@ -377,6 +556,7 @@ const stats = ref({
 const filters = ref({
   status: '',
   search: '',
+  inviteType: '',
 })
 
 const pagination = ref({
@@ -393,6 +573,14 @@ const generatedLink = ref<InvitationLink | null>(null)
 const generateForm = ref({
   email: '',
   role: 'TEACHER',
+  message: '',
+})
+
+// 通用連結相關狀態
+const showGeneralModal = ref(false)
+const loadingGeneral = ref(false)
+const generalLink = ref<InvitationLink | null>(null)
+const generalForm = ref({
   message: '',
 })
 
@@ -419,6 +607,17 @@ const statusText = (status: string) => {
     EXPIRED: '已過期',
   }
   return texts[status] || status
+}
+
+// 邀請類型文字
+const inviteTypeText = (inviteType: string) => {
+  const texts: Record<string, string> = {
+    GENERAL: '通用邀請',
+    TEACHER: '指定邀請',
+    TALENT_POOL: '人才庫',
+    MEMBER: '會員',
+  }
+  return texts[inviteType] || inviteType
 }
 
 // 角色文字
@@ -536,11 +735,22 @@ const changePage = (page: number) => {
 
 // 篩選後的邀請
 const filteredInvitations = computed(() => {
-  if (!filters.value.search) return invitations.value
-  const search = filters.value.search.toLowerCase()
-  return invitations.value.filter(inv =>
-    inv.email.toLowerCase().includes(search)
-  )
+  let result = invitations.value
+
+  // 篩選邀請類型
+  if (filters.value.inviteType) {
+    result = result.filter(inv => inv.invite_type === filters.value.inviteType)
+  }
+
+  // 搜尋 Email
+  if (filters.value.search) {
+    const search = filters.value.search.toLowerCase()
+    result = result.filter(inv =>
+      (inv.email && inv.email.toLowerCase().includes(search))
+    )
+  }
+
+  return result
 })
 
 // 產生邀請連結
@@ -633,10 +843,122 @@ const closeGenerateModal = () => {
   }
 }
 
+// 取得通用邀請連結
+const fetchGeneralLink = async () => {
+  loadingGeneral.value = true
+  try {
+    const token = localStorage.getItem('admin_token')
+    const response = await fetch(`${config.public.apiBase}/admin/centers/${centerId.value}/invitations/general-link`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    })
+    if (response.ok) {
+      const data = await response.json()
+      generalLink.value = data.datas || null
+    } else {
+      generalLink.value = null
+    }
+  } catch (error) {
+    console.error('Failed to fetch general link:', error)
+    generalLink.value = null
+  } finally {
+    loadingGeneral.value = false
+  }
+}
+
+// 產生通用邀請連結
+const generateGeneralLink = async () => {
+  generating.value = true
+  try {
+    const token = localStorage.getItem('admin_token')
+    const response = await fetch(`${config.public.apiBase}/admin/centers/${centerId.value}/invitations/general-link`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        role: 'TEACHER',
+        message: generalForm.value.message,
+      }),
+    })
+
+    const data = await response.json()
+
+    if (!response.ok) {
+      throw new Error(data.message || '產生通用邀請連結失敗')
+    }
+
+    generalLink.value = data.datas
+    showGeneralModal.value = false
+    generalForm.value = {
+      role: 'TEACHER',
+      message: '',
+    }
+    showToast('通用邀請連結產生成功')
+  } catch (error: any) {
+    showToast(error.message || '產生通用邀請連結失敗', 'error')
+  } finally {
+    generating.value = false
+  }
+}
+
+// 切換通用邀請連結狀態
+const toggleGeneralLink = async () => {
+  if (!generalLink.value) return
+
+  const action = generalLink.value.status === 'PENDING' ? '停用' : '重新啟用'
+  if (!confirm(`確定要${action}通用邀請連結嗎？`)) return
+
+  try {
+    const token = localStorage.getItem('admin_token')
+    const response = await fetch(`${config.public.apiBase}/admin/centers/${centerId.value}/invitations/general-link/toggle`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    })
+
+    const data = await response.json()
+
+    if (!response.ok) {
+      throw new Error(data.message || `${action}失敗`)
+    }
+
+    await fetchGeneralLink()
+    showToast(`通用邀請連結已${action}`)
+  } catch (error: any) {
+    showToast(error.message || `${action}失敗`, 'error')
+  }
+}
+
+// 複製通用連結
+const copyGeneralLink = async () => {
+  if (!generalLink.value) return
+  try {
+    await navigator.clipboard.writeText(generalLink.value.invite_link)
+    showToast('連結已複製到剪貼簿')
+  } catch (error) {
+    showToast('複製失敗，請手動複製', 'error')
+  }
+}
+
+// 關閉通用連結 Modal
+const closeGeneralModal = () => {
+  showGeneralModal.value = false
+  generalForm.value = {
+    message: '',
+  }
+}
+
 // 監聽標籤頁切換
 watch(activeTab, (newTab) => {
   if (newTab === 'links' && links.value.length === 0) {
     fetchLinks()
+  }
+  if (newTab === 'general') {
+    fetchGeneralLink()
   }
 })
 

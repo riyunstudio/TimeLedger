@@ -9,6 +9,7 @@ import (
 	"timeLedger/app/models"
 	"timeLedger/app/repositories"
 	"timeLedger/global/errInfos"
+	jwt "timeLedger/libs/jwt"
 )
 
 // TeacherService 教師相關業務邏輯
@@ -23,11 +24,13 @@ type TeacherService struct {
 	adminUserRepo  *repositories.AdminUserRepository
 	auditLogRepo   *repositories.AuditLogRepository
 	lineBotService LineBotService
+	authService    *authService
 }
 
 // NewTeacherService 建立教師服務
 func NewTeacherService(app *app.App) *TeacherService {
 	lineBotService := NewLineBotService(app)
+	authService := NewAuthService(app)
 
 	return &TeacherService{
 		app:            app,
@@ -38,6 +41,7 @@ func NewTeacherService(app *app.App) *TeacherService {
 		adminUserRepo:  repositories.NewAdminUserRepository(app),
 		auditLogRepo:   repositories.NewAuditLogRepository(app),
 		lineBotService: lineBotService,
+		authService:    authService,
 	}
 }
 
@@ -78,8 +82,8 @@ func (s *TeacherService) RespondToInvitation(ctx context.Context, req *RespondTo
 		return nil, s.app.Err.New(errInfos.INVALID_STATUS), fmt.Errorf("invitation already responded")
 	}
 
-	// 檢查是否過期
-	if time.Now().After(invitation.ExpiresAt) {
+	// 檢查是否過期（通用邀請無期限，跳過檢查）
+	if invitation.ExpiresAt != nil && time.Now().After(*invitation.ExpiresAt) {
 		s.invitationRepo.UpdateStatus(ctx, req.InvitationID, models.InvitationStatusExpired)
 		return nil, s.app.Err.New(errInfos.INVALID_STATUS), fmt.Errorf("invitation expired")
 	}
@@ -186,6 +190,7 @@ type InviteTeacherResult struct {
 func (s *TeacherService) InviteTeacher(ctx context.Context, req *InviteTeacherRequest) (*InviteTeacherResult, *errInfos.Res, error) {
 	token := s.generateInviteToken()
 	expiresAt := time.Now().Add(72 * time.Hour)
+	expiresAtPtr := &expiresAt
 
 	invitation := models.CenterInvitation{
 		CenterID:   req.CenterID,
@@ -196,7 +201,7 @@ func (s *TeacherService) InviteTeacher(ctx context.Context, req *InviteTeacherRe
 		Status:     models.InvitationStatusPending,
 		Message:    req.Message,
 		CreatedAt:  time.Now(),
-		ExpiresAt:  expiresAt,
+		ExpiresAt:  expiresAtPtr,
 	}
 
 	result, err := s.invitationRepo.Create(ctx, invitation)
@@ -243,6 +248,7 @@ type GenerateInvitationLinkResult struct {
 func (s *TeacherService) GenerateInvitationLink(ctx context.Context, req *GenerateInvitationLinkRequest) (*GenerateInvitationLinkResult, *errInfos.Res, error) {
 	token := s.generateInviteToken()
 	expiresAt := time.Now().Add(72 * time.Hour)
+	expiresAtPtr := &expiresAt
 
 	invitation := models.CenterInvitation{
 		CenterID:   req.CenterID,
@@ -253,7 +259,7 @@ func (s *TeacherService) GenerateInvitationLink(ctx context.Context, req *Genera
 		Status:     models.InvitationStatusPending,
 		Message:    req.Message,
 		CreatedAt:  time.Now(),
-		ExpiresAt:  expiresAt,
+		ExpiresAt:  expiresAtPtr,
 	}
 
 	if _, err := s.invitationRepo.Create(ctx, invitation); err != nil {
@@ -312,19 +318,202 @@ func (s *TeacherService) GenerateInvitationLink(ctx context.Context, req *Genera
 	return &result, nil, nil
 }
 
+// GenerateGeneralInvitationLinkRequest 產生通用邀請連結請求
+type GenerateGeneralInvitationLinkRequest struct {
+	CenterID uint
+	AdminID  uint
+	Role     string // 角色：TEACHER 或 SUBSTITUTE
+	Message  string // 邀請訊息
+}
+
+// GenerateGeneralInvitationLinkResult 產生通用邀請連結結果
+type GenerateGeneralInvitationLinkResult struct {
+	InvitationLinkResponse
+}
+
+// GenerateGeneralInvitationLink 產生通用邀請連結（不綁定 Email，無期限）
+func (s *TeacherService) GenerateGeneralInvitationLink(ctx context.Context, req *GenerateGeneralInvitationLinkRequest) (*GenerateGeneralInvitationLinkResult, *errInfos.Res, error) {
+	// 產生新的通用邀請連結（無期限）
+	token := s.generateInviteToken()
+
+	invitation := models.CenterInvitation{
+		CenterID:   req.CenterID,
+		Email:      "", // 通用邀請不綁定 Email
+		Token:      token,
+		InviteType: models.InvitationTypeGeneral,
+		Role:       req.Role,
+		Status:     models.InvitationStatusPending,
+		Message:    req.Message,
+		CreatedAt:  time.Now(),
+		ExpiresAt:  nil, // 通用邀請無期限
+	}
+
+	if _, err := s.invitationRepo.Create(ctx, invitation); err != nil {
+		return nil, s.app.Err.New(errInfos.SQL_ERROR), err
+	}
+
+	// 取得中心資訊
+	center, err := s.centerRepo.GetByID(ctx, req.CenterID)
+	centerName := ""
+	if err == nil {
+		centerName = center.Name
+	}
+
+	// 產生邀請連結
+	baseURL := s.app.Env.FrontendBaseURL
+	if baseURL == "" {
+		baseURL = "https://timeledger.app"
+	}
+	inviteLink := fmt.Sprintf("%s/invite/%s", baseURL, token)
+
+	// 審核日誌
+	s.auditLogRepo.Create(ctx, models.AuditLog{
+		CenterID:   req.CenterID,
+		ActorType:  "ADMIN",
+		ActorID:    req.AdminID,
+		Action:     "GENERATE_GENERAL_INVITATION_LINK",
+		TargetType: "CenterInvitation",
+		TargetID:   invitation.ID,
+		Payload: models.AuditPayload{
+			After: map[string]interface{}{
+				"role":        req.Role,
+				"status":      "PENDING",
+				"expires_at":  nil,
+				"invite_link": inviteLink,
+				"invite_type": "GENERAL",
+			},
+		},
+	})
+
+	result := GenerateGeneralInvitationLinkResult{
+		InvitationLinkResponse: InvitationLinkResponse{
+			ID:         invitation.ID,
+			CenterID:   req.CenterID,
+			CenterName: centerName,
+			Email:      "",
+			Role:       invitation.Role,
+			Token:      token,
+			InviteLink: inviteLink,
+			Status:     string(invitation.Status),
+			Message:    invitation.Message,
+			CreatedAt:  invitation.CreatedAt,
+			ExpiresAt:  nil, // 通用邀請無期限
+		},
+	}
+
+	return &result, nil, nil
+}
+
+// ToggleGeneralInvitationStatusRequest 切換通用邀請狀態請求
+type ToggleGeneralInvitationStatusRequest struct {
+	CenterID uint
+	AdminID  uint
+}
+
+// ToggleGeneralInvitationStatus 啟用或停用通用邀請連結
+func (s *TeacherService) ToggleGeneralInvitationStatus(ctx context.Context, centerID, adminID uint) (*errInfos.Res, error) {
+	// 取得現有的通用邀請
+	existingGeneral, err := s.invitationRepo.GetGeneralByCenterID(ctx, centerID)
+	if err != nil || existingGeneral.ID == 0 {
+		return s.app.Err.New(errInfos.NOT_FOUND), fmt.Errorf("no general invitation found")
+	}
+
+	// 切換狀態
+	var newStatus models.InvitationStatus
+	if existingGeneral.Status == models.InvitationStatusPending {
+		newStatus = models.InvitationStatusExpired
+	} else if existingGeneral.Status == models.InvitationStatusExpired {
+		// 如果是停用狀態，產生新的連結
+		return s.generateNewGeneralLink(ctx, centerID, adminID, existingGeneral.Role, existingGeneral.Message)
+	}
+
+	if err := s.invitationRepo.UpdateStatus(ctx, existingGeneral.ID, newStatus); err != nil {
+		return s.app.Err.New(errInfos.SQL_ERROR), err
+	}
+
+	// 審核日誌
+	s.auditLogRepo.Create(ctx, models.AuditLog{
+		CenterID:   centerID,
+		ActorType:  "ADMIN",
+		ActorID:    adminID,
+		Action:     "TOGGLE_GENERAL_INVITATION_STATUS",
+		TargetType: "CenterInvitation",
+		TargetID:   existingGeneral.ID,
+		Payload: models.AuditPayload{
+			Before: map[string]interface{}{
+				"status": string(existingGeneral.Status),
+			},
+			After: map[string]interface{}{
+				"status": string(newStatus),
+			},
+		},
+	})
+
+	return nil, nil
+}
+
+// generateNewGeneralLink 產生新的通用邀請連結（內部方法）
+func (s *TeacherService) generateNewGeneralLink(ctx context.Context, centerID, adminID uint, role, message string) (*errInfos.Res, error) {
+	// 停用舊的通用邀請
+	existingGeneral, _ := s.invitationRepo.GetGeneralByCenterID(ctx, centerID)
+	if existingGeneral.ID > 0 {
+		s.invitationRepo.UpdateStatus(ctx, existingGeneral.ID, models.InvitationStatusExpired)
+	}
+
+	// 產生新的通用邀請連結
+	token := s.generateInviteToken()
+
+	invitation := models.CenterInvitation{
+		CenterID:   centerID,
+		Email:      "",
+		Token:      token,
+		InviteType: models.InvitationTypeGeneral,
+		Role:       role,
+		Status:     models.InvitationStatusPending,
+		Message:    message,
+		CreatedAt:  time.Now(),
+		ExpiresAt:  nil, // 通用邀請無期限
+	}
+
+	if _, err := s.invitationRepo.Create(ctx, invitation); err != nil {
+		return s.app.Err.New(errInfos.SQL_ERROR), err
+	}
+
+	// 審核日誌
+	s.auditLogRepo.Create(ctx, models.AuditLog{
+		CenterID:   centerID,
+		ActorType:  "ADMIN",
+		ActorID:    adminID,
+		Action:     "REGENERATE_GENERAL_INVITATION_LINK",
+		TargetType: "CenterInvitation",
+		TargetID:   invitation.ID,
+		Payload: models.AuditPayload{
+			After: map[string]interface{}{
+				"role":        role,
+				"status":      "PENDING",
+				"expires_at":  nil,
+				"invite_link": fmt.Sprintf("%s/invite/%s", s.app.Env.FrontendBaseURL, token),
+				"invite_type": "GENERAL",
+			},
+		},
+	})
+
+	return nil, nil
+}
+
 // InvitationLinkResponse 邀請連結回應結構
 type InvitationLinkResponse struct {
-	ID         uint      `json:"id"`
-	CenterID   uint      `json:"center_id"`
-	CenterName string    `json:"center_name"`
-	Email      string    `json:"email"`
-	Role       string    `json:"role"`
-	Token      string    `json:"token"`
-	InviteLink string    `json:"invite_link"`
-	Status     string    `json:"status"`
-	Message    string    `json:"message,omitempty"`
-	CreatedAt  time.Time `json:"created_at"`
-	ExpiresAt  time.Time `json:"expires_at"`
+	ID         uint       `json:"id"`
+	CenterID   uint       `json:"center_id"`
+	CenterName string     `json:"center_name"`
+	Email      string     `json:"email"`
+	Role       string     `json:"role"`
+	Token      string     `json:"token"`
+	InviteLink string     `json:"invite_link"`
+	Status     string     `json:"status"`
+	Message    string     `json:"message,omitempty"`
+	CreatedAt  time.Time  `json:"created_at"`
+	ExpiresAt  *time.Time `json:"expires_at"`
 }
 
 // RevokeInvitationLink 撤回邀請連結
@@ -391,14 +580,15 @@ func (s *TeacherService) AcceptInvitationByLink(ctx context.Context, req *Accept
 
 	// 檢查狀態
 	if invitation.Status != models.InvitationStatusPending {
-		if time.Now().After(invitation.ExpiresAt) {
+		// 通用邀請無期限，不需要檢查過期
+		if invitation.InviteType != models.InvitationTypeGeneral && invitation.ExpiresAt != nil && time.Now().After(*invitation.ExpiresAt) {
 			s.invitationRepo.UpdateStatus(ctx, invitation.ID, models.InvitationStatusExpired)
 		}
 		return nil, s.app.Err.New(errInfos.INVALID_STATUS), fmt.Errorf("invitation already responded or expired")
 	}
 
-	// 檢查是否過期
-	if time.Now().After(invitation.ExpiresAt) {
+	// 檢查是否過期（通用邀請無期限，跳過檢查）
+	if invitation.InviteType != models.InvitationTypeGeneral && invitation.ExpiresAt != nil && time.Now().After(*invitation.ExpiresAt) {
 		s.invitationRepo.UpdateStatus(ctx, invitation.ID, models.InvitationStatusExpired)
 		return nil, s.app.Err.New(errInfos.INVALID_STATUS), fmt.Errorf("invitation expired")
 	}
@@ -406,12 +596,43 @@ func (s *TeacherService) AcceptInvitationByLink(ctx context.Context, req *Accept
 	// 取得老師資料
 	teacher, err := s.teacherRepo.GetByLineUserID(ctx, req.LineUserID)
 	if err != nil {
-		return nil, s.app.Err.New(errInfos.NOT_FOUND), fmt.Errorf("teacher not found")
+		// 新老師：自動建立老師帳號
+		if invitation.Email != "" {
+			newTeacher := models.Teacher{
+				LineUserID: req.LineUserID,
+				Email:      invitation.Email,
+				Name:       "新老師", // 預設名稱
+			}
+
+			createdTeacher, err := s.teacherRepo.Create(ctx, newTeacher)
+			if err != nil {
+				return nil, s.app.Err.New(errInfos.SQL_ERROR), fmt.Errorf("failed to create teacher: %w", err)
+			}
+			teacher = createdTeacher
+		} else if invitation.InviteType == models.InvitationTypeGeneral {
+			// 通用邀請：Email 可以為空，產生預設名稱
+			newTeacher := models.Teacher{
+				LineUserID: req.LineUserID,
+				Email:      req.LineUserID + "@line.user", // 預設 Email 格式
+				Name:       "新老師",                         // 預設名稱
+			}
+
+			createdTeacher, err := s.teacherRepo.Create(ctx, newTeacher)
+			if err != nil {
+				return nil, s.app.Err.New(errInfos.SQL_ERROR), fmt.Errorf("failed to create teacher: %w", err)
+			}
+			teacher = createdTeacher
+		} else {
+			return nil, s.app.Err.New(errInfos.NOT_FOUND), fmt.Errorf("teacher not found")
+		}
 	}
 
-	// 驗證 Email
-	if invitation.Email != "" && invitation.Email != teacher.Email {
-		return nil, s.app.Err.New(errInfos.FORBIDDEN), fmt.Errorf("email mismatch")
+	// 通用邀請跳過 Email 驗證
+	if invitation.InviteType != models.InvitationTypeGeneral {
+		// 驗證 Email（僅非通用邀請需要）
+		if invitation.Email != "" && invitation.Email != teacher.Email {
+			return nil, s.app.Err.New(errInfos.FORBIDDEN), fmt.Errorf("email mismatch")
+		}
 	}
 
 	// 檢查是否已經是中心成員
@@ -437,13 +658,16 @@ func (s *TeacherService) AcceptInvitationByLink(ctx context.Context, req *Accept
 		return nil, s.app.Err.New(errInfos.SQL_ERROR), err
 	}
 
-	// 更新邀請狀態
-	now := time.Now()
-	if err := s.invitationRepo.UpdateFields(ctx, invitation.ID, map[string]interface{}{
-		"status":       models.InvitationStatusAccepted,
-		"responded_at": &now,
-	}); err != nil {
-		return nil, s.app.Err.New(errInfos.SQL_ERROR), err
+	// 通用邀請不更新邀請狀態（保持 PENDING，可重複使用）
+	if invitation.InviteType != models.InvitationTypeGeneral {
+		// 更新邀請狀態（非通用邀請）
+		now := time.Now()
+		if err := s.invitationRepo.UpdateFields(ctx, invitation.ID, map[string]interface{}{
+			"status":       models.InvitationStatusAccepted,
+			"responded_at": &now,
+		}); err != nil {
+			return nil, s.app.Err.New(errInfos.SQL_ERROR), err
+		}
 	}
 
 	// 審核日誌
@@ -460,7 +684,7 @@ func (s *TeacherService) AcceptInvitationByLink(ctx context.Context, req *Accept
 				"center_id":   invitation.CenterID,
 				"role":        invitation.Role,
 				"status":      "ACCEPTED",
-				"invite_type": "LINK",
+				"invite_type": string(invitation.InviteType),
 			},
 		},
 	})
@@ -504,4 +728,94 @@ func (s *TeacherService) generateInviteToken() string {
 		return ""
 	}
 	return fmt.Sprintf("%x", b)
+}
+
+// ==================== 公開註冊相關業務邏輯 ====================
+
+// PublicRegisterRequest 公開註冊請求
+type PublicRegisterRequest struct {
+	LineUserID string `json:"line_user_id" binding:"required"`
+	Name       string `json:"name" binding:"required"`
+	Email      string `json:"email" binding:"required,email"`
+}
+
+// PublicRegisterResult 公開註冊結果
+type PublicRegisterResult struct {
+	Token   string `json:"token"`
+	Teacher any    `json:"teacher"`
+}
+
+// RegisterPublic 公開註冊老師（LINE Bot 自主註冊）
+func (s *TeacherService) RegisterPublic(ctx context.Context, req *PublicRegisterRequest) (*PublicRegisterResult, *errInfos.Res, error) {
+	// 檢查是否已存在相同 LineUserID 的老師
+	existingTeacher, err := s.teacherRepo.GetByLineUserID(ctx, req.LineUserID)
+	if err == nil {
+		// 已經註冊過，直接登入並產生新 token
+		centerID, _ := s.teacherRepo.GetCenterID(ctx, existingTeacher.ID)
+
+		claims := jwt.Claims{
+			UserType:   "TEACHER",
+			UserID:     existingTeacher.ID,
+			CenterID:   centerID,
+			LineUserID: existingTeacher.LineUserID,
+		}
+
+		token, err := s.authService.GenerateToken(claims)
+		if err != nil {
+			return nil, s.app.Err.New(errInfos.SYSTEM_ERROR), err
+		}
+
+		return &PublicRegisterResult{
+			Token: token,
+			Teacher: map[string]interface{}{
+				"id":           existingTeacher.ID,
+				"name":         existingTeacher.Name,
+				"email":        existingTeacher.Email,
+				"line_user_id": existingTeacher.LineUserID,
+			},
+		}, nil, nil
+	}
+
+	// 檢查 Email 是否已被使用
+	_, err = s.teacherRepo.GetByEmail(ctx, req.Email)
+	if err == nil {
+		return nil, s.app.Err.New(errInfos.DUPLICATE), fmt.Errorf("email already registered")
+	}
+
+	// 建立新老師帳號（預設加入人才庫）
+	newTeacher := models.Teacher{
+		LineUserID:     req.LineUserID,
+		Name:           req.Name,
+		Email:          req.Email,
+		IsOpenToHiring: true, // 預設加入人才庫
+	}
+
+	createdTeacher, err := s.teacherRepo.Create(ctx, newTeacher)
+	if err != nil {
+		return nil, s.app.Err.New(errInfos.SQL_ERROR), fmt.Errorf("failed to create teacher: %w", err)
+	}
+
+	// 產生 JWT token
+	claims := jwt.Claims{
+		UserType:   "TEACHER",
+		UserID:     createdTeacher.ID,
+		CenterID:   0, // 新註冊老師尚未加入任何中心
+		LineUserID: createdTeacher.LineUserID,
+	}
+
+	token, err := s.authService.GenerateToken(claims)
+	if err != nil {
+		return nil, s.app.Err.New(errInfos.SYSTEM_ERROR), err
+	}
+
+	return &PublicRegisterResult{
+		Token: token,
+		Teacher: map[string]interface{}{
+			"id":                createdTeacher.ID,
+			"name":              createdTeacher.Name,
+			"email":             createdTeacher.Email,
+			"line_user_id":      createdTeacher.LineUserID,
+			"is_open_to_hiring": createdTeacher.IsOpenToHiring,
+		},
+	}, nil, nil
 }

@@ -109,3 +109,8 @@ func (rp *CenterInvitationRepository) ListByTeacherWithStatus(ctx context.Contex
 	}
 	return rp.Find(ctx, "teacher_id = ?", teacherID)
 }
+
+// GetGeneralByCenterID 取得中心的通用邀請
+func (rp *CenterInvitationRepository) GetGeneralByCenterID(ctx context.Context, centerID uint) (models.CenterInvitation, error) {
+	return rp.First(ctx, "center_id = ? AND invite_type = ?", centerID, models.InvitationTypeGeneral)
+}

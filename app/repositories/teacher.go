@@ -139,3 +139,12 @@ func (rp *TeacherRepository) SearchByName(ctx context.Context, name string, limi
 func (rp *TeacherRepository) List(ctx context.Context) ([]models.Teacher, error) {
 	return rp.FindAll(ctx)
 }
+
+// GetByEmail retrieves a teacher by their email address.
+func (rp *TeacherRepository) GetByEmail(ctx context.Context, email string) (models.Teacher, error) {
+	var data models.Teacher
+	err := rp.dbRead.WithContext(ctx).
+		Where("email = ?", email).
+		First(&data).Error
+	return data, err
+}

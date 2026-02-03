@@ -1,8 +1,18 @@
-feat(scheduling): add CompactWeekView and improve schedule components
+feat(invitation): add general invitation link with no expiration
 
-- Add new CompactWeekView component for compact week display
-- Improve ScheduleGrid and WeekGrid components
-- Update teacher dashboard with new scheduling features
-- Refactor scheduling validation and expansion services
-- Clean up build artifacts and node_modules
-- Update API documentation and swagger specs
+- Add general invitation link feature (GENERAL type) without expiration
+- Update invitation model to support nullable ExpiresAt field
+- Fix nil pointer panic when checking expiration for general invitations
+- Update frontend types to handle null expires_at properly
+- Add UI for managing general invitation links in admin panel
+
+Backend changes:
+- app/models/center_invitation.go: ExpiresAt can be nil
+- app/controllers/teacher_invitation.go: Add nil checks for ExpiresAt
+- app/services/teacher.go: Add GenerateGeneralInvitationLink service
+- app/resources/invitation.go: Update response types for nullable ExpiresAt
+
+Frontend changes:
+- admin/invitations.vue: Add general invitation management UI
+- types/teacher.ts: Update expires_at type to string | null
+- invite/[token].vue: Display "no expiration" for general invites

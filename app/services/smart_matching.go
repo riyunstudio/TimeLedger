@@ -690,6 +690,7 @@ func (s *SmartMatchingServiceImpl) InviteTalent(ctx context.Context, centerID ui
 
 	// 邀請過期時間（7天後）
 	expiresAt := time.Now().Add(7 * 24 * time.Hour)
+	expiresAtPtr := &expiresAt
 
 	for _, teacherID := range teacherIDs {
 		// 檢查老師是否存在且開放徵才
@@ -730,7 +731,7 @@ func (s *SmartMatchingServiceImpl) InviteTalent(ctx context.Context, centerID ui
 			Status:     models.InvitationStatusPending,
 			InviteType: models.InvitationTypeTalentPool,
 			Message:    message,
-			ExpiresAt:  expiresAt,
+			ExpiresAt:  expiresAtPtr,
 			CreatedAt:  time.Now(),
 		}
 

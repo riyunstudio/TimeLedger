@@ -55,7 +55,7 @@
           </div>
           <div class="flex justify-between items-center">
             <span class="text-slate-400">有效期限</span>
-            <span class="text-white">{{ formatDate(invitation.expires_at) }}</span>
+            <span class="text-white">{{ invitation.expires_at ? formatDate(invitation.expires_at) : '無期限' }}</span>
           </div>
         </div>
 
@@ -228,7 +228,7 @@ const logout = () => {
 
 // 接受邀請
 const acceptInvitation = async () => {
-  if (!authStore.user?.id_token) {
+  if (!authStore.user?.line_user_id) {
     error.value = '無法取得登入資訊，請重新登入'
     return
   }
@@ -241,7 +241,7 @@ const acceptInvitation = async () => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        id_token: authStore.user.id_token,
+        line_user_id: authStore.user.line_user_id,
       }),
     })
 

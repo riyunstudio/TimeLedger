@@ -22,7 +22,7 @@ type InvitationResponse struct {
 	Status      string     `json:"status"`
 	Message     string     `json:"message,omitempty"`
 	CreatedAt   time.Time  `json:"created_at"`
-	ExpiresAt   time.Time  `json:"expires_at"`
+	ExpiresAt   *time.Time `json:"expires_at"`
 	RespondedAt *time.Time `json:"responded_at,omitempty"`
 }
 
@@ -61,14 +61,14 @@ func (r *InvitationResource) ToInvitationResponseList(invitations []models.Cente
 
 // PublicInvitationInfo 公開邀請資訊
 type PublicInvitationInfo struct {
-	ID         uint      `json:"id"`
-	CenterID   uint      `json:"center_id"`
-	CenterName string    `json:"center_name"`
-	Role       string    `json:"role"`
-	Status     string    `json:"status"`
-	Message    string    `json:"message,omitempty"`
-	ExpiresAt  time.Time `json:"expires_at"`
-	InvitedBy  uint      `json:"-"`
+	ID         uint       `json:"id"`
+	CenterID   uint       `json:"center_id"`
+	CenterName string     `json:"center_name"`
+	Role       string     `json:"role"`
+	Status     string     `json:"status"`
+	Message    string     `json:"message,omitempty"`
+	ExpiresAt  *time.Time `json:"expires_at"`
+	InvitedBy  uint       `json:"-"`
 }
 
 // ToPublicInvitationInfo 將模型轉換為公開邀請資訊

@@ -239,8 +239,8 @@ func (ctl *TeacherInvitationController) validateInvitationToken(helper *ContextH
 		return models.CenterInvitation{}, false
 	}
 
-	// 檢查是否過期
-	if time.Now().After(invitation.ExpiresAt) {
+	// 檢查是否過期（通用邀請無期限，跳過檢查）
+	if invitation.InviteType != models.InvitationTypeGeneral && invitation.ExpiresAt != nil && time.Now().After(*invitation.ExpiresAt) {
 		if invitation.Status == models.InvitationStatusPending {
 			ctl.invitationRepo.UpdateStatus(helper.GinContext().Request.Context(), invitation.ID, models.InvitationStatusExpired)
 		}
@@ -471,6 +471,146 @@ func (ctl *TeacherInvitationController) RevokeInvitationLink(ctx *gin.Context) {
 	}
 
 	helper.Success(gin.H{"message": "Invitation link revoked"})
+}
+
+// ========== 通用邀請連結 API ==========
+
+// GenerateGeneralInvitationLink 產生通用邀請連結
+// @Summary 產生通用邀請連結
+// @Tags Admin - Invitations
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "Center ID"
+// @Param request body services.GenerateGeneralInvitationLinkRequest true "邀請資訊"
+// @Success 200 {object} global.ApiResponse{data=services.InvitationLinkResponse}
+// @Router /api/v1/admin/centers/{id}/invitations/general-link [post]
+func (ctl *TeacherInvitationController) GenerateGeneralInvitationLink(ctx *gin.Context) {
+	helper := NewContextHelper(ctx)
+	_, centerID := ctl.requireAdminAndCenterID(helper)
+	if centerID == 0 {
+		return
+	}
+
+	var req services.GenerateGeneralInvitationLinkRequest
+	if !helper.MustBindJSON(&req) {
+		return
+	}
+	req.CenterID = centerID
+	req.AdminID = ctl.requireAdminID(helper)
+
+	result, errInfo, err := ctl.teacherService.GenerateGeneralInvitationLink(ctx.Request.Context(), &req)
+	if err != nil {
+		helper.ErrorWithInfo(errInfo)
+		return
+	}
+
+	helper.Success(result.InvitationLinkResponse)
+}
+
+// GetGeneralInvitationLink 取得通用邀請連結
+// @Summary 取得通用邀請連結
+// @Tags Admin - Invitations
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "Center ID"
+// @Success 200 {object} global.ApiResponse{data=services.InvitationLinkResponse}
+// @Router /api/v1/admin/centers/{id}/invitations/general-link [get]
+func (ctl *TeacherInvitationController) GetGeneralInvitationLink(ctx *gin.Context) {
+	helper := NewContextHelper(ctx)
+	centerID := ctl.requireCenterID(helper)
+	if centerID == 0 {
+		return
+	}
+
+	invitations, err := ctl.invitationRepo.GetPendingByCenter(ctx.Request.Context(), centerID)
+	if err != nil {
+		helper.InternalError("Failed to get invitation links")
+		return
+	}
+
+	// 找出通用邀請
+	var generalInvitation *models.CenterInvitation
+	for _, inv := range invitations {
+		if inv.InviteType == models.InvitationTypeGeneral {
+			generalInvitation = &inv
+			break
+		}
+	}
+
+	if generalInvitation == nil {
+		helper.Success(nil)
+		return
+	}
+
+	response := ctl.buildInvitationLinks(ctx.Request.Context(), []models.CenterInvitation{*generalInvitation}, centerID)
+	if len(response) > 0 {
+		helper.Success(response[0])
+		return
+	}
+
+	helper.Success(nil)
+}
+
+// ToggleGeneralInvitationStatus 啟用或停用通用邀請連結
+// @Summary 啟用或停用通用邀請連結
+// @Tags Admin - Invitations
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "Center ID"
+// @Success 200 {object} global.ApiResponse
+// @Router /api/v1/admin/centers/{id}/invitations/general-link/toggle [post]
+func (ctl *TeacherInvitationController) ToggleGeneralInvitationStatus(ctx *gin.Context) {
+	helper := NewContextHelper(ctx)
+	_, centerID := ctl.requireAdminAndCenterID(helper)
+	if centerID == 0 {
+		return
+	}
+
+	adminID := ctl.requireAdminID(helper)
+
+	errInfo, err := ctl.teacherService.ToggleGeneralInvitationStatus(ctx.Request.Context(), centerID, adminID)
+	if err != nil {
+		helper.ErrorWithInfo(errInfo)
+		return
+	}
+
+	helper.Success(gin.H{"message": "General invitation link status toggled"})
+}
+
+// RegenerateGeneralInvitationLink 重新產生通用邀請連結
+// @Summary 重新產生通用邀請連結
+// @Tags Admin - Invitations
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "Center ID"
+// @Param request body services.GenerateGeneralInvitationLinkRequest true "邀請資訊"
+// @Success 200 {object} global.ApiResponse{data=services.InvitationLinkResponse}
+// @Router /api/v1/admin/centers/{id}/invitations/general-link/regenerate [post]
+func (ctl *TeacherInvitationController) RegenerateGeneralInvitationLink(ctx *gin.Context) {
+	helper := NewContextHelper(ctx)
+	_, centerID := ctl.requireAdminAndCenterID(helper)
+	if centerID == 0 {
+		return
+	}
+
+	var req services.GenerateGeneralInvitationLinkRequest
+	if !helper.MustBindJSON(&req) {
+		return
+	}
+	req.CenterID = centerID
+	req.AdminID = ctl.requireAdminID(helper)
+
+	result, errInfo, err := ctl.teacherService.GenerateGeneralInvitationLink(ctx.Request.Context(), &req)
+	if err != nil {
+		helper.ErrorWithInfo(errInfo)
+		return
+	}
+
+	helper.Success(result.InvitationLinkResponse)
 }
 
 // ========== 公開邀請 API（無需認證）==========

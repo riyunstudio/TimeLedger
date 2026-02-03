@@ -96,7 +96,7 @@ const handleSubmit = async () => {
   try {
     const api = useApi()
     const centerId = getCenterId()
-    const response = await api.post<any>(`/admin/invitations`, {
+    const response = await api.post<any>(`/admin/centers/${centerId}/invitations`, {
       email: form.value.email,
       role: 'TEACHER',
       message: form.value.message,

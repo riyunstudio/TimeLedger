@@ -242,7 +242,7 @@ export interface Invitation {
   /** 創建時間 */
   created_at: string
   /** 過期時間 */
-  expires_at: string
+  expires_at: string | null
   /** 回應時間 */
   responded_at?: string
   /** 中心標誌 URL */

@@ -139,6 +139,23 @@ export const useApi = () => {
     // Parse JSON response
     const text = await response.text()
 
+    // Handle empty response
+    if (!text || text.trim() === '') {
+      // For 2xx status codes with empty body, return empty object or null
+      if (response.ok) {
+        return {} as T
+      }
+
+      // For error status codes with empty body
+      const networkError: NetworkError = {
+        status: response.status,
+        statusText: response.statusText,
+        message: `HTTP ${response.status}: ${response.statusText}`,
+        originalError: undefined,
+      }
+      throw networkError
+    }
+
     try {
       const data = JSON.parse(text) as ApiResponse<T>
 
