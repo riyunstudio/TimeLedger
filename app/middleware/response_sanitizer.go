@@ -3,6 +3,7 @@ package middleware
 import (
 	"bytes"
 	"net/http"
+	"strconv"
 	"strings"
 	"timeLedger/global"
 
@@ -48,14 +49,15 @@ func (s *ResponseSanitizer) Sanitize() gin.HandlerFunc {
 			trimmedStr := strings.TrimSpace(string(trimmed))
 			if len(trimmedStr) > 0 && (trimmedStr[0] == '{' || trimmedStr[0] == '[') {
 				// 重新寫入乾淨的響應
-				c.Writer.Header().Set("Content-Length", string(rune(len(trimmed))))
+				c.Writer.Header().Set("Content-Length", strconv.Itoa(len(trimmed)))
 				c.Writer.WriteHeader(status)
-				c.Writer.Write(trimmed)
+				// 必須寫入原始 ResponseWriter，不能寫入緩衝區
+				sw.ResponseWriter.Write(trimmed)
 				return
 			}
 
 			// 如果不是有效 JSON，寫入原始內容（讓錯誤顯現出來以便調試）
-			c.Writer.Write(body)
+			sw.ResponseWriter.Write(body)
 		}
 	}
 }
@@ -84,7 +86,7 @@ func RecoveryWithSanitizer() gin.HandlerFunc {
 				c.Writer.Header().Del("X-Content-Type-Options")
 
 				c.JSON(http.StatusInternalServerError, global.ApiResponse{
-					Code:    global.SYSTEM_ERROR,
+					Code:    global.INTERNAL_SERVER_ERROR,
 					Message: "Internal server error",
 				})
 				c.Abort()

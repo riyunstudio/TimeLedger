@@ -28,7 +28,7 @@ type LineBotController struct {
 func NewLineBotController(app *app.App) *LineBotController {
 	return &LineBotController{
 		app:             app,
-		logger:          services.NewServiceLogger(app, "LineBotController"),
+		logger:          services.NewServiceLogger("LineBotController"),
 		lineBotService:  services.NewLineBotService(app),
 		qrCodeService:   services.NewQRCodeService(),
 		adminService:    services.NewAdminUserService(app),
@@ -108,9 +108,9 @@ func (c *LineBotController) handleEvent(gctx *gin.Context, event *LINEWebhookEve
 		c.handleFollowEvent(gctx, event)
 	case "unfollow":
 		c.handleUnfollowEvent(gctx, event)
-		default:
-			c.logger.Debug("unhandled event type", "event_type", event.Type)
-		}
+	default:
+		c.logger.Debug("unhandled event type", "event_type", event.Type)
+	}
 }
 
 // handleMessageEvent 處理訊息事件
