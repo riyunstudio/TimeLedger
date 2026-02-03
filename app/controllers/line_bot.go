@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"time"
@@ -18,6 +17,7 @@ import (
 // LineBotController LINE Bot Webhook Controller
 type LineBotController struct {
 	app             *app.App
+	logger          *services.ServiceLogger
 	lineBotService  services.LineBotService
 	qrCodeService   *services.QRCodeService
 	adminService    *services.AdminUserService
@@ -28,6 +28,7 @@ type LineBotController struct {
 func NewLineBotController(app *app.App) *LineBotController {
 	return &LineBotController{
 		app:             app,
+		logger:          services.NewServiceLogger(app, "LineBotController"),
 		lineBotService:  services.NewLineBotService(app),
 		qrCodeService:   services.NewQRCodeService(),
 		adminService:    services.NewAdminUserService(app),
@@ -69,7 +70,7 @@ type LINEEventMessage struct {
 func (c *LineBotController) HandleWebhook(ctx *gin.Context) {
 	body, err := io.ReadAll(ctx.Request.Body)
 	if err != nil {
-		fmt.Printf("[ERROR] Failed to read webhook body: %v\n", err)
+		c.logger.Error("failed to read webhook body", "error", err)
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "failed to read body"})
 		return
 	}
@@ -77,7 +78,7 @@ func (c *LineBotController) HandleWebhook(ctx *gin.Context) {
 	// 驗證簽名
 	signature := ctx.GetHeader("X-Line-Signature")
 	if !c.lineBotService.VerifySignature(body, signature) {
-		fmt.Printf("[WARN] Invalid LINE signature\n")
+		c.logger.Warn("invalid LINE signature")
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "invalid signature"})
 		return
 	}
@@ -85,7 +86,7 @@ func (c *LineBotController) HandleWebhook(ctx *gin.Context) {
 	// 解析請求
 	var webhookReq LINEWebhookRequest
 	if err := json.Unmarshal(body, &webhookReq); err != nil {
-		fmt.Printf("[ERROR] Failed to parse webhook request: %v\n", err)
+		c.logger.Error("failed to parse webhook request", "error", err)
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "failed to parse request"})
 		return
 	}
@@ -107,9 +108,9 @@ func (c *LineBotController) handleEvent(gctx *gin.Context, event *LINEWebhookEve
 		c.handleFollowEvent(gctx, event)
 	case "unfollow":
 		c.handleUnfollowEvent(gctx, event)
-	default:
-		fmt.Printf("[DEBUG] Unhandled event type: %s\n", event.Type)
-	}
+		default:
+			c.logger.Debug("unhandled event type", "event_type", event.Type)
+		}
 }
 
 // handleMessageEvent 處理訊息事件
@@ -149,7 +150,7 @@ func (c *LineBotController) handleMessageEvent(gctx *gin.Context, event *LINEWeb
 // handleFollowEvent 處理加入好友事件
 func (c *LineBotController) handleFollowEvent(gctx *gin.Context, event *LINEWebhookEvent) {
 	userID := event.Source.UserID
-	fmt.Printf("[INFO] User followed: %s\n", userID)
+	c.logger.Info("user followed", "user_id", userID)
 
 	// 嘗試判斷用戶類型並發送個人化歡迎訊息
 	ctx := gctx.Request.Context()
@@ -169,7 +170,7 @@ func (c *LineBotController) handleFollowEvent(gctx *gin.Context, event *LINEWebh
 		if err == nil {
 			return // 成功發送 Flex Message
 		}
-		fmt.Printf("[WARN] Failed to send admin welcome flex, using text: %v\n", err)
+		c.logger.Warn("failed to send admin welcome flex, using text", "error", err)
 	}
 
 	// 2. 檢查是否為老師（通過 LINE User ID）
@@ -184,7 +185,7 @@ func (c *LineBotController) handleFollowEvent(gctx *gin.Context, event *LINEWebh
 	}
 
 	// 3. 如果 Flex Message 失敗，發送通用文字訊息
-	fmt.Printf("[ERROR] Failed to send welcome flex message: %v\n", err)
+	c.logger.Error("failed to send welcome flex message", "error", err)
 	welcomeMessage := map[string]interface{}{
 		"type": "text",
 		"text": "👋 您好！歡迎加入 TimeLedger！\n\n" +
@@ -198,14 +199,14 @@ func (c *LineBotController) handleFollowEvent(gctx *gin.Context, event *LINEWebh
 // handleUnfollowEvent 處理封鎖/取消好友事件
 func (c *LineBotController) handleUnfollowEvent(gctx *gin.Context, event *LINEWebhookEvent) {
 	userID := event.Source.UserID
-	fmt.Printf("[INFO] User unfollowed: %s\n", userID)
+	c.logger.Info("user unfollowed", "user_id", userID)
 }
 
 // processBindingCode 處理綁定驗證碼
 func (c *LineBotController) processBindingCode(gctx *gin.Context, code string, userID string, replyToken string) {
 	_, eInfo, err := c.adminService.VerifyLINEBinding(gctx.Request.Context(), code, userID)
 	if err != nil {
-		fmt.Printf("[ERROR] Failed to verify binding code: %v\n", err)
+		c.logger.Error("failed to verify binding code", "error", err)
 		errorMsg := "❌ 綁定失敗，驗證碼錯誤或已過期。"
 		if eInfo != nil {
 			if eInfo.Code == 90004 {
@@ -377,7 +378,7 @@ func (c *LineBotController) GenerateLINEBindingQR(ctx *gin.Context) {
 	// 產生 QR Code
 	qrBytes, err := c.qrCodeService.GenerateLINEBindingQR(lineOfficialAccountID)
 	if err != nil {
-		fmt.Printf("[ERROR] Failed to generate LINE binding QR code: %v\n", err)
+		c.logger.Error("failed to generate LINE binding QR code", "error", err)
 		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
 			Code:    errInfos.SYSTEM_ERROR,
 			Message: "系統錯誤",
@@ -435,7 +436,7 @@ func (c *LineBotController) GenerateVerificationCodeQR(ctx *gin.Context) {
 	// 產生 QR Code
 	qrBytes, err := c.qrCodeService.GenerateVerificationCodeQR(lineOfficialAccountID, code)
 	if err != nil {
-		fmt.Printf("[ERROR] Failed to generate verification code QR code: %v\n", err)
+		c.logger.Error("failed to generate verification code QR code", "error", err)
 		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
 			Code:    errInfos.SYSTEM_ERROR,
 			Message: "系統錯誤",

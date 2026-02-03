@@ -3,7 +3,6 @@ package services
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"timeLedger/app"
 	"timeLedger/app/models"
@@ -201,13 +200,13 @@ func (s *authService) triggerWelcomeTeacherMessage(ctx context.Context, teacher 
 	// 取得中心名稱
 	center, err := s.centerRepository.GetByID(ctx, centerID)
 	if err != nil {
-		fmt.Printf("[WARN] Failed to get center %d for welcome message: %v\n", centerID, err)
+		s.Logger.Warn("failed to get center for welcome message", "center_id", centerID, "error", err)
 		return
 	}
 
 	// 發送歡迎訊息
 	if err := s.notificationService.NotifyWelcomeTeacher(ctx, teacher, center.Name); err != nil {
-		fmt.Printf("[ERROR] Failed to send welcome message to teacher %d: %v\n", teacher.ID, err)
+		s.Logger.Error("failed to send welcome message to teacher", "teacher_id", teacher.ID, "error", err)
 	}
 }
 
@@ -221,12 +220,12 @@ func (s *authService) triggerWelcomeAdminMessage(ctx context.Context, admin *mod
 	// 取得中心名稱
 	center, err := s.centerRepository.GetByID(ctx, centerID)
 	if err != nil {
-		fmt.Printf("[WARN] Failed to get center %d for welcome message: %v\n", centerID, err)
+		s.Logger.Warn("failed to get center for admin welcome message", "center_id", centerID, "error", err)
 		return
 	}
 
 	// 發送歡迎訊息
 	if err := s.notificationService.NotifyWelcomeAdmin(ctx, admin, center.Name); err != nil {
-		fmt.Printf("[ERROR] Failed to send welcome message to admin %d: %v\n", admin.ID, err)
+		s.Logger.Error("failed to send welcome message to admin", "admin_id", admin.ID, "error", err)
 	}
 }

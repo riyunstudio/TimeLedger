@@ -2,8 +2,8 @@ package servers
 
 import (
 	"net/http"
-	"timeLedger/global/errInfos"
 	"timeLedger/app/services"
+	"timeLedger/global/errInfos"
 
 	"github.com/gin-gonic/gin"
 )
@@ -25,10 +25,10 @@ func (s *Server) RecoverMiddleware() gin.HandlerFunc {
 			if err := recover(); err != nil {
 				// 取得完整的 stack trace
 				e := s.app.Tools.PanicParser(err)
-				
+
 				// 紀錄 TraceLog（不要使用 fmt.Printf，會導致 JSON 解析錯誤）
 				s.writePanicLog(c, e)
-				
+
 				// 回傳統一錯誤給 client
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"code":    errInfos.SYSTEM_ERROR,

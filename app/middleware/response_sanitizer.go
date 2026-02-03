@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"bytes"
-	"io"
 	"net/http"
 	"strings"
 	"timeLedger/global"
@@ -31,7 +30,7 @@ func (s *ResponseSanitizer) Sanitize() gin.HandlerFunc {
 
 		// 確保已經提交響應
 		status := c.Writer.Status()
-		
+
 		// 只處理 JSON API 響應
 		contentType := c.Writer.Header().Get("Content-Type")
 		if !strings.Contains(contentType, "application/json") {
@@ -41,10 +40,10 @@ func (s *ResponseSanitizer) Sanitize() gin.HandlerFunc {
 		// 如果已經有響應內容，確保它是乾淨的 JSON
 		if sw.buffer.Len() > 0 {
 			body := sw.buffer.Bytes()
-			
+
 			// 去除任何非 JSON 內容（開頭的空白、不可見字元等）
 			trimmed := bytes.TrimSpace(body)
-			
+
 			// 檢查是否為有效的 JSON（以 { 或 [ 開頭）
 			trimmedStr := strings.TrimSpace(string(trimmed))
 			if len(trimmedStr) > 0 && (trimmedStr[0] == '{' || trimmedStr[0] == '[') {
@@ -54,7 +53,7 @@ func (s *ResponseSanitizer) Sanitize() gin.HandlerFunc {
 				c.Writer.Write(trimmed)
 				return
 			}
-			
+
 			// 如果不是有效 JSON，寫入原始內容（讓錯誤顯現出來以便調試）
 			c.Writer.Write(body)
 		}
@@ -83,7 +82,7 @@ func RecoveryWithSanitizer() gin.HandlerFunc {
 			if err := recover(); err != nil {
 				// 清除任何可能的緩衝區輸出
 				c.Writer.Header().Del("X-Content-Type-Options")
-				
+
 				c.JSON(http.StatusInternalServerError, global.ApiResponse{
 					Code:    global.SYSTEM_ERROR,
 					Message: "Internal server error",
