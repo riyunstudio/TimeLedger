@@ -1,6 +1,7 @@
 package configs
 
 import (
+	"fmt"
 	"os"
 	"strconv"
 	"strings"
@@ -76,8 +77,10 @@ type Env struct {
 }
 
 func LoadEnv() *Env {
-	// 嘗試讀取 .env，如果不存在就使用系統環境變數
-	_ = godotenv.Load("./.env")
+	err := godotenv.Load("./.env")
+	if err != nil {
+		panic(fmt.Sprintf("讀取.env錯誤, err: %s", err.Error()))
+	}
 
 	return &Env{
 		AppEnv:      os.Getenv("APP_ENV"),
