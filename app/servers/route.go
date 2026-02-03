@@ -287,6 +287,10 @@ func (s *Server) registerRoutes(r *gin.Engine) {
 	r.Use(s.InitMiddleware())
 	r.Use(s.RecoverMiddleware())
 	r.Use(s.MainMiddleware())
+	
+	// Response Sanitizer - 確保 API 回應是乾淨的 JSON
+	responseSanitizer := middleware.NewResponseSanitizer()
+	r.Use(responseSanitizer.Sanitize())
 
 	// 註冊所有路由
 	for _, rt := range s.routes {
