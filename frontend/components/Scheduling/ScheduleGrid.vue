@@ -860,6 +860,13 @@ watch(weekStart, async (newWeekStart, oldWeekStart) => {
 // 監聽 props.schedules 變化，更新標記
 watch(() => props.schedules, (newSchedules) => {
   schedulesFromProps.value = !!(newSchedules && newSchedules.length > 0)
+
+  // 如果有新的 schedules，立即設置 isLoading 為 false
+  if (newSchedules && newSchedules.length > 0) {
+    isLoading.value = false
+    hasError.value = false
+    errorMessage.value = ''
+  }
 }, { immediate: true })
 
 // 監聽外部傳入的 weekStart 變化，同步到內部狀態
@@ -876,6 +883,12 @@ watch(() => props.weekStart, (newWeekStart) => {
 onMounted(async () => {
   // 設置 schedules 來源標記
   schedulesFromProps.value = !!(props.schedules && props.schedules.length > 0)
+
+  // 如果已經有 props.schedules，立即設置 isLoading 為 false
+  if (props.schedules && props.schedules.length > 0) {
+    isLoading.value = false
+    hasError.value = false
+  }
 
   if (!props.schedules || props.schedules.length === 0) {
     await fetchSchedules()

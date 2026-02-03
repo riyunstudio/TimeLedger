@@ -166,3 +166,18 @@ export function getDaysDifference(date1: Date, date2: Date): number {
   const time2 = new Date(date2.getFullYear(), date2.getMonth(), date2.getDate()).getTime()
   return Math.floor((time2 - time1) / (1000 * 60 * 60 * 24))
 }
+
+/**
+ * 將 API 回傳的 datetime 字串（如 2026-01-20T00:00:00+08:00）轉換為 YYYY-MM-DD 字串
+ * 使用台灣時區，避免 toISOString() 的 UTC 偏移問題
+ * @param dateTimeStr API 回傳的 datetime 字串
+ * @returns YYYY-MM-DD 格式的字串
+ */
+export function parseDateTimeToString(dateTimeStr: string): string {
+  if (!dateTimeStr) return ''
+  const date = new Date(dateTimeStr)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}

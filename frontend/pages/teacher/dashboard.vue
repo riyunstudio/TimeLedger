@@ -219,7 +219,7 @@
 <script setup lang="ts">
 import type { ScheduleItem, WeekSchedule } from '~/types'
 import { alertError } from '~/composables/useAlert'
-import { formatDateToString } from '~/composables/useTaiwanTime'
+import { formatDateToString, parseDateTimeToString } from '~/composables/useTaiwanTime'
 
 definePageMeta({
   auth: 'TEACHER',
@@ -298,7 +298,7 @@ const transformedSchedules = computed(() => {
 
     // 處理個人行程
     const dayEvents = scheduleStore.personalEvents.filter(e => {
-      const eventDate = new Date(e.start_at).toISOString().split('T')[0]
+      const eventDate = parseDateTimeToString(e.start_at)
       return eventDate === day.date
     })
 
