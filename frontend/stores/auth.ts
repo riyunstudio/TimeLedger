@@ -14,8 +14,10 @@ export const useAuthStore = defineStore('auth', () => {
   const isAuthenticated = computed(() => !!token.value)
 
   const isTeacher = computed(() => {
+    if (!user.value) return false
     const userData = user.value as any
-    return !!user.value && !userData?.user_type && !userData?.role
+    const role = userData.user_type || userData.role
+    return role !== 'ADMIN' && role !== 'OWNER' && role !== 'STAFF'
   })
 
   const isAdmin = computed(() => {

@@ -170,6 +170,8 @@ const isLoggedIn = computed(() => authStore.isAuthenticated && authStore.isTeach
 // 檢查是否為受邀請者
 const isInvitedUser = computed(() => {
   if (!isLoggedIn.value || !invitation.value) return false
+  // 如果邀請沒有指定 email，視為通用邀請，任何登入的老師都可以接受
+  if (!invitation.value.email) return true
   return authStore.user?.email === invitation.value.email
 })
 
@@ -303,30 +305,14 @@ const performLoginAndAccept = async (lineUserId: string, accessToken: string) =>
   error.value = ''
 
   try {
-    // 1. 先接受邀請（重要：後端會自動為新老師建立帳號）
-    await acceptInvitationWithToken(lineUserId, accessToken)
+    // 直接使用 acceptInvitationWithToken 返回的 token（已包含正確的 centerID）
+    const authData = await acceptInvitationWithToken(lineUserId, accessToken)
 
-    // 2. 接受成功後，再執行 LINE 登入取得 JWT Token
-    const response = await fetch(`${config.public.apiBase}/auth/teacher/line/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ line_user_id: lineUserId, access_token: accessToken }),
-    })
+    // 登入成功，更新 authStore
+    authStore.login(authData)
 
-    const data = await response.json()
-
-    if (!response.ok || !data.datas?.token) {
-      throw new Error(data.message || '登入失敗')
-    }
-
-    // 3. 登入成功，儲存 token 並更新狀態
-    localStorage.setItem('teacher_token', data.datas.token)
-    authStore.login({ token: data.datas.token, teacher: data.datas.teacher })
-
-    // 4. 自動跳轉到教師後台
-    setTimeout(() => {
-      router.push('/teacher/dashboard')
-    }, 1000)
+    // 立即跳轉到教師後台
+    router.push('/teacher/dashboard')
   } catch (err: any) {
     error.value = err.message || '處理邀請時發生錯誤，請稍後再試'
   } finally {
@@ -335,45 +321,46 @@ const performLoginAndAccept = async (lineUserId: string, accessToken: string) =>
 }
 
 // 使用指定 token 接受邀請
+// 返回登入所需的資料（token 和 teacher），供 performLoginAndAccept 使用
 const acceptInvitationWithToken = async (lineUserId: string, accessToken: string) => {
   // 嘗試獲取已儲存的 email
   const savedEmail = localStorage.getItem('invitation_email') || ''
 
-  try {
-    const response = await fetch(`${config.public.apiBase}/invitations/${token.value}/accept`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        line_user_id: lineUserId,
-        access_token: accessToken,
-        email: savedEmail, // 傳遞 LINE ID Token 中的 email
-      }),
-    })
+  const response = await fetch(`${config.public.apiBase}/invitations/${token.value}/accept`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      line_user_id: lineUserId,
+      access_token: accessToken,
+      email: savedEmail, // 傳遞 LINE ID Token 中的 email
+    }),
+  })
 
-    const data = await response.json()
+  const data = await response.json()
 
-    if (!response.ok) {
-      throw new Error(data.message || '接受邀請失敗')
-    }
+  if (!response.ok) {
+    throw new Error(data.message || '接受邀請失敗')
+  }
 
-    // 檢查是否早就是成員 (由後端回傳 status: 'ALREADY_MEMBER')
-    if (data.datas?.status === 'ALREADY_MEMBER') {
-      isAlreadyMember.value = true
-    }
+  // 檢查是否早就是成員 (由後端回傳 status: 'ALREADY_MEMBER')
+  if (data.datas?.status === 'ALREADY_MEMBER') {
+    isAlreadyMember.value = true
+  }
 
-    accepted.value = true
+  accepted.value = true
 
-    // 清除邀請相關的 localStorage
-    localStorage.removeItem('invitation_token')
-    localStorage.removeItem('invitation_line_user_id')
-    localStorage.removeItem('invitation_access_token')
-    localStorage.removeItem('invitation_email')
-  } catch (err: any) {
-    error.value = err.message || '接受邀請失敗，請稍後再試'
-  } finally {
-    accepting.value = false
+  // 清除邀請相關的 localStorage
+  localStorage.removeItem('invitation_token')
+  localStorage.removeItem('invitation_line_user_id')
+  localStorage.removeItem('invitation_access_token')
+  localStorage.removeItem('invitation_email')
+
+  // 返回登入所需的資料（包含正確的 centerID）
+  return {
+    token: data.datas.token,
+    teacher: data.datas.teacher,
   }
 }
 
@@ -432,10 +419,8 @@ const acceptInvitation = async () => {
       // 更新 authStore
       authStore.login(authData)
 
-      // 自動跳轉到教師後台
-      setTimeout(() => {
-        router.push('/teacher/dashboard')
-      }, 1000)
+      // 立即跳轉到教師後台
+      router.push('/teacher/dashboard')
     }
     // ==========================================
 
@@ -470,7 +455,7 @@ const checkInvitationLogin = () => {
     // 使用者已經透過邀請頁面導向登入，回來後自動執行登入並接受邀請
     setTimeout(() => {
       performLoginAndAccept(savedLineUserId, savedAccessToken)
-    }, 500)
+    }, 200)
   }
 }
 
