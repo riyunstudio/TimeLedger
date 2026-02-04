@@ -617,7 +617,8 @@ func (ctl *TeacherInvitationController) RegenerateGeneralInvitationLink(ctx *gin
 
 // AcceptInvitationByLinkRequest 透過連結接受邀請請求
 type AcceptInvitationByLinkRequest struct {
-	LineUserID string `json:"line_user_id" binding:"required"`
+	LineUserID  string `json:"line_user_id" binding:"required"`
+	AccessToken string `json:"access_token" binding:"required"`
 }
 
 // GetPublicInvitation 取得公開邀請資訊
@@ -662,8 +663,9 @@ func (ctl *TeacherInvitationController) AcceptInvitationByLink(ctx *gin.Context)
 	}
 
 	serviceReq := &services.AcceptInvitationByLinkRequest{
-		Token:      invitation.Token,
-		LineUserID: req.LineUserID,
+		Token:       invitation.Token,
+		LineUserID:  req.LineUserID,
+		AccessToken: req.AccessToken,
 	}
 
 	result, errInfo, err := ctl.teacherService.AcceptInvitationByLink(ctx.Request.Context(), serviceReq)

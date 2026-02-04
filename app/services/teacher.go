@@ -557,8 +557,9 @@ func (s *TeacherService) RevokeInvitationLink(ctx context.Context, invitationID,
 
 // AcceptInvitationByLinkRequest 透過連結接受邀請請求
 type AcceptInvitationByLinkRequest struct {
-	Token      string
-	LineUserID string
+	Token       string
+	LineUserID  string
+	AccessToken string
 }
 
 // AcceptInvitationByLinkResult 透過連結接受邀請結果
@@ -572,6 +573,11 @@ type AcceptInvitationByLinkResult struct {
 
 // AcceptInvitationByLink 透過連結接受邀請
 func (s *TeacherService) AcceptInvitationByLink(ctx context.Context, req *AcceptInvitationByLinkRequest) (*AcceptInvitationByLinkResult, *errInfos.Res, error) {
+	// Verify LINE Access Token
+	if err := s.authService.verifyLineToken(req.AccessToken, req.LineUserID); err != nil {
+		return nil, s.app.Err.New(errInfos.UNAUTHORIZED), err
+	}
+
 	// 透過 token 取得邀請記錄
 	invitation, err := s.invitationRepo.GetByToken(ctx, req.Token)
 	if err != nil {
