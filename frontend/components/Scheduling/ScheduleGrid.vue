@@ -475,7 +475,8 @@ const fetchSchedules = async () => {
     // 如果還是空的，直接調用 /admin/rules API 獲取規則列表
     if (expandedSchedules.length === 0) {
       try {
-        const rulesResponse = await api.post<{ code: number; datas: any[] }>('/admin/rules', {})
+        // 使用 GET 獲取規則列表（POST 需要參數，GET 不需要）
+        const rulesResponse = await api.get<{ code: number; datas: any[] }>('/admin/rules')
         if (rulesResponse?.datas) {
           expandedSchedules = rulesResponse.datas
         }
