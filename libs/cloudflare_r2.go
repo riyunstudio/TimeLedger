@@ -75,11 +75,6 @@ func (s *R2StorageService) UploadFile(ctx context.Context, file io.Reader, filen
 	// 計算 payload hash
 	payloadHash := sha256Hex(fileContent)
 
-	// 設定 Header
-	req.Header.Set("Content-Type", contentType)
-	req.Header.Set("x-amz-acl", "public-read")
-	req.Header.Set("x-amz-content-sha256", payloadHash)
-
 	// 產生 AWS Signature v4
 	date := time.Now().UTC()
 	amzDate := date.Format("20060102T150405Z")
@@ -110,6 +105,12 @@ func (s *R2StorageService) UploadFile(ctx context.Context, file io.Reader, filen
 	kSigning := hmacSHA256(kService, []byte("aws4_request"))
 
 	signature := hmacSHA256Hex(kSigning, []byte(stringToSign))
+
+	// 設定 Header
+	req.Header.Set("Content-Type", contentType)
+	req.Header.Set("x-amz-acl", "public-read")
+	req.Header.Set("x-amz-content-sha256", payloadHash)
+	req.Header.Set("x-amz-date", amzDate)
 
 	// 設定 Authorization header
 	authHeader := fmt.Sprintf("AWS4-HMAC-SHA256 Credential=%s/%s, SignedHeaders=%s, Signature=%s",
