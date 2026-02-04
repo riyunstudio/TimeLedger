@@ -188,6 +188,7 @@ const formError = ref('')
 // 表單資料
 const form = ref({
   line_user_id: '',
+  access_token: '',
   name: '',
   email: '',
 })
@@ -210,6 +211,8 @@ const initLiff = async () => {
       // 已登入 LINE，取得用戶資訊
       const profile = await $liff.getProfile()
       form.value.line_user_id = profile.userId
+      // 儲存 Access Token 用於註冊驗證
+      form.value.access_token = $liff.getAccessToken() || ''
       hasLineUserId.value = true
     } else {
       // 未登入 LINE，需要先登入
@@ -270,6 +273,11 @@ const handleRegister = async () => {
   formError.value = ''
 
   try {
+    // 驗證 Access Token
+    if (!form.value.access_token) {
+      throw new Error('LINE 登入資訊遺失，請重新登入')
+    }
+
     const response = await fetch(`${config.public.apiBase}/teacher/public/register`, {
       method: 'POST',
       headers: {
@@ -277,6 +285,7 @@ const handleRegister = async () => {
       },
       body: JSON.stringify({
         line_user_id: form.value.line_user_id,
+        access_token: form.value.access_token,
         name: form.value.name,
         email: form.value.email,
       }),

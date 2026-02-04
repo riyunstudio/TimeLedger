@@ -734,9 +734,10 @@ func (s *TeacherService) generateInviteToken() string {
 
 // PublicRegisterRequest 公開註冊請求
 type PublicRegisterRequest struct {
-	LineUserID string `json:"line_user_id" binding:"required"`
-	Name       string `json:"name" binding:"required"`
-	Email      string `json:"email" binding:"required,email"`
+	LineUserID  string `json:"line_user_id" binding:"required"`
+	AccessToken string `json:"access_token" binding:"required"`
+	Name        string `json:"name" binding:"required"`
+	Email       string `json:"email" binding:"required,email"`
 }
 
 // PublicRegisterResult 公開註冊結果
@@ -747,6 +748,11 @@ type PublicRegisterResult struct {
 
 // RegisterPublic 公開註冊老師（LINE Bot 自主註冊）
 func (s *TeacherService) RegisterPublic(ctx context.Context, req *PublicRegisterRequest) (*PublicRegisterResult, *errInfos.Res, error) {
+	// 驗證 LINE Access Token
+	if err := s.authService.verifyLineToken(req.AccessToken, req.LineUserID); err != nil {
+		return nil, s.app.Err.New(errInfos.UNAUTHORIZED), err
+	}
+
 	// 檢查是否已存在相同 LineUserID 的老師
 	existingTeacher, err := s.teacherRepo.GetByLineUserID(ctx, req.LineUserID)
 	if err == nil {

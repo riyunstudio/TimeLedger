@@ -177,10 +177,17 @@ const performLogin = async () => {
   loginError.value = ''
 
   try {
+    // 取得 LINE Access Token
+    const accessToken = $liff.getAccessToken()
+    if (!accessToken) {
+      throw new Error('無法取得 LINE Access Token，請重新登入')
+    }
+
     const response = await $fetch('/api/v1/auth/teacher/line/login', {
       method: 'POST',
       body: {
-        line_user_id: lineUserId.value
+        line_user_id: lineUserId.value,
+        access_token: accessToken
       }
     })
 

@@ -147,6 +147,7 @@ const config = useRuntimeConfig()
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+const { $liff } = useNuxtApp()
 
 // 取得 token
 const token = computed(() => route.params.token as string)
@@ -208,28 +209,135 @@ const fetchInvitation = async () => {
 }
 
 // LINE 登入
-const lineLogin = () => {
-  // 儲存邀請 token 到 localStorage，接受邀請時使用
-  localStorage.setItem('invitation_token', token.value)
+const lineLogin = async () => {
+  if (!$liff) {
+    error.value = 'LIFF 尚未初始化，請重新整理頁面'
+    return
+  }
 
-  // 導向 LINE LIFF 登入
-  const liffUrl = `${config.public.liffUrl}/teacher/login?redirect=${encodeURIComponent(window.location.href)}`
-  window.location.href = liffUrl
+  try {
+    // 檢查是否已登入 LINE
+    const isLoggedIn = $liff.isLoggedIn()
+
+    if (!isLoggedIn) {
+      // 未登入，使用 LIFF SDK 登入
+      $liff.login()
+      return
+    }
+
+    // 已登入 LINE，取得用戶資訊和 Access Token
+    const profile = await $liff.getProfile()
+    const accessToken = $liff.getAccessToken()
+
+    if (!accessToken) {
+      throw new Error('無法取得 LINE Access Token')
+    }
+
+    // 儲存邀請 token 和用戶資訊到 localStorage
+    localStorage.setItem('invitation_token', token.value)
+    localStorage.setItem('invitation_line_user_id', profile.userId)
+    localStorage.setItem('invitation_access_token', accessToken)
+
+    // 執行登入並接受邀請
+    await performLoginAndAccept(profile.userId, accessToken)
+  } catch (err: any) {
+    error.value = err.message || 'LINE 登入失敗，請稍後再試'
+  }
 }
 
 // 登出
 const logout = () => {
   localStorage.removeItem('teacher_token')
   localStorage.removeItem('invitation_token')
+  localStorage.removeItem('invitation_line_user_id')
+  localStorage.removeItem('invitation_access_token')
   authStore.logout()
   // 重新整理頁面
   window.location.reload()
+}
+
+// 執行登入並接受邀請
+const performLoginAndAccept = async (lineUserId: string, accessToken: string) => {
+  accepting.value = true
+  try {
+    const response = await fetch(`${config.public.apiBase}/auth/teacher/line/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        line_user_id: lineUserId,
+        access_token: accessToken,
+      }),
+    })
+
+    const data = await response.json()
+
+    if (!response.ok) {
+      throw new Error(data.message || '登入失敗')
+    }
+
+    // 登入成功，儲存 token
+    if (data.datas?.token) {
+      localStorage.setItem('teacher_token', data.datas.token)
+      authStore.login({
+        token: data.datas.token,
+        teacher: data.datas.teacher,
+      })
+    }
+
+    // 自動接受邀請
+    await acceptInvitationWithToken(lineUserId, accessToken)
+  } catch (err: any) {
+    error.value = err.message || '登入失敗，請稍後再試'
+    accepting.value = false
+  }
+}
+
+// 使用指定 token 接受邀請
+const acceptInvitationWithToken = async (lineUserId: string, accessToken: string) => {
+  try {
+    const response = await fetch(`${config.public.apiBase}/invitations/${token.value}/accept`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        line_user_id: lineUserId,
+        access_token: accessToken,
+      }),
+    })
+
+    const data = await response.json()
+
+    if (!response.ok) {
+      throw new Error(data.message || '接受邀請失敗')
+    }
+
+    accepted.value = true
+
+    // 清除邀請相關的 localStorage
+    localStorage.removeItem('invitation_token')
+    localStorage.removeItem('invitation_line_user_id')
+    localStorage.removeItem('invitation_access_token')
+  } catch (err: any) {
+    error.value = err.message || '接受邀請失敗，請稍後再試'
+  } finally {
+    accepting.value = false
+  }
 }
 
 // 接受邀請
 const acceptInvitation = async () => {
   if (!authStore.user?.line_user_id) {
     error.value = '無法取得登入資訊，請重新登入'
+    return
+  }
+
+  // 取得 Access Token
+  const accessToken = $liff?.getAccessToken()
+  if (!accessToken) {
+    error.value = '無法取得 LINE Access Token，請重新登入'
     return
   }
 
@@ -242,6 +350,7 @@ const acceptInvitation = async () => {
       },
       body: JSON.stringify({
         line_user_id: authStore.user.line_user_id,
+        access_token: accessToken,
       }),
     })
 
@@ -275,12 +384,13 @@ const goToTeacherDashboard = () => {
 // 檢查是否有待處理的邀請登入
 const checkInvitationLogin = () => {
   const savedToken = localStorage.getItem('invitation_token')
-  if (savedToken && savedToken === token.value) {
-    // 使用者已經透過邀請頁面導向登入，回來後自動接受邀請
+  const savedLineUserId = localStorage.getItem('invitation_line_user_id')
+  const savedAccessToken = localStorage.getItem('invitation_access_token')
+
+  if (savedToken && savedToken === token.value && savedLineUserId && savedAccessToken) {
+    // 使用者已經透過邀請頁面導向登入，回來後自動執行登入並接受邀請
     setTimeout(() => {
-      if (isLoggedIn.value && isInvitedUser.value) {
-        acceptInvitation()
-      }
+      performLoginAndAccept(savedLineUserId, savedAccessToken)
     }, 500)
   }
 }

@@ -2,7 +2,11 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"net/http"
+	"time"
 
 	"timeLedger/app"
 	"timeLedger/app/models"
@@ -20,6 +24,60 @@ type authService struct {
 	centerRepository    *repositories.CenterRepository
 	notificationService NotificationQueueService
 	jwt                 *jwt.JWT
+}
+
+// LineProfile LINE API 回傳的用戶資料結構
+type LineProfile struct {
+	UserID        string `json:"userId"`
+	DisplayName   string `json:"displayName"`
+	PictureURL    string `json:"pictureUrl"`
+	StatusMessage string `json:"statusMessage,omitempty"`
+}
+
+// verifyLineToken 驗證 LINE Access Token 並取得用戶資料
+// 使用 https://api.line.me/v2/profile API 驗證
+func (s *authService) verifyLineToken(accessToken string, lineUserID string) error {
+	// 建立 HTTP Client，設定超時時間
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+
+	// 建立 LINE Profile API 請求
+	req, err := http.NewRequest("GET", "https://api.line.me/v2/profile", nil)
+	if err != nil {
+		return errors.New("failed to create LINE API request")
+	}
+
+	// 設定 Authorization header
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+
+	// 發送請求
+	resp, err := client.Do(req)
+	if err != nil {
+		return errors.New("failed to connect LINE API: " + err.Error())
+	}
+	defer resp.Body.Close()
+
+	// 檢查 HTTP 狀態碼
+	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusUnauthorized {
+			return errors.New("LINE token 已過期或無效，請重新登入")
+		}
+		return errors.New("LINE API 驗證失敗，狀態碼: " + fmt.Sprintf("%d", resp.StatusCode))
+	}
+
+	// 解析回應
+	var profile LineProfile
+	if err := json.NewDecoder(resp.Body).Decode(&profile); err != nil {
+		return errors.New("failed to parse LINE API response")
+	}
+
+	// 驗證用戶 ID 是否匹配
+	if profile.UserID != lineUserID {
+		return errors.New("LINE user ID mismatch: token does not belong to the specified user")
+	}
+
+	return nil
 }
 
 func NewAuthService(app *app.App) *authService {
@@ -81,6 +139,11 @@ func (s *authService) AdminLogin(ctx context.Context, email, password string) (L
 }
 
 func (s *authService) TeacherLineLogin(ctx context.Context, lineUserID, accessToken string) (LoginResponse, error) {
+	// 驗證 LINE Access Token
+	if err := s.verifyLineToken(accessToken, lineUserID); err != nil {
+		return LoginResponse{}, err
+	}
+
 	teacher, err := s.teacherRepository.GetByLineUserID(ctx, lineUserID)
 	if err != nil {
 		return LoginResponse{}, errors.New("teacher not found")
