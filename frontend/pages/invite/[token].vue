@@ -8,9 +8,9 @@
 
     <div class="relative w-full max-w-md">
       <!-- 載入中 -->
-      <div v-if="loading" class="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20 text-center">
+      <div v-if="loading || autoAccepting" class="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20 text-center">
         <div class="inline-block w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p class="text-slate-300">正在載入邀請資訊...</p>
+        <p class="text-slate-300">{{ autoAccepting ? '正在為您自動加入中心...' : '正在載入邀請資訊...' }}</p>
       </div>
 
       <!-- 錯誤訊息 -->
@@ -97,18 +97,27 @@
 
         <!-- 已登入且是受邀請者 -->
         <div v-else-if="isLoggedIn && isInvitedUser" class="space-y-3">
-          <div class="bg-success-500/20 border border-success-500/30 rounded-xl p-4 text-center">
-            <p class="text-success-500 font-medium mb-1">歡迎回來！</p>
-            <p class="text-slate-400 text-sm">您已登入，可以接受邀請</p>
+          <!-- 自動接受邀請中的狀態 -->
+          <div v-if="autoAccepting" class="bg-primary-500/20 border border-primary-500/30 rounded-xl p-6 text-center">
+            <div class="inline-block w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+            <p class="text-white font-medium mb-1">正在處理邀請...</p>
+            <p class="text-slate-400 text-sm">系統正在自動接受邀請，請稍候</p>
           </div>
-          <button
-            @click="acceptInvitation"
-            :disabled="accepting"
-            class="w-full py-4 bg-primary-500 hover:bg-primary-600 text-white font-medium rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-          >
-            <span v-if="accepting" class="inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-            {{ accepting ? $t('common.submitting') : '接受邀請並加入' }}
-          </button>
+          <!-- 一般接受按鈕 -->
+          <template v-else>
+            <div class="bg-success-500/20 border border-success-500/30 rounded-xl p-4 text-center">
+              <p class="text-success-500 font-medium mb-1">歡迎回來！</p>
+              <p class="text-slate-400 text-sm">您已登入，可以接受邀請</p>
+            </div>
+            <button
+              @click="acceptInvitation"
+              :disabled="accepting"
+              class="w-full py-4 bg-primary-500 hover:bg-primary-600 text-white font-medium rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              <span v-if="accepting" class="inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+              {{ accepting ? $t('common.submitting') : '接受邀請並加入' }}
+            </button>
+          </template>
           <button
             @click="logout"
             class="w-full py-3 text-slate-400 hover:text-white transition-colors"
@@ -161,6 +170,7 @@ const loading = ref(true)
 const error = ref('')
 const invitation = ref<any>(null)
 const accepting = ref(false)
+const autoAccepting = ref(false) // 自動接受邀請中的狀態
 const accepted = ref(false)
 const isAlreadyMember = ref(false)
 
@@ -501,6 +511,18 @@ const checkInvitationLogin = async () => {
 
 onMounted(async () => {
   await fetchInvitation()
+
+  // 檢查是否需要自動接受邀請
+  // 條件：已登入、是受邀請者、尚未接受邀請
+  if (isLoggedIn.value && isInvitedUser.value && !accepted.value) {
+    // 延遲一下確保 UI 更新後再執行
+    setTimeout(async () => {
+      autoAccepting.value = true
+      await acceptInvitation()
+      autoAccepting.value = false
+    }, 300)
+  }
+
   await checkInvitationLogin()
 })
 </script>

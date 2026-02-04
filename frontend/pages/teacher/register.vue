@@ -310,6 +310,15 @@ const handleRegister = async () => {
     localStorage.removeItem('register_line_user_id')
     localStorage.removeItem('register_state')
 
+    // 檢查是否有待處理的邀請
+    const invitationToken = localStorage.getItem('invitation_token')
+    if (invitationToken) {
+      // 有邀請，直接導向邀請頁面（不顯示成功訊息）
+      router.push(`/invite/${invitationToken}`)
+      return
+    }
+
+    // 沒有邀請，顯示成功訊息
     registered.value = true
   } catch (err: any) {
     formError.value = err.message || '註冊失敗，請稍後再試'
@@ -325,6 +334,13 @@ const goHome = () => {
 
 // 前往老師後台
 const goToDashboard = () => {
+  // 檢查是否有待處理的邀請
+  const invitationToken = localStorage.getItem('invitation_token')
+  if (invitationToken) {
+    // 有邀請，導向邀請頁面
+    router.push(`/invite/${invitationToken}`)
+    return
+  }
   router.push('/teacher/dashboard')
 }
 
