@@ -39,7 +39,11 @@ func (ctl *AuthController) AdminLogin(ctx *gin.Context) {
 		return
 	}
 
-	response, err := ctl.authService.AdminLogin(ctx, req.Email, req.Password)
+	// 取得 IP 和 User-Agent
+	ipAddress := ctx.ClientIP()
+	userAgent := ctx.GetHeader("User-Agent")
+
+	response, err := ctl.authService.AdminLogin(ctx, req.Email, req.Password, ipAddress, userAgent)
 	if err != nil {
 		ctx.JSON(http.StatusUnauthorized, global.ApiResponse{
 			Code:    global.UNAUTHORIZED,

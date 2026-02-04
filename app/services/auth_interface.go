@@ -23,7 +23,7 @@ type LoginResponse struct {
 
 type AuthService interface {
 	// Admin Login
-	AdminLogin(ctx context.Context, email, password string) (LoginResponse, error)
+	AdminLogin(ctx context.Context, email, password, ipAddress, userAgent string) (LoginResponse, error)
 
 	// Teacher Login
 	TeacherLineLogin(ctx context.Context, lineUserID, accessToken string) (*LoginResponse, *errInfos.Res, error)

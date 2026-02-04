@@ -21,12 +21,13 @@ import (
 
 type authService struct {
 	BaseService
-	app                 *app.App
-	adminRepository     *repositories.AdminUserRepository
-	teacherRepository   *repositories.TeacherRepository
-	centerRepository    *repositories.CenterRepository
-	notificationService NotificationQueueService
-	jwt                 *jwt.JWT
+	app                         *app.App
+	adminRepository             *repositories.AdminUserRepository
+	teacherRepository           *repositories.TeacherRepository
+	centerRepository            *repositories.CenterRepository
+	notificationService         NotificationQueueService
+	adminLoginHistoryRepository *repositories.AdminLoginHistoryRepository
+	jwt                         *jwt.JWT
 }
 
 // LineProfile LINE API 回傳的用戶資料結構
@@ -136,32 +137,41 @@ func base64URLDecode(input string) ([]byte, error) {
 func NewAuthService(app *app.App) *authService {
 	baseService := NewBaseService(app, "AuthService")
 	return &authService{
-		BaseService:         *baseService,
-		app:                 app,
-		adminRepository:     repositories.NewAdminUserRepository(app),
-		teacherRepository:   repositories.NewTeacherRepository(app),
-		centerRepository:    repositories.NewCenterRepository(app),
-		notificationService: NewNotificationQueueService(app),
-		jwt:                 jwt.NewJWT(app.Env.JWTSecret),
+		BaseService:                 *baseService,
+		app:                         app,
+		adminRepository:             repositories.NewAdminUserRepository(app),
+		teacherRepository:           repositories.NewTeacherRepository(app),
+		centerRepository:            repositories.NewCenterRepository(app),
+		notificationService:         NewNotificationQueueService(app),
+		adminLoginHistoryRepository: repositories.NewAdminLoginHistoryRepository(app),
+		jwt:                         jwt.NewJWT(app.Env.JWTSecret),
 	}
 }
 
-func (s *authService) AdminLogin(ctx context.Context, email, password string) (LoginResponse, error) {
+func (s *authService) AdminLogin(ctx context.Context, email, password, ipAddress, userAgent string) (LoginResponse, error) {
 	admin, err := s.adminRepository.GetByEmail(ctx, email)
 	if err != nil {
+		// 記錄失敗：帳號不存在
+		s.recordLoginHistory(ctx, 0, email, models.LoginStatusFailed, ipAddress, userAgent, "admin not found")
 		return LoginResponse{}, errors.New("admin not found")
 	}
 
 	if admin.Status != "ACTIVE" {
+		// 記錄失敗：帳號已停用
+		s.recordLoginHistory(ctx, admin.ID, email, models.LoginStatusFailed, ipAddress, userAgent, "admin account is inactive")
 		return LoginResponse{}, errors.New("admin account is inactive")
 	}
 
 	// 驗證 center_id 必須有效
 	if admin.CenterID == 0 {
+		// 記錄失敗：未關聯中心
+		s.recordLoginHistory(ctx, admin.ID, email, models.LoginStatusFailed, ipAddress, userAgent, "admin account is not associated with any center")
 		return LoginResponse{}, errors.New("admin account is not associated with any center")
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(admin.PasswordHash), []byte(password)); err != nil {
+		// 記錄失敗：密碼錯誤
+		s.recordLoginHistory(ctx, admin.ID, email, models.LoginStatusFailed, ipAddress, userAgent, "invalid password")
 		return LoginResponse{}, errors.New("invalid password")
 	}
 
@@ -175,6 +185,9 @@ func (s *authService) AdminLogin(ctx context.Context, email, password string) (L
 	if err != nil {
 		return LoginResponse{}, err
 	}
+
+	// 記錄成功登入
+	s.recordLoginHistory(ctx, admin.ID, email, models.LoginStatusSuccess, ipAddress, userAgent, "")
 
 	// 觸發歡迎訊息（如果尚未發送且已綁定 LINE）
 	// 使用 context.Background() 避免 HTTP 請求結束後 context 失效
@@ -192,6 +205,27 @@ func (s *authService) AdminLogin(ctx context.Context, email, password string) (L
 			CenterID: admin.CenterID,
 		},
 	}, nil
+}
+
+// recordLoginHistory 記錄管理員登入紀錄
+func (s *authService) recordLoginHistory(ctx context.Context, adminID uint, email, status, ipAddress, userAgent, reason string) {
+	loginHistory := models.AdminLoginHistory{
+		AdminID:   adminID,
+		Email:     email,
+		Status:    status,
+		IPAddress: ipAddress,
+		UserAgent: userAgent,
+		Reason:    reason,
+	}
+
+	// 使用 goroutine 非同步寫入，避免影響登入流程
+	go func() {
+		_, err := s.adminLoginHistoryRepository.Create(ctx, loginHistory)
+		if err != nil {
+			// 記錄錯誤，不影響主要流程
+			fmt.Printf("[WARN] failed to record admin login history: %v\n", err)
+		}
+	}()
 }
 
 func (s *authService) TeacherLineLogin(ctx context.Context, lineUserID, accessToken string) (*LoginResponse, *errInfos.Res, error) {
@@ -213,8 +247,8 @@ func (s *authService) TeacherLineLogin(ctx context.Context, lineUserID, accessTo
 		newTeacher := models.Teacher{
 			LineUserID: lineUserID,
 			Email:      email,
-			Name:       lineProfile.DisplayName,  // 使用 LINE 的顯示名稱
-			AvatarURL:  lineProfile.PictureURL,   // 使用 LINE 的頭像
+			Name:       lineProfile.DisplayName, // 使用 LINE 的顯示名稱
+			AvatarURL:  lineProfile.PictureURL,  // 使用 LINE 的頭像
 		}
 
 		createdTeacher, err := s.teacherRepository.Create(ctx, newTeacher)

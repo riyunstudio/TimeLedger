@@ -35,6 +35,18 @@
            />
          </div>
 
+         <div class="flex items-center">
+           <input
+             v-model="rememberEmail"
+             type="checkbox"
+             id="remember-email"
+             class="w-4 h-4 rounded border-slate-500 bg-slate-700 text-primary-500 focus:ring-primary-500 focus:ring-2"
+           />
+           <label for="remember-email" class="ml-2 text-slate-300 cursor-pointer">
+             記住帳號
+           </label>
+         </div>
+
          <button
            type="submit"
            :disabled="loading"
@@ -72,7 +84,20 @@ const router = useRouter()
 
 const email = ref('')
 const password = ref('')
+const rememberEmail = ref(false)
 const loading = ref(false)
+
+// LocalStorage key
+const REMEMBERED_EMAIL_KEY = 'timeledger_admin_remembered_email'
+
+// 頁面載入時讀取記憶的帳號
+onMounted(() => {
+  const savedEmail = localStorage.getItem(REMEMBERED_EMAIL_KEY)
+  if (savedEmail) {
+    email.value = savedEmail
+    rememberEmail.value = true
+  }
+})
 
 const handleLogin = async () => {
   loading.value = true
@@ -84,6 +109,13 @@ const handleLogin = async () => {
       email: email.value,
       password: password.value,
     })
+
+    // 記住帳號邏輯
+    if (rememberEmail.value) {
+      localStorage.setItem(REMEMBERED_EMAIL_KEY, email.value)
+    } else {
+      localStorage.removeItem(REMEMBERED_EMAIL_KEY)
+    }
 
     authStore.login(response)
     router.push('/admin/dashboard')
