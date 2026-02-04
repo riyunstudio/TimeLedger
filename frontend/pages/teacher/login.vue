@@ -10,7 +10,7 @@
       <!-- 載入中 -->
       <div v-if="loading" class="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20 text-center">
         <div class="inline-block w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p class="text-slate-300">正在初始化...</p>
+        <p class="text-slate-300">{{ $t('auth.initializing') }}</p>
       </div>
 
       <!-- 錯誤訊息 -->
@@ -26,7 +26,7 @@
           @click="retryInit"
           class="px-6 py-3 bg-primary-500 text-white rounded-xl hover:bg-primary-600 transition-colors"
         >
-          重新整理
+          {{ $t('auth.refresh') }}
         </button>
       </div>
 
@@ -38,13 +38,13 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
             </svg>
           </div>
-          <h1 class="text-2xl font-bold text-white mb-1">老師登入</h1>
-          <p class="text-primary-400 font-medium">歡迎回來</p>
+          <h1 class="text-2xl font-bold text-white mb-1">{{ $t('auth.loginTitle') }}</h1>
+          <p class="text-primary-400 font-medium">{{ $t('auth.welcomeBack') }}</p>
         </div>
 
         <div class="bg-white/5 rounded-xl p-4 mb-6">
           <p class="text-slate-300 text-sm">
-            請使用 LINE 帳號登入，開始管理您的課表。
+            {{ $t('auth.loginHint') }}
           </p>
         </div>
 
@@ -56,17 +56,17 @@
           <svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
           </svg>
-          LINE 登入
+          {{ $t('auth.lineLogin') }}
         </button>
         <p class="text-center text-slate-500 text-sm mt-3">
-          點擊上方按鈕透過 LINE 登入
+          {{ $t('auth.lineLoginFull') }}
         </p>
       </div>
 
       <!-- 登入中 -->
       <div v-else-if="loggingIn" class="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20 text-center">
         <div class="inline-block w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p class="text-slate-300">正在登入...</p>
+        <p class="text-slate-300">{{ $t('auth.loggingIn') }}</p>
       </div>
 
       <!-- 登入成功 -->
@@ -76,8 +76,8 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
           </svg>
         </div>
-        <h2 class="text-xl font-bold text-white mb-2">登入成功！</h2>
-        <p class="text-slate-400">正在跳轉到後台...</p>
+        <h2 class="text-xl font-bold text-white mb-2">{{ $t('auth.loginSuccess') }}</h2>
+        <p class="text-slate-400">{{ $t('auth.redirecting') }}</p>
       </div>
 
       <!-- 登入失敗 -->
@@ -88,14 +88,14 @@
           </svg>
         </div>
         <div class="text-center mb-6">
-          <h2 class="text-xl font-bold text-white mb-2">登入失敗</h2>
+          <h2 class="text-xl font-bold text-white mb-2">{{ $t('auth.loginFailed') }}</h2>
           <p class="text-slate-400">{{ loginError }}</p>
         </div>
         <button
           @click="retryLogin"
           class="w-full py-3 bg-white/10 text-white rounded-xl hover:bg-white/20 transition-colors"
         >
-          重新登入
+          {{ $t('auth.retryLogin') }}
         </button>
       </div>
     </div>

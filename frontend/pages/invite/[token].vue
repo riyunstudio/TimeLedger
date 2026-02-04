@@ -107,13 +107,13 @@
             class="w-full py-4 bg-primary-500 hover:bg-primary-600 text-white font-medium rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             <span v-if="accepting" class="inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-            {{ accepting ? '處理中...' : '接受邀請並加入' }}
+            {{ accepting ? $t('common.submitting') : '接受邀請並加入' }}
           </button>
           <button
             @click="logout"
             class="w-full py-3 text-slate-400 hover:text-white transition-colors"
           >
-            使用其他帳號
+            {{ $t('auth.invite.logoutOther') }}
           </button>
         </div>
 
@@ -124,13 +124,17 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <h2 class="text-xl font-bold text-white mb-2">加入成功！</h2>
-          <p class="text-slate-400 mb-6">歡迎加入 {{ invitation.center_name }}</p>
+          <h2 class="text-xl font-bold text-white mb-2">
+            {{ isAlreadyMember ? $t('auth.invite.welcomeBackMember') : $t('auth.invite.joinSuccess') }}
+          </h2>
+          <p class="text-slate-400 mb-6">
+            {{ isAlreadyMember ? '' : $t('auth.invite.welcomeTo', { center: invitation.center_name }) }}
+          </p>
           <button
             @click="goToTeacherDashboard"
             class="px-6 py-3 bg-primary-500 text-white rounded-xl hover:bg-primary-600 transition-colors"
           >
-            前往老師後台
+            {{ $t('auth.invite.goToDashboard') }}
           </button>
         </div>
       </div>
@@ -158,9 +162,10 @@ const error = ref('')
 const invitation = ref<any>(null)
 const accepting = ref(false)
 const accepted = ref(false)
+const isAlreadyMember = ref(false)
 
 // 檢查是否已登入
-const isLoggedIn = computed(() => authStore.isAuthenticated && authStore.userType === 'teacher')
+const isLoggedIn = computed(() => authStore.isAuthenticated && authStore.isTeacher)
 
 // 檢查是否為受邀請者
 const isInvitedUser = computed(() => {
@@ -210,27 +215,29 @@ const fetchInvitation = async () => {
 
 // LINE 登入
 const lineLogin = async () => {
-  if (!$liff) {
-    error.value = 'LIFF 尚未初始化，請重新整理頁面'
+  // 防禦性檢查：確保 $liff 已初始化
+  if (!$liff || typeof $liff.isLoggedIn !== 'function') {
+    error.value = 'LIFF SDK 尚未完全載入，請重新整理頁面'
     return
   }
 
   try {
     // 檢查是否已登入 LINE
-    const isLoggedIn = $liff.isLoggedIn()
+    const isLoggedInLine = $liff.isLoggedIn()
 
-    if (!isLoggedIn) {
+    if (!isLoggedInLine) {
       // 未登入，使用 LIFF SDK 登入
       $liff.login()
       return
     }
 
     // 已登入 LINE，取得用戶資訊和 Access Token
-    const profile = await $liff.getProfile()
-    const accessToken = $liff.getAccessToken()
+    // 防禦性檢查：確保方法存在
+    const profile = await $liff.getProfile?.()
+    const accessToken = $liff.getAccessToken?.()
 
-    if (!accessToken) {
-      throw new Error('無法取得 LINE Access Token')
+    if (!accessToken || !profile) {
+      throw new Error('無法取得 LINE 資訊，請重新登入')
     }
 
     // 儲存邀請 token 和用戶資訊到 localStorage
@@ -256,40 +263,34 @@ const logout = () => {
   window.location.reload()
 }
 
-// 執行登入並接受邀請
+// 執行接受邀請並登入
 const performLoginAndAccept = async (lineUserId: string, accessToken: string) => {
   accepting.value = true
+  error.value = ''
+
   try {
+    // 1. 先接受邀請（重要：後端會自動為新老師建立帳號）
+    await acceptInvitationWithToken(lineUserId, accessToken)
+
+    // 2. 接受成功後，再執行 LINE 登入取得 JWT Token
     const response = await fetch(`${config.public.apiBase}/auth/teacher/line/login`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        line_user_id: lineUserId,
-        access_token: accessToken,
-      }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ line_user_id: lineUserId, access_token: accessToken }),
     })
 
     const data = await response.json()
 
-    if (!response.ok) {
+    if (!response.ok || !data.datas?.token) {
       throw new Error(data.message || '登入失敗')
     }
 
-    // 登入成功，儲存 token
-    if (data.datas?.token) {
-      localStorage.setItem('teacher_token', data.datas.token)
-      authStore.login({
-        token: data.datas.token,
-        teacher: data.datas.teacher,
-      })
-    }
-
-    // 自動接受邀請
-    await acceptInvitationWithToken(lineUserId, accessToken)
+    // 3. 登入成功，儲存 token 並更新狀態
+    localStorage.setItem('teacher_token', data.datas.token)
+    authStore.login({ token: data.datas.token, teacher: data.datas.teacher })
   } catch (err: any) {
-    error.value = err.message || '登入失敗，請稍後再試'
+    error.value = err.message || '處理邀請時發生錯誤，請稍後再試'
+  } finally {
     accepting.value = false
   }
 }
@@ -314,6 +315,11 @@ const acceptInvitationWithToken = async (lineUserId: string, accessToken: string
       throw new Error(data.message || '接受邀請失敗')
     }
 
+    // 檢查是否早就是成員 (由後端回傳 status: 'ALREADY_MEMBER')
+    if (data.datas?.status === 'ALREADY_MEMBER') {
+      isAlreadyMember.value = true
+    }
+
     accepted.value = true
 
     // 清除邀請相關的 localStorage
@@ -334,8 +340,8 @@ const acceptInvitation = async () => {
     return
   }
 
-  // 取得 Access Token
-  const accessToken = $liff?.getAccessToken()
+  // 取得 Access Token（使用可選鏈結防禦性檢查）
+  const accessToken = $liff?.getAccessToken?.() || null
   if (!accessToken) {
     error.value = '無法取得 LINE Access Token，請重新登入'
     return
@@ -345,13 +351,8 @@ const acceptInvitation = async () => {
   try {
     const response = await fetch(`${config.public.apiBase}/invitations/${token.value}/accept`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        line_user_id: authStore.user.line_user_id,
-        access_token: accessToken,
-      }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ line_user_id: authStore.user.line_user_id, access_token: accessToken }),
     })
 
     const data = await response.json()
@@ -361,8 +362,6 @@ const acceptInvitation = async () => {
     }
 
     accepted.value = true
-
-    // 清除邀請 token
     localStorage.removeItem('invitation_token')
   } catch (err: any) {
     error.value = err.message || '接受邀請失敗，請稍後再試'
