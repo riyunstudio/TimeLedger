@@ -619,6 +619,7 @@ func (ctl *TeacherInvitationController) RegenerateGeneralInvitationLink(ctx *gin
 type AcceptInvitationByLinkRequest struct {
 	LineUserID  string `json:"line_user_id" binding:"required"`
 	AccessToken string `json:"access_token" binding:"required"`
+	Email       string `json:"email"`
 }
 
 // GetPublicInvitation 取得公開邀請資訊
@@ -666,6 +667,7 @@ func (ctl *TeacherInvitationController) AcceptInvitationByLink(ctx *gin.Context)
 		Token:       invitation.Token,
 		LineUserID:  req.LineUserID,
 		AccessToken: req.AccessToken,
+		Email:       req.Email,
 	}
 
 	result, errInfo, err := ctl.teacherService.AcceptInvitationByLink(ctx.Request.Context(), serviceReq)
@@ -679,6 +681,11 @@ func (ctl *TeacherInvitationController) AcceptInvitationByLink(ctx *gin.Context)
 		helper.Success(gin.H{
 			"invitation_id": result.InvitationID,
 			"status":        result.Status,
+			"center_id":     result.CenterID,
+			"center_name":   result.CenterName,
+			"role":          result.Role,
+			"token":         result.Token,
+			"teacher":       result.Teacher,
 			"message":       "You are already a member of this center",
 		})
 		return
@@ -690,6 +697,8 @@ func (ctl *TeacherInvitationController) AcceptInvitationByLink(ctx *gin.Context)
 		"center_id":     result.CenterID,
 		"center_name":   result.CenterName,
 		"role":          result.Role,
+		"token":         result.Token,
+		"teacher":       result.Teacher,
 		"message":       "Successfully joined the center",
 	})
 }

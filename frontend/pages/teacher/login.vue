@@ -337,8 +337,14 @@ const performLogin = async () => {
 
       loginSuccess.value = true
 
+      // 檢查是否有邀請 token，若有則導向邀請頁面
       setTimeout(() => {
-        router.push('/teacher/dashboard')
+        const savedInviteToken = localStorage.getItem('invitation_token')
+        if (savedInviteToken) {
+          router.push(`/invite/${savedInviteToken}`)
+        } else {
+          router.push('/teacher/dashboard')
+        }
       }, 1500)
     } else if (responseCode === 40010) {
       // TEACHER_NOT_REGISTERED - 老師尚未註冊
