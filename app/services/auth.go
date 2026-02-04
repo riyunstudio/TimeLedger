@@ -2,10 +2,12 @@ package services
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"timeLedger/app"
@@ -87,6 +89,50 @@ func (s *authService) verifyLineToken(accessToken string, lineUserID string) err
 	return err
 }
 
+// getLineEmail 嘗試從 LINE 取得用戶 email
+// 使用 https://oauth2.googleapis.com/tokeninfo 或 LINE 的 ID Token
+func (s *authService) getLineEmail(accessToken string) string {
+	// 嘗試從 LINE ID Token 解碼取得 email
+	// LINE 的 ID Token 是 JWT 格式，可以解碼取得包含的 claims
+	parts := strings.Split(accessToken, ".")
+	if len(parts) != 3 {
+		return ""
+	}
+
+	// 解碼 JWT payload (base64url decode)
+	payload, err := base64URLDecode(parts[1])
+	if err != nil {
+		return ""
+	}
+
+	// 解析 claims
+	var claims struct {
+		Email string `json:"email"`
+	}
+	if err := json.Unmarshal(payload, &claims); err != nil {
+		return ""
+	}
+
+	return claims.Email
+}
+
+// base64URLDecode 解碼 base64url 格式的字串
+func base64URLDecode(input string) ([]byte, error) {
+	// 替換 base64url 特殊字元
+	decoded := strings.ReplaceAll(input, "-", "+")
+	decoded = strings.ReplaceAll(decoded, "_", "/")
+
+	// 補足 padding
+	switch len(decoded) % 4 {
+	case 2:
+		decoded += "=="
+	case 3:
+		decoded += "="
+	}
+
+	return base64.StdEncoding.DecodeString(decoded)
+}
+
 func NewAuthService(app *app.App) *authService {
 	baseService := NewBaseService(app, "AuthService")
 	return &authService{
@@ -158,9 +204,15 @@ func (s *authService) TeacherLineLogin(ctx context.Context, lineUserID, accessTo
 	teacher, err := s.teacherRepository.GetByLineUserID(ctx, lineUserID)
 	if err != nil {
 		// 老師尚未註冊，自動建立老師帳號
+		// 嘗試從 LINE 取得 email
+		email := s.getLineEmail(accessToken)
+		if email == "" {
+			email = "teacher@timeledger.com" // 如果無法取得 email，使用預設值
+		}
+
 		newTeacher := models.Teacher{
 			LineUserID: lineUserID,
-			Email:      lineUserID + "@line.user", // 預設 Email 格式
+			Email:      email,
 			Name:       lineProfile.DisplayName,  // 使用 LINE 的顯示名稱
 			AvatarURL:  lineProfile.PictureURL,   // 使用 LINE 的頭像
 		}

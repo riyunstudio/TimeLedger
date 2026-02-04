@@ -306,8 +306,6 @@ const performLogin = async () => {
       throw new Error('無法取得 LINE Access Token，請重新登入')
     }
 
-    console.log('[Login] 準備呼叫後端 API，lineUserId:', lineUserId.value)
-
     const response = await $fetch('/api/v1/auth/teacher/line/login', {
       method: 'POST',
       body: {
@@ -316,8 +314,6 @@ const performLogin = async () => {
       }
     })
 
-    console.log('[Login] API 回應:', response)
-
     // 檢查 response.data 或 response.datas
     const responseData = (response as any).data || (response as any).datas
     const responseCode = (response as any).code
@@ -325,8 +321,6 @@ const performLogin = async () => {
     if (responseCode === 0 && responseData) {
       const token = responseData.token
       const user = responseData.user
-
-      console.log('[Login] 登入成功，跳轉到後台...')
 
       // 設置 authStore 和 localStorage
       authStore.login({
@@ -349,7 +343,6 @@ const performLogin = async () => {
     } else if (responseCode === 40010) {
       // TEACHER_NOT_REGISTERED - 老師尚未註冊
       // 重導到註冊頁面，並攜帶 LINE 用戶資訊
-      console.info('[Login] 老師尚未註冊，重導到註冊頁面...')
 
       // 儲存 LINE 用戶資訊到 localStorage，供註冊頁面使用
       localStorage.setItem('register_line_user_id', lineUserId.value)
@@ -358,11 +351,9 @@ const performLogin = async () => {
       router.push('/teacher/register')
       return
     } else {
-      console.error('[Login] 登入失敗:', (response as any)?.message)
       loginError.value = (response as any)?.message || '登入失敗，請稍後再試'
     }
   } catch (err: any) {
-    console.error('[Login] API 錯誤:', err)
     loginError.value = err.data?.message || err.message || '登入失敗，請稍後再試'
   } finally {
     loggingIn.value = false
