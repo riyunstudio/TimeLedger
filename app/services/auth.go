@@ -131,8 +131,9 @@ func (s *authService) AdminLogin(ctx context.Context, email, password string) (L
 	}
 
 	// 觸發歡迎訊息（如果尚未發送且已綁定 LINE）
+	// 使用 context.Background() 避免 HTTP 請求結束後 context 失效
 	if admin.LineUserID != "" {
-		go s.triggerWelcomeAdminMessage(ctx, &admin, admin.CenterID)
+		go s.triggerWelcomeAdminMessage(context.Background(), &admin, admin.CenterID)
 	}
 
 	return LoginResponse{
@@ -178,8 +179,9 @@ func (s *authService) TeacherLineLogin(ctx context.Context, lineUserID, accessTo
 	}
 
 	// 觸發歡迎訊息（如果尚未發送且已綁定 LINE）
+	// 使用 context.Background() 避免 HTTP 請求結束後 context 失效
 	if teacher.LineUserID != "" {
-		go s.triggerWelcomeTeacherMessage(ctx, &teacher, centerID)
+		go s.triggerWelcomeTeacherMessage(context.Background(), &teacher, centerID)
 	}
 
 	return &LoginResponse{
@@ -265,11 +267,19 @@ func (s *authService) hasWelcomeMessageSent(ctx context.Context, recipientID uin
 
 // triggerWelcomeTeacherMessage 觸發老師歡迎訊息
 func (s *authService) triggerWelcomeTeacherMessage(ctx context.Context, teacher *models.Teacher, centerID uint) {
-	// 防禦性檢查：centerID 為 0 表示老師沒有隸屬任何中心，跳過歡迎訊息
+	// 防禦性檢查：確保 Logger 已初始化
+	if s.Logger == nil {
+		fmt.Printf("[WARN] Logger not initialized, teacher welcome message skipped (teacher_id: %d)\n", teacher.ID)
+		return
+	}
+
+	// centerID 為 0 表示老師沒有隸屬任何中心，跳過歡迎訊息
 	if centerID == 0 {
 		s.Logger.Debug("teacher has no center membership, skipping welcome message", "teacher_id", teacher.ID)
 		return
 	}
+
+	s.Logger.Debug("triggering teacher welcome message", "teacher_id", teacher.ID, "center_id", centerID)
 
 	// 檢查是否已發送過歡迎訊息
 	if s.hasWelcomeMessageSent(ctx, teacher.ID, "TEACHER", models.NotificationTypeWelcomeTeacher) {
@@ -291,11 +301,19 @@ func (s *authService) triggerWelcomeTeacherMessage(ctx context.Context, teacher 
 
 // triggerWelcomeAdminMessage 觸發管理員歡迎訊息
 func (s *authService) triggerWelcomeAdminMessage(ctx context.Context, admin *models.AdminUser, centerID uint) {
-	// 防禦性檢查：centerID 為 0 表示管理員沒有隸屬任何中心，跳過歡迎訊息
+	// 防禦性檢查：確保 Logger 已初始化
+	if s.Logger == nil {
+		fmt.Printf("[WARN] Logger not initialized, admin welcome message skipped (admin_id: %d)\n", admin.ID)
+		return
+	}
+
+	// centerID 為 0 表示管理員沒有隸屬任何中心，跳過歡迎訊息
 	if centerID == 0 {
 		s.Logger.Debug("admin has no center membership, skipping welcome message", "admin_id", admin.ID)
 		return
 	}
+
+	s.Logger.Debug("triggering admin welcome message", "admin_id", admin.ID, "center_id", centerID)
 
 	// 檢查是否已發送過歡迎訊息
 	if s.hasWelcomeMessageSent(ctx, admin.ID, "ADMIN", models.NotificationTypeWelcomeAdmin) {

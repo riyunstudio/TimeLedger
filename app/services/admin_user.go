@@ -235,7 +235,7 @@ func (s *AdminUserService) SendWelcomeMessageIfNeeded(ctx context.Context, admin
 		return nil
 	}
 
-	if time.Since(*admin.LineBoundAt) < 1*time.Minute && admin.LineNotifyEnabled {
+	if time.Since(*admin.LineBoundAt) < 1*time.Minute && admin.LineNotifyEnabled && admin.CenterID != 0 {
 		center, err := s.centerRepo.GetByID(ctx, admin.CenterID)
 		if err != nil {
 			return err

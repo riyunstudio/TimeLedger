@@ -7,8 +7,8 @@ import (
 
 // BaseService 基礎服務結構，提供通用功能
 type BaseService struct {
-	App        *app.App
-	Logger     *ServiceLogger
+	App    *app.App
+	Logger *ServiceLogger
 }
 
 // NewBaseService 建立基礎服務
@@ -29,18 +29,18 @@ func NewBaseServiceWithLogger(app *app.App, log *ServiceLogger) *BaseService {
 
 // PaginationParams 分頁參數
 type PaginationParams struct {
-	Page     int    `json:"page" form:"page"`
-	Limit    int    `json:"limit" form:"limit"`
-	SortBy   string `json:"sort_by" form:"sort_by"`
+	Page      int    `json:"page" form:"page"`
+	Limit     int    `json:"limit" form:"limit"`
+	SortBy    string `json:"sort_by" form:"sort_by"`
 	SortOrder string `json:"sort_order" form:"sort_order"`
 }
 
 // DefaultPagination 預設分頁設定
 func DefaultPagination() *PaginationParams {
 	return &PaginationParams{
-		Page:     1,
-		Limit:    20,
-		SortBy:   "id",
+		Page:      1,
+		Limit:     20,
+		SortBy:    "id",
 		SortOrder: "DESC",
 	}
 }
@@ -259,7 +259,7 @@ func (fb *FilterBuilder) IsEmpty() bool {
 
 // ServiceLogger 服務層日誌工具
 type ServiceLogger struct {
-	logger   *logger.Logger
+	logger    *logger.Logger
 	component string
 	enabled   bool
 }
@@ -281,7 +281,7 @@ func NewServiceLogger(component string) *ServiceLogger {
 	enabled = log != nil
 
 	return &ServiceLogger{
-		logger:   log,
+		logger:    log,
 		component: component,
 		enabled:   enabled,
 	}
@@ -289,7 +289,7 @@ func NewServiceLogger(component string) *ServiceLogger {
 
 // Debug 記錄除錯訊息
 func (sl *ServiceLogger) Debug(message string, keysAndValues ...interface{}) {
-	if !sl.enabled || sl.logger == nil {
+	if sl == nil || !sl.enabled || sl.logger == nil {
 		return
 	}
 	sl.logger.ForComponent(sl.component).Debugw(message, keysAndValues...)
@@ -297,7 +297,7 @@ func (sl *ServiceLogger) Debug(message string, keysAndValues ...interface{}) {
 
 // Info 記錄資訊訊息
 func (sl *ServiceLogger) Info(message string, keysAndValues ...interface{}) {
-	if !sl.enabled || sl.logger == nil {
+	if sl == nil || !sl.enabled || sl.logger == nil {
 		return
 	}
 	sl.logger.ForComponent(sl.component).Infow(message, keysAndValues...)
@@ -305,7 +305,7 @@ func (sl *ServiceLogger) Info(message string, keysAndValues ...interface{}) {
 
 // Warn 記錄警告訊息
 func (sl *ServiceLogger) Warn(message string, keysAndValues ...interface{}) {
-	if !sl.enabled || sl.logger == nil {
+	if sl == nil || !sl.enabled || sl.logger == nil {
 		return
 	}
 	sl.logger.ForComponent(sl.component).Warnw(message, keysAndValues...)
@@ -313,7 +313,7 @@ func (sl *ServiceLogger) Warn(message string, keysAndValues ...interface{}) {
 
 // Error 記錄錯誤訊息
 func (sl *ServiceLogger) Error(message string, keysAndValues ...interface{}) {
-	if !sl.enabled || sl.logger == nil {
+	if sl == nil || !sl.enabled || sl.logger == nil {
 		return
 	}
 	sl.logger.ForComponent(sl.component).Errorw(message, keysAndValues...)
@@ -321,7 +321,7 @@ func (sl *ServiceLogger) Error(message string, keysAndValues ...interface{}) {
 
 // ErrorWithErr 記錄錯誤訊息（含錯誤物件）
 func (sl *ServiceLogger) ErrorWithErr(message string, err error, keysAndValues ...interface{}) {
-	if !sl.enabled || sl.logger == nil {
+	if sl == nil || !sl.enabled || sl.logger == nil {
 		return
 	}
 	sl.logger.ForComponent(sl.component).Errorw(message, append(keysAndValues, "error", err.Error())...)
