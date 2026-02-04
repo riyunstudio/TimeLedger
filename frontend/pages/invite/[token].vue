@@ -322,6 +322,11 @@ const performLoginAndAccept = async (lineUserId: string, accessToken: string) =>
     // 3. 登入成功，儲存 token 並更新狀態
     localStorage.setItem('teacher_token', data.datas.token)
     authStore.login({ token: data.datas.token, teacher: data.datas.teacher })
+
+    // 4. 自動跳轉到教師後台
+    setTimeout(() => {
+      router.push('/teacher/dashboard')
+    }, 1000)
   } catch (err: any) {
     error.value = err.message || '處理邀請時發生錯誤，請稍後再試'
   } finally {
@@ -426,6 +431,11 @@ const acceptInvitation = async () => {
 
       // 更新 authStore
       authStore.login(authData)
+
+      // 自動跳轉到教師後台
+      setTimeout(() => {
+        router.push('/teacher/dashboard')
+      }, 1000)
     }
     // ==========================================
 

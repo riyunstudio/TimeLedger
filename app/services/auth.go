@@ -149,15 +149,28 @@ func (s *authService) AdminLogin(ctx context.Context, email, password string) (L
 }
 
 func (s *authService) TeacherLineLogin(ctx context.Context, lineUserID, accessToken string) (*LoginResponse, *errInfos.Res, error) {
-	// 驗證 LINE Access Token
-	if err := s.verifyLineToken(accessToken, lineUserID); err != nil {
+	// 驗證 LINE Access Token 並取得用戶資料
+	lineProfile, err := s.getLineProfile(accessToken, lineUserID)
+	if err != nil {
 		return nil, s.app.Err.New(errInfos.UNAUTHORIZED), err
 	}
 
 	teacher, err := s.teacherRepository.GetByLineUserID(ctx, lineUserID)
 	if err != nil {
-		// 老師尚未註冊，返回特定錯誤碼讓前端可以引導用戶註冊
-		return nil, s.app.Err.New(errInfos.TEACHER_NOT_REGISTERED), fmt.Errorf("teacher not registered")
+		// 老師尚未註冊，自動建立老師帳號
+		newTeacher := models.Teacher{
+			LineUserID: lineUserID,
+			Email:      lineUserID + "@line.user", // 預設 Email 格式
+			Name:       lineProfile.DisplayName,  // 使用 LINE 的顯示名稱
+			AvatarURL:  lineProfile.PictureURL,   // 使用 LINE 的頭像
+		}
+
+		createdTeacher, err := s.teacherRepository.Create(ctx, newTeacher)
+		if err != nil {
+			return nil, s.app.Err.New(errInfos.SQL_ERROR), fmt.Errorf("failed to create teacher: %w", err)
+		}
+		teacher = createdTeacher
+		s.Logger.Info("auto-created teacher account via LINE login", "teacher_id", teacher.ID, "line_user_id", lineUserID)
 	}
 
 	// 取得老師所屬的中心 ID
