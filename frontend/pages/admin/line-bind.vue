@@ -328,11 +328,31 @@ const fetchQRCode = async (code: string) => {
       },
     })
 
+    console.log('QR Code API Response Status:', response.status)
+    console.log('QR Code API Content-Type:', response.headers.get('content-type'))
+
     if (response.ok) {
+      const contentType = response.headers.get('content-type')
+      if (!contentType || !contentType.includes('image/png')) {
+        console.error('Invalid Content-Type for QR Code:', contentType)
+        const text = await response.text()
+        console.error('Response text:', text.substring(0, 200))
+        return
+      }
+
       const blob = await response.blob()
+      console.log('QR Code Blob size:', blob.size, 'Blob type:', blob.type)
+
+      if (blob.size === 0) {
+        console.error('Empty blob returned for QR Code')
+        return
+      }
+
       qrCodeUrl.value = URL.createObjectURL(blob)
     } else {
-      console.error('取得 QR Code 失敗')
+      console.error('取得 QR Code 失敗，HTTP 狀態:', response.status)
+      const errorText = await response.text()
+      console.error('錯誤回應:', errorText.substring(0, 500))
     }
   } catch (err) {
     console.error('取得 QR Code 失敗:', err)

@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -204,7 +205,7 @@ func (c *LineBotController) handleUnfollowEvent(gctx *gin.Context, event *LINEWe
 
 // processBindingCode 處理綁定驗證碼
 func (c *LineBotController) processBindingCode(gctx *gin.Context, code string, userID string, replyToken string) {
-	_, eInfo, err := c.adminService.VerifyLINEBinding(gctx.Request.Context(), code, userID)
+	adminID, eInfo, err := c.adminService.VerifyLINEBinding(gctx.Request.Context(), code, userID)
 	if err != nil {
 		c.logger.Error("failed to verify binding code", "error", err)
 		errorMsg := "❌ 綁定失敗，驗證碼錯誤或已過期。"
@@ -229,6 +230,15 @@ func (c *LineBotController) processBindingCode(gctx *gin.Context, code string, u
 			"🔔 審核結果通知\n\n" +
 			"如需調整通知設定，請至後台「設定」→「通知設定」。",
 	})
+
+	// 發送歡迎訊息（異步）
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := c.adminService.SendWelcomeMessageIfNeeded(ctx, adminID); err != nil {
+			c.logger.Error("failed to send welcome message after binding", "admin_id", adminID, "error", err)
+		}
+	}()
 }
 
 // sendBindingInstructions 發送綁定說明
