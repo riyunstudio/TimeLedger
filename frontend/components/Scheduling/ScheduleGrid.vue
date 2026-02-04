@@ -472,19 +472,6 @@ const fetchSchedules = async () => {
       expandedSchedules = []
     }
 
-    // 如果還是空的，直接調用 /admin/rules API 獲取規則列表
-    if (expandedSchedules.length === 0) {
-      try {
-        // 使用 GET 獲取規則列表（POST 需要參數，GET 不需要）
-        const rulesResponse = await api.get<{ code: number; datas: any[] }>('/admin/rules')
-        if (rulesResponse?.datas) {
-          expandedSchedules = rulesResponse.datas
-        }
-      } catch (err) {
-        // 忽略錯誤
-      }
-    }
-
     // 確保 expandedSchedules 是陣列
     if (!Array.isArray(expandedSchedules)) {
       expandedSchedules = []
