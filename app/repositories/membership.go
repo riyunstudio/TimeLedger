@@ -49,11 +49,11 @@ func (rp *CenterMembershipRepository) GetActiveByTeacherID(ctx context.Context, 
 
 func (rp *CenterMembershipRepository) ListTeacherIDsByCenterID(ctx context.Context, centerID uint) ([]uint, error) {
 	var membershipIDs []uint
-	_, err := rp.FindWithCenterScope(ctx, centerID, "status IN ?", []string{"ACTIVE", "INVITED"})
-	if err != nil {
-		return nil, err
-	}
-	err = rp.app.MySQL.RDB.WithContext(ctx).Model(&models.CenterMembership{}).Where("center_id = ? AND status IN ?", centerID, []string{"ACTIVE", "INVITED"}).Pluck("teacher_id", &membershipIDs).Error
+	// 使用 Pluck 直接提取 teacher_id，並過濾 active/invited 狀態與 soft delete
+	// GORM 的 DeletedAt 會自動添加 deleted_at IS NULL 條件
+	err := rp.app.MySQL.RDB.WithContext(ctx).Model(&models.CenterMembership{}).
+		Where("center_id = ? AND status IN ?", centerID, []string{"ACTIVE", "INVITED"}).
+		Pluck("teacher_id", &membershipIDs).Error
 	return membershipIDs, err
 }
 

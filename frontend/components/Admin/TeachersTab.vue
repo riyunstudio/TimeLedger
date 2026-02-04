@@ -247,13 +247,21 @@ const sendMessage = (teacher: any) => {
 }
 
 const removeTeacher = async (teacher: any) => {
-  if (!await alertConfirm(`確定要移除老師「${teacher.name}」嗎？此操作將刪除該老師的帳號。`)) {
+  const authStore = useAuthStore()
+  const centerId = (authStore.user as any)?.center_id
+
+  if (!centerId) {
+    await alertError('未找到中心資訊，請重新登入')
+    return
+  }
+
+  if (!await alertConfirm(`確定要將老師「${teacher.name}」從此中心移除嗎？`)) {
     return
   }
 
   try {
     const api = useApi()
-    await api.delete(`/teachers/${teacher.id}`)
+    await api.delete(`/admin/centers/${centerId}/teachers/${teacher.id}`)
     await fetchTeachers()
     // 清除老師快取，下次存取會自動重新載入
     invalidate('teachers')

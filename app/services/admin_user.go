@@ -274,7 +274,7 @@ func (s *AdminUserService) ChangePassword(ctx context.Context, adminID uint, req
 
 	// 更新密碼
 	updates := map[string]interface{}{
-		"password": hashedPassword,
+		"password_hash": hashedPassword,
 	}
 
 	if err := s.adminRepo.UpdateFields(ctx, adminID, updates); err != nil {
@@ -440,7 +440,7 @@ func (s *AdminUserService) ResetAdminPassword(ctx context.Context, adminID uint,
 
 	// 更新密碼
 	updates := map[string]interface{}{
-		"password": hashedPassword,
+		"password_hash": hashedPassword,
 	}
 
 	if err := s.adminRepo.UpdateFields(ctx, targetAdminID, updates); err != nil {

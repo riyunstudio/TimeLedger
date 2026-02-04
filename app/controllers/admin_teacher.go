@@ -6,6 +6,7 @@ import (
 	"timeLedger/app/models"
 	"timeLedger/app/repositories"
 	"timeLedger/app/resources"
+	"timeLedger/global/logger"
 
 	"github.com/gin-gonic/gin"
 )
@@ -83,7 +84,7 @@ func (ctl *AdminTeacherController) ListTeachers(ctx *gin.Context) {
 	helper.Success(responses)
 }
 
-// DeleteTeacher 刪除老師
+// DeleteTeacher 刪除老師（全局刪除，僅限系統管理員）
 // @Summary 刪除老師
 // @Tags Admin
 // @Accept json
@@ -116,6 +117,12 @@ func (ctl *AdminTeacherController) DeleteTeacher(ctx *gin.Context) {
 		return
 	}
 
+	// 同步刪除該老師的所有會籍（軟刪除）
+	if _, err := ctl.membershipRepo.DeleteWhere(ctx, "teacher_id = ?", teacherID); err != nil {
+		// 這裡失敗了也沒關係，Teacher 已刪除，但為了資料一致性我們嘗試刪除
+		logger.GetLogger().Errorw("Failed to cleanup memberships after deleting teacher", "teacher_id", teacherID, "error", err)
+	}
+
 	memberships, _ := ctl.membershipRepo.GetActiveByTeacherID(ctx, teacherID)
 	var centerID uint
 	if len(memberships) > 0 {
@@ -134,6 +141,68 @@ func (ctl *AdminTeacherController) DeleteTeacher(ctx *gin.Context) {
 				"status": "DELETED",
 				"name":   teacher.Name,
 				"email":  teacher.Email,
+			},
+		},
+	})
+
+	helper.Success(nil)
+}
+
+// RemoveFromCenter 將老師從中心移除（僅移除會籍）
+// @Summary 將老師從中心移除
+// @Tags Admin
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "Center ID"
+// @Param teacher_id path int true "Teacher ID"
+// @Success 200 {object} global.ApiResponse
+// @Router /api/v1/admin/centers/{id}/teachers/{teacher_id} [delete]
+func (ctl *AdminTeacherController) RemoveFromCenter(ctx *gin.Context) {
+	helper := NewContextHelper(ctx)
+
+	adminID := helper.MustUserID()
+	if adminID == 0 {
+		return
+	}
+
+	centerID := helper.MustCenterID()
+	if centerID == 0 {
+		return
+	}
+
+	teacherID := helper.MustParamUint("teacher_id")
+	if teacherID == 0 {
+		return
+	}
+
+	// 檢查會籍是否存在
+	membership, err := ctl.membershipRepo.GetByCenterAndTeacher(ctx, centerID, teacherID)
+	if err != nil {
+		helper.NotFound("Teacher is not a member of this center")
+		return
+	}
+
+	// 刪除會籍（軟刪除）
+	if err := ctl.membershipRepo.DeleteByID(ctx, membership.ID); err != nil {
+		helper.InternalError("Failed to remove teacher from center")
+		return
+	}
+
+	// 審計日誌
+	ctl.auditLogRepo.Create(ctx, models.AuditLog{
+		CenterID:   centerID,
+		ActorType:  "ADMIN",
+		ActorID:    adminID,
+		Action:     "REMOVE_TEACHER_FROM_CENTER",
+		TargetType: "CenterMembership",
+		TargetID:   membership.ID,
+		Payload: models.AuditPayload{
+			Before: map[string]interface{}{
+				"teacher_id": teacherID,
+				"center_id":  centerID,
+				"role":       membership.Role,
+				"status":     membership.Status,
 			},
 		},
 	})

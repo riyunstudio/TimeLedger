@@ -43,6 +43,7 @@ type actions struct {
 	notification      *controllers.NotificationController
 	export            *controllers.ExportController
 	lineBot           *controllers.LineBotController
+	r2Test            *controllers.R2TestController
 }
 
 // 載入路由
@@ -51,6 +52,11 @@ func (s *Server) LoadRoutes() {
 	authMiddleware := middleware.NewAuthMiddleware(s.app, authService)
 
 	s.routes = []route{
+		// R2 Storage Test - 無需認證
+		{http.MethodGet, "/api/test/r2-status", s.action.r2Test.StatusTest, []gin.HandlerFunc{}},
+		{http.MethodPost, "/api/test/upload", s.action.r2Test.UploadTest, []gin.HandlerFunc{}},
+		{http.MethodPost, "/api/test/upload-batch", s.action.r2Test.BatchUploadTest, []gin.HandlerFunc{}},
+
 		// Auth
 		{http.MethodPost, "/api/v1/auth/admin/login", s.action.auth.AdminLogin, []gin.HandlerFunc{}},
 		{http.MethodPost, "/api/v1/auth/teacher/line/login", s.action.auth.TeacherLineLogin, []gin.HandlerFunc{}},
@@ -112,6 +118,7 @@ func (s *Server) LoadRoutes() {
 		// Admin - Teacher Management
 		{http.MethodGet, "/api/v1/teachers", s.action.adminTeacher.ListTeachers, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireAdmin()}},
 		{http.MethodDelete, "/api/v1/teachers/:id", s.action.adminTeacher.DeleteTeacher, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireAdmin()}},
+		{http.MethodDelete, "/api/v1/admin/centers/:id/teachers/:teacher_id", s.action.adminTeacher.RemoveFromCenter, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodPost, "/api/v1/admin/centers/:id/invitations", s.action.teacherInvitation.InviteTeacher, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 
 		// Admin - Center Management
@@ -346,4 +353,5 @@ func (s *Server) NewControllers() {
 	s.action.notification = controllers.NewNotificationController(s.app)
 	s.action.export = controllers.NewExportController(s.app)
 	s.action.lineBot = controllers.NewLineBotController(s.app)
+	s.action.r2Test = controllers.NewR2TestController(s.app)
 }
