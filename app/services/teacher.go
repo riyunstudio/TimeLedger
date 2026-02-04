@@ -644,19 +644,32 @@ func (s *TeacherService) AcceptInvitationByLink(ctx context.Context, req *Accept
 		teacher = createdTeacher
 	}
 
-	// 通用邀請跳過 Email 驗證
-	if invitation.InviteType != models.InvitationTypeGeneral {
-		// 驗證 Email（僅非通用邀請需要）
-		if invitation.Email != "" && invitation.Email != teacher.Email {
-			return nil, s.app.Err.New(errInfos.FORBIDDEN), fmt.Errorf("email mismatch")
-		}
-	}
+	// 通用邀請跳過 Email 驗證（已移除 Email 檢查，允許 Email 不符時也能加入）
 
 	// 檢查是否已經是中心成員
-	_, err = s.membershipRepo.GetByCenterAndTeacher(ctx, invitation.CenterID, teacher.ID)
+	existingMembership, err := s.membershipRepo.GetByCenterAndTeacher(ctx, invitation.CenterID, teacher.ID)
 	if err == nil {
-		// 已經是成員，更新狀態
+		// 已經是成員，更新邀請狀態
 		s.invitationRepo.UpdateStatus(ctx, invitation.ID, models.InvitationStatusAccepted)
+
+		// 同步成員 Role（如果不同）
+		if existingMembership.Role != invitation.Role {
+			if err := s.membershipRepo.UpdateFields(ctx, existingMembership.ID, map[string]interface{}{
+				"role":   invitation.Role,
+				"status": "ACTIVE",
+			}); err != nil {
+				s.Logger.Warn("failed to update membership role", "membership_id", existingMembership.ID, "error", err)
+			}
+		}
+
+		// 若邀請函的 TeacherID 為 0，回填為目前老師的 ID
+		if invitation.TeacherID == 0 {
+			if err := s.invitationRepo.UpdateFields(ctx, invitation.ID, map[string]interface{}{
+				"teacher_id": teacher.ID,
+			}); err != nil {
+				s.Logger.Warn("failed to update invitation teacher_id", "invitation_id", invitation.ID, "error", err)
+			}
+		}
 
 		// 取得中心名稱
 		centerName := ""
@@ -691,14 +704,24 @@ func (s *TeacherService) AcceptInvitationByLink(ctx context.Context, req *Accept
 		}, nil, nil
 	}
 
-	// 建立 CenterMembership
+	// 建立 CenterMembership（包含 Role 欄位）
 	membership := models.CenterMembership{
 		CenterID:  invitation.CenterID,
 		TeacherID: teacher.ID,
+		Role:      invitation.Role,
 		Status:    "ACTIVE", // 設置為 ACTIVE 狀態，供 GetActiveByTeacherID 和 ListTeacherIDsByCenterID 查詢
 	}
 	if _, err := s.membershipRepo.Create(ctx, membership); err != nil {
 		return nil, s.app.Err.New(errInfos.SQL_ERROR), err
+	}
+
+	// 若邀請函的 TeacherID 為 0，回填為目前老師的 ID
+	if invitation.TeacherID == 0 {
+		if err := s.invitationRepo.UpdateFields(ctx, invitation.ID, map[string]interface{}{
+			"teacher_id": teacher.ID,
+		}); err != nil {
+			s.Logger.Warn("failed to update invitation teacher_id", "invitation_id", invitation.ID, "error", err)
+		}
 	}
 
 	// 通用邀請不更新邀請狀態（保持 PENDING，可重複使用）

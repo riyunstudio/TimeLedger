@@ -42,6 +42,7 @@ type CenterMembershipResource struct {
 	ID         uint      `json:"id,omitempty"`
 	CenterID   uint      `json:"center_id,omitempty"`
 	CenterName string    `json:"center_name,omitempty"`
+	Role       string    `json:"role,omitempty"`
 	Status     string    `json:"status,omitempty"`
 	CreatedAt  time.Time `json:"created_at,omitempty"`
 }
@@ -74,17 +75,17 @@ func NewAdminTeacherResource() *AdminTeacherResource {
 
 // AdminTeacherResponse 管理員取得的老師回應結構
 type AdminTeacherResponse struct {
-	ID           uint                      `json:"id"`
-	Name         string                    `json:"name"`
-	Email        string                    `json:"email"`
-	Phone        string                    `json:"phone,omitempty"`
-	City         string                    `json:"city,omitempty"`
-	District     string                    `json:"district,omitempty"`
-	Bio          string                    `json:"bio,omitempty"`
-	IsActive     bool                      `json:"is_active"`
-	CreatedAt    time.Time                 `json:"created_at"`
+	ID           uint                        `json:"id"`
+	Name         string                      `json:"name"`
+	Email        string                      `json:"email"`
+	Phone        string                      `json:"phone,omitempty"`
+	City         string                      `json:"city,omitempty"`
+	District     string                      `json:"district,omitempty"`
+	Bio          string                      `json:"bio,omitempty"`
+	IsActive     bool                        `json:"is_active"`
+	CreatedAt    time.Time                   `json:"created_at"`
 	Skills       []AdminTeacherSkillResponse `json:"skills,omitempty"`
-	Certificates []AdminCertificateResponse `json:"certificates,omitempty"`
+	Certificates []AdminCertificateResponse  `json:"certificates,omitempty"`
 }
 
 // AdminTeacherSkillResponse 管理員視角的老師技能回應結構

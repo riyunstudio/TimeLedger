@@ -250,6 +250,8 @@ export interface CenterMembership {
   center_name?: string
   /** 教師 ID */
   teacher_id: ID
+  /** 角色 */
+  role?: string
   /** 狀態 */
   status: 'ACTIVE' | 'INACTIVE' | 'INVITED'
   /** 加入時間 */
