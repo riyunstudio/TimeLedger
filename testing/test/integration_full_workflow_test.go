@@ -662,6 +662,7 @@ func TestIntegration_ResourceToggleAndInvitationStats(t *testing.T) {
 	_ = createdOffering
 
 	invitationRepo := repositories.NewCenterInvitationRepository(appInstance)
+	expiresAt := now.AddDate(0, 1, 0)
 	for i := 0; i < 3; i++ {
 		invitation := models.CenterInvitation{
 			CenterID:  createdCenter.ID,
@@ -669,7 +670,7 @@ func TestIntegration_ResourceToggleAndInvitationStats(t *testing.T) {
 			Token:     fmt.Sprintf("token_%d_%d", now.UnixNano(), i),
 			Status:    "PENDING",
 			CreatedAt: now,
-			ExpiresAt: now.AddDate(0, 1, 0),
+			ExpiresAt: &expiresAt,
 		}
 		invitationRepo.Create(ctx, invitation)
 	}
@@ -679,7 +680,7 @@ func TestIntegration_ResourceToggleAndInvitationStats(t *testing.T) {
 		Token:     fmt.Sprintf("token_accepted_%d", now.UnixNano()),
 		Status:    "ACCEPTED",
 		CreatedAt: now,
-		ExpiresAt: now.AddDate(0, 1, 0),
+		ExpiresAt: &expiresAt,
 	}
 	invitationRepo.Create(ctx, invitation)
 

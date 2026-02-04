@@ -166,6 +166,7 @@ func TestSmartMatchingService_InviteTalent(t *testing.T) {
 		}
 
 		// 建立既有的待處理邀請
+		expiredAt := time.Now().Add(7 * 24 * time.Hour)
 		existingInvitation := models.CenterInvitation{
 			CenterID:   center.ID,
 			TeacherID:  teacher.ID,
@@ -173,7 +174,7 @@ func TestSmartMatchingService_InviteTalent(t *testing.T) {
 			Token:      factory.CreateUniqueToken(),
 			Status:     models.InvitationStatusPending,
 			InviteType: models.InvitationTypeTalentPool,
-			ExpiresAt:  time.Now().Add(7 * 24 * time.Hour),
+			ExpiresAt:  &expiredAt,
 			CreatedAt:  time.Now(),
 		}
 		if err := db.WithContext(ctx).Create(&existingInvitation).Error; err != nil {
@@ -329,6 +330,7 @@ func TestSmartMatchingService_GetTalentStats(t *testing.T) {
 		}
 
 		// 建立邀請記錄
+		expiredAt := time.Now().Add(7 * 24 * time.Hour)
 		invitation := models.CenterInvitation{
 			CenterID:   center.ID,
 			TeacherID:  teacher.ID,
@@ -336,7 +338,7 @@ func TestSmartMatchingService_GetTalentStats(t *testing.T) {
 			Token:      factory.CreateUniqueToken(),
 			Status:     models.InvitationStatusPending,
 			InviteType: models.InvitationTypeTalentPool,
-			ExpiresAt:  time.Now().Add(7 * 24 * time.Hour),
+			ExpiresAt:  &expiredAt,
 			CreatedAt:  time.Now(),
 		}
 		if err := db.WithContext(ctx).Create(&invitation).Error; err != nil {

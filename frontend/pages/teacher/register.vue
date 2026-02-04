@@ -175,6 +175,7 @@ definePageMeta({
 const config = useRuntimeConfig()
 const router = useRouter()
 const authStore = useAuthStore()
+const { $liff } = useNuxtApp()
 
 // 狀態
 const loading = ref(true)
@@ -197,27 +198,22 @@ const initLiff = async () => {
   error.value = ''
 
   try {
-    // 嘗試從 URL 參數取得 line_user_id（從 LIFF 返回時）
-    const urlParams = new URLSearchParams(window.location.search)
-    const lineUserId = urlParams.get('line_user_id')
+    // 檢查 LIFF 是否已初始化
+    if (!$liff) {
+      throw new Error('LIFF 尚未初始化，請重新整理頁面')
+    }
 
-    if (lineUserId) {
-      // 從 LIFF 返回，已取得 line_user_id
-      form.value.line_user_id = lineUserId
+    // 檢查是否已登入 LINE
+    const isLoggedIn = $liff.isLoggedIn()
+
+    if (isLoggedIn) {
+      // 已登入 LINE，取得用戶資訊
+      const profile = await $liff.getProfile()
+      form.value.line_user_id = profile.userId
       hasLineUserId.value = true
-
-      // 清除 URL 參數
-      window.history.replaceState({}, '', window.location.pathname)
     } else {
-      // 檢查是否有 stored line_user_id
-      const storedLineUserId = localStorage.getItem('register_line_user_id')
-      if (storedLineUserId) {
-        form.value.line_user_id = storedLineUserId
-        hasLineUserId.value = true
-      } else {
-        // 需要先登入 LINE
-        hasLineUserId.value = false
-      }
+      // 未登入 LINE，需要先登入
+      hasLineUserId.value = false
     }
   } catch (err: any) {
     error.value = err.message || '初始化失敗，請重新整理頁面'
@@ -227,18 +223,25 @@ const initLiff = async () => {
 }
 
 // LINE 登入
-const lineLogin = () => {
-  // 儲存註冊狀態
-  localStorage.setItem('register_state', 'in_progress')
+const lineLogin = async () => {
+  if (!$liff) {
+    error.value = 'LIFF 尚未初始化，請重新整理頁面'
+    return
+  }
 
-  // 導向 LINE LIFF 登入頁面
-  // 使用 liffId 構造 LIFF URL
-  const liffUrl = `https://liff.line.me/${config.public.liffId}/teacher/login?redirect=${encodeURIComponent(window.location.href)}`
-  window.location.href = liffUrl
+  try {
+    // 使用 LIFF SDK 登入
+    $liff.login()
+  } catch (err: any) {
+    error.value = err.message || 'LINE 登入失敗，請稍後再試'
+  }
 }
 
 // 登出
 const logout = () => {
+  if ($liff) {
+    $liff.logout()
+  }
   localStorage.removeItem('register_line_user_id')
   localStorage.removeItem('register_state')
   authStore.logout()

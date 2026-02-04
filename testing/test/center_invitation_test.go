@@ -42,10 +42,10 @@ func setupCenterInvitationTestApp() (*app.App, *gorm.DB, func()) {
 	e := errInfos.Initialize(1)
 
 	env := &configs.Env{
-		JWTSecret:      "test-jwt-secret-key-for-testing-only",
-		AppEnv:         "test",
-		AppDebug:       true,
-		AppTimezone:    "Asia/Taipei",
+		JWTSecret:   "test-jwt-secret-key-for-testing-only",
+		AppEnv:      "test",
+		AppDebug:    true,
+		AppTimezone: "Asia/Taipei",
 	}
 
 	appInstance := &app.App{
@@ -108,15 +108,15 @@ func TestCenterInvitationRepository_CRUD(t *testing.T) {
 
 		// 建立邀請
 		invitation := models.CenterInvitation{
-			CenterID:    center.ID,
-			TeacherID:   teacher.ID,
-			InvitedBy:   1,
-			Token:       factory.CreateUniqueToken(),
-			Status:      models.InvitationStatusPending,
-			InviteType:  models.InvitationTypeTalentPool,
-			Message:     "歡迎加入！",
-			ExpiresAt:   time.Now().Add(7 * 24 * time.Hour),
-			CreatedAt:   time.Now(),
+			CenterID:   center.ID,
+			TeacherID:  teacher.ID,
+			InvitedBy:  1,
+			Token:      factory.CreateUniqueToken(),
+			Status:     models.InvitationStatusPending,
+			InviteType: models.InvitationTypeTalentPool,
+			Message:    "歡迎加入！",
+			ExpiresAt:  &time.Time{}, // 會在 repository 層自動設定
+			CreatedAt:  time.Now(),
 		}
 
 		repo := repositories.NewCenterInvitationRepository(appInstance)
@@ -155,14 +155,14 @@ func TestCenterInvitationRepository_CRUD(t *testing.T) {
 		}
 
 		invitation := models.CenterInvitation{
-			CenterID:    center.ID,
-			TeacherID:   teacher.ID,
-			InvitedBy:   1,
-			Token:       factory.CreateUniqueToken(),
-			Status:      models.InvitationStatusPending,
-			InviteType:  models.InvitationTypeTalentPool,
-			ExpiresAt:   time.Now().Add(7 * 24 * time.Hour),
-			CreatedAt:   time.Now(),
+			CenterID:   center.ID,
+			TeacherID:  teacher.ID,
+			InvitedBy:  1,
+			Token:      factory.CreateUniqueToken(),
+			Status:     models.InvitationStatusPending,
+			InviteType: models.InvitationTypeTalentPool,
+			ExpiresAt:  &time.Time{}, // 會在 repository 層自動設定
+			CreatedAt:  time.Now(),
 		}
 		if err := db.WithContext(ctx).Create(&invitation).Error; err != nil {
 			t.Fatalf("建立邀請失敗: %v", err)
@@ -214,14 +214,14 @@ func TestCenterInvitationRepository_CRUD(t *testing.T) {
 		// 建立多筆邀請
 		for i := 0; i < 3; i++ {
 			invitation := models.CenterInvitation{
-				CenterID:    center.ID,
-				TeacherID:   teacher.ID,
-				InvitedBy:   1,
-				Token:       factory.CreateUniqueToken(),
-				Status:      models.InvitationStatusPending,
-				InviteType:  models.InvitationTypeTalentPool,
-				ExpiresAt:   time.Now().Add(7 * 24 * time.Hour),
-				CreatedAt:   time.Now(),
+				CenterID:   center.ID,
+				TeacherID:  teacher.ID,
+				InvitedBy:  1,
+				Token:      factory.CreateUniqueToken(),
+				Status:     models.InvitationStatusPending,
+				InviteType: models.InvitationTypeTalentPool,
+				ExpiresAt:  &time.Time{}, // 會在 repository 層自動設定
+				CreatedAt:  time.Now(),
 			}
 			if err := db.WithContext(ctx).Create(&invitation).Error; err != nil {
 				t.Fatalf("建立邀請 %d 失敗: %v", i, err)
@@ -267,14 +267,14 @@ func TestCenterInvitationRepository_CRUD(t *testing.T) {
 
 		// 建立待處理邀請
 		pendingInvitation := models.CenterInvitation{
-			CenterID:    center.ID,
-			TeacherID:   teacher.ID,
-			InvitedBy:   1,
-			Token:       factory.CreateUniqueToken(),
-			Status:      models.InvitationStatusPending,
-			InviteType:  models.InvitationTypeTalentPool,
-			ExpiresAt:   time.Now().Add(7 * 24 * time.Hour),
-			CreatedAt:   time.Now(),
+			CenterID:   center.ID,
+			TeacherID:  teacher.ID,
+			InvitedBy:  1,
+			Token:      factory.CreateUniqueToken(),
+			Status:     models.InvitationStatusPending,
+			InviteType: models.InvitationTypeTalentPool,
+			ExpiresAt:  &time.Time{}, // 會在 repository 層自動設定
+			CreatedAt:  time.Now(),
 		}
 		if err := db.WithContext(ctx).Create(&pendingInvitation).Error; err != nil {
 			t.Fatalf("建立邀請失敗: %v", err)
@@ -327,14 +327,14 @@ func TestCenterInvitationRepository_CRUD(t *testing.T) {
 		}
 
 		invitation := models.CenterInvitation{
-			CenterID:    center.ID,
-			TeacherID:   teacher.ID,
-			InvitedBy:   1,
-			Token:       factory.CreateUniqueToken(),
-			Status:      models.InvitationStatusPending,
-			InviteType:  models.InvitationTypeTalentPool,
-			ExpiresAt:   time.Now().Add(7 * 24 * time.Hour),
-			CreatedAt:   time.Now(),
+			CenterID:   center.ID,
+			TeacherID:  teacher.ID,
+			InvitedBy:  1,
+			Token:      factory.CreateUniqueToken(),
+			Status:     models.InvitationStatusPending,
+			InviteType: models.InvitationTypeTalentPool,
+			ExpiresAt:  &time.Time{}, // 會在 repository 層自動設定
+			CreatedAt:  time.Now(),
 		}
 		if err := db.WithContext(ctx).Create(&invitation).Error; err != nil {
 			t.Fatalf("建立邀請失敗: %v", err)
@@ -402,7 +402,8 @@ func TestCenterInvitationRepository_CRUD(t *testing.T) {
 			invitations[i].InvitedBy = 1
 			invitations[i].Token = factory.CreateUniqueToken()
 			invitations[i].InviteType = models.InvitationTypeTalentPool
-			invitations[i].ExpiresAt = time.Now().Add(7 * 24 * time.Hour)
+			expiredAt := time.Now().Add(7 * 24 * time.Hour)
+			invitations[i].ExpiresAt = &expiredAt
 			invitations[i].CreatedAt = time.Now()
 			if err := db.WithContext(ctx).Create(&invitations[i]).Error; err != nil {
 				t.Fatalf("建立邀請 %d 失敗: %v", i, err)

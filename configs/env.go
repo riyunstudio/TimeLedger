@@ -51,6 +51,7 @@ type Env struct {
 	// LINE Messaging API
 	LineChannelSecret      string
 	LineChannelAccessToken string
+	LineLiffID             string
 
 	// Frontend
 	FrontendBaseURL       string
@@ -124,6 +125,7 @@ func LoadEnv() *Env {
 		// LINE Messaging API
 		LineChannelSecret:      os.Getenv("LINE_CHANNEL_SECRET"),
 		LineChannelAccessToken: os.Getenv("LINE_CHANNEL_ACCESS_TOKEN"),
+		LineLiffID:             os.Getenv("LIFF_ID"),
 
 		// Frontend
 		FrontendBaseURL:       os.Getenv("FRONTEND_BASE_URL"),

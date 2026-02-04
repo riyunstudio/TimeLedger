@@ -110,6 +110,7 @@ definePageMeta({
 const config = useRuntimeConfig()
 const router = useRouter()
 const authStore = useAuthStore()
+const { $liff } = useNuxtApp()
 
 // 狀態
 const loading = ref(true)
@@ -128,33 +129,25 @@ const initLiff = async () => {
   error.value = ''
 
   try {
-    // 嘗試從 URL 參數取得 line_user_id（從 LIFF 返回時）
-    const urlParams = new URLSearchParams(window.location.search)
-    const idFromUrl = urlParams.get('line_user_id')
+    // 檢查 LIFF 是否已初始化
+    if (!$liff) {
+      throw new Error('LIFF 尚未初始化，請重新整理頁面')
+    }
 
-    if (idFromUrl) {
-      // 從 LIFF 返回，已取得 line_user_id
-      lineUserId.value = idFromUrl
+    // 檢查是否已登入 LINE
+    const isLoggedIn = $liff.isLoggedIn()
+
+    if (isLoggedIn) {
+      // 已登入 LINE，取得用戶資訊
+      const profile = await $liff.getProfile()
+      lineUserId.value = profile.userId
       hasLineUserId.value = true
-
-      // 清除 URL 參數
-      window.history.replaceState({}, '', window.location.pathname)
 
       // 執行登入
       await performLogin()
     } else {
-      // 檢查是否有 stored line_user_id
-      const storedLineUserId = localStorage.getItem('login_line_user_id')
-      if (storedLineUserId) {
-        lineUserId.value = storedLineUserId
-        hasLineUserId.value = true
-
-        // 執行登入
-        await performLogin()
-      } else {
-        // 需要先登入 LINE
-        hasLineUserId.value = false
-      }
+      // 未登入 LINE，需要先登入
+      hasLineUserId.value = false
     }
   } catch (err: any) {
     error.value = err.message || '初始化失敗，請重新整理頁面'
@@ -164,13 +157,18 @@ const initLiff = async () => {
 }
 
 // LINE 登入
-const lineLogin = () => {
-  // 儲存登入狀態
-  localStorage.setItem('login_state', 'in_progress')
+const lineLogin = async () => {
+  if (!$liff) {
+    error.value = 'LIFF 尚未初始化，請重新整理頁面'
+    return
+  }
 
-  // 導向 LINE LIFF 登入頁面
-  const liffUrl = `https://liff.line.me/${config.public.liffId}/teacher/login?redirect=${encodeURIComponent(window.location.href)}`
-  window.location.href = liffUrl
+  try {
+    // 使用 LIFF SDK 登入
+    $liff.login()
+  } catch (err: any) {
+    error.value = err.message || 'LINE 登入失敗，請稍後再試'
+  }
 }
 
 // 執行登入
@@ -179,9 +177,6 @@ const performLogin = async () => {
   loginError.value = ''
 
   try {
-    // 儲存 line_user_id
-    localStorage.setItem('login_line_user_id', lineUserId.value)
-
     const response = await $fetch('/api/v1/auth/teacher/line/login', {
       method: 'POST',
       body: {
@@ -231,6 +226,9 @@ const retryLogin = () => {
   lineUserId.value = ''
   loginError.value = ''
   localStorage.removeItem('login_line_user_id')
+
+  // 重新登入 LINE
+  lineLogin()
 }
 
 onMounted(() => {
