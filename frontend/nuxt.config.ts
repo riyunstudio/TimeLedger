@@ -68,7 +68,7 @@ export default defineNuxtConfig({
   runtimeConfig: {
     public: {
       apiBase: '/api/v1',
-      liffId: process.env.LIFF_ID || '',
+      liffId: process.env.NUXT_PUBLIC_LIFF_ID || process.env.LIFF_ID || '',
       lineOfficialAccountId: process.env.LINE_OFFICIAL_ACCOUNT_ID || '@timeledger',
     },
   },

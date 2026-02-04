@@ -4,6 +4,10 @@ export default defineNuxtPlugin(async () => {
   const config = useRuntimeConfig()
 
   try {
+    if (!config.public.liffId) {
+      throw new Error('LIFF_ID is missing in runtimeConfig. Please check your .env.local file.')
+    }
+
     // 初始化 LIFF
     await liff.init({
       liffId: config.public.liffId,

@@ -76,7 +76,7 @@ stdout_logfile=/dev/stdout
 stdout_logfile_maxbytes=0
 stderr_logfile=/dev/stderr
 stderr_logfile_maxbytes=0
-environment=NODE_ENV="production",NUXT_HOST="0.0.0.0",NUXT_PORT="3000",API_BASE_URL="http://localhost:8888/api"
+environment=NODE_ENV="production",NUXT_HOST="0.0.0.0",NUXT_PORT="3000",API_BASE_URL="http://localhost:8888/api",NUXT_PUBLIC_LIFF_ID="${NUXT_PUBLIC_LIFF_ID}"
 EOF
 
 EXPOSE 8888 3000
