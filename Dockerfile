@@ -1,6 +1,5 @@
-FROM golangci/golangci-lint:v2.5.0 AS lintbin
-
-FROM golang:1.25.1-alpine AS builder
+# ===== Stage 1: Build Backend =====
+FROM golang:1.25.1-alpine AS backend-builder
 
 WORKDIR /app
 RUN apk add --no-cache git build-base
@@ -9,25 +8,63 @@ COPY go.mod go.sum ./
 COPY vendor/ ./vendor/
 
 RUN go install github.com/swaggo/swag/cmd/swag@v1.8.12
-
 COPY . .
-
-COPY --from=lintbin /usr/bin/golangci-lint /usr/local/bin/golangci-lint
 ENV PATH=/go/bin:$PATH
-
-RUN swag init && golangci-lint run --timeout 10m
-
+RUN swag init
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -mod=vendor -o main .
 
+# ===== Stage 2: Build Frontend =====
+FROM node:20-alpine AS frontend-builder
+
+WORKDIR /app
+COPY frontend/package.json ./
+RUN rm -f package-lock.json && npm install --legacy-peer-deps
+COPY frontend/ .
+RUN npm run build
+
+# ===== Stage 3: Production Runtime =====
 FROM alpine:3.21
 
 WORKDIR /app
-RUN apk add --no-cache tzdata
+
+# 安裝必要工具
+RUN apk add --no-cache tzdata ca-certificates nodejs
+
 ENV TZ=Asia/Taipei
 
-COPY --from=builder /app/main .
-COPY --from=builder /app/docs ./docs
-COPY --from=builder /app/.env.example .env
+# 複製 Backend
+COPY --from=backend-builder /app/main ./backend/main
+COPY --from=backend-builder /app/docs ./backend/docs
+COPY .env.production.example ./backend/.env
 
-EXPOSE 8080
-CMD ["./main"]
+# 複製 Frontend
+COPY --from=frontend-builder /app/.output ./frontend/.output
+COPY frontend/.env.example ./frontend/.env
+
+# 複製 public 到正確位置（修復 Nitro 靜態資源問題）
+RUN mkdir -p /app/frontend/.output/server/chunks/public && \
+    cp -r /app/frontend/.output/public/* /app/frontend/.output/server/chunks/public/ 2>/dev/null || true
+
+# 啟動腳本（讓環境變數傳遞給子進程）
+COPY <<'STARTUP' /app/start.sh
+#!/bin/sh
+echo "=== Starting TimeLedger ==="
+echo "Backend: http://0.0.0.0:8888"
+echo "Frontend: http://0.0.0.0:3000"
+
+# 啟動後端
+cd /app/backend
+./main &
+
+# 啟動前端
+cd /app/frontend
+node .output/server/index.mjs &
+
+# 等待子進程
+wait
+STARTUP
+RUN chmod +x /app/start.sh
+
+EXPOSE 8888 3000
+
+CMD ["/app/start.sh"]

@@ -1,7 +1,14 @@
 # TimeLedger All-in-One Dockerfile (Backend + Frontend)
-# 使用方式:
+# 
+# 建構:
 #   docker build -f Dockerfile.local -t timeledger-app .
-#   docker run -p 8888:8888 -p 3000:3000 --name timeledger-app timeledger-app
+#
+# 執行 (搭配 docker-compose.db.yml 的資料庫):
+#   docker run -d --name timeledger-app \
+#     --network timeledger_default \
+#     --env-file .env.docker \
+#     -p 8888:8888 -p 3000:3000 \
+#     timeledger-app
 
 # ===== Stage 1: Build Backend =====
 FROM golang:1.25.1-alpine AS backend-builder
@@ -33,52 +40,43 @@ FROM alpine:3.21
 WORKDIR /app
 
 # 安裝必要工具
-RUN apk add --no-cache tzdata ca-certificates nodejs supervisor
+RUN apk add --no-cache tzdata ca-certificates nodejs
 
 ENV TZ=Asia/Taipei
 
 # 複製 Backend
 COPY --from=backend-builder /app/main ./backend/main
 COPY --from=backend-builder /app/docs ./backend/docs
-COPY .env.example ./backend/.env
+COPY .env.production.example ./backend/.env
 
 # 複製 Frontend
 COPY --from=frontend-builder /app/.output ./frontend/.output
+COPY frontend/.env.example ./frontend/.env
 
 # 複製 public 到正確位置（修復 Nitro 靜態資源問題）
 RUN mkdir -p /app/frontend/.output/server/chunks/public && \
     cp -r /app/frontend/.output/public/* /app/frontend/.output/server/chunks/public/ 2>/dev/null || true
 
-# Supervisor 配置
-RUN mkdir -p /etc/supervisor.d
-COPY <<EOF /etc/supervisor.d/timeledger.ini
-[supervisord]
-nodaemon=true
-user=root
+# 啟動腳本（讓環境變數傳遞給子進程）
+COPY <<'STARTUP' /app/start.sh
+#!/bin/sh
+echo "=== Starting TimeLedger ==="
+echo "Backend: http://0.0.0.0:8888"
+echo "Frontend: http://0.0.0.0:3000"
 
-[program:backend]
-command=/app/backend/main
-directory=/app/backend
-autostart=true
-autorestart=true
-stdout_logfile=/dev/stdout
-stdout_logfile_maxbytes=0
-stderr_logfile=/dev/stderr
-stderr_logfile_maxbytes=0
-environment=APP_ENV="local",APP_DEBUG="true",APP_TIMEZONE="Asia/Taipei",SERVER_HOST="0.0.0.0",SERVER_PORT="8888"
+# 啟動後端
+cd /app/backend
+./main &
 
-[program:frontend]
-command=node /app/frontend/.output/server/index.mjs
-directory=/app/frontend
-autostart=true
-autorestart=true
-stdout_logfile=/dev/stdout
-stdout_logfile_maxbytes=0
-stderr_logfile=/dev/stderr
-stderr_logfile_maxbytes=0
-environment=NODE_ENV="production",NUXT_HOST="0.0.0.0",NUXT_PORT="3000",API_BASE_URL="http://localhost:8888/api",NUXT_PUBLIC_LIFF_ID="${NUXT_PUBLIC_LIFF_ID}"
-EOF
+# 啟動前端
+cd /app/frontend
+node .output/server/index.mjs &
+
+# 等待子進程
+wait
+STARTUP
+RUN chmod +x /app/start.sh
 
 EXPOSE 8888 3000
 
-CMD ["supervisord", "-c", "/etc/supervisord.conf"]
+CMD ["/app/start.sh"]
