@@ -96,7 +96,7 @@ func (s *R2StorageService) UploadFile(ctx context.Context, file io.Reader, filen
 		contentType, s.config.CloudflareR2AccountID, payloadHash, amzDate)
 
 	canonicalRequest := fmt.Sprintf("PUT\n/%s/%s\n\n%s\n%s\n%s",
-		s.config.CloudflareR2BucketName, uniqueKey, signedHeaders, canonicalHeaders, payloadHash)
+		s.config.CloudflareR2BucketName, uniqueKey, canonicalHeaders, signedHeaders, payloadHash)
 
 	requestHash := sha256Hex([]byte(canonicalRequest))
 
