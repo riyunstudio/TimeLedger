@@ -6,12 +6,9 @@
  */
 
 import { ref, computed, readonly } from 'vue'
-import {
-  useErrorHandler,
-  type ApiResponse,
-  type ErrorHandlerOptions,
-  type ErrorAction,
-} from './useErrorHandler'
+import { useErrorHandler } from './useErrorHandler'
+import type { ApiResponse } from '~/types/api'
+import type { ErrorHandlerOptions, ErrorAction } from '~/types/errorHandler'
 
 // ==================== 主要 Composable ====================
 
@@ -468,11 +465,4 @@ export function useErrorBoundary() {
     capturePromise,
     safeExecute,
   }
-}
-
-// 匯出類型
-export type {
-  ApiResponse,
-  ErrorHandlerOptions,
-  ErrorAction,
 }

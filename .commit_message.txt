@@ -1,0 +1,11 @@
+fix(frontend): enhance invite page robustness and add i18n to login page
+
+- invite/[token].vue:
+  - Fix login order: accept invitation before LINE login (prevents "teacher not registered" error)
+  - Add defensive null checks for LIFF SDK methods
+  - Move $liff initialization check outside try-catch block
+  - Use optional chaining for getProfile() and getAccessToken()
+  - Add proper error handling with finally block
+  - Simplify accessToken retrieval in acceptInvitation()
+
+- teacher/login.vue: Add i18n translation support for all UI text

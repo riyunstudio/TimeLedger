@@ -2,6 +2,7 @@
  * 錯誤處理工具
  *
  * 提供統一的錯誤處理機制，整合錯誤碼對照表與現有的 alert/toast 系統
+ * @deprecated 請使用 composables/useErrorHandler.ts
  */
 
 import { ref } from 'vue'
@@ -13,6 +14,8 @@ import {
   isValidationError,
   type ErrorCode,
 } from '~/constants/errorCodes'
+import type { ApiResponse } from '~/types/api'
+import type { ErrorHandlerOptions } from '~/types/errorHandler'
 
 // ==================== 錯誤類型定義 ====================
 
@@ -40,24 +43,6 @@ export interface NetworkError {
   message: string
   /** 原始錯誤 */
   originalError?: Error
-}
-
-/**
- * 錯誤處理選項
- */
-export interface ErrorHandlerOptions {
-  /** 是否顯示錯誤提示 */
-  showAlert?: boolean
-  /** 是否記錄錯誤 */
-  logError?: boolean
-  /** 自訂錯誤標題 */
-  title?: string
-  /** 錯誤上下文中繼資料 */
-  context?: Record<string, unknown>
-  /** 401 錯誤時是否導向登入頁 */
-  redirectOnUnauthorized?: boolean
-  /** 自訂錯誤處理函數 */
-  onCustomHandler?: (error: ApiError | NetworkError) => void
 }
 
 // ==================== 全域錯誤狀態 ====================
@@ -189,26 +174,43 @@ function showErrorAlert(message: string, title?: string) {
 }
 
 /**
- * 導向登入頁
+ * 導向登入頁（401 錯誤處理專用）
  */
 function redirectToLogin() {
   if (typeof window !== 'undefined') {
-    // 清除過期的 token
-    if (typeof localStorage !== 'undefined') {
-      localStorage.removeItem('token')
-      localStorage.removeItem('auth_token')
-    }
+    // 清除所有登入資訊
+    clearAllAuthData()
 
-    // 導向登入頁，保留原始路徑以便登入後回來
+    // 根據目前路徑判斷登入頁面
     const currentPath = window.location.pathname
-    const loginPath = currentPath.startsWith('/admin')
-      ? '/admin/login'
-      : '/teacher/login'
+    let loginPath = '/teacher/login' // 預設老師登入頁
+
+    // 判斷應該前往哪個登入頁
+    if (currentPath.startsWith('/admin')) {
+      loginPath = '/admin/login'
+    }
 
     // 只有在不已經是登入頁的情況下才導向
     if (!window.location.pathname.includes('/login')) {
       window.location.href = `${loginPath}?redirect=${encodeURIComponent(currentPath)}`
     }
+  }
+}
+
+/**
+ * 清除所有登入相關資料
+ */
+function clearAllAuthData() {
+  if (typeof localStorage !== 'undefined') {
+    // 清除所有可能的 token storage keys
+    const tokenKeys = ['token', 'auth_token', 'admin_token', 'teacher_token', 'refresh_token']
+    tokenKeys.forEach(key => {
+      localStorage.removeItem(key)
+    })
+  }
+
+  if (typeof sessionStorage !== 'undefined') {
+    sessionStorage.clear()
   }
 }
 
@@ -429,9 +431,7 @@ export class ErrorHandler {
 /**
  * 顯示錯誤提示 (簡化 API)
  */
-export function displayError(message: string, title?: string) {
-  showErrorAlert(message, title)
-}
+export { displayError } from '~/composables/useErrorHandler'
 
 /**
  * 顯示錯誤 Toast (簡化 API)
@@ -464,36 +464,4 @@ export function handleNetworkError(error: NetworkError, options?: ErrorHandlerOp
  */
 export function handleUnknownError(error: unknown, options?: ErrorHandlerOptions) {
   ErrorHandler.handleUnknownError(error, options)
-}
-
-// ==================== Vue Composables ====================
-
-/**
- * 錯誤處理 Composables
- *
- * 在 Vue 元件中使用
- */
-export function useErrorHandler() {
-  const handleApiError = (error: ApiError, options?: ErrorHandlerOptions) => {
-    ErrorHandler.handleApiError(error, options)
-  }
-
-  const handleNetworkError = (error: NetworkError, options?: ErrorHandlerOptions) => {
-    ErrorHandler.handleNetworkError(error, options)
-  }
-
-  const safeExecute = <T>(
-    fn: () => Promise<T>,
-    options?: ErrorHandlerOptions
-  ) => {
-    return ErrorHandler.safeExecute(fn, options)
-  }
-
-  return {
-    handleApiError,
-    handleNetworkError,
-    safeExecute,
-    showError,
-    showErrorToast,
-  }
 }

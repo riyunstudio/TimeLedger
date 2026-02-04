@@ -1,88 +1,15 @@
 import { ref } from 'vue'
 
 // ============================================
-// 錯誤處理工具
-// ============================================
-
-/**
- * 從錯誤物件取得人類可讀的錯誤訊息
- */
-export function getErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message
-  }
-
-  if (typeof error === 'string') {
-    return error
-  }
-
-  if (error && typeof error === 'object') {
-    // 處理 API 錯誤響應
-    const apiError = error as Record<string, any>
-
-    // 檢查是否有 message 欄位
-    if (apiError.message) {
-      return typeof apiError.message === 'string'
-        ? apiError.message
-        : JSON.stringify(apiError.message)
-    }
-
-    // 檢查是否有 error 欄位
-    if (apiError.error) {
-      return typeof apiError.error === 'string'
-        ? apiError.error
-        : JSON.stringify(apiError.error)
-    }
-
-    // 檢查是否有 detail 欄位
-    if (apiError.detail) {
-      return typeof apiError.detail === 'string'
-        ? apiError.detail
-        : JSON.stringify(apiError.detail)
-    }
-
-    // 嘗試轉為 JSON 字串
-    try {
-      return JSON.stringify(error)
-    } catch {
-      return '發生未知錯誤'
-    }
-  }
-
-  return '發生未知錯誤'
-}
-
-// ============================================
 // Loading 狀態管理
 // ============================================
 
 /**
  * 通用 loading 包裝器
  *
- * @example
- * ```typescript
- * const isLoading = ref(false)
- *
- * async function fetchData() {
- *   return withLoading(isLoading, async () => {
- *     const api = useApi()
- *     return await api.get('/data')
- *   })
- * }
- * ```
+ * @deprecated 請使用 loadingHelper.ts 中的 withLoading
  */
-export function withLoading<T>(
-  loadingRef: { value: boolean },
-  fn: () => Promise<T>
-): Promise<T> {
-  loadingRef.value = true
-
-  try {
-    return fn()
-  } finally {
-    loadingRef.value = false
-  }
-}
+export { withLoading } from './loadingHelper'
 
 /**
  * 建立 Loading 狀態管理

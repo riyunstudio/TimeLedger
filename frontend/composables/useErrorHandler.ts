@@ -15,44 +15,10 @@ import {
   isValidationError,
   isUnauthorizedError,
 } from '~/constants/errorCodes'
+import type { ApiResponse } from '~/types/api'
+import type { ErrorHandlerOptions, ErrorAction } from '~/types/errorHandler'
 
 // ==================== 錯誤碼對應類型 ====================
-
-/**
- * API 回應結構
- */
-export interface ApiResponse<T = any> {
-  code: string
-  message: string
-  data?: T
-}
-
-/**
- * 錯誤處理的額外選項
- */
-export interface ErrorHandlerOptions {
-  /** 錯誤標題（可自訂） */
-  title?: string
-  /** 是否顯示為 Toast（預設為 Alert） */
-  asToast?: boolean
-  /** Toast 類型（asToast 為 true 時有效） */
-  toastType?: ToastType
-  /** 額外的動作按鈕 */
-  actions?: ErrorAction[]
-  /** 錯誤發生後的回調 */
-  onError?: (error: ApiResponse) => void
-  /** 成功時的回調 */
-  onSuccess?: (data: any) => void
-}
-
-/**
- * 錯誤動作按鈕
- */
-export interface ErrorAction {
-  label: string
-  style?: 'primary' | 'warning' | 'critical' | 'secondary'
-  action: () => void
-}
 
 // ==================== 全局錯誤狀態 ====================
 
@@ -128,7 +94,7 @@ export function getErrorAlertType(code: string): AlertType {
 /**
  * 取得 Toast 類型
  */
-export function getErrorToastType(code: string): ToastType {
+function getErrorToastType(code: string): ToastType {
   if (isSuccessCode(code)) {
     return 'success'
   }
@@ -293,13 +259,19 @@ export async function handlePermissionError(
 ): Promise<void> {
   const actions: ErrorAction[] = []
 
-  // 如果是需要登入的錯誤，提供登入動作
+  // 如果是需要登入的錯誤（401），清除登入資訊並跳轉到首頁
   if (isUnauthorizedError(code)) {
+    // 清除登入資訊
+    clearAuthOnUnauthorized()
+
+    // 根據使用者類型決定跳轉頁面
+    const redirectPath = determineLoginPath()
+
     actions.push({
       label: '前往登入',
       style: 'primary',
       action: () => {
-        navigateTo('/login')
+        navigateTo(redirectPath)
       },
     })
   }
@@ -312,6 +284,51 @@ export async function handlePermissionError(
       actions: [...(options.actions || []), ...actions],
     }
   )
+}
+
+/**
+ * 清除未授權使用者的登入資訊
+ */
+function clearAuthOnUnauthorized(): void {
+  try {
+    // 清除所有可能的 token storage keys
+    const tokenKeys = ['token', 'auth_token', 'admin_token', 'teacher_token']
+    tokenKeys.forEach(key => {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem(key)
+      }
+    })
+
+    // 清除 sessionStorage
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.clear()
+    }
+  } catch (error) {
+    console.error('Failed to clear auth storage:', error)
+  }
+}
+
+/**
+ * 根據使用者類型決定登入頁面路徑
+ */
+function determineLoginPath(): string {
+  // 嘗試從 localStorage 判斷使用者類型
+  if (typeof localStorage !== 'undefined') {
+    // 檢查是否有 admin 相關的 token
+    const adminToken = localStorage.getItem('admin_token')
+    if (adminToken) {
+      return '/admin/login'
+    }
+
+    // 檢查是否有 teacher 相關的 token
+    const teacherToken = localStorage.getItem('teacher_token')
+    if (teacherToken) {
+      return '/teacher/login'
+    }
+  }
+
+  // 預設跳轉到首頁
+  return '/'
 }
 
 /**
@@ -564,3 +581,14 @@ export function createAxiosErrorHandler(options: ErrorHandlerOptions = {}) {
     await handleApiResponse(response, options)
   }
 }
+
+// ==================== 類型重新匯出（向後相容） ====================
+
+/**
+ * API 回應結構（從 types/api.ts 重新匯出）
+ *
+ * @deprecated 請直接從 ~/types/api 匯入
+ */
+export type {
+  ApiResponse,
+} from '~/types/api'

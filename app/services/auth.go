@@ -35,9 +35,9 @@ type LineProfile struct {
 	StatusMessage string `json:"statusMessage,omitempty"`
 }
 
-// verifyLineToken 驗證 LINE Access Token 並取得用戶資料
+// getLineProfile 驗證 LINE Access Token 並取得用戶資料
 // 使用 https://api.line.me/v2/profile API 驗證
-func (s *authService) verifyLineToken(accessToken string, lineUserID string) error {
+func (s *authService) getLineProfile(accessToken string, lineUserID string) (*LineProfile, error) {
 	// 建立 HTTP Client，設定超時時間
 	client := &http.Client{
 		Timeout: 10 * time.Second,
@@ -46,7 +46,7 @@ func (s *authService) verifyLineToken(accessToken string, lineUserID string) err
 	// 建立 LINE Profile API 請求
 	req, err := http.NewRequest("GET", "https://api.line.me/v2/profile", nil)
 	if err != nil {
-		return errors.New("failed to create LINE API request")
+		return nil, errors.New("failed to create LINE API request")
 	}
 
 	// 設定 Authorization header
@@ -55,34 +55,42 @@ func (s *authService) verifyLineToken(accessToken string, lineUserID string) err
 	// 發送請求
 	resp, err := client.Do(req)
 	if err != nil {
-		return errors.New("failed to connect LINE API: " + err.Error())
+		return nil, errors.New("failed to connect LINE API: " + err.Error())
 	}
 	defer resp.Body.Close()
 
 	// 檢查 HTTP 狀態碼
 	if resp.StatusCode != http.StatusOK {
 		if resp.StatusCode == http.StatusUnauthorized {
-			return errors.New("LINE token 已過期或無效，請重新登入")
+			return nil, errors.New("LINE token 已過期或無效，請重新登入")
 		}
-		return errors.New("LINE API 驗證失敗，狀態碼: " + fmt.Sprintf("%d", resp.StatusCode))
+		return nil, errors.New("LINE API 驗證失敗，狀態碼: " + fmt.Sprintf("%d", resp.StatusCode))
 	}
 
 	// 解析回應
 	var profile LineProfile
 	if err := json.NewDecoder(resp.Body).Decode(&profile); err != nil {
-		return errors.New("failed to parse LINE API response")
+		return nil, errors.New("failed to parse LINE API response")
 	}
 
 	// 驗證用戶 ID 是否匹配
 	if profile.UserID != lineUserID {
-		return errors.New("LINE user ID mismatch: token does not belong to the specified user")
+		return nil, errors.New("LINE user ID mismatch: token does not belong to the specified user")
 	}
 
-	return nil
+	return &profile, nil
+}
+
+// verifyLineToken 驗證 LINE Access Token
+func (s *authService) verifyLineToken(accessToken string, lineUserID string) error {
+	_, err := s.getLineProfile(accessToken, lineUserID)
+	return err
 }
 
 func NewAuthService(app *app.App) *authService {
+	baseService := NewBaseService(app, "AuthService")
 	return &authService{
+		BaseService:         *baseService,
 		app:                 app,
 		adminRepository:     repositories.NewAdminUserRepository(app),
 		teacherRepository:   repositories.NewTeacherRepository(app),
@@ -257,6 +265,12 @@ func (s *authService) hasWelcomeMessageSent(ctx context.Context, recipientID uin
 
 // triggerWelcomeTeacherMessage 觸發老師歡迎訊息
 func (s *authService) triggerWelcomeTeacherMessage(ctx context.Context, teacher *models.Teacher, centerID uint) {
+	// 防禦性檢查：centerID 為 0 表示老師沒有隸屬任何中心，跳過歡迎訊息
+	if centerID == 0 {
+		s.Logger.Debug("teacher has no center membership, skipping welcome message", "teacher_id", teacher.ID)
+		return
+	}
+
 	// 檢查是否已發送過歡迎訊息
 	if s.hasWelcomeMessageSent(ctx, teacher.ID, "TEACHER", models.NotificationTypeWelcomeTeacher) {
 		return
@@ -277,6 +291,12 @@ func (s *authService) triggerWelcomeTeacherMessage(ctx context.Context, teacher 
 
 // triggerWelcomeAdminMessage 觸發管理員歡迎訊息
 func (s *authService) triggerWelcomeAdminMessage(ctx context.Context, admin *models.AdminUser, centerID uint) {
+	// 防禦性檢查：centerID 為 0 表示管理員沒有隸屬任何中心，跳過歡迎訊息
+	if centerID == 0 {
+		s.Logger.Debug("admin has no center membership, skipping welcome message", "admin_id", admin.ID)
+		return
+	}
+
 	// 檢查是否已發送過歡迎訊息
 	if s.hasWelcomeMessageSent(ctx, admin.ID, "ADMIN", models.NotificationTypeWelcomeAdmin) {
 		return

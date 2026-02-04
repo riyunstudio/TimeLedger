@@ -666,3 +666,24 @@
 {"level":"info","time":"2026-02-04T00:30:35.540+0800","message":"Starting TimeLedger application..."}
 {"level":"info","time":"2026-02-04T00:30:36.064+0800","message":"Notification worker disabled (set NOTIFICATION_WORKER_ENABLED=true to enable)"}
 {"level":"info","time":"2026-02-04T00:30:36.064+0800","message":"Asynq worker disabled (set ASYNQ_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-02-04T08:02:46.208+0800","message":"Application shutting down gracefully"}
+{"level":"info","time":"2026-02-04T08:02:46.208+0800","message":"Application exited"}
+{"level":"info","time":"2026-02-04T09:27:07.437+0800","message":"Starting TimeLedger application..."}
+{"level":"info","time":"2026-02-04T09:27:08.235+0800","message":"Notification worker disabled (set NOTIFICATION_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-02-04T09:27:08.235+0800","message":"Asynq worker disabled (set ASYNQ_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-02-04T11:20:58.004+0800","message":"Application shutting down gracefully"}
+{"level":"info","time":"2026-02-04T11:20:58.005+0800","message":"Application exited"}
+{"level":"info","time":"2026-02-04T11:21:01.357+0800","message":"Starting TimeLedger application..."}
+{"level":"info","time":"2026-02-04T11:21:01.778+0800","message":"Notification worker disabled (set NOTIFICATION_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-02-04T11:21:01.778+0800","message":"Asynq worker disabled (set ASYNQ_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-02-04T13:24:38.198+0800","message":"Application shutting down gracefully"}
+{"level":"info","time":"2026-02-04T13:24:38.198+0800","message":"Application exited"}
+{"level":"info","time":"2026-02-04T13:24:43.771+0800","message":"Starting TimeLedger application..."}
+{"level":"info","time":"2026-02-04T13:24:44.182+0800","message":"Notification worker disabled (set NOTIFICATION_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-02-04T13:24:44.182+0800","message":"Asynq worker disabled (set ASYNQ_WORKER_ENABLED=true to enable)"}
+{"level":"debug","time":"2026-02-04T13:26:03.235+0800","message":"caching room list","component":"CacheService","center_id":1,"count":0}
+{"level":"info","time":"2026-02-04T13:27:45.835+0800","message":"Application shutting down gracefully"}
+{"level":"info","time":"2026-02-04T13:27:45.835+0800","message":"Application exited"}
+{"level":"info","time":"2026-02-04T13:27:48.840+0800","message":"Starting TimeLedger application..."}
+{"level":"info","time":"2026-02-04T13:27:49.226+0800","message":"Notification worker disabled (set NOTIFICATION_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-02-04T13:27:49.226+0800","message":"Asynq worker disabled (set ASYNQ_WORKER_ENABLED=true to enable)"}

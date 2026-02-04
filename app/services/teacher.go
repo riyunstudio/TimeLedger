@@ -573,8 +573,9 @@ type AcceptInvitationByLinkResult struct {
 
 // AcceptInvitationByLink 透過連結接受邀請
 func (s *TeacherService) AcceptInvitationByLink(ctx context.Context, req *AcceptInvitationByLinkRequest) (*AcceptInvitationByLinkResult, *errInfos.Res, error) {
-	// Verify LINE Access Token
-	if err := s.authService.verifyLineToken(req.AccessToken, req.LineUserID); err != nil {
+	// 取得 LINE Profile（驗證 token 並取得用戶資料）
+	lineProfile, err := s.authService.getLineProfile(req.AccessToken, req.LineUserID)
+	if err != nil {
 		return nil, s.app.Err.New(errInfos.UNAUTHORIZED), err
 	}
 
@@ -602,12 +603,13 @@ func (s *TeacherService) AcceptInvitationByLink(ctx context.Context, req *Accept
 	// 取得老師資料
 	teacher, err := s.teacherRepo.GetByLineUserID(ctx, req.LineUserID)
 	if err != nil {
-		// 新老師：自動建立老師帳號
+		// 新老師：自動建立老師帳號，使用 LINE 的 displayName 作為名稱
 		if invitation.Email != "" {
 			newTeacher := models.Teacher{
 				LineUserID: req.LineUserID,
 				Email:      invitation.Email,
-				Name:       "新老師", // 預設名稱
+				Name:       lineProfile.DisplayName, // 使用 LINE 的顯示名稱
+				AvatarURL:  lineProfile.PictureURL,  // 使用 LINE 的頭像
 			}
 
 			createdTeacher, err := s.teacherRepo.Create(ctx, newTeacher)
@@ -616,11 +618,12 @@ func (s *TeacherService) AcceptInvitationByLink(ctx context.Context, req *Accept
 			}
 			teacher = createdTeacher
 		} else if invitation.InviteType == models.InvitationTypeGeneral {
-			// 通用邀請：Email 可以為空，產生預設名稱
+			// 通用邀請：Email 可以為空，使用 LINE displayName
 			newTeacher := models.Teacher{
 				LineUserID: req.LineUserID,
 				Email:      req.LineUserID + "@line.user", // 預設 Email 格式
-				Name:       "新老師",                         // 預設名稱
+				Name:       lineProfile.DisplayName,       // 使用 LINE 的顯示名稱
+				AvatarURL:  lineProfile.PictureURL,        // 使用 LINE 的頭像
 			}
 
 			createdTeacher, err := s.teacherRepo.Create(ctx, newTeacher)
@@ -754,8 +757,9 @@ type PublicRegisterResult struct {
 
 // RegisterPublic 公開註冊老師（LINE Bot 自主註冊）
 func (s *TeacherService) RegisterPublic(ctx context.Context, req *PublicRegisterRequest) (*PublicRegisterResult, *errInfos.Res, error) {
-	// 驗證 LINE Access Token
-	if err := s.authService.verifyLineToken(req.AccessToken, req.LineUserID); err != nil {
+	// 取得 LINE Profile（驗證 token 並取得用戶資料）
+	lineProfile, err := s.authService.getLineProfile(req.AccessToken, req.LineUserID)
+	if err != nil {
 		return nil, s.app.Err.New(errInfos.UNAUTHORIZED), err
 	}
 
@@ -794,12 +798,13 @@ func (s *TeacherService) RegisterPublic(ctx context.Context, req *PublicRegister
 		return nil, s.app.Err.New(errInfos.DUPLICATE), fmt.Errorf("email already registered")
 	}
 
-	// 建立新老師帳號（預設加入人才庫）
+	// 建立新老師帳號（預設加入人才庫），使用 LINE 的頭像
 	newTeacher := models.Teacher{
 		LineUserID:     req.LineUserID,
-		Name:           req.Name,
+		Name:           req.Name, // 使用用戶提供的名稱
 		Email:          req.Email,
-		IsOpenToHiring: true, // 預設加入人才庫
+		AvatarURL:      lineProfile.PictureURL, // 使用 LINE 的頭像
+		IsOpenToHiring: true,                   // 預設加入人才庫
 	}
 
 	createdTeacher, err := s.teacherRepo.Create(ctx, newTeacher)

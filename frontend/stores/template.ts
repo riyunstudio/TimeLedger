@@ -1,9 +1,5 @@
 import { defineStore } from 'pinia'
 
-// ============================================
-// 狀態類型定義
-// ============================================
-
 /**
  * 通用分頁參數
  */
@@ -24,16 +20,6 @@ export interface PaginationResult {
   total_pages: number
   has_next: boolean
   has_prev: boolean
-}
-
-/**
- * API 響應基礎結構
- */
-export interface ApiResponse<T> {
-  code: number
-  message: string
-  datas?: T
-  pagination?: PaginationResult
 }
 
 /**
