@@ -213,6 +213,41 @@ const fetchInvitation = async () => {
   }
 }
 
+// 取得用戶資訊（包含 email）
+const getLineUserInfo = async () => {
+  // 防禦性檢查：確保 $liff 已初始化
+  if (!$liff || typeof $liff.getProfile !== 'function') {
+    throw new Error('LIFF SDK 尚未完全載入')
+  }
+
+  // 嘗試從 ID Token 獲取 email（需要 openid 權限）
+  let email = ''
+  if (typeof $liff.getDecodedIDToken === 'function') {
+    try {
+      const decodedToken = await $liff.getDecodedIDToken()
+      email = decodedToken?.email || ''
+    } catch (e) {
+      console.warn('無法獲取 ID Token email:', e)
+    }
+  }
+
+  // 從 Profile 獲取基本資訊
+  const profile = await $liff.getProfile()
+  const accessToken = $liff.getAccessToken()
+
+  if (!accessToken || !profile) {
+    throw new Error('無法取得 LINE 資訊，請重新登入')
+  }
+
+  return {
+    userId: profile.userId,
+    displayName: profile.displayName,
+    pictureUrl: profile.pictureUrl,
+    email,
+    accessToken
+  }
+}
+
 // LINE 登入
 const lineLogin = async () => {
   // 防禦性檢查：確保 $liff 已初始化
@@ -231,22 +266,21 @@ const lineLogin = async () => {
       return
     }
 
-    // 已登入 LINE，取得用戶資訊和 Access Token
-    // 防禦性檢查：確保方法存在
-    const profile = await $liff.getProfile?.()
-    const accessToken = $liff.getAccessToken?.()
-
-    if (!accessToken || !profile) {
-      throw new Error('無法取得 LINE 資訊，請重新登入')
-    }
+    // 已登入 LINE，取得用戶資訊
+    const userInfo = await getLineUserInfo()
 
     // 儲存邀請 token 和用戶資訊到 localStorage
     localStorage.setItem('invitation_token', token.value)
-    localStorage.setItem('invitation_line_user_id', profile.userId)
-    localStorage.setItem('invitation_access_token', accessToken)
+    localStorage.setItem('invitation_line_user_id', userInfo.userId)
+    localStorage.setItem('invitation_access_token', userInfo.accessToken)
+
+    // 如果有 email，也儲存起來
+    if (userInfo.email) {
+      localStorage.setItem('invitation_email', userInfo.email)
+    }
 
     // 執行登入並接受邀請
-    await performLoginAndAccept(profile.userId, accessToken)
+    await performLoginAndAccept(userInfo.userId, userInfo.accessToken)
   } catch (err: any) {
     error.value = err.message || 'LINE 登入失敗，請稍後再試'
   }
@@ -297,6 +331,9 @@ const performLoginAndAccept = async (lineUserId: string, accessToken: string) =>
 
 // 使用指定 token 接受邀請
 const acceptInvitationWithToken = async (lineUserId: string, accessToken: string) => {
+  // 嘗試獲取已儲存的 email
+  const savedEmail = localStorage.getItem('invitation_email') || ''
+
   try {
     const response = await fetch(`${config.public.apiBase}/invitations/${token.value}/accept`, {
       method: 'POST',
@@ -306,6 +343,7 @@ const acceptInvitationWithToken = async (lineUserId: string, accessToken: string
       body: JSON.stringify({
         line_user_id: lineUserId,
         access_token: accessToken,
+        email: savedEmail, // 傳遞 LINE ID Token 中的 email
       }),
     })
 
@@ -326,6 +364,7 @@ const acceptInvitationWithToken = async (lineUserId: string, accessToken: string
     localStorage.removeItem('invitation_token')
     localStorage.removeItem('invitation_line_user_id')
     localStorage.removeItem('invitation_access_token')
+    localStorage.removeItem('invitation_email')
   } catch (err: any) {
     error.value = err.message || '接受邀請失敗，請稍後再試'
   } finally {
@@ -362,7 +401,38 @@ const acceptInvitation = async () => {
     }
 
     accepted.value = true
+
+    // 檢查是否早就是成員 (由後端回傳 status: 'ALREADY_MEMBER')
+    if (data.datas?.status === 'ALREADY_MEMBER') {
+      isAlreadyMember.value = true
+    }
+
+    // === 新增：使用後端返回的 Token 自動登入 ===
+    if (data.datas?.token && data.datas?.teacher) {
+      const authData = {
+        token: data.datas.token,
+        refresh_token: '',
+        teacher: {
+          id: data.datas.teacher.id,
+          name: data.datas.teacher.name,
+          email: data.datas.teacher.email,
+          line_user_id: data.datas.teacher.line_user_id,
+          avatar_url: data.datas.teacher.avatar_url,
+        }
+      }
+
+      // 保存 token 到 localStorage
+      localStorage.setItem('teacher_token', data.datas.token)
+
+      // 更新 authStore
+      authStore.login(authData)
+    }
+    // ==========================================
+
+    // 清除邀請相關的 localStorage
     localStorage.removeItem('invitation_token')
+    localStorage.removeItem('invitation_line_user_id')
+    localStorage.removeItem('invitation_access_token')
   } catch (err: any) {
     error.value = err.message || '接受邀請失敗，請稍後再試'
   } finally {

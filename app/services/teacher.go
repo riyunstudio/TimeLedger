@@ -557,18 +557,30 @@ func (s *TeacherService) RevokeInvitationLink(ctx context.Context, invitationID,
 
 // AcceptInvitationByLinkRequest 透過連結接受邀請請求
 type AcceptInvitationByLinkRequest struct {
-	Token       string
-	LineUserID  string
-	AccessToken string
+	Token       string `json:"token"`
+	LineUserID  string `json:"line_user_id"`
+	AccessToken string `json:"access_token"`
+	Email       string `json:"email"` // 從 LINE ID Token 獲取的 email（可選）
 }
 
 // AcceptInvitationByLinkResult 透過連結接受邀請結果
 type AcceptInvitationByLinkResult struct {
-	InvitationID uint
-	Status       string
-	CenterID     uint
-	CenterName   string
-	Role         string
+	InvitationID uint         `json:"invitation_id"`
+	Status       string       `json:"status"`
+	CenterID     uint         `json:"center_id"`
+	CenterName   string       `json:"center_name"`
+	Role         string       `json:"role"`
+	Token        string       `json:"token"`   // JWT Token for auto-login
+	Teacher      *TeacherInfo `json:"teacher"` // Teacher info for frontend
+}
+
+// TeacherInfo 老師資訊（用於 API 回傳）
+type TeacherInfo struct {
+	ID         uint   `json:"id"`
+	Name       string `json:"name"`
+	Email      string `json:"email"`
+	LineUserID string `json:"line_user_id"`
+	AvatarURL  string `json:"avatar_url,omitempty"`
 }
 
 // AcceptInvitationByLink 透過連結接受邀請
@@ -604,36 +616,32 @@ func (s *TeacherService) AcceptInvitationByLink(ctx context.Context, req *Accept
 	teacher, err := s.teacherRepo.GetByLineUserID(ctx, req.LineUserID)
 	if err != nil {
 		// 新老師：自動建立老師帳號，使用 LINE 的 displayName 作為名稱
+		// Email 優先級：邀請指定 > LINE ID Token > 預設
+		var teacherEmail string
+
 		if invitation.Email != "" {
-			newTeacher := models.Teacher{
-				LineUserID: req.LineUserID,
-				Email:      invitation.Email,
-				Name:       lineProfile.DisplayName, // 使用 LINE 的顯示名稱
-				AvatarURL:  lineProfile.PictureURL,  // 使用 LINE 的頭像
-			}
-
-			createdTeacher, err := s.teacherRepo.Create(ctx, newTeacher)
-			if err != nil {
-				return nil, s.app.Err.New(errInfos.SQL_ERROR), fmt.Errorf("failed to create teacher: %w", err)
-			}
-			teacher = createdTeacher
-		} else if invitation.InviteType == models.InvitationTypeGeneral {
-			// 通用邀請：Email 可以為空，使用 LINE displayName
-			newTeacher := models.Teacher{
-				LineUserID: req.LineUserID,
-				Email:      req.LineUserID + "@line.user", // 預設 Email 格式
-				Name:       lineProfile.DisplayName,       // 使用 LINE 的顯示名稱
-				AvatarURL:  lineProfile.PictureURL,        // 使用 LINE 的頭像
-			}
-
-			createdTeacher, err := s.teacherRepo.Create(ctx, newTeacher)
-			if err != nil {
-				return nil, s.app.Err.New(errInfos.SQL_ERROR), fmt.Errorf("failed to create teacher: %w", err)
-			}
-			teacher = createdTeacher
+			// 指定邀請使用邀請中的 Email
+			teacherEmail = invitation.Email
+		} else if req.Email != "" {
+			// 使用 LINE ID Token 獲取的 Email
+			teacherEmail = req.Email
 		} else {
-			return nil, s.app.Err.New(errInfos.NOT_FOUND), fmt.Errorf("teacher not found")
+			// 都沒有 email，使用固定格式
+			teacherEmail = "teacher@timeledger.tw"
 		}
+
+		newTeacher := models.Teacher{
+			LineUserID: req.LineUserID,
+			Email:      teacherEmail,
+			Name:       lineProfile.DisplayName, // 使用 LINE 的顯示名稱
+			AvatarURL:  lineProfile.PictureURL,  // 使用 LINE 的頭像
+		}
+
+		createdTeacher, err := s.teacherRepo.Create(ctx, newTeacher)
+		if err != nil {
+			return nil, s.app.Err.New(errInfos.SQL_ERROR), fmt.Errorf("failed to create teacher: %w", err)
+		}
+		teacher = createdTeacher
 	}
 
 	// 通用邀請跳過 Email 驗證
@@ -649,11 +657,37 @@ func (s *TeacherService) AcceptInvitationByLink(ctx context.Context, req *Accept
 	if err == nil {
 		// 已經是成員，更新狀態
 		s.invitationRepo.UpdateStatus(ctx, invitation.ID, models.InvitationStatusAccepted)
+
+		// 取得中心名稱
+		centerName := ""
+		center, err := s.centerRepo.GetByID(ctx, invitation.CenterID)
+		if err == nil {
+			centerName = center.Name
+		}
+
+		// 生成 JWT Token
+		claims := jwt.Claims{
+			UserType:   "TEACHER",
+			UserID:     teacher.ID,
+			CenterID:   invitation.CenterID,
+			LineUserID: teacher.LineUserID,
+		}
+		token, _ := s.authService.GenerateToken(claims)
+
 		return &AcceptInvitationByLinkResult{
 			InvitationID: invitation.ID,
 			Status:       "ALREADY_MEMBER",
 			CenterID:     invitation.CenterID,
+			CenterName:   centerName,
 			Role:         invitation.Role,
+			Token:        token,
+			Teacher: &TeacherInfo{
+				ID:         teacher.ID,
+				Name:       teacher.Name,
+				Email:      teacher.Email,
+				LineUserID: teacher.LineUserID,
+				AvatarURL:  teacher.AvatarURL,
+			},
 		}, nil, nil
 	}
 
@@ -721,12 +755,33 @@ func (s *TeacherService) AcceptInvitationByLink(ctx context.Context, req *Accept
 		_ = s.lineBotService.SendInvitationAcceptedNotification(notifyCtx, adminPtrs, &teacher, centerName, invitation.Role)
 	}()
 
+	// 生成 JWT Token
+	claims := jwt.Claims{
+		UserType:   "TEACHER",
+		UserID:     teacher.ID,
+		CenterID:   invitation.CenterID,
+		LineUserID: teacher.LineUserID,
+	}
+	token, err := s.authService.GenerateToken(claims)
+	if err != nil {
+		// Token 生成失敗不應該阻止成功響應，記錄日誌即可
+		s.Logger.Error("failed to generate token after accepting invitation", "error", err)
+	}
+
 	return &AcceptInvitationByLinkResult{
 		InvitationID: invitation.ID,
 		Status:       "ACCEPTED",
 		CenterID:     invitation.CenterID,
 		CenterName:   centerName,
 		Role:         invitation.Role,
+		Token:        token,
+		Teacher: &TeacherInfo{
+			ID:         teacher.ID,
+			Name:       teacher.Name,
+			Email:      teacher.Email,
+			LineUserID: teacher.LineUserID,
+			AvatarURL:  teacher.AvatarURL,
+		},
 	}, nil, nil
 }
 
