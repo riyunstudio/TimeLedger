@@ -306,12 +306,13 @@ const performLoginAndAccept = async (lineUserId: string, accessToken: string) =>
 
   try {
     // 直接使用 acceptInvitationWithToken 返回的 token（已包含正確的 centerID）
+    // acceptInvitationWithToken 內部會自動清除邀請相關的 localStorage
     const authData = await acceptInvitationWithToken(lineUserId, accessToken)
 
     // 登入成功，更新 authStore
     authStore.login(authData)
 
-    // 立即跳轉到教師後台
+    // 確保登入成功後會跳轉到教師後台
     router.push('/teacher/dashboard')
   } catch (err: any) {
     error.value = err.message || '處理邀請時發生錯誤，請稍後再試'
