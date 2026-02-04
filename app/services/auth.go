@@ -289,13 +289,21 @@ func (s *authService) triggerWelcomeTeacherMessage(ctx context.Context, teacher 
 	// 取得中心名稱
 	center, err := s.centerRepository.GetByID(ctx, centerID)
 	if err != nil {
-		s.Logger.Warn("failed to get center for welcome message", "center_id", centerID, "error", err)
+		// 防禦性檢查：Logger 可能為 nil
+		if s.Logger != nil {
+			s.Logger.Warn("failed to get center for welcome message", "center_id", centerID, "error", err)
+		} else {
+			fmt.Printf("[WARN] failed to get center for welcome message (center_id: %d, error: %v)\n", centerID, err)
+		}
 		return
 	}
 
 	// 發送歡迎訊息
 	if err := s.notificationService.NotifyWelcomeTeacher(ctx, teacher, center.Name); err != nil {
-		s.Logger.Error("failed to send welcome message to teacher", "teacher_id", teacher.ID, "error", err)
+		// 防禦性檢查：Logger 可能為 nil
+		if s.Logger != nil {
+			s.Logger.Error("failed to send welcome message to teacher", "teacher_id", teacher.ID, "error", err)
+		}
 	}
 }
 
@@ -323,12 +331,20 @@ func (s *authService) triggerWelcomeAdminMessage(ctx context.Context, admin *mod
 	// 取得中心名稱
 	center, err := s.centerRepository.GetByID(ctx, centerID)
 	if err != nil {
-		s.Logger.Warn("failed to get center for admin welcome message", "center_id", centerID, "error", err)
+		// 防禦性檢查：Logger 可能為 nil
+		if s.Logger != nil {
+			s.Logger.Warn("failed to get center for admin welcome message", "center_id", centerID, "error", err)
+		} else {
+			fmt.Printf("[WARN] failed to get center for admin welcome message (center_id: %d, error: %v)\n", centerID, err)
+		}
 		return
 	}
 
 	// 發送歡迎訊息
 	if err := s.notificationService.NotifyWelcomeAdmin(ctx, admin, center.Name); err != nil {
-		s.Logger.Error("failed to send welcome message to admin", "admin_id", admin.ID, "error", err)
+		// 防禦性檢查：Logger 可能為 nil
+		if s.Logger != nil {
+			s.Logger.Error("failed to send welcome message to admin", "admin_id", admin.ID, "error", err)
+		}
 	}
 }
