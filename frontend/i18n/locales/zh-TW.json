@@ -216,5 +216,26 @@
     "footer": {
       "copyright": "© 2026 TimeLedger Team. All rights reserved."
     }
+  },
+  "auth": {
+    "initializing": "初始化中...",
+    "refresh": "重新整理",
+    "loginTitle": "LINE 登入",
+    "welcomeBack": "歡迎回來",
+    "loginHint": "使用 LINE 帳號登入，快速又安全",
+    "lineLogin": "LINE 登入",
+    "lineLoginFull": "透過 LINE 帳號快速登入",
+    "loggingIn": "登入中...",
+    "loginSuccess": "登入成功！",
+    "redirecting": "正在導向頁面...",
+    "loginFailed": "登入失敗",
+    "retryLogin": "重新登入",
+    "invite": {
+      "logoutOther": "登出其他帳號",
+      "welcomeBackMember": "歡迎回來！",
+      "joinSuccess": "註冊成功！",
+      "welcomeTo": "歡迎加入 {center}",
+      "goToDashboard": "前往老師後台"
+    }
   }
 }

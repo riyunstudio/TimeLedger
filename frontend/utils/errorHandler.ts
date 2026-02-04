@@ -429,11 +429,6 @@ export class ErrorHandler {
 // ==================== 便利匯出函數 ====================
 
 /**
- * 顯示錯誤提示 (簡化 API)
- */
-export { displayError } from '~/composables/useErrorHandler'
-
-/**
  * 顯示錯誤 Toast (簡化 API)
  */
 export function showErrorToast(message: string) {
