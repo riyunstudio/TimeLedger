@@ -3,13 +3,18 @@ package services
 import (
 	"context"
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"time"
+
 	"timeLedger/app"
 	"timeLedger/app/models"
 	"timeLedger/app/repositories"
+	"timeLedger/database/redis"
 	"timeLedger/global/errInfos"
 	jwt "timeLedger/libs/jwt"
+
+	"gorm.io/gorm"
 )
 
 // TeacherService 教師相關業務邏輯
@@ -25,6 +30,7 @@ type TeacherService struct {
 	auditLogRepo   *repositories.AuditLogRepository
 	lineBotService LineBotService
 	authService    *authService
+	redisClient    *redis.Redis
 }
 
 // NewTeacherService 建立教師服務
@@ -42,6 +48,7 @@ func NewTeacherService(app *app.App) *TeacherService {
 		auditLogRepo:   repositories.NewAuditLogRepository(app),
 		lineBotService: lineBotService,
 		authService:    authService,
+		redisClient:    redis.Initialize(app.Env),
 	}
 }
 
@@ -612,36 +619,46 @@ func (s *TeacherService) AcceptInvitationByLink(ctx context.Context, req *Accept
 		return nil, s.app.Err.New(errInfos.INVALID_STATUS), fmt.Errorf("invitation expired")
 	}
 
-	// 取得老師資料
-	teacher, err := s.teacherRepo.GetByLineUserID(ctx, req.LineUserID)
+	// 使用分布式鎖防止並發創建老師帳號（Race Condition）
+	var teacher models.Teacher
+	err = s.tryLockTeacherCreation(ctx, req.LineUserID, func() error {
+		var innerErr error
+		// 取得老師資料
+		teacher, innerErr = s.teacherRepo.GetByLineUserID(ctx, req.LineUserID)
+		if innerErr != nil {
+			// 新老師：自動建立老師帳號，使用 LINE 的 displayName 作為名稱
+			// Email 優先級：邀請指定 > LINE ID Token > 預設
+			var teacherEmail string
+
+			if invitation.Email != "" {
+				// 指定邀請使用邀請中的 Email
+				teacherEmail = invitation.Email
+			} else if req.Email != "" {
+				// 使用 LINE ID Token 獲取的 Email
+				teacherEmail = req.Email
+			} else {
+				// 都沒有 email，使用固定格式
+				teacherEmail = "teacher@timeledger.tw"
+			}
+
+			newTeacher := models.Teacher{
+				LineUserID: req.LineUserID,
+				Email:      teacherEmail,
+				Name:       lineProfile.DisplayName, // 使用 LINE 的顯示名稱
+				AvatarURL:  lineProfile.PictureURL,  // 使用 LINE 的頭像
+			}
+
+			createdTeacher, err := s.teacherRepo.Create(ctx, newTeacher)
+			if err != nil {
+				return fmt.Errorf("failed to create teacher: %w", err)
+			}
+			teacher = createdTeacher
+		}
+		return nil
+	})
+
 	if err != nil {
-		// 新老師：自動建立老師帳號，使用 LINE 的 displayName 作為名稱
-		// Email 優先級：邀請指定 > LINE ID Token > 預設
-		var teacherEmail string
-
-		if invitation.Email != "" {
-			// 指定邀請使用邀請中的 Email
-			teacherEmail = invitation.Email
-		} else if req.Email != "" {
-			// 使用 LINE ID Token 獲取的 Email
-			teacherEmail = req.Email
-		} else {
-			// 都沒有 email，使用固定格式
-			teacherEmail = "teacher@timeledger.tw"
-		}
-
-		newTeacher := models.Teacher{
-			LineUserID: req.LineUserID,
-			Email:      teacherEmail,
-			Name:       lineProfile.DisplayName, // 使用 LINE 的顯示名稱
-			AvatarURL:  lineProfile.PictureURL,  // 使用 LINE 的頭像
-		}
-
-		createdTeacher, err := s.teacherRepo.Create(ctx, newTeacher)
-		if err != nil {
-			return nil, s.app.Err.New(errInfos.SQL_ERROR), fmt.Errorf("failed to create teacher: %w", err)
-		}
-		teacher = createdTeacher
+		return nil, s.app.Err.New(errInfos.SQL_ERROR), err
 	}
 
 	// 通用邀請跳過 Email 驗證（已移除 Email 檢查，允許 Email 不符時也能加入）
@@ -705,55 +722,67 @@ func (s *TeacherService) AcceptInvitationByLink(ctx context.Context, req *Accept
 	}
 
 	// 建立 CenterMembership（包含 Role 欄位）
+	// 使用資料庫事務確保原子性
 	membership := models.CenterMembership{
 		CenterID:  invitation.CenterID,
 		TeacherID: teacher.ID,
 		Role:      invitation.Role,
 		Status:    "ACTIVE", // 設置為 ACTIVE 狀態，供 GetActiveByTeacherID 和 ListTeacherIDsByCenterID 查詢
 	}
-	if _, err := s.membershipRepo.Create(ctx, membership); err != nil {
+
+	// 執行事務操作
+	err = s.app.MySQL.WDB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// 在事務中創建 Membership
+		if _, err := s.membershipRepo.Create(ctx, membership); err != nil {
+			return fmt.Errorf("failed to create membership: %w", err)
+		}
+
+		// 若邀請函的 TeacherID 為 0，回填為目前老師的 ID
+		if invitation.TeacherID == 0 {
+			if err := s.invitationRepo.UpdateFields(ctx, invitation.ID, map[string]interface{}{
+				"teacher_id": teacher.ID,
+			}); err != nil {
+				return fmt.Errorf("failed to update invitation teacher_id: %w", err)
+			}
+		}
+
+		// 通用邀請不更新邀請狀態（保持 PENDING，可重複使用）
+		if invitation.InviteType != models.InvitationTypeGeneral {
+			// 更新邀請狀態（非通用邀請）
+			now := time.Now()
+			if err := s.invitationRepo.UpdateFields(ctx, invitation.ID, map[string]interface{}{
+				"status":       models.InvitationStatusAccepted,
+				"responded_at": &now,
+			}); err != nil {
+				return fmt.Errorf("failed to update invitation status: %w", err)
+			}
+		}
+
+		// 審核日誌（在事務中創建）
+		s.auditLogRepo.Create(ctx, models.AuditLog{
+			CenterID:   invitation.CenterID,
+			ActorType:  "TEACHER",
+			ActorID:    teacher.ID,
+			Action:     "JOIN_CENTER_VIA_LINK",
+			TargetType: "CenterInvitation",
+			TargetID:   invitation.ID,
+			Payload: models.AuditPayload{
+				After: map[string]interface{}{
+					"teacher_id":  teacher.ID,
+					"center_id":   invitation.CenterID,
+					"role":        invitation.Role,
+					"status":      "ACCEPTED",
+					"invite_type": string(invitation.InviteType),
+				},
+			},
+		})
+
+		return nil
+	})
+
+	if err != nil {
 		return nil, s.app.Err.New(errInfos.SQL_ERROR), err
 	}
-
-	// 若邀請函的 TeacherID 為 0，回填為目前老師的 ID
-	if invitation.TeacherID == 0 {
-		if err := s.invitationRepo.UpdateFields(ctx, invitation.ID, map[string]interface{}{
-			"teacher_id": teacher.ID,
-		}); err != nil {
-			s.Logger.Warn("failed to update invitation teacher_id", "invitation_id", invitation.ID, "error", err)
-		}
-	}
-
-	// 通用邀請不更新邀請狀態（保持 PENDING，可重複使用）
-	if invitation.InviteType != models.InvitationTypeGeneral {
-		// 更新邀請狀態（非通用邀請）
-		now := time.Now()
-		if err := s.invitationRepo.UpdateFields(ctx, invitation.ID, map[string]interface{}{
-			"status":       models.InvitationStatusAccepted,
-			"responded_at": &now,
-		}); err != nil {
-			return nil, s.app.Err.New(errInfos.SQL_ERROR), err
-		}
-	}
-
-	// 審核日誌
-	s.auditLogRepo.Create(ctx, models.AuditLog{
-		CenterID:   invitation.CenterID,
-		ActorType:  "TEACHER",
-		ActorID:    teacher.ID,
-		Action:     "JOIN_CENTER_VIA_LINK",
-		TargetType: "CenterInvitation",
-		TargetID:   invitation.ID,
-		Payload: models.AuditPayload{
-			After: map[string]interface{}{
-				"teacher_id":  teacher.ID,
-				"center_id":   invitation.CenterID,
-				"role":        invitation.Role,
-				"status":      "ACCEPTED",
-				"invite_type": string(invitation.InviteType),
-			},
-		},
-	})
 
 	// 取得中心資訊
 	center, err := s.centerRepo.GetByID(ctx, invitation.CenterID)
@@ -763,6 +792,8 @@ func (s *TeacherService) AcceptInvitationByLink(ctx context.Context, req *Accept
 	}
 
 	// 發送 LINE 通知（異步）
+	// 建立 teacher 副本以確保 goroutine 執行時資料仍然有效
+	teacherForNotification := teacher
 	go func() {
 		notifyCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
@@ -775,7 +806,7 @@ func (s *TeacherService) AcceptInvitationByLink(ctx context.Context, req *Accept
 		for i := range admins {
 			adminPtrs[i] = &admins[i]
 		}
-		_ = s.lineBotService.SendInvitationAcceptedNotification(notifyCtx, adminPtrs, &teacher, centerName, invitation.Role)
+		_ = s.lineBotService.SendInvitationAcceptedNotification(notifyCtx, adminPtrs, &teacherForNotification, centerName, invitation.Role)
 	}()
 
 	// 生成 JWT Token
@@ -913,4 +944,88 @@ func (s *TeacherService) RegisterPublic(ctx context.Context, req *PublicRegister
 			"is_open_to_hiring": createdTeacher.IsOpenToHiring,
 		},
 	}, nil, nil
+}
+
+// ==================== 分布式鎖相關方法 ====================
+
+const (
+	// 分布式鎖前綴
+	lockPrefix = "teacher:lock:"
+	// 鎖的 TTL（秒）
+	lockTTL = 10
+)
+
+// acquireTeacherCreationLock 嘗試獲取教師創建分布式鎖
+// 使用 Redis SETNX 實現，防止並發創建重複帳號
+func (s *TeacherService) acquireTeacherCreationLock(ctx context.Context, lineUserID string) (string, error) {
+	if s.redisClient == nil || s.redisClient.DB0 == nil {
+		// Redis 未配置，跳過鎖（單機部署環境）
+		return "", nil
+	}
+
+	lockKey := lockPrefix + lineUserID
+
+	// 使用 SET NX EX 原子操作獲取鎖
+	// 如果鍵不存在，則設置值並過期時間
+	// 返回 OK 表示成功獲取鎖
+	result, err := s.redisClient.DB0.SetNX(ctx, lockKey, "locked", time.Duration(lockTTL)*time.Second).Result()
+	if err != nil {
+		s.Logger.Error("failed to acquire distributed lock", "key", lockKey, "error", err)
+		return "", err
+	}
+
+	if result {
+		// 成功獲取鎖
+		s.Logger.Debug("acquired teacher creation lock", "line_user_id", lineUserID)
+		return lockKey, nil
+	}
+
+	// 獲取鎖失敗
+	s.Logger.Debug("failed to acquire teacher creation lock (already locked)", "line_user_id", lineUserID)
+	return "", errors.New("system is busy, please try again")
+}
+
+// releaseTeacherCreationLock 釋放教師創建分布式鎖
+func (s *TeacherService) releaseTeacherCreationLock(ctx context.Context, lockKey string) {
+	if s.redisClient == nil || s.redisClient.DB0 == nil || lockKey == "" {
+		return
+	}
+
+	// 刪除鎖鍵
+	err := s.redisClient.DB0.Del(ctx, lockKey).Err()
+	if err != nil {
+		s.Logger.Warn("failed to release distributed lock", "key", lockKey, "error", err)
+		return
+	}
+
+	s.Logger.Debug("released teacher creation lock", "key", lockKey)
+}
+
+// tryLockTeacherCreation 嘗試獲取鎖並執行操作
+// 如果獲取鎖失敗，會重試指定的次數
+func (s *TeacherService) tryLockTeacherCreation(ctx context.Context, lineUserID string, fn func() error) error {
+	lockKey, err := s.acquireTeacherCreationLock(ctx, lineUserID)
+	if err != nil {
+		// 獲取鎖失敗，進行重試
+		maxRetries := 3
+		for i := 0; i < maxRetries; i++ {
+			time.Sleep(time.Duration(i+1) * 100 * time.Millisecond) // 指數退避
+			lockKey, err = s.acquireTeacherCreationLock(ctx, lineUserID)
+			if err == nil {
+				break
+			}
+		}
+
+		if err != nil {
+			return fmt.Errorf("failed to acquire lock after %d retries: %w", maxRetries, err)
+		}
+	}
+
+	// 確保最終釋放鎖
+	defer func() {
+		s.releaseTeacherCreationLock(ctx, lockKey)
+	}()
+
+	// 執行被保護的操作
+	return fn()
 }
