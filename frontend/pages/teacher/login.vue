@@ -30,31 +30,6 @@
         </button>
       </form>
 
-      <!-- 快速登入測試區域 -->
-      <div class="mt-6 p-4 bg-gray-700/50 rounded-lg border border-gray-600">
-        <p class="text-sm text-gray-400 mb-3 text-center">🧪 測試快速登入</p>
-        <div class="space-y-2">
-          <button
-            @click="quickLogin('U000000000000000000000001')"
-            class="w-full px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm rounded transition-colors"
-          >
-            李小美 (瑜伽老師)
-          </button>
-          <button
-            @click="quickLogin('U000000000000000000000002')"
-            class="w-full px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded transition-colors"
-          >
-            陳大文 (健身教練)
-          </button>
-          <button
-            @click="quickLogin('U000000000000000000000003')"
-            class="w-full px-3 py-2 bg-pink-600 hover:bg-pink-700 text-white text-sm rounded transition-colors"
-          >
-            王小花 (舞蹈老師)
-          </button>
-        </div>
-      </div>
-
       <div v-if="error" class="mt-4 p-3 bg-red-900/50 text-red-300 rounded-lg border border-red-800">
         {{ error }}
       </div>
@@ -82,22 +57,9 @@ const route = useRoute()
 const authStore = useAuthStore()
 
 const lineUserId = ref(route.query.line_user_id as string || '')
-const accessToken = ref(route.query.access_token as string || '')
 const loading = ref(false)
 const error = ref('')
 const success = ref(false)
-
-// 測試用的老師資料
-const testTeachers = [
-  { id: 'U000000000000000000000001', name: '李小美', role: '瑜伽老師' },
-  { id: 'U000000000000000000000002', name: '陳大文', role: '健身教練' },
-  { id: 'U000000000000000000000003', name: '王小花', role: '舞蹈老師' },
-]
-
-const quickLogin = (id: string) => {
-  lineUserId.value = id
-  handleLogin()
-}
 
 async function handleLogin() {
   if (!lineUserId.value) {
@@ -113,8 +75,7 @@ async function handleLogin() {
     const response = await $fetch('/api/v1/auth/teacher/line/login', {
       method: 'POST',
       body: {
-        line_user_id: lineUserId.value,
-        access_token: accessToken.value || 'mock-token'
+        line_user_id: lineUserId.value
       }
     })
 
