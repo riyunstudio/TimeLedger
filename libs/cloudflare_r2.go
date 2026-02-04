@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/hmac"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -12,6 +13,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"timeLedger/configs"
@@ -49,10 +51,13 @@ func (s *R2StorageService) UploadFile(ctx context.Context, file io.Reader, filen
 		return "", fmt.Errorf("R2 storage service is not initialized")
 	}
 
-	// 生成唯一的檔案 key
-	timestamp := time.Now().Format("20060102_150405")
-	ext := filepath.Ext(filename)
-	uniqueKey := fmt.Sprintf("certificates/%s_%s%s", timestamp, randomString(8), ext)
+	// 使用傳入的檔名作為 key (如果是純檔名則補上預設目錄)
+	uniqueKey := filename
+	if !strings.Contains(uniqueKey, "/") {
+		timestamp := time.Now().Format("20060102_150405")
+		ext := filepath.Ext(filename)
+		uniqueKey = fmt.Sprintf("certificates/%s_%s%s", timestamp, RandomString(8), ext)
+	}
 
 	// 讀取檔案內容
 	fileContent, err := io.ReadAll(file)
@@ -245,13 +250,21 @@ func (s *R2StorageService) GetPublicURL(filename string) string {
 
 // 輔助函數
 
-func randomString(length int) string {
+// RandomString 產生隨機字串（加密安全）
+func RandomString(length int) string {
 	const charset = "abcdefghijklmnopqrstuvwxyz0123456789"
-	result := make([]byte, length)
-	for i := range result {
-		result[i] = charset[i%len(charset)]
+	b := make([]byte, length)
+	if _, err := rand.Read(b); err != nil {
+		// 回退到簡單的隨機（雖然不應該發生）
+		for i := range b {
+			b[i] = charset[time.Now().UnixNano()%int64(len(charset))]
+		}
+		return string(b)
 	}
-	return string(result)
+	for i := range b {
+		b[i] = charset[int(b[i])%len(charset)]
+	}
+	return string(b)
 }
 
 func sha256Hex(data []byte) string {
@@ -277,21 +290,31 @@ func hmacSHA256Hex(key []byte, data []byte) string {
 }
 
 func extractKeyFromURL(fileURL, publicURL, bucketName, accountID string) (string, error) {
-	// 如果有 publicURL，從中提取
-	if publicURL != "" {
-		u, err := url.Parse(fileURL)
-		if err == nil {
-			return filepath.Base(u.Path), nil
-		}
-	}
-
-	// 否則從標準 R2 URL 提取
 	u, err := url.Parse(fileURL)
 	if err != nil {
 		return "", err
 	}
 
-	return filepath.Base(u.Path), nil
+	// 1. 如果使用了 Public URL
+	if publicURL != "" {
+		pURL, err := url.Parse(publicURL)
+		if err == nil && strings.HasPrefix(u.Host, pURL.Host) {
+			return strings.TrimPrefix(u.Path, "/"), nil
+		}
+	}
+
+	// 2. 如果是標準 R2 URL (accountid.r2.cloudflarestorage.com/bucket/key)
+	host := fmt.Sprintf("%s.r2.cloudflarestorage.com", accountID)
+	if u.Host == host {
+		// 移除開頭的 /bucket/
+		pathParts := strings.SplitN(strings.TrimPrefix(u.Path, "/"), "/", 2)
+		if len(pathParts) == 2 && pathParts[0] == bucketName {
+			return pathParts[1], nil
+		}
+	}
+
+	// 回退方案：嘗試最後一部分（可能不正確，但比報錯好一點）
+	return strings.TrimPrefix(u.Path, "/"), nil
 }
 
 func GetContentType(filename string) string {
@@ -325,7 +348,7 @@ func (s *LocalStorageService) UploadFile(ctx context.Context, file io.Reader, fi
 	// 生成唯一的檔案 key
 	timestamp := time.Now().Format("20060102_150405")
 	ext := filepath.Ext(filename)
-	uniqueFilename := fmt.Sprintf("%s_%s%s", timestamp, randomString(8), ext)
+	uniqueFilename := fmt.Sprintf("%s_%s%s", timestamp, RandomString(8), ext)
 	filePath := filepath.Join(s.basePath, uniqueFilename)
 
 	// 確保目錄存在

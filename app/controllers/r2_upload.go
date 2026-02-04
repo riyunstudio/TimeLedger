@@ -90,7 +90,7 @@ func (c *R2TestController) UploadTest(ctx *gin.Context) {
 	// 生成檔案名稱
 	timestamp := time.Now().Format("20060102_150405")
 	ext := getFileExtension(header.Filename)
-	uniqueFilename := strings.ToLower(category) + "/" + timestamp + "_" + randomString(8) + ext
+	uniqueFilename := strings.ToLower(category) + "/" + timestamp + "_" + libs.RandomString(8) + ext
 
 	// 根據設定選擇儲存方式
 	var fileURL string
@@ -219,7 +219,7 @@ func (c *R2TestController) BatchUploadTest(ctx *gin.Context) {
 			// 生成檔案名稱
 			timestamp := time.Now().Format("20060102_150405")
 			ext := getFileExtension(header.Filename)
-			uniqueFilename := "batch/" + timestamp + "_" + randomString(6) + ext
+			uniqueFilename := "batch/" + timestamp + "_" + libs.RandomString(6) + ext
 
 			// 上傳到 R2
 			if r2Enabled {
@@ -297,14 +297,7 @@ func getFileExtension(filename string) string {
 	return ext
 }
 
-func randomString(length int) string {
-	const charset = "abcdefghijklmnopqrstuvwxyz0123456789"
-	result := make([]byte, length)
-	for i := range result {
-		result[i] = charset[i%len(charset)]
-	}
-	return string(result)
-}
+// (已移除 redundant randomString，改用 libs.RandomString)
 
 func maskString(s string, visibleChars int) string {
 	if len(s) <= visibleChars {
