@@ -75,6 +75,7 @@ func (s *TeacherProfileService) GetProfile(ctx context.Context, teacherID uint) 
 
 // UpdateProfileRequest 更新老師個人資料請求
 type UpdateProfileRequest struct {
+	Name              string
 	Bio               string
 	City              string
 	District          string
@@ -88,6 +89,11 @@ func (s *TeacherProfileService) UpdateProfile(ctx context.Context, teacherID uin
 	teacher, err := s.teacherRepo.GetByID(ctx, teacherID)
 	if err != nil {
 		return nil, s.app.Err.New(errInfos.SQL_ERROR), err
+	}
+
+	// 更新姓名
+	if req.Name != "" {
+		teacher.Name = req.Name
 	}
 
 	if req.Bio != "" {

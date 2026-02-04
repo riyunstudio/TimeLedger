@@ -168,6 +168,7 @@ func (ctl *TeacherProfileController) UpdateProfile(ctx *gin.Context) {
 	}
 
 	profile, errInfo, err := ctl.profileService.UpdateProfile(ctx, teacherID, &services.UpdateProfileRequest{
+		Name:              req.Name,
 		Bio:               req.Bio,
 		City:              req.City,
 		District:          req.District,
@@ -509,6 +510,7 @@ type UploadFileResponse struct {
 // ==================== Request Types ====================
 
 type UpdateTeacherProfileRequest struct {
+	Name              string   `json:"name"`
 	Bio               string   `json:"bio"`
 	City              string   `json:"city"`
 	District          string   `json:"district"`
