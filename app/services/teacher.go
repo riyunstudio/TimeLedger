@@ -695,7 +695,7 @@ func (s *TeacherService) AcceptInvitationByLink(ctx context.Context, req *Accept
 	membership := models.CenterMembership{
 		CenterID:  invitation.CenterID,
 		TeacherID: teacher.ID,
-		Status:    invitation.Role,
+		Status:    "ACTIVE", // 設置為 ACTIVE 狀態，供 GetActiveByTeacherID 和 ListTeacherIDsByCenterID 查詢
 	}
 	if _, err := s.membershipRepo.Create(ctx, membership); err != nil {
 		return nil, s.app.Err.New(errInfos.SQL_ERROR), err
