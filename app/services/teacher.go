@@ -666,8 +666,10 @@ func (s *TeacherService) AcceptInvitationByLink(ctx context.Context, req *Accept
 	// 檢查是否已經是中心成員
 	existingMembership, err := s.membershipRepo.GetByCenterAndTeacher(ctx, invitation.CenterID, teacher.ID)
 	if err == nil {
-		// 已經是成員，更新邀請狀態
-		s.invitationRepo.UpdateStatus(ctx, invitation.ID, models.InvitationStatusAccepted)
+		// 通用邀請不更新邀請狀態（保持 PENDING，可重複使用）
+		if invitation.InviteType != models.InvitationTypeGeneral {
+			s.invitationRepo.UpdateStatus(ctx, invitation.ID, models.InvitationStatusAccepted)
+		}
 
 		// 同步成員 Role（如果不同）
 		if existingMembership.Role != invitation.Role {
@@ -679,8 +681,9 @@ func (s *TeacherService) AcceptInvitationByLink(ctx context.Context, req *Accept
 			}
 		}
 
-		// 若邀請函的 TeacherID 為 0，回填為目前老師的 ID
-		if invitation.TeacherID == 0 {
+		// 通用邀請不回填 TeacherID（允許多人使用同一個邀請連結）
+		// 只有非通用邀請且 TeacherID 為 0 時才回填
+		if invitation.InviteType != models.InvitationTypeGeneral && invitation.TeacherID == 0 {
 			if err := s.invitationRepo.UpdateFields(ctx, invitation.ID, map[string]interface{}{
 				"teacher_id": teacher.ID,
 			}); err != nil {
@@ -737,8 +740,9 @@ func (s *TeacherService) AcceptInvitationByLink(ctx context.Context, req *Accept
 			return fmt.Errorf("failed to create membership: %w", err)
 		}
 
-		// 若邀請函的 TeacherID 為 0，回填為目前老師的 ID
-		if invitation.TeacherID == 0 {
+		// 通用邀請不回填 TeacherID（允許多人使用同一個邀請連結）
+		// 只有非通用邀請且 TeacherID 為 0 時才回填
+		if invitation.InviteType != models.InvitationTypeGeneral && invitation.TeacherID == 0 {
 			if err := s.invitationRepo.UpdateFields(ctx, invitation.ID, map[string]interface{}{
 				"teacher_id": teacher.ID,
 			}); err != nil {
