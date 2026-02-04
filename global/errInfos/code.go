@@ -36,15 +36,16 @@ const (
 
 // 業務資源類 (4)
 const (
-	NOT_FOUND          ErrCode = 40001
-	DUPLICATE          ErrCode = 40002
-	TAG_INVALID        ErrCode = 40003
-	LIMIT_EXCEEDED     ErrCode = 40004
-	RESOURCE_IN_USE    ErrCode = 40005
-	COURSE_IN_USE      ErrCode = 40006
-	OFFERING_HAS_RULES ErrCode = 40007
-	ROOM_IN_USE        ErrCode = 40008
-	INVALID_STATUS     ErrCode = 40009
+	NOT_FOUND                  ErrCode = 40001
+	DUPLICATE                  ErrCode = 40002
+	TAG_INVALID                ErrCode = 40003
+	LIMIT_EXCEEDED             ErrCode = 40004
+	RESOURCE_IN_USE            ErrCode = 40005
+	COURSE_IN_USE              ErrCode = 40006
+	OFFERING_HAS_RULES         ErrCode = 40007
+	ROOM_IN_USE                ErrCode = 40008
+	INVALID_STATUS             ErrCode = 40009
+	TEACHER_NOT_REGISTERED     ErrCode = 40010 // 老師尚未註冊（需要先完成註冊流程）
 )
 
 // 排課核心類 (5)

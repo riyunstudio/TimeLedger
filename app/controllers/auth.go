@@ -5,6 +5,7 @@ import (
 	"timeLedger/app"
 	"timeLedger/app/services"
 	"timeLedger/global"
+	"timeLedger/global/errInfos"
 
 	"github.com/gin-gonic/gin"
 )
@@ -86,8 +87,41 @@ func (ctl *AuthController) TeacherLineLogin(ctx *gin.Context) {
 		return
 	}
 
-	response, err := ctl.authService.TeacherLineLogin(ctx, req.LineUserID, req.AccessToken)
+	response, errInfo, err := ctl.authService.TeacherLineLogin(ctx, req.LineUserID, req.AccessToken)
 	if err != nil {
+		// 根據錯誤類型返回不同的狀態碼
+		if errInfo != nil {
+			// 根據錯誤類型返回不同的狀態碼
+			switch errInfo.Code {
+			case errInfos.TEACHER_NOT_REGISTERED:
+				ctx.JSON(http.StatusBadRequest, global.ApiResponse{
+					Code:    errInfo.Code,
+					Message: err.Error(),
+				})
+				return
+			case errInfos.UNAUTHORIZED:
+				ctx.JSON(http.StatusUnauthorized, global.ApiResponse{
+					Code:    errInfo.Code,
+					Message: err.Error(),
+				})
+				return
+			case errInfos.SQL_ERROR:
+				ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
+					Code:    errInfo.Code,
+					Message: err.Error(),
+				})
+				return
+			default:
+				// 其他錯誤類型
+				ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
+					Code:    errInfo.Code,
+					Message: err.Error(),
+				})
+				return
+			}
+		}
+
+		// 沒有 errInfo，但有錯誤
 		ctx.JSON(http.StatusUnauthorized, global.ApiResponse{
 			Code:    global.UNAUTHORIZED,
 			Message: err.Error(),

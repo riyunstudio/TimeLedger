@@ -11,6 +11,7 @@ import (
 	"timeLedger/app"
 	"timeLedger/app/models"
 	"timeLedger/app/repositories"
+	"timeLedger/global/errInfos"
 	jwt "timeLedger/libs/jwt"
 
 	"golang.org/x/crypto/bcrypt"
@@ -138,15 +139,16 @@ func (s *authService) AdminLogin(ctx context.Context, email, password string) (L
 	}, nil
 }
 
-func (s *authService) TeacherLineLogin(ctx context.Context, lineUserID, accessToken string) (LoginResponse, error) {
+func (s *authService) TeacherLineLogin(ctx context.Context, lineUserID, accessToken string) (*LoginResponse, *errInfos.Res, error) {
 	// 驗證 LINE Access Token
 	if err := s.verifyLineToken(accessToken, lineUserID); err != nil {
-		return LoginResponse{}, err
+		return nil, s.app.Err.New(errInfos.UNAUTHORIZED), err
 	}
 
 	teacher, err := s.teacherRepository.GetByLineUserID(ctx, lineUserID)
 	if err != nil {
-		return LoginResponse{}, errors.New("teacher not found")
+		// 老師尚未註冊，返回特定錯誤碼讓前端可以引導用戶註冊
+		return nil, s.app.Err.New(errInfos.TEACHER_NOT_REGISTERED), fmt.Errorf("teacher not registered")
 	}
 
 	// 取得老師所屬的中心 ID
@@ -164,7 +166,7 @@ func (s *authService) TeacherLineLogin(ctx context.Context, lineUserID, accessTo
 
 	token, err := s.GenerateToken(claims)
 	if err != nil {
-		return LoginResponse{}, err
+		return nil, s.app.Err.New(errInfos.SYSTEM_ERROR), err
 	}
 
 	// 觸發歡迎訊息（如果尚未發送且已綁定 LINE）
@@ -172,7 +174,7 @@ func (s *authService) TeacherLineLogin(ctx context.Context, lineUserID, accessTo
 		go s.triggerWelcomeTeacherMessage(ctx, &teacher, centerID)
 	}
 
-	return LoginResponse{
+	return &LoginResponse{
 		Token: token,
 		User: IdentInfo{
 			ID:         teacher.ID,
@@ -182,7 +184,7 @@ func (s *authService) TeacherLineLogin(ctx context.Context, lineUserID, accessTo
 			LineUserID: teacher.LineUserID,
 			CenterID:   centerID,
 		},
-	}, nil
+	}, nil, nil
 }
 
 func (s *authService) GenerateToken(claims jwt.Claims) (string, error) {

@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 
+	"timeLedger/global/errInfos"
 	jwt "timeLedger/libs/jwt"
 )
 
@@ -25,7 +26,7 @@ type AuthService interface {
 	AdminLogin(ctx context.Context, email, password string) (LoginResponse, error)
 
 	// Teacher Login
-	TeacherLineLogin(ctx context.Context, lineUserID, accessToken string) (LoginResponse, error)
+	TeacherLineLogin(ctx context.Context, lineUserID, accessToken string) (*LoginResponse, *errInfos.Res, error)
 
 	// Generate Token
 	GenerateToken(claims jwt.Claims) (string, error)

@@ -109,6 +109,7 @@ definePageMeta({
 
 const config = useRuntimeConfig()
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 const { $liff } = useNuxtApp()
 
@@ -123,10 +124,88 @@ const loginError = ref('')
 // LINE User ID
 const lineUserId = ref('')
 
+// 等待 LIFF SDK 初始化完成
+const waitForLiffInit = (maxWait = 5000): Promise<boolean> => {
+  return new Promise((resolve) => {
+    const startTime = Date.now()
+    const checkInterval = 100
+
+    const check = () => {
+      if ($liff) {
+        // SDK 已初始化，檢查是否可以使用
+        try {
+          // 嘗試存取 isLoggedIn 方法
+          if (typeof $liff.isLoggedIn === 'function') {
+            resolve(true)
+            return
+          }
+        } catch (e) {
+          // SDK 尚未完全就緒，繼續等待
+        }
+      }
+
+      if (Date.now() - startTime > maxWait) {
+        console.warn('LIFF SDK 初始化超時')
+        resolve(false)
+        return
+      }
+
+      setTimeout(check, checkInterval)
+    }
+
+    check()
+  })
+}
+
+// 處理 OAuth 重導回來的參數
+const handleOAuthCallback = async () => {
+  const code = route.query.code as string
+  const state = route.query.state as string
+
+  console.log('[OAuth] 處理 callback，code:', !!code, 'state:', !!state)
+
+  // 如果有 state 參數，驗證狀態
+  if (state) {
+    // 這是從 LINE 重導回來的
+    // SDK 應該已經自動處理了 code，現在等待 SDK 初始化完成
+    const initialized = await waitForLiffInit()
+
+    if (!initialized) {
+      console.error('[OAuth] LIFF SDK 初始化超時')
+      throw new Error('LIFF SDK 初始化超時，請重新整理頁面')
+    }
+
+    console.log('[OAuth] SDK 初始化完成，檢查登入狀態...')
+
+    // 再次檢查登入狀態
+    const isLoggedIn = $liff.isLoggedIn()
+    console.log('[OAuth] LINE 登入狀態:', isLoggedIn)
+
+    if (isLoggedIn) {
+      // 登入成功，取得用戶資訊
+      const profile = await $liff.getProfile()
+      lineUserId.value = profile.userId
+      hasLineUserId.value = true
+      console.log('[OAuth] 已登入，userId:', profile.userId)
+      await performLogin()
+    } else {
+      // SDK 處理失敗，需要手動處理
+      console.warn('[OAuth] SDK 未自動完成登入')
+      hasLineUserId.value = false
+    }
+  } else {
+    console.log('[OAuth] 無 state 參數，清除 URL 參數')
+    hasLineUserId.value = false
+  }
+}
+
 // 初始化
 const initLiff = async () => {
   loading.value = true
   error.value = ''
+
+  console.log('[Login] 開始初始化，URL:', window.location.href)
+  console.log('[Login] Route query:', route.query)
 
   try {
     // 檢查 LIFF 是否已初始化
@@ -134,23 +213,38 @@ const initLiff = async () => {
       throw new Error('LIFF 尚未初始化，請重新整理頁面')
     }
 
+    console.log('[Login] LIFF 已初始化')
+
+    // 檢查 URL 中是否有 OAuth callback 參數
+    if (route.query.code) {
+      console.log('[Login] 檢測到 OAuth callback，開始處理...')
+      await handleOAuthCallback()
+      return
+    }
+
+    console.log('[Login] 無 OAuth callback，檢查登入狀態...')
+
     // 檢查是否已登入 LINE
     const isLoggedIn = $liff.isLoggedIn()
+    console.log('[Login] LINE 登入狀態:', isLoggedIn)
 
     if (isLoggedIn) {
       // 已登入 LINE，取得用戶資訊
       const profile = await $liff.getProfile()
       lineUserId.value = profile.userId
       hasLineUserId.value = true
+      console.log('[Login] 已登入，userId:', profile.userId)
 
       // 執行登入
       await performLogin()
     } else {
       // 未登入 LINE，需要先登入
       hasLineUserId.value = false
+      console.log('[Login] 未登入，等待用戶點擊登入按鈕')
     }
   } catch (err: any) {
     error.value = err.message || '初始化失敗，請重新整理頁面'
+    console.error('[Login] 初始化錯誤:', err)
   } finally {
     loading.value = false
   }
@@ -183,6 +277,8 @@ const performLogin = async () => {
       throw new Error('無法取得 LINE Access Token，請重新登入')
     }
 
+    console.log('[Login] 準備呼叫後端 API，lineUserId:', lineUserId.value)
+
     const response = await $fetch('/api/v1/auth/teacher/line/login', {
       method: 'POST',
       body: {
@@ -191,6 +287,8 @@ const performLogin = async () => {
       }
     })
 
+    console.log('[Login] API 回應:', response)
+
     // 檢查 response.data 或 response.datas
     const responseData = (response as any).data || (response as any).datas
     const responseCode = (response as any).code
@@ -198,6 +296,8 @@ const performLogin = async () => {
     if (responseCode === 0 && responseData) {
       const token = responseData.token
       const user = responseData.user
+
+      console.log('[Login] 登入成功，跳轉到後台...')
 
       // 設置 authStore 和 localStorage
       authStore.login({
@@ -211,11 +311,23 @@ const performLogin = async () => {
       setTimeout(() => {
         router.push('/teacher/dashboard')
       }, 1500)
+    } else if (responseCode === 40010) {
+      // TEACHER_NOT_REGISTERED - 老師尚未註冊
+      // 重導到註冊頁面，並攜帶 LINE 用戶資訊
+      console.info('[Login] 老師尚未註冊，重導到註冊頁面...')
+
+      // 儲存 LINE 用戶資訊到 localStorage，供註冊頁面使用
+      localStorage.setItem('register_line_user_id', lineUserId.value)
+
+      // 重導到註冊頁面
+      router.push('/teacher/register')
+      return
     } else {
+      console.error('[Login] 登入失敗:', (response as any)?.message)
       loginError.value = (response as any)?.message || '登入失敗，請稍後再試'
     }
   } catch (err: any) {
-    console.error('Login error:', err)
+    console.error('[Login] API 錯誤:', err)
     loginError.value = err.data?.message || err.message || '登入失敗，請稍後再試'
   } finally {
     loggingIn.value = false
