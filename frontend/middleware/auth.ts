@@ -15,6 +15,23 @@ export default defineNuxtRouteMiddleware((to, from) => {
   // 從頁面 meta 取得 auth 設定，預設為 PUBLIC
   const requiredAuth = (to.meta.auth as string) || 'PUBLIC'
 
+  // 【新增】LINE OAuth 回調檢測：如果 URL 包含 code 和 state 參數，強制重導向到登入頁
+  // 這樣可以確保無論 LINE 跳回哪一頁，都會被強制送往登入處理頁
+  const hasCode = to.query.code !== undefined && to.query.code !== null && to.query.code !== ''
+  const hasState = to.query.state !== undefined && to.query.state !== null && to.query.state !== ''
+
+  if (hasCode && hasState && to.path !== '/teacher/login') {
+    // 這是 LINE OAuth 回調，強制重導向到老師登入頁處理
+    console.log('[Auth Middleware] 檢測到 LINE OAuth 回參數，重導向到登入頁處理')
+    return navigateTo({
+      path: '/teacher/login',
+      query: {
+        code: to.query.code,
+        state: to.query.state
+      }
+    })
+  }
+
   // 登入頁面允許所有人存取
   if (to.path === '/admin/login' || to.path === '/teacher/login') {
     return

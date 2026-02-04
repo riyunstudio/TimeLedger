@@ -164,38 +164,67 @@ const handleOAuthCallback = async () => {
 
   console.log('[OAuth] 處理 callback，code:', !!code, 'state:', !!state)
 
-  // 如果有 state 參數，驗證狀態
-  if (state) {
-    // 這是從 LINE 重導回來的
-    // SDK 應該已經自動處理了 code，現在等待 SDK 初始化完成
-    const initialized = await waitForLiffInit()
+  // 【優化】首先等待 LIFF SDK 初始化完成
+  // 這是關鍵步驟，確保 SDK 就緒後才能進行後續操作
+  const initialized = await waitForLiffInit()
 
-    if (!initialized) {
-      console.error('[OAuth] LIFF SDK 初始化超時')
-      throw new Error('LIFF SDK 初始化超時，請重新整理頁面')
-    }
+  if (!initialized) {
+    console.error('[OAuth] LIFF SDK 初始化超時')
+    throw new Error('LIFF SDK 初始化超時，請重新整理頁面')
+  }
 
-    console.log('[OAuth] SDK 初始化完成，檢查登入狀態...')
+  console.log('[OAuth] SDK 初始化完成')
 
-    // 再次檢查登入狀態
+  // 【優化】檢查是否有 OAuth 回調參數 (code 和 state)
+  if (code && state) {
+    console.log('[OAuth] 檢測到 OAuth 回調參數，嘗試獲取登入狀態...')
+
+    // 嘗試獲取登入狀態
     const isLoggedIn = $liff.isLoggedIn()
     console.log('[OAuth] LINE 登入狀態:', isLoggedIn)
 
     if (isLoggedIn) {
       // 登入成功，取得用戶資訊
-      const profile = await $liff.getProfile()
-      lineUserId.value = profile.userId
-      hasLineUserId.value = true
-      console.log('[OAuth] 已登入，userId:', profile.userId)
-      await performLogin()
+      try {
+        const profile = await $liff.getProfile()
+        lineUserId.value = profile.userId
+        hasLineUserId.value = true
+        console.log('[OAuth] 已登入，userId:', profile.userId)
+        await performLogin()
+      } catch (err) {
+        console.error('[OAuth] 獲取用戶資訊失敗:', err)
+        throw new Error('無法獲取 LINE 用戶資訊，請重新登入')
+      }
     } else {
-      // SDK 處理失敗，需要手動處理
-      console.warn('[OAuth] SDK 未自動完成登入')
-      hasLineUserId.value = false
+      // 【優化】如果 SDK 認為未登入但有 OAuth 參數，嘗試檢查 Access Token
+      // 有些情況下 SDK 可能在 callback URL 解析後需要額外處理
+      try {
+        const accessToken = $liff.getAccessToken()
+        if (accessToken) {
+          console.log('[OAuth] 找到 Access Token，嘗試獲取用戶資訊...')
+          const profile = await $liff.getProfile()
+          lineUserId.value = profile.userId
+          hasLineUserId.value = true
+          console.log('[OAuth] 已登入 (透過 token)，userId:', profile.userId)
+          await performLogin()
+        } else {
+          console.warn('[OAuth] SDK 未自動完成登入，無 Access Token')
+          hasLineUserId.value = false
+        }
+      } catch (err) {
+        console.error('[OAuth] 處理 OAuth 回調時發生錯誤:', err)
+        hasLineUserId.value = false
+      }
     }
   } else {
-    console.log('[OAuth] 無 state 參數，清除 URL 參數')
+    // 無 OAuth 回調參數，清除狀態
+    console.log('[OAuth] 無 OAuth 回調參數，清除 URL 參數')
     hasLineUserId.value = false
+
+    // 【優化】清除 URL 中的殘留參數（避免用戶刷新頁面時重複處理）
+    if (route.query.code || route.query.state) {
+      await router.replace({ path: route.path, query: {} })
+    }
   }
 }
 
