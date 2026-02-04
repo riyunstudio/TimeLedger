@@ -262,8 +262,12 @@ const lineLogin = async () => {
     // 檢查是否已登入 LINE
     const isLoggedInLine = $liff.isLoggedIn()
 
+    // 儲存邀請 token 到 localStorage（無論是否已登入 LINE）
+    localStorage.setItem('invitation_token', token.value)
+
     if (!isLoggedInLine) {
-      // 未登入，使用 LIFF SDK 登入
+      // 未登入，先儲存邀請 token，然後導向 LINE 登入
+      // LINE 登入完成後會導回此頁面，屆時再取得用戶資訊
       $liff.login()
       return
     }
@@ -271,8 +275,7 @@ const lineLogin = async () => {
     // 已登入 LINE，取得用戶資訊
     const userInfo = await getLineUserInfo()
 
-    // 儲存邀請 token 和用戶資訊到 localStorage
-    localStorage.setItem('invitation_token', token.value)
+    // 儲存用戶資訊到 localStorage
     localStorage.setItem('invitation_line_user_id', userInfo.userId)
     localStorage.setItem('invitation_access_token', userInfo.accessToken)
 
@@ -361,7 +364,14 @@ const acceptInvitationWithToken = async (lineUserId: string, accessToken: string
   // 返回登入所需的資料（包含正確的 centerID）
   return {
     token: data.datas.token,
-    teacher: data.datas.teacher,
+    teacher: {
+      id: data.datas.teacher.id,
+      name: data.datas.teacher.name,
+      email: data.datas.teacher.email,
+      line_user_id: data.datas.teacher.line_user_id,
+      avatar_url: data.datas.teacher.avatar_url,
+      center_id: data.datas.center_id, // 加入中心 ID
+    },
   }
 }
 
@@ -411,6 +421,7 @@ const acceptInvitation = async () => {
           email: data.datas.teacher.email,
           line_user_id: data.datas.teacher.line_user_id,
           avatar_url: data.datas.teacher.avatar_url,
+          center_id: data.datas.center_id, // 加入中心 ID
         }
       }
 
@@ -447,21 +458,49 @@ const goToTeacherDashboard = () => {
 }
 
 // 檢查是否有待處理的邀請登入
-const checkInvitationLogin = () => {
+const checkInvitationLogin = async () => {
   const savedToken = localStorage.getItem('invitation_token')
   const savedLineUserId = localStorage.getItem('invitation_line_user_id')
   const savedAccessToken = localStorage.getItem('invitation_access_token')
 
-  if (savedToken && savedToken === token.value && savedLineUserId && savedAccessToken) {
-    // 使用者已經透過邀請頁面導向登入，回來後自動執行登入並接受邀請
+  if (!savedToken || savedToken !== token.value) {
+    return
+  }
+
+  // 如果已經有完整的登入資訊，直接執行登入
+  if (savedLineUserId && savedAccessToken) {
     setTimeout(() => {
       performLoginAndAccept(savedLineUserId, savedAccessToken)
     }, 200)
+    return
+  }
+
+  // 如果只有 token 沒有 userId/accessToken（用戶剛從 LINE 導回）
+  // 需要從 LIFF 取得用戶資訊
+  if ($liff && typeof $liff.isLoggedIn === 'function' && $liff.isLoggedIn()) {
+    try {
+      const userInfo = await getLineUserInfo()
+
+      // 儲存用戶資訊到 localStorage
+      localStorage.setItem('invitation_line_user_id', userInfo.userId)
+      localStorage.setItem('invitation_access_token', userInfo.accessToken)
+
+      if (userInfo.email) {
+        localStorage.setItem('invitation_email', userInfo.email)
+      }
+
+      // 執行登入並接受邀請
+      setTimeout(() => {
+        performLoginAndAccept(userInfo.userId, userInfo.accessToken)
+      }, 200)
+    } catch (err: any) {
+      console.error('Failed to get LINE user info:', err)
+    }
   }
 }
 
 onMounted(async () => {
   await fetchInvitation()
-  checkInvitationLogin()
+  await checkInvitationLogin()
 })
 </script>
