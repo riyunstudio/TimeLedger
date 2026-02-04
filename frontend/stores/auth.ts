@@ -32,7 +32,7 @@ export const useAuthStore = defineStore('auth', () => {
   // Actions
   function login(authData: AuthResponse) {
     // 保存 token 到 localStorage（用於 API 請求認證）
-    const userType = authData.user?.user_type || authData.teacher?.user_type || 'ADMIN'
+    const userType = authData.user?.user_type || (authData.teacher ? 'TEACHER' : 'ADMIN')
     const storageKey = userType === 'ADMIN' || userType === 'OWNER' || userType === 'STAFF' 
       ? 'admin_token' 
       : 'teacher_token'
