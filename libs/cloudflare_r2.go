@@ -72,9 +72,13 @@ func (s *R2StorageService) UploadFile(ctx context.Context, file io.Reader, filen
 		return "", fmt.Errorf("failed to create request: %w", err)
 	}
 
+	// 計算 payload hash
+	payloadHash := sha256Hex(fileContent)
+
 	// 設定 Header
 	req.Header.Set("Content-Type", contentType)
 	req.Header.Set("x-amz-acl", "public-read")
+	req.Header.Set("x-amz-content-sha256", payloadHash)
 
 	// 產生 AWS Signature v4
 	date := time.Now().UTC()
@@ -87,7 +91,6 @@ func (s *R2StorageService) UploadFile(ctx context.Context, file io.Reader, filen
 
 	// 產生簽名
 	signedHeaders := "content-type;host;x-amz-acl;x-amz-content-sha256;x-amz-date"
-	payloadHash := sha256Hex(fileContent)
 
 	canonicalHeaders := fmt.Sprintf("content-type:%s\nhost:%s.r2.cloudflarestorage.com\nx-amz-acl:public-read\nx-amz-content-sha256:%s\nx-amz-date:%s\n",
 		contentType, s.config.CloudflareR2AccountID, payloadHash, amzDate)
