@@ -4,17 +4,17 @@
     <aside class="hidden lg:flex w-64 bg-slate-800/50 border-r border-slate-700 flex-col shrink-0">
       <!-- Logo 區域 -->
       <div class="p-5 border-b border-slate-700">
-        <div class="flex items-center gap-3">
-          <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-primary-500 to-secondary-500 flex items-center justify-center">
+        <NuxtLink to="/admin/dashboard" class="flex items-center gap-3 group">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-primary-500 to-secondary-500 flex items-center justify-center group-hover:scale-105 transition-transform duration-200">
             <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
           <div>
-            <h1 class="text-lg font-bold text-white">TimeLedger</h1>
+            <h1 class="text-lg font-bold text-white group-hover:text-primary-300 transition-colors">TimeLedger</h1>
             <p class="text-xs text-slate-400">排課管理平台</p>
           </div>
-        </div>
+        </NuxtLink>
       </div>
 
       <!-- 導航選單 -->
@@ -78,6 +78,20 @@
             </svg>
           </div>
           <span class="font-medium">審核管理</span>
+        </NuxtLink>
+
+        <!-- 一鍵公告 -->
+        <NuxtLink
+          to="/admin/broadcast"
+          class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all duration-200 group"
+          active-class="bg-primary-500/20 !text-primary-400"
+        >
+          <div class="w-8 h-8 rounded-lg bg-slate-700/50 flex items-center justify-center group-hover:bg-orange-500/20 transition-colors">
+            <svg class="w-4 h-4 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+            </svg>
+          </div>
+          <span class="font-medium">一鍵公告</span>
         </NuxtLink>
 
         <!-- 人才庫 -->
@@ -259,17 +273,17 @@
         >
           <!-- Mobile Header -->
           <div class="p-5 border-b border-slate-700 flex items-center justify-between">
-            <div class="flex items-center gap-3">
-              <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-primary-500 to-secondary-500 flex items-center justify-center">
+            <NuxtLink to="/admin/dashboard" class="flex items-center gap-3 group" @click="mobileMenuOpen = false">
+              <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-primary-500 to-secondary-500 flex items-center justify-center group-hover:scale-105 transition-transform duration-200">
                 <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
               <div>
-                <h1 class="text-lg font-bold text-white">TimeLedger</h1>
+                <h1 class="text-lg font-bold text-white group-hover:text-primary-300 transition-colors">TimeLedger</h1>
                 <p class="text-xs text-slate-400">排課管理平台</p>
               </div>
-            </div>
+            </NuxtLink>
             <button
               @click="mobileMenuOpen = false"
               class="p-2 rounded-lg hover:bg-slate-700 transition-colors"
@@ -335,6 +349,19 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <span class="font-medium">審核管理</span>
+            </NuxtLink>
+
+            <!-- 一鍵公告 -->
+            <NuxtLink
+              to="/admin/broadcast"
+              class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all duration-200"
+              active-class="bg-primary-500/20 !text-primary-400"
+              @click="mobileMenuOpen = false"
+            >
+              <svg class="w-5 h-5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+              </svg>
+              <span class="font-medium">一鍵公告</span>
             </NuxtLink>
 
             <!-- 人才庫 -->
@@ -599,6 +626,7 @@ const pageTitle = computed(() => {
     '/admin/dashboard': '首頁',
     '/admin/schedules': '排課管理',
     '/admin/approval': '審核管理',
+    '/admin/broadcast': '一鍵公告',
     '/admin/matching': '智慧媒合',
     '/admin/teacher-ratings': '老師評價',
     '/admin/templates': '範本管理',

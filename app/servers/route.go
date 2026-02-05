@@ -41,6 +41,7 @@ type actions struct {
 	scheduling        *controllers.SchedulingController
 	smartMatching     *controllers.SmartMatchingController
 	notification      *controllers.NotificationController
+	adminNotification *controllers.AdminNotificationController
 	export            *controllers.ExportController
 	lineBot           *controllers.LineBotController
 	r2Test            *controllers.R2TestController
@@ -250,6 +251,8 @@ func (s *Server) LoadRoutes() {
 		{http.MethodPost, "/api/v1/notifications/test", s.action.notification.SendTestNotification, []gin.HandlerFunc{authMiddleware.Authenticate()}},
 		// Notification Queue Stats (Admin only)
 		{http.MethodGet, "/api/v1/admin/notifications/queue-stats", s.action.notification.GetQueueStats, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		// Admin Notification - Broadcast (Admin only)
+		{http.MethodPost, "/api/v1/admin/notifications/broadcast", s.action.adminNotification.Broadcast, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		// Health Check
 		{http.MethodGet, "/api/v1/admin/health/redis", s.action.notification.CheckRedisHealth, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 
@@ -351,6 +354,7 @@ func (s *Server) NewControllers() {
 	s.action.scheduling = controllers.NewSchedulingController(s.app)
 	s.action.smartMatching = controllers.NewSmartMatchingController(s.app)
 	s.action.notification = controllers.NewNotificationController(s.app)
+	s.action.adminNotification = controllers.NewAdminNotificationController(s.app)
 	s.action.export = controllers.NewExportController(s.app)
 	s.action.lineBot = controllers.NewLineBotController(s.app)
 	s.action.r2Test = controllers.NewR2TestController(s.app)

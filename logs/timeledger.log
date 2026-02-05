@@ -687,3 +687,41 @@
 {"level":"info","time":"2026-02-04T13:27:48.840+0800","message":"Starting TimeLedger application..."}
 {"level":"info","time":"2026-02-04T13:27:49.226+0800","message":"Notification worker disabled (set NOTIFICATION_WORKER_ENABLED=true to enable)"}
 {"level":"info","time":"2026-02-04T13:27:49.226+0800","message":"Asynq worker disabled (set ASYNQ_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-02-04T16:58:54.989+0800","message":"Application shutting down gracefully"}
+{"level":"info","time":"2026-02-04T16:58:54.989+0800","message":"Application exited"}
+{"level":"info","time":"2026-02-04T16:58:58.553+0800","message":"Starting TimeLedger application..."}
+{"level":"info","time":"2026-02-04T16:58:59.090+0800","message":"Notification worker disabled (set NOTIFICATION_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-02-04T16:58:59.090+0800","message":"Asynq worker disabled (set ASYNQ_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-02-04T17:28:58.961+0800","message":"Application shutting down gracefully"}
+{"level":"info","time":"2026-02-04T17:28:58.961+0800","message":"Application exited"}
+{"level":"info","time":"2026-02-04T17:29:01.693+0800","message":"Starting TimeLedger application..."}
+{"level":"info","time":"2026-02-04T17:29:02.252+0800","message":"Notification worker disabled (set NOTIFICATION_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-02-04T17:29:02.252+0800","message":"Asynq worker disabled (set ASYNQ_WORKER_ENABLED=true to enable)"}
+{"level":"debug","time":"2026-02-04T17:32:33.027+0800","message":"teacher has no center membership, skipping welcome message","component":"AuthService","teacher_id":4}
+{"level":"debug","time":"2026-02-04T17:34:20.094+0800","message":"teacher has no center membership, skipping welcome message","component":"AuthService","teacher_id":4}
+{"level":"info","time":"2026-02-05T00:08:15.406+0800","message":"Application shutting down gracefully"}
+{"level":"info","time":"2026-02-05T00:08:15.407+0800","message":"Application exited"}
+{"level":"info","time":"2026-02-05T00:08:27.221+0800","message":"Starting TimeLedger application..."}
+{"level":"info","time":"2026-02-05T00:08:27.835+0800","message":"Notification worker disabled (set NOTIFICATION_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-02-05T00:08:27.835+0800","message":"Asynq worker disabled (set ASYNQ_WORKER_ENABLED=true to enable)"}
+{"level":"debug","time":"2026-02-05T00:11:28.681+0800","message":"caching room list","component":"CacheService","center_id":1,"count":0}
+{"level":"debug","time":"2026-02-05T00:11:45.399+0800","message":"course cache miss or parse error","component":"CacheService","center_id":1,"error":"cache miss"}
+{"level":"debug","time":"2026-02-05T00:11:45.399+0800","message":"course cache miss or error, fetching from database","component":"CourseService","center_id":1,"cache_error":null}
+{"level":"debug","time":"2026-02-05T00:11:45.402+0800","message":"caching course list","component":"CacheService","center_id":1,"count":0}
+{"level":"info","time":"2026-02-05T00:36:00.931+0800","message":"Application shutting down gracefully"}
+{"level":"info","time":"2026-02-05T00:36:00.931+0800","message":"Application exited"}
+{"level":"info","time":"2026-02-05T00:36:03.578+0800","message":"Starting TimeLedger application..."}
+{"level":"info","time":"2026-02-05T00:36:04.072+0800","message":"Notification worker disabled (set NOTIFICATION_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-02-05T00:36:04.072+0800","message":"Asynq worker disabled (set ASYNQ_WORKER_ENABLED=true to enable)"}
+{"level":"debug","time":"2026-02-05T10:37:06.523+0800","message":"caching room list","component":"CacheService","center_id":1,"count":0}
+{"level":"debug","time":"2026-02-05T10:37:07.996+0800","message":"course cache miss or parse error","component":"CacheService","center_id":1,"error":"cache miss"}
+{"level":"debug","time":"2026-02-05T10:37:07.996+0800","message":"course cache miss or error, fetching from database","component":"CourseService","center_id":1,"cache_error":null}
+{"level":"debug","time":"2026-02-05T10:37:07.998+0800","message":"caching course list","component":"CacheService","center_id":1,"count":0}
+{"level":"debug","time":"2026-02-05T10:50:16.237+0800","message":"course cache miss or error, fetching from database","component":"CourseService","center_id":1,"cache_error":null}
+{"level":"debug","time":"2026-02-05T10:50:16.243+0800","message":"caching course list","component":"CacheService","center_id":1,"count":0}
+{"level":"debug","time":"2026-02-05T10:50:35.112+0800","message":"invalidating course list cache","component":"CacheService","center_id":1,"pattern":"list:1"}
+{"level":"debug","time":"2026-02-05T10:50:35.112+0800","message":"deleting cache by pattern","component":"CacheService","pattern":"timeledger:course:list:1"}
+{"level":"debug","time":"2026-02-05T10:50:35.113+0800","message":"found keys to delete","component":"CacheService","keys":["timeledger:course:list:1"],"count":1}
+{"level":"debug","time":"2026-02-05T10:50:36.671+0800","message":"course cache miss or parse error","component":"CacheService","center_id":1,"error":"cache miss"}
+{"level":"debug","time":"2026-02-05T10:50:36.671+0800","message":"course cache miss or error, fetching from database","component":"CourseService","center_id":1,"cache_error":null}
+{"level":"debug","time":"2026-02-05T10:50:36.672+0800","message":"caching course list","component":"CacheService","center_id":1,"count":1}

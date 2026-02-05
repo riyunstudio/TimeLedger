@@ -2,6 +2,7 @@ package services
 
 import (
 	"fmt"
+	"time"
 	"timeLedger/app/models"
 )
 
@@ -18,6 +19,9 @@ type LineBotTemplateService interface {
 
 	// 取得邀請通知範本
 	GetInvitationAcceptedTemplate(teacher *models.Teacher, centerName string, role string) interface{}
+
+	// 取得行程聚合範本
+	GenerateAgendaFlex(agendaItems []AgendaItem, targetDate time.Time, userName string) interface{}
 }
 
 // LineBotTemplateServiceImpl Flex Message 範本服務實現
@@ -531,6 +535,203 @@ func (s *LineBotTemplateServiceImpl) GetInvitationAcceptedTemplate(teacher *mode
 						"uri":   adminURL,
 					},
 				},
+			},
+		},
+	}
+}
+
+// GenerateAgendaFlex 行程聚合 Flex Message 範本
+// 支援顯示多筆行程列表，中心課程使用藍色系，個人行程使用紫色系
+func (s *LineBotTemplateServiceImpl) GenerateAgendaFlex(agendaItems []AgendaItem, targetDate time.Time, userName string) interface{} {
+	// 格式化日期
+	dateStr := targetDate.Format("2006年1月2日")
+	weekdayStr := targetDate.Format("Mon")
+	weekdayMap := map[string]string{
+		"Monday":    "週一",
+		"Tuesday":   "週二",
+		"Wednesday": "週三",
+		"Thursday":  "週四",
+		"Friday":   "週五",
+		"Saturday":  "週六",
+		"Sunday":    "週日",
+	}
+	weekdayTW := weekdayMap[weekdayStr]
+	if weekdayTW == "" {
+		weekdayTW = weekdayStr
+	}
+
+	// 構建行程列表內容
+	var agendaContents []interface{}
+
+	// 日期標題
+	agendaContents = append(agendaContents, map[string]interface{}{
+		"type": "text",
+		"text": fmt.Sprintf("📅 %s (%s)", dateStr, weekdayTW),
+		"weight": "bold",
+		"size":   "lg",
+		"align":  "center",
+	})
+
+	// 如果沒有行程
+	if len(agendaItems) == 0 {
+		agendaContents = append(agendaContents, map[string]interface{}{
+			"type":   "text",
+			"text":   "🎉 今天沒有行程",
+			"size":   "md",
+			"color":  "#666666",
+			"align":  "center",
+			"margin": "md",
+		})
+	} else {
+		// 分隔線
+		agendaContents = append(agendaContents, map[string]interface{}{
+			"type":  "separator",
+			"margin": "md",
+		})
+
+		// 遍歷所有行程項目
+		for _, item := range agendaItems {
+			// 根據來源類型設定顏色
+			var icon, color, bgColor string
+			if item.SourceType == AgendaSourceTypeCenter {
+				icon = "🏢"
+				color = "#1E88E5" // 藍色系
+				bgColor = "#E3F2FD"
+			} else {
+				icon = "📌"
+				color = "#9C27B0" // 紫色系
+				bgColor = "#F3E5F5"
+			}
+
+			// 行程項目
+			itemBox := map[string]interface{}{
+				"type": "box",
+				"layout": "horizontal",
+				"margin": "sm",
+				"paddingAll": "8px",
+				"backgroundColor": bgColor,
+				"cornerRadius": "8px",
+				"contents": []interface{}{
+					// 時間
+					map[string]interface{}{
+						"type": "text",
+						"text": item.Time,
+						"size": "md",
+						"weight": "bold",
+						"color": color,
+						"flex": 0,
+						"align": "center",
+						"minWidth": "60px",
+					},
+					// 分隔線
+					map[string]interface{}{
+						"type":  "separator",
+						"color": color,
+						"margin": "xs",
+					},
+					// 標題和來源
+					map[string]interface{}{
+						"type":   "box",
+						"layout": "vertical",
+						"flex":   1,
+						"contents": []interface{}{
+							map[string]interface{}{
+								"type": "text",
+								"text": item.Title,
+								"size": "md",
+								"weight": "bold",
+								"color": "#333333",
+								"wrap": true,
+							},
+							map[string]interface{}{
+								"type": "text",
+								"text": fmt.Sprintf("%s %s", icon, item.SourceName),
+								"size": "xs",
+								"color": "#888888",
+								"margin": "xs",
+							},
+						},
+					},
+				},
+			}
+			agendaContents = append(agendaContents, itemBox)
+		}
+	}
+
+	// 統計資訊
+	if len(agendaItems) > 0 {
+		agendaContents = append(agendaContents, map[string]interface{}{
+			"type":  "separator",
+			"margin": "md",
+		})
+		agendaContents = append(agendaContents, map[string]interface{}{
+			"type": "text",
+			"text": fmt.Sprintf("📊 共 %d 筆行程", len(agendaItems)),
+			"size":  "sm",
+			"color": "#999999",
+			"align": "end",
+			"margin": "sm",
+		})
+	}
+
+	homeURL := fmt.Sprintf("%s", s.baseURL)
+
+	return map[string]interface{}{
+		"type": "bubble",
+		"body": map[string]interface{}{
+			"type":   "box",
+			"layout": "vertical",
+			"contents": []interface{}{
+				// 用戶歡迎標題
+				map[string]interface{}{
+					"type": "text",
+					"text": fmt.Sprintf("👋 %s 的今日行程", userName),
+					"weight": "bold",
+					"size":   "xl",
+					"align":  "center",
+					"margin": "md",
+				},
+				// 分隔線
+				map[string]interface{}{
+					"type":  "separator",
+					"margin": "md",
+				},
+				// 行程列表
+				map[string]interface{}{
+					"type":   "box",
+					"layout": "vertical",
+					"margin": "md",
+					"contents": agendaContents,
+				},
+			},
+		},
+		"footer": map[string]interface{}{
+			"type":   "box",
+			"layout": "vertical",
+			"contents": []interface{}{
+				map[string]interface{}{
+					"type":   "button",
+					"style":  "primary",
+					"height": "sm",
+					"action": map[string]interface{}{
+						"type":  "uri",
+						"label": "📱 進入系統首頁",
+						"uri":   homeURL,
+					},
+				},
+				map[string]interface{}{
+					"type":  "text",
+					"text":  "按鈕無法點擊？請直接複製連結",
+					"size":  "xs",
+					"color": "#AAAAAA",
+					"align": "center",
+					"margin": "sm",
+				},
+			},
+		},
+		"styles": map[string]interface{}{
+			"footer": map[string]interface{}{
+				"separator": true,
 			},
 		},
 	}
