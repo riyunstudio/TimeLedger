@@ -92,6 +92,59 @@ type LineBotErrorResponse struct {
 	} `json:"details"`
 }
 
+// AdminProfile 管理員簡化資料（用於顯示）
+type AdminProfile struct {
+	ID       uint   `json:"id"`
+	CenterID uint   `json:"center_id"`
+	Name     string `json:"name"`
+	Email    string `json:"email"`
+	Role     string `json:"role"`
+}
+
+// LineBotTeacherProfile 老師簡化資料（用於 LINE Bot 顯示）
+// 注意：避免與 cache.go 中的 TeacherProfile 衝突
+type LineBotTeacherProfile struct {
+	ID        uint   `json:"id"`
+	Name      string `json:"name"`
+	Email     string `json:"email"`
+	City      string `json:"city"`
+	District  string `json:"district"`
+	AvatarURL string `json:"avatar_url,omitempty"`
+}
+
+// CombinedIdentity 整合身份資訊（用於 LINE Bot 回覆使用者身份相關問題）
+// 組合管理員資料與老師資料，判斷主要角色
+type CombinedIdentity struct {
+	// 管理員資料列表（可能隸屬多個中心的管理員）
+	AdminProfiles []AdminProfile `json:"admin_profiles"`
+	// 老師個人檔案（若為老師角色）
+	TeacherProfile *LineBotTeacherProfile `json:"teacher_profile,omitempty"`
+	// 老師所屬中心會員關係
+	Memberships []models.CenterMembership `json:"memberships"`
+	// 主要角色：ADMIN 或 TEACHER（若有重疊，ADMIN 優先）
+	PrimaryRole string `json:"primary_role"`
+}
+
+// AgendaSourceType 日程來源類型
+type AgendaSourceType string
+
+const (
+	AgendaSourceTypeCenter   AgendaSourceType = "CENTER"   // 來自中心（排課）
+	AgendaSourceTypePersonal AgendaSourceType = "PERSONAL" // 個人行程
+)
+
+// AgendaItem 日程項目（用於 LINE Bot 查詢今日/本週行程）
+type AgendaItem struct {
+	// 開始時間（格式：15:04）
+	Time string `json:"time"`
+	// 行程標題
+	Title string `json:"title"`
+	// 來源名稱（中心名稱 或 「個人」）
+	SourceName string `json:"source_name"`
+	// 來源類型
+	SourceType AgendaSourceType `json:"source_type"`
+}
+
 // PushMessage 發送推播訊息給單一用戶
 func (s *LineBotServiceImpl) PushMessage(ctx context.Context, userID string, message interface{}) error {
 	messages := []interface{}{message}
