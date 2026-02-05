@@ -63,6 +63,10 @@ type Env struct {
 	RateLimitWindow        string
 	RateLimitBlockDuration string
 
+	// Broadcast Rate Limiting
+	BroadcastRateLimitEnabled bool
+	BroadcastMaxPerMinute    int
+
 	// File Upload / Cloudflare R2
 	UploadPath        string
 	UploadMaxSize     int
@@ -136,6 +140,10 @@ func LoadEnv() *Env {
 		RateLimitRequests:      getEnvAsInt("RATE_LIMIT_REQUESTS", 100),
 		RateLimitWindow:        getEnvAsString("RATE_LIMIT_WINDOW", "1m"),
 		RateLimitBlockDuration: getEnvAsString("RATE_LIMIT_BLOCK_DURATION", "5m"),
+
+		// Broadcast Rate Limiting
+		BroadcastRateLimitEnabled: getEnvAsBool("BROADCAST_RATE_LIMIT_ENABLED", true),
+		BroadcastMaxPerMinute:    getEnvAsInt("BROADCAST_MAX_PER_MINUTE", 5),
 
 		// File Upload
 		UploadPath:        getEnvAsString("UPLOAD_PATH", "./uploads"),

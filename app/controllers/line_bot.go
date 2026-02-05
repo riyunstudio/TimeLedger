@@ -3,8 +3,10 @@ package controllers
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 	"timeLedger/app"
 	"timeLedger/app/models"
@@ -123,6 +125,15 @@ func (c *LineBotController) handleMessageEvent(gctx *gin.Context, event *LINEWeb
 	text := event.Message.Text
 	userID := event.Source.UserID
 
+	// 【監控日誌】記錄用戶互動
+	identity, _ := c.lineBotService.GetCombinedIdentity(userID)
+	c.logger.Info("line_webhook_message",
+		"user_id", userID,
+		"primary_role", identity.PrimaryRole,
+		"message_type", "text",
+		"message_preview", truncateString(text, 50),
+	)
+
 	// 處理驗證碼（6位數大寫字母數字）
 	if len(text) == 6 && isValidBindingCode(text) {
 		c.processBindingCode(gctx, text, userID, event.ReplyToken)
@@ -143,6 +154,10 @@ func (c *LineBotController) handleMessageEvent(gctx *gin.Context, event *LINEWeb
 		c.sendMoreInfoMessage(gctx, event.ReplyToken)
 	case "稍後綁定", "稍後再說":
 		c.sendAckMessage(gctx, event.ReplyToken)
+	case "課表", "我的課表", "今日課表", "schedule", "Schedule":
+		c.sendScheduleMessage(gctx, event.ReplyToken, userID)
+	case "明天課表", "明日課表":
+		c.sendScheduleMessage(gctx, event.ReplyToken, userID, true)
 	default:
 		c.sendDefaultResponse(gctx, event.ReplyToken)
 	}
@@ -151,7 +166,15 @@ func (c *LineBotController) handleMessageEvent(gctx *gin.Context, event *LINEWeb
 // handleFollowEvent 處理加入好友事件
 func (c *LineBotController) handleFollowEvent(gctx *gin.Context, event *LINEWebhookEvent) {
 	userID := event.Source.UserID
-	c.logger.Info("user followed", "user_id", userID)
+
+	// 【監控日誌】記錄用戶關注
+	identity, _ := c.lineBotService.GetCombinedIdentity(userID)
+	c.logger.Info("line_webhook_follow",
+		"user_id", userID,
+		"primary_role", identity.PrimaryRole,
+		"is_bound_admin", identity.PrimaryRole == "ADMIN",
+		"is_bound_teacher", identity.PrimaryRole == "TEACHER",
+	)
 
 	// 嘗試判斷用戶類型並發送個人化歡迎訊息
 	ctx := gctx.Request.Context()
@@ -200,7 +223,11 @@ func (c *LineBotController) handleFollowEvent(gctx *gin.Context, event *LINEWebh
 // handleUnfollowEvent 處理封鎖/取消好友事件
 func (c *LineBotController) handleUnfollowEvent(gctx *gin.Context, event *LINEWebhookEvent) {
 	userID := event.Source.UserID
-	c.logger.Info("user unfollowed", "user_id", userID)
+
+	// 【監控日誌】記錄用戶取消關注
+	c.logger.Info("line_webhook_unfollow",
+		"user_id", userID,
+	)
 }
 
 // processBindingCode 處理綁定驗證碼
@@ -334,6 +361,122 @@ func (c *LineBotController) sendDefaultResponse(gctx *gin.Context, replyToken st
 	c.lineBotService.ReplyMessage(gctx.Request.Context(), replyToken, message)
 }
 
+// sendScheduleMessage 發送課表訊息
+// isTomorrow: true 表示查詢明天課表，false 表示查詢今天課表
+func (c *LineBotController) sendScheduleMessage(gctx *gin.Context, replyToken string, userID string, isTomorrow ...bool) {
+	ctx := gctx.Request.Context()
+
+	// 計算目標日期
+	targetDate := time.Now()
+	if len(isTomorrow) > 0 && isTomorrow[0] {
+		targetDate = targetDate.AddDate(0, 0, 1)
+	}
+
+	// 取得當日課表
+	agendaItems, err := c.lineBotService.GetAggregatedAgenda(userID, &targetDate)
+	if err != nil {
+		c.logger.Error("failed to get aggregated agenda", "error", err, "user_id", userID)
+		errorMsg := map[string]interface{}{
+			"type": "text",
+			"text": "❌ 取得課表失敗，請稍後再試。\n\n" +
+				"如有問題，請聯繫系統管理員。",
+		}
+		c.lineBotService.ReplyMessage(ctx, replyToken, errorMsg)
+		return
+	}
+
+	// 取得用戶名稱（用於標題顯示）
+	userName := ""
+	identity, err := c.lineBotService.GetCombinedIdentity(userID)
+	if err == nil {
+		if identity.TeacherProfile != nil {
+			userName = identity.TeacherProfile.Name
+		} else if len(identity.AdminProfiles) > 0 {
+			userName = identity.AdminProfiles[0].Name
+		}
+	}
+	if userName == "" {
+		userName = "您"
+	}
+
+	// 產生 Flex Message
+	flexContent := c.templateService.GenerateAgendaFlex(agendaItems, targetDate, userName)
+
+	// 發送 Flex Message
+	err = c.lineBotService.ReplyFlexMessage(ctx, replyToken, "今日課表", flexContent)
+	if err != nil {
+		c.logger.Error("failed to send schedule flex message", "error", err)
+		// Flex Message 失敗時，發送文字訊息
+		if len(agendaItems) == 0 {
+			weekdayStr := getWeekdayChinese(targetDate)
+			dateStr := targetDate.Format("1月2日")
+			fallbackMsg := map[string]interface{}{
+				"type": "text",
+				"text": fmt.Sprintf("📅 %s (%s)\n\n"+
+
+
+					"目前沒有課表。\n\n"+
+					"💡 您可以透過 LIFF 頁面查看完整課表。", dateStr, weekdayStr),
+			}
+			c.lineBotService.ReplyMessage(ctx, replyToken, fallbackMsg)
+		} else {
+			fallbackMsg := c.buildScheduleFallbackMessage(agendaItems, targetDate)
+			c.lineBotService.ReplyMessage(ctx, replyToken, fallbackMsg)
+		}
+	}
+}
+
+// buildScheduleFallbackMessage 建立課表文字回覆（當 Flex Message 失敗時使用）
+func (c *LineBotController) buildScheduleFallbackMessage(agendaItems []services.AgendaItem, targetDate time.Time) map[string]interface{} {
+	dateStr := targetDate.Format("1月2日")
+	weekdayStr := getWeekdayChinese(targetDate)
+
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("📅 %s (%s)\n\n", dateStr, weekdayStr))
+
+	// 分組顯示
+	var centerItems, personalItems []services.AgendaItem
+	for _, item := range agendaItems {
+		if item.SourceType == services.AgendaSourceTypeCenter {
+			centerItems = append(centerItems, item)
+		} else {
+			personalItems = append(personalItems, item)
+		}
+	}
+
+	// 顯示中心課表
+	if len(centerItems) > 0 {
+		sb.WriteString("🏢 中心課表\n")
+		for _, item := range centerItems {
+			sb.WriteString(fmt.Sprintf("  %s │ %s (%s)\n", item.Time, item.Title, item.SourceName))
+		}
+		if len(personalItems) > 0 {
+			sb.WriteString("\n")
+		}
+	}
+
+	// 顯示個人行程
+	if len(personalItems) > 0 {
+		sb.WriteString("📌 個人行程\n")
+		for _, item := range personalItems {
+			sb.WriteString(fmt.Sprintf("  %s │ %s\n", item.Time, item.Title))
+		}
+	}
+
+	sb.WriteString("\n💡 輸入「課表」查看明日課表")
+
+	return map[string]interface{}{
+		"type": "text",
+		"text": sb.String(),
+	}
+}
+
+// getWeekdayChinese 取得星期幾的中文名稱
+func getWeekdayChinese(date time.Time) string {
+	weekdays := []string{"週日", "週一", "週二", "週三", "週四", "週五", "週六"}
+	return weekdays[date.Weekday()]
+}
+
 // isValidBindingCode 檢查是否為有效的綁定驗證碼格式
 func isValidBindingCode(code string) bool {
 	if len(code) != 6 {
@@ -345,6 +488,17 @@ func isValidBindingCode(code string) bool {
 		}
 	}
 	return true
+}
+
+// truncateString 截斷字串（用於日誌顯示）
+func truncateString(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	if maxLen <= 3 {
+		return "..."
+	}
+	return s[:maxLen-3] + "..."
 }
 
 // HealthCheck 健康檢查
