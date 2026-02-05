@@ -9,6 +9,7 @@ import (
 	"timeLedger/app/repositories"
 	"timeLedger/app/resources"
 	"timeLedger/global/errInfos"
+	"timeLedger/libs"
 )
 
 // ScheduleServiceInterface 排課服務接口
@@ -230,10 +231,7 @@ func (s *ScheduleService) GetRules(ctx context.Context, centerID uint) ([]models
 // CreateRule 建立排課規則（使用交易確保原子性）
 func (s *ScheduleService) CreateRule(ctx context.Context, centerID, adminID uint, req *CreateScheduleRuleRequest) ([]models.ScheduleRule, *errInfos.Res, error) {
 	// 解析日期（使用台灣時區）
-	loc, err := time.LoadLocation("Asia/Taipei")
-	if err != nil {
-		loc = time.UTC
-	}
+	loc := libs.GetTaiwanLocation()
 	startDate, err := time.ParseInLocation("2006-01-02", req.StartDate, loc)
 	if err != nil {
 		return nil, s.App.Err.New(errInfos.PARAMS_VALIDATE_ERROR), fmt.Errorf("invalid start_date format: %w", err)
