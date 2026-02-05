@@ -148,3 +148,23 @@ func (rp *TeacherRepository) GetByEmail(ctx context.Context, email string) (mode
 		First(&data).Error
 	return data, err
 }
+
+// ListByPlaceholder retrieves teachers filtered by IsPlaceholder status.
+// Use this to find placeholder teachers (e.g., IsPlaceholder = true) or real teachers (IsPlaceholder = false).
+func (rp *TeacherRepository) ListByPlaceholder(ctx context.Context, isPlaceholder bool) ([]models.Teacher, error) {
+	var teachers []models.Teacher
+	err := rp.dbRead.WithContext(ctx).
+		Where("is_placeholder = ?", isPlaceholder).
+		Find(&teachers).Error
+	return teachers, err
+}
+
+// GetPlaceholder retrieves a placeholder teacher by their LINE user ID.
+// Returns error if not found or if the teacher is not a placeholder.
+func (rp *TeacherRepository) GetPlaceholder(ctx context.Context, lineUserID string) (models.Teacher, error) {
+	var data models.Teacher
+	err := rp.dbRead.WithContext(ctx).
+		Where("line_user_id = ? AND is_placeholder = ?", lineUserID, true).
+		First(&data).Error
+	return data, err
+}

@@ -75,17 +75,19 @@ func NewAdminTeacherResource() *AdminTeacherResource {
 
 // AdminTeacherResponse 管理員取得的老師回應結構
 type AdminTeacherResponse struct {
-	ID           uint                        `json:"id"`
-	Name         string                      `json:"name"`
-	Email        string                      `json:"email"`
-	Phone        string                      `json:"phone,omitempty"`
-	City         string                      `json:"city,omitempty"`
-	District     string                      `json:"district,omitempty"`
-	Bio          string                      `json:"bio,omitempty"`
-	IsActive     bool                        `json:"is_active"`
-	CreatedAt    time.Time                   `json:"created_at"`
-	Skills       []AdminTeacherSkillResponse `json:"skills,omitempty"`
-	Certificates []AdminCertificateResponse  `json:"certificates,omitempty"`
+	ID            uint                        `json:"id"`
+	Name          string                      `json:"name"`
+	Email         string                      `json:"email"`
+	Phone         string                      `json:"phone,omitempty"`
+	City          string                      `json:"city,omitempty"`
+	District      string                      `json:"district,omitempty"`
+	Bio           string                      `json:"bio,omitempty"`
+	IsActive      bool                        `json:"is_active"`
+	IsPlaceholder bool                        `json:"is_placeholder"`
+	LineUserID    string                      `json:"line_user_id,omitempty"`
+	CreatedAt     time.Time                   `json:"created_at"`
+	Skills        []AdminTeacherSkillResponse `json:"skills,omitempty"`
+	Certificates  []AdminCertificateResponse  `json:"certificates,omitempty"`
 }
 
 // AdminTeacherSkillResponse 管理員視角的老師技能回應結構
@@ -133,17 +135,19 @@ func (r *AdminTeacherResource) ToAdminTeacherResponse(
 	}
 
 	return &AdminTeacherResponse{
-		ID:           teacher.ID,
-		Name:         teacher.Name,
-		Email:        teacher.Email,
-		Phone:        teacher.PublicContactInfo,
-		City:         teacher.City,
-		District:     teacher.District,
-		Bio:          teacher.Bio,
-		IsActive:     teacher.IsOpenToHiring,
-		CreatedAt:    teacher.CreatedAt,
-		Skills:       skillResponses,
-		Certificates: certResponses,
+		ID:            teacher.ID,
+		Name:          teacher.Name,
+		Email:         teacher.Email,
+		Phone:         teacher.PublicContactInfo,
+		City:          teacher.City,
+		District:      teacher.District,
+		Bio:           teacher.Bio,
+		IsActive:      teacher.IsOpenToHiring,
+		IsPlaceholder: teacher.IsPlaceholder,
+		LineUserID:    teacher.LineUserID,
+		CreatedAt:     teacher.CreatedAt,
+		Skills:        skillResponses,
+		Certificates:  certResponses,
 	}
 }
 

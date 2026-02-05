@@ -21,7 +21,7 @@ export interface Teacher {
   /** 電話 */
   phone?: string
   /** LINE 用戶 ID (帳號綁定，不可解除) */
-  line_user_id: string
+  line_user_id?: string
   /** 縣市 */
   city?: string
   /** 區域 */
@@ -38,6 +38,8 @@ export interface Teacher {
   is_open_to_hiring: boolean
   /** 是否已激活 */
   is_active: boolean
+  /** 是否為佔位老師 (待綁定) */
+  is_placeholder?: boolean
   /** 邀請時間 */
   invited_at?: Timestamp
   /** 激活時間 */

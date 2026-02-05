@@ -8,13 +8,14 @@ import (
 
 type Teacher struct {
 	ID                uint           `gorm:"primaryKey" json:"id"`
-	LineUserID        string         `gorm:"type:varchar(255);uniqueIndex;not null" json:"line_user_id"`
+	LineUserID        string         `gorm:"type:varchar(255);uniqueIndex" json:"line_user_id"`
 	LineNotifyToken   string         `gorm:"type:varchar(255)" json:"line_notify_token"`
 	Name              string         `gorm:"type:varchar(255);not null" json:"name"`
 	Email             string         `gorm:"type:varchar(255)" json:"email"`
 	AvatarURL         string         `gorm:"type:varchar(512)" json:"avatar_url"`
 	Bio               string         `gorm:"type:text" json:"bio"`
 	IsOpenToHiring    bool           `gorm:"type:boolean;default:false;not null" json:"is_open_to_hiring"`
+	IsPlaceholder     bool           `gorm:"type:boolean;default:false;not null" json:"is_placeholder"`
 	City              string         `gorm:"type:varchar(100);index" json:"city"`
 	District          string         `gorm:"type:varchar(100)" json:"district"`
 	PublicContactInfo string         `gorm:"type:text" json:"public_contact_info"`

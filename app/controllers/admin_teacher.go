@@ -1,11 +1,14 @@
 package controllers
 
 import (
+	"context"
+	"fmt"
 	"time"
 	"timeLedger/app"
 	"timeLedger/app/models"
 	"timeLedger/app/repositories"
 	"timeLedger/app/resources"
+	"timeLedger/app/services"
 	"timeLedger/global/logger"
 
 	"github.com/gin-gonic/gin"
@@ -21,6 +24,7 @@ type AdminTeacherController struct {
 	centerTeacherNoteRepo *repositories.CenterTeacherNoteRepository
 	adminTeacherResource  *resources.AdminTeacherResource
 	teacherNoteResource   *resources.TeacherNoteResource
+	teacherMergeService    *services.TeacherMergeService
 }
 
 func NewAdminTeacherController(app *app.App) *AdminTeacherController {
@@ -32,6 +36,7 @@ func NewAdminTeacherController(app *app.App) *AdminTeacherController {
 		centerTeacherNoteRepo: repositories.NewCenterTeacherNoteRepository(app),
 		adminTeacherResource:  resources.NewAdminTeacherResource(),
 		teacherNoteResource:   resources.NewTeacherNoteResource(),
+		teacherMergeService:   services.NewTeacherMergeService(app),
 	}
 }
 
@@ -82,6 +87,108 @@ func (ctl *AdminTeacherController) ListTeachers(ctx *gin.Context) {
 	responses := ctl.adminTeacherResource.ToAdminTeacherResponses(teachers, make(map[uint][]models.TeacherSkill), make(map[uint][]models.TeacherCertificate))
 
 	helper.Success(responses)
+}
+
+// CreatePlaceholderTeacher 建立佔位老師（用於中心暫時無 LINE 帳號的老師）
+// @Summary 建立佔位老師
+// @Tags Admin
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param request body CreatePlaceholderTeacherRequest true "佔位老師資料"
+// @Success 200 {object} global.ApiResponse{data=resources.AdminTeacherResponse}
+// @Router /api/v1/admin/teachers/placeholder [post]
+func (ctl *AdminTeacherController) CreatePlaceholderTeacher(ctx *gin.Context) {
+	helper := NewContextHelper(ctx)
+
+	centerID := helper.MustCenterID()
+	if centerID == 0 {
+		return
+	}
+
+	adminID := helper.MustUserID()
+	if adminID == 0 {
+		return
+	}
+
+	var req CreatePlaceholderTeacherRequest
+	if !helper.MustBindJSON(&req) {
+		return
+	}
+
+	var teacherID uint
+
+	// 使用交易確保資料一致性
+	err := ctl.teacherRepository.Transaction(ctx.Request.Context(), func(txRepo *repositories.TeacherRepository) error {
+		// 建立佔位老師
+		now := time.Now()
+		teacher := models.Teacher{
+			Name:          req.Name,
+			Email:         req.Email,
+			LineUserID:    "", // 佔位老師無 LINE ID
+			IsPlaceholder: true,
+			CreatedAt:     now,
+			UpdatedAt:     now,
+		}
+
+		createdTeacher, err := txRepo.Create(ctx.Request.Context(), teacher)
+		if err != nil {
+			return fmt.Errorf("failed to create placeholder teacher: %w", err)
+		}
+
+		teacherID = createdTeacher.ID
+
+		// 建立中心會籍（狀態為 ACTIVE）
+		membership := models.CenterMembership{
+			CenterID:  centerID,
+			TeacherID: createdTeacher.ID,
+			Role:      "TEACHER",
+			Status:    "ACTIVE",
+			CreatedAt: now,
+			UpdatedAt: now,
+		}
+
+		_, err = ctl.membershipRepo.Create(ctx.Request.Context(), membership)
+		if err != nil {
+			return fmt.Errorf("failed to create center membership: %w", err)
+		}
+
+		// 審計日誌
+		ctl.auditLogRepo.Create(ctx.Request.Context(), models.AuditLog{
+			CenterID:   centerID,
+			ActorType:  "ADMIN",
+			ActorID:    adminID,
+			Action:     "CREATE_PLACEHOLDER_TEACHER",
+			TargetType: "Teacher",
+			TargetID:   createdTeacher.ID,
+			Payload: models.AuditPayload{
+				After: map[string]interface{}{
+					"name":            createdTeacher.Name,
+					"email":           createdTeacher.Email,
+					"is_placeholder":   true,
+					"membership_status": "ACTIVE",
+				},
+			},
+		})
+
+		return nil
+	})
+
+	if err != nil {
+		helper.InternalError("Failed to create placeholder teacher: " + err.Error())
+		return
+	}
+
+	// 重新查詢建立的老師（確保取得完整資料）
+	teacher, err := ctl.teacherRepository.GetByID(ctx.Request.Context(), teacherID)
+	if err != nil {
+		helper.InternalError("Failed to fetch created teacher")
+		return
+	}
+
+	// 轉換回應（無技能和證照）
+	response := ctl.adminTeacherResource.ToAdminTeacherResponse(&teacher, nil, nil)
+	helper.Success(response)
 }
 
 // DeleteTeacher 刪除老師（全局刪除，僅限系統管理員）
@@ -214,6 +321,18 @@ func (ctl *AdminTeacherController) RemoveFromCenter(ctx *gin.Context) {
 type UpsertTeacherNoteRequest struct {
 	Rating       int    `json:"rating" binding:"required,min=0,max=5"`
 	InternalNote string `json:"internal_note"`
+}
+
+// CreatePlaceholderTeacherRequest 建立佔位老師請求結構
+type CreatePlaceholderTeacherRequest struct {
+	Name  string `json:"name" binding:"required,min=1,max=255"`
+	Email string `json:"email" binding:"omitempty,email"`
+}
+
+// MergeTeachersRequest 合併教師請求結構
+type MergeTeachersRequest struct {
+	SourceTeacherID uint `json:"source_teacher_id" binding:"required"`
+	TargetTeacherID uint `json:"target_teacher_id" binding:"required"`
 }
 
 // GetTeacherNote 取得老師評分與備註
@@ -422,4 +541,106 @@ func (ctl *AdminTeacherController) DeleteTeacherNote(ctx *gin.Context) {
 	})
 
 	helper.Success(nil)
+}
+
+// MergeTeachers 合併兩位教師的資料
+// @Summary 合併教師資料
+// @Description 將來源教師的所有關聯資料遷移到目標教師，然後軟刪除來源教師
+// @Tags Admin
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param request body MergeTeachersRequest true "合併請求資料"
+// @Success 200 {object} global.ApiResponse
+// @Router /api/v1/admin/teachers/merge [post]
+func (ctl *AdminTeacherController) MergeTeachers(ctx *gin.Context) {
+	helper := NewContextHelper(ctx)
+
+	// 取得管理員 ID
+	adminID := helper.MustUserID()
+	if adminID == 0 {
+		return
+	}
+
+	// 取得中心 ID（從 JWT Token）
+	centerID := helper.MustCenterID()
+	if centerID == 0 {
+		return
+	}
+
+	// 綁定請求資料
+	var req MergeTeachersRequest
+	if !helper.MustBindJSON(&req) {
+		return
+	}
+
+	// 驗證參數
+	if req.SourceTeacherID == req.TargetTeacherID {
+		helper.BadRequest("來源教師與目標教師相同，無法合併")
+		return
+	}
+
+	if req.SourceTeacherID == 0 || req.TargetTeacherID == 0 {
+		helper.BadRequest("教師 ID 不能為零")
+		return
+	}
+
+	// 驗證兩位教師是否都屬於該中心
+	if err := ctl.validateTeachersBelongToCenter(centerID, req.SourceTeacherID, req.TargetTeacherID); err != nil {
+		helper.BadRequest(err.Error())
+		return
+	}
+
+	// 執行合併操作
+	if err := ctl.teacherMergeService.MergeTeacher(ctx.Request.Context(), req.SourceTeacherID, req.TargetTeacherID, centerID); err != nil {
+		helper.InternalError("合併教師失敗: " + err.Error())
+		return
+	}
+
+	// 記錄審計日誌
+	ctl.auditLogRepo.Create(ctx, models.AuditLog{
+		CenterID:   centerID,
+		ActorType:  "ADMIN",
+		ActorID:    adminID,
+		Action:     "MERGE_TEACHERS",
+		TargetType: "Teacher",
+		TargetID:   req.TargetTeacherID,
+		Payload: models.AuditPayload{
+			After: map[string]interface{}{
+				"source_teacher_id": req.SourceTeacherID,
+				"target_teacher_id": req.TargetTeacherID,
+			},
+		},
+	})
+
+	helper.Success(map[string]string{
+		"message":            "教師合併成功",
+		"source_teacher_id":  fmt.Sprintf("%d", req.SourceTeacherID),
+		"target_teacher_id":  fmt.Sprintf("%d", req.TargetTeacherID),
+	})
+}
+
+// validateTeachersBelongToCenter 驗證兩位教師是否都屬於該中心
+func (ctl *AdminTeacherController) validateTeachersBelongToCenter(centerID, sourceID, targetID uint) error {
+	// 檢查來源教師
+	sourceMembership, err := ctl.membershipRepo.GetByCenterAndTeacher(
+		context.Background(), centerID, sourceID)
+	if err != nil {
+		return fmt.Errorf("來源教師不屬於該中心")
+	}
+	if sourceMembership.Status != "ACTIVE" {
+		return fmt.Errorf("來源教師的會籍狀態不是 ACTIVE")
+	}
+
+	// 檢查目標教師
+	targetMembership, err := ctl.membershipRepo.GetByCenterAndTeacher(
+		context.Background(), centerID, targetID)
+	if err != nil {
+		return fmt.Errorf("目標教師不屬於該中心")
+	}
+	if targetMembership.Status != "ACTIVE" {
+		return fmt.Errorf("目標教師的會籍狀態不是 ACTIVE")
+	}
+
+	return nil
 }

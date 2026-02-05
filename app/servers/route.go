@@ -118,6 +118,8 @@ func (s *Server) LoadRoutes() {
 
 		// Admin - Teacher Management
 		{http.MethodGet, "/api/v1/teachers", s.action.adminTeacher.ListTeachers, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireAdmin()}},
+		{http.MethodPost, "/api/v1/admin/teachers/placeholder", s.action.adminTeacher.CreatePlaceholderTeacher, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodPost, "/api/v1/admin/teachers/merge", s.action.adminTeacher.MergeTeachers, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodDelete, "/api/v1/teachers/:id", s.action.adminTeacher.DeleteTeacher, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireAdmin()}},
 		{http.MethodDelete, "/api/v1/admin/centers/:id/teachers/:teacher_id", s.action.adminTeacher.RemoveFromCenter, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodPost, "/api/v1/admin/centers/:id/invitations", s.action.teacherInvitation.InviteTeacher, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
