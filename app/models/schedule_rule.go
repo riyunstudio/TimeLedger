@@ -63,8 +63,11 @@ func (dr *DateRange) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	// 嘗試多種日期格式
-	loc := time.UTC
+	// 使用台灣時區解析
+	loc, err := time.LoadLocation("Asia/Taipei")
+	if err != nil {
+		loc = time.UTC
+	}
 
 	// 格式1: YYYY-MM-DD HH:MM:SS+08:00 (帶時區的 ISO 8601)
 	startDate, err := time.ParseInLocation("2006-01-02T15:04:05Z07:00", aux.StartDate, loc)

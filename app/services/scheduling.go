@@ -229,20 +229,24 @@ func (s *ScheduleService) GetRules(ctx context.Context, centerID uint) ([]models
 
 // CreateRule 建立排課規則（使用交易確保原子性）
 func (s *ScheduleService) CreateRule(ctx context.Context, centerID, adminID uint, req *CreateScheduleRuleRequest) ([]models.ScheduleRule, *errInfos.Res, error) {
-	// 解析日期
-	startDate, err := time.Parse("2006-01-02", req.StartDate)
+	// 解析日期（使用台灣時區）
+	loc, err := time.LoadLocation("Asia/Taipei")
+	if err != nil {
+		loc = time.UTC
+	}
+	startDate, err := time.ParseInLocation("2006-01-02", req.StartDate, loc)
 	if err != nil {
 		return nil, s.App.Err.New(errInfos.PARAMS_VALIDATE_ERROR), fmt.Errorf("invalid start_date format: %w", err)
 	}
 
 	var endDate time.Time
 	if req.EndDate != nil && *req.EndDate != "" {
-		endDate, err = time.Parse("2006-01-02", *req.EndDate)
+		endDate, err = time.ParseInLocation("2006-01-02", *req.EndDate, loc)
 		if err != nil {
 			return nil, s.App.Err.New(errInfos.PARAMS_VALIDATE_ERROR), fmt.Errorf("invalid end_date format: %w", err)
 		}
 	} else {
-		endDate = time.Date(2099, 12, 31, 0, 0, 0, 0, time.UTC)
+		endDate = time.Date(2099, 12, 31, 0, 0, 0, 0, loc)
 	}
 
 	// 檢查衝突
