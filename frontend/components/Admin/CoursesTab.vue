@@ -158,8 +158,7 @@
               type="number"
               class="input-field"
               placeholder="60"
-              min="15"
-              step="15"
+              min="1"
             />
           </div>
 

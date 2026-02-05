@@ -31,9 +31,8 @@
               <input
                 v-model.number="form.duration"
                 type="number"
-                min="15"
-                step="15"
                 placeholder="60"
+                min="1"
                 class="input-field text-sm sm:text-base"
                 required
               />

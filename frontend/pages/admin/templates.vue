@@ -653,8 +653,7 @@
             id="duration-input"
             v-model.number="applyForm.duration"
             type="number"
-            min="30"
-            step="15"
+            min="1"
             class="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white"
           />
         </div>

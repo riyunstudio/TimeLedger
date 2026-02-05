@@ -126,8 +126,7 @@
           :value="values.duration"
           @input="(e) => setFieldValue('duration', Number((e.target as HTMLInputElement).value))"
           type="number"
-          min="30"
-          step="30"
+          min="1"
           class="input-field text-sm sm:text-base"
         />
         <span v-if="errors.duration" class="text-critical-500 text-xs mt-1">
@@ -271,7 +270,7 @@ const createValidationSchema = () => {
     room_id: z.union([z.string(), z.number(), z.null()]).optional(),
     start_time: z.string().min(1, '請選擇開始時間'),
     end_time: z.string().min(1, '請選擇結束時間'),
-    duration: z.number().min(30, '課程時長至少 30 分鐘'),
+    duration: z.number().positive().min(1, '課程時長必須為正數'),
     weekdays: z.array(z.number()).min(1, '請至少選擇一個星期'),
     start_date: z.string().min(1, '請選擇開始日期'),
     end_date: z.string().optional(),
