@@ -2,12 +2,20 @@
   <div class="space-y-4">
     <div class="flex items-center justify-between">
       <h2 class="text-xl font-semibold text-slate-100">老師列表</h2>
-      <button
-        @click="showInviteModal = true"
-        class="btn-primary px-4 py-2 text-sm font-medium"
-      >
-        + 邀請老師
-      </button>
+      <div class="flex items-center gap-2">
+        <button
+          @click="showCreateModal = true"
+          class="glass-btn px-4 py-2 text-sm font-medium"
+        >
+          手動新增老師
+        </button>
+        <button
+          @click="showInviteModal = true"
+          class="btn-primary px-4 py-2 text-sm font-medium"
+        >
+          + 邀請老師
+        </button>
+      </div>
     </div>
 
     <div class="mb-4">
@@ -155,6 +163,13 @@
           </button>
           -->
           <button
+            v-if="teacher.is_placeholder"
+            @click="openMergeModal(teacher)"
+            class="w-full glass-btn px-4 py-2 rounded-xl text-sm text-primary-400 hover:bg-primary-500/10"
+          >
+            合併帳號
+          </button>
+          <button
             @click="removeTeacher(teacher)"
             class="w-full glass-btn px-4 py-2 rounded-xl text-sm text-red-400 hover:bg-red-500/10"
           >
@@ -196,10 +211,24 @@
       @invited="fetchTeachers"
     />
 
+    <TeacherCreateModal
+      :show="showCreateModal"
+      @close="showCreateModal = false"
+      @created="fetchTeachers"
+    />
+
     <AdminTeacherProfileModal
       v-if="selectedTeacher"
       :teacher="selectedTeacher"
       @close="selectedTeacher = null"
+    />
+
+    <TeacherMergeModal
+      :show="showMergeModal"
+      :teacher="mergingTeacher"
+      :bound-teachers="allTeachers.filter(t => !t.is_placeholder)"
+      @close="closeMergeModal"
+      @merged="onMerged"
     />
   </div>
 </template>
@@ -214,10 +243,14 @@ const { error: alertError, confirm: alertConfirm } = useAlert()
 // 資源快取
 const { invalidate } = useResourceCache()
 
+import TeacherCreateModal from '~/components/Teacher/TeacherCreateModal.vue'
+import TeacherMergeModal from '~/components/Teacher/TeacherMergeModal.vue'
+
 // 分頁常數
 const PAGE_LIMIT = 20
 
 const showInviteModal = ref(false)
+const showCreateModal = ref(false)
 const searchQuery = ref('')
 const showMenu = ref<Record<number, boolean>>({})
 const loading = ref(false)
@@ -227,6 +260,11 @@ const selectedTeacher = ref<any>(null)
 const currentPage = ref(1)
 const totalPages = ref(0)
 const totalCount = ref(0)
+
+// 合併狀態
+const showMergeModal = ref(false)
+const mergingTeacher = ref<any>(null)
+const allTeachers = ref<any[]>([]) // 用於選擇目標老師 (通常需要全部已綁定的老師)
 
 const teachers = ref<any[]>([])
 
@@ -274,6 +312,21 @@ const fetchTeachers = async () => {
   }
 }
 
+// 獲取所有老師 (不分頁，用於合併時選擇目標)
+const fetchAllTeachers = async () => {
+  try {
+    const api = useApi()
+    const response = await api.get<any[]>('/admin/teachers?limit=1000') // 假設不超過 1000 位
+    if (response && response.data) {
+      allTeachers.value = response.data
+    } else {
+      allTeachers.value = response || []
+    }
+  } catch (err) {
+    console.error('Failed to fetch all teachers:', err)
+  }
+}
+
 // 跳轉到指定頁面
 const goToPage = (page: number) => {
   if (page >= 1 && page <= totalPages.value) {
@@ -290,6 +343,7 @@ watch(searchQuery, () => {
 
 onMounted(() => {
   fetchTeachers()
+  fetchAllTeachers()
 })
 
 const viewProfile = (teacher: any) => {
@@ -298,6 +352,23 @@ const viewProfile = (teacher: any) => {
 }
 
 const sendMessage = (teacher: any) => {
+}
+
+const openMergeModal = (teacher: any) => {
+  mergingTeacher.value = teacher
+  showMergeModal.value = true
+  showMenu.value[teacher.id] = false
+}
+
+const closeMergeModal = () => {
+  showMergeModal.value = false
+  mergingTeacher.value = null
+}
+
+const onMerged = async () => {
+  await fetchTeachers()
+  await fetchAllTeachers()
+  invalidate('teachers')
 }
 
 const removeTeacher = async (teacher: any) => {

@@ -103,7 +103,7 @@ const handleSubmit = async () => {
     })
 
     if (response && response.token) {
-      inviteLink.value = `${window.location.origin}/register?token=${response.token}&center=${centerId}`
+      inviteLink.value = `${window.location.origin}/invite/${response.token}`
     } else {
       emit('invited')
       emit('close')
