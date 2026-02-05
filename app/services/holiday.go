@@ -26,8 +26,9 @@ func NewHolidayService(app *app.App) *HolidayService {
 }
 
 type HolidayItem struct {
-	Date string `json:"date" binding:"required"`
-	Name string `json:"name" binding:"required"`
+	Date        string `json:"date" binding:"required"`
+	Name        string `json:"name" binding:"required"`
+	ForceCancel bool   `json:"force_cancel"`
 }
 
 type BulkCreateHolidaysRequest struct {
@@ -42,8 +43,9 @@ type BulkCreateHolidaysResponse struct {
 }
 
 type CreateHolidayRequest struct {
-	Date string `json:"date" binding:"required"`
-	Name string `json:"name" binding:"required"`
+	Date        string `json:"date" binding:"required"`
+	Name        string `json:"name" binding:"required"`
+	ForceCancel bool   `json:"force_cancel"`
 }
 
 type GetHolidaysRequest struct {
@@ -84,9 +86,10 @@ func (s *HolidayService) CreateHoliday(ctx context.Context, centerID, adminID ui
 	}
 
 	holiday := models.CenterHoliday{
-		CenterID: centerID,
-		Date:     parsedDate,
-		Name:     req.Name,
+		CenterID:     centerID,
+		Date:         parsedDate,
+		Name:         req.Name,
+		ForceCancel:  req.ForceCancel,
 	}
 
 	var created models.CenterHoliday
@@ -136,11 +139,12 @@ func (s *HolidayService) BulkCreateHolidays(ctx context.Context, centerID, admin
 			return nil, s.app.Err.New(errInfos.PARAMS_VALIDATE_ERROR), fmt.Errorf("invalid date: %s", h.Date)
 		}
 		holidays = append(holidays, models.CenterHoliday{
-			CenterID:  centerID,
-			Date:      parsedDate,
-			Name:      h.Name,
-			CreatedAt: now,
-			UpdatedAt: now,
+			CenterID:     centerID,
+			Date:         parsedDate,
+			Name:         h.Name,
+			ForceCancel:  h.ForceCancel,
+			CreatedAt:    now,
+			UpdatedAt:    now,
 		})
 	}
 

@@ -7,13 +7,14 @@ import (
 )
 
 type CenterHoliday struct {
-	ID        uint           `gorm:"primaryKey" json:"id"`
-	CenterID  uint           `gorm:"type:bigint unsigned;not null;index:idx_center_date" json:"center_id"`
-	Date      time.Time      `gorm:"type:date;not null;index:idx_center_date" json:"date"`
-	Name      string         `gorm:"type:varchar(255);not null" json:"name"`
-	CreatedAt time.Time      `gorm:"type:datetime;not null" json:"created_at"`
-	UpdatedAt time.Time      `gorm:"type:datetime;not null" json:"updated_at"`
-	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
+	ID           uint           `gorm:"primaryKey" json:"id"`
+	CenterID     uint           `gorm:"type:bigint unsigned;not null;index:idx_center_date" json:"center_id"`
+	Date         time.Time      `gorm:"type:date;not null;index:idx_center_date" json:"date"`
+	Name         string         `gorm:"type:varchar(255);not null" json:"name"`
+	ForceCancel  bool           `gorm:"type:boolean;default:false;not null" json:"force_cancel"`
+	CreatedAt    time.Time      `gorm:"type:datetime;not null" json:"created_at"`
+	UpdatedAt    time.Time      `gorm:"type:datetime;not null" json:"updated_at"`
+	DeletedAt    gorm.DeletedAt `gorm:"index" json:"-"`
 }
 
 func (CenterHoliday) TableName() string {

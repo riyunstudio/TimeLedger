@@ -102,7 +102,12 @@
             <span class="text-warning-500 font-bold">{{ new Date(holiday.date).getDate() }}</span>
           </div>
           <div>
-            <h3 class="text-white font-medium">{{ holiday.name }}</h3>
+            <h3 class="text-white font-medium flex items-center gap-2">
+              {{ holiday.name }}
+              <span v-if="holiday.force_cancel" class="px-2 py-0.5 rounded-full text-xs font-medium bg-critical-500/20 text-critical-500">
+                強制停課
+              </span>
+            </h3>
             <p class="text-sm text-slate-400">{{ formatFullDate(holiday.date) }}</p>
           </div>
         </div>
@@ -158,6 +163,18 @@
               required
             />
           </div>
+          <div class="flex items-center gap-3">
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input
+                v-model="addForm.force_cancel"
+                type="checkbox"
+                class="sr-only peer"
+              />
+              <div class="w-11 h-6 bg-white/10 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary-500/30 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-critical-500"></div>
+              <span class="ms-3 text-sm font-medium text-slate-300">強制停課</span>
+            </label>
+            <span class="text-xs text-slate-500">啟用後，假日期間的所有課程將自動取消</span>
+          </div>
           <div class="flex gap-3 pt-4">
             <button type="button" @click="showAddModal = false" class="flex-1 px-4 py-2 rounded-lg bg-white/5 text-white hover:bg-white/10 transition-colors">
               取消
@@ -186,7 +203,7 @@
         <div class="p-4 space-y-4">
           <div class="p-4 rounded-xl bg-blue-500/10 border border-blue-500/30">
             <p class="text-sm text-blue-400 mb-2">
-              支援 JSON 格式，每筆需包含 <code class="px-1 bg-blue-500/20 rounded">date</code> 與 <code class="px-1 bg-blue-500/20 rounded">name</code> 欄位
+              支援 JSON 格式，每筆需包含 <code class="px-1 bg-blue-500/20 rounded">date</code> 與 <code class="px-1 bg-blue-500/20 rounded">name</code> 欄位，可選 <code class="px-1 bg-blue-500/20 rounded">force_cancel</code> 強制停課
             </p>
             <p class="text-xs text-blue-300">
               💡 提示：請使用標準的半形雙引號 (")，不要使用中文引號「」或全形引號
@@ -205,7 +222,8 @@
               rows="10"
               placeholder='[
   {"date": "2026-01-01", "name": "元旦"},
-  {"date": "2026-02-11", "name": "春節"}
+  {"date": "2026-02-11", "name": "春節"},
+  {"date": "2026-10-10", "name": "國慶日", "force_cancel": true}
 ]'
               class="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white font-mono text-sm focus:outline-none focus:border-primary-500 resize-none"
             ></textarea>
@@ -251,7 +269,8 @@ const holidays = ref<any[]>([])
 
 const addForm = reactive({
   name: '',
-  date: ''
+  date: '',
+  force_cancel: false
 })
 
 const bulkForm = reactive({
@@ -271,7 +290,7 @@ const defaultHolidayJSON = JSON.stringify([
   { "date": "2026-05-01", "name": "勞動節" },
   { "date": "2026-05-05", "name": "端午節" },
   { "date": "2026-06-20", "name": "中秋節" },
-  { "date": "2026-10-10", "name": "國慶日" }
+  { "date": "2026-10-10", "name": "國慶日", "force_cancel": true }
 ], null, 2)
 
 const currentYear = computed(() => selectedYear.value)
@@ -319,12 +338,14 @@ const handleAddHoliday = async () => {
     const centerId = getCenterId()
     await api.post(`/admin/centers/${centerId}/holidays`, {
       date: addForm.date,
-      name: addForm.name
+      name: addForm.name,
+      force_cancel: addForm.force_cancel
     })
     notificationUI.success('假日已新增')
     showAddModal.value = false
     addForm.name = ''
     addForm.date = ''
+    addForm.force_cancel = false
     await fetchHolidays()
   } catch (error) {
     console.error('Failed to add holiday:', error)

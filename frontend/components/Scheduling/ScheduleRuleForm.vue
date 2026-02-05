@@ -122,6 +122,34 @@
       :weekday-usage-tips="['可選擇多個星期', '形成每週重複的排課']"
     />
 
+    <!-- 例假日停課開關 -->
+    <div class="mt-4">
+      <label class="flex items-center cursor-pointer">
+        <div class="relative inline-block w-12 h-7 align-middle select-none transition duration-200 ease-in-out">
+          <input
+            :checked="values.skip_holiday"
+            @change="setFieldValue('skip_holiday', !values.skip_holiday)"
+            type="checkbox"
+            class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-300 ease-in-out"
+            :class="[
+              values.skip_holiday ? 'left-6 border-primary-500' : 'left-0 border-slate-500'
+            ]"
+            style="top: 1px;"
+          />
+          <span
+            class="toggle-label block overflow-hidden h-7 rounded-full transition-colors duration-300 ease-in-out"
+            :class="values.skip_holiday ? 'bg-primary-500/30' : 'bg-slate-700'"
+          ></span>
+        </div>
+        <span class="ml-3 text-sm sm:text-base text-slate-300 font-medium">
+          例假日是否停課
+        </span>
+      </label>
+      <p class="mt-1.5 ml-15 text-xs text-slate-400">
+        開啟後，若遇一般例假日將自動停課
+      </p>
+    </div>
+
     <!-- 編輯模式的日期欄位 -->
     <div v-if="isEditMode" class="mb-4 p-3 rounded-lg bg-slate-800/50 border border-slate-700/50">
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -204,6 +232,24 @@
   </form>
 </template>
 
+<style scoped>
+.toggle-checkbox:checked {
+  @apply border-primary-500;
+}
+
+.toggle-checkbox:not(:checked) {
+  @apply border-slate-500;
+}
+
+.toggle-checkbox:checked + .toggle-label {
+  @apply bg-primary-500/30;
+}
+
+.toggle-checkbox:not(:checked) + .toggle-label {
+  @apply bg-slate-700;
+}
+</style>
+
 <script setup lang="ts">
 import { z } from 'zod'
 import { toTypedSchema } from '@vee-validate/zod'
@@ -275,6 +321,7 @@ const createValidationSchema = () => {
     weekdays: z.array(z.number()).min(1, '請至少選擇一個星期'),
     start_date: z.string().min(1, '請選擇開始日期'),
     end_date: z.string().optional(),
+    skip_holiday: z.boolean().default(true),
   }
 
   return z.object(baseSchema)
@@ -294,6 +341,7 @@ const getInitialValues = () => {
       weekdays: [props.editingRule.weekday] || [1],
       start_date: props.editingRule.effective_range?.start_date?.split('T')[0] || formatDateToString(new Date()),
       end_date: props.editingRule.effective_range?.end_date?.split('T')[0] || '',
+      skip_holiday: props.editingRule.skip_holiday ?? true,
     }
   }
 
@@ -308,6 +356,7 @@ const getInitialValues = () => {
     weekdays: [1] as number[],
     start_date: formatDateToString(new Date()),
     end_date: '',
+    skip_holiday: true,
   }
 }
 
@@ -416,6 +465,7 @@ const onFormSubmit = handleSubmit(async (formValues) => {
     weekdays: formValues.weekdays,
     start_date: formValues.start_date,
     end_date: formValues.end_date || null,
+    skip_holiday: formValues.skip_holiday,
   }
 
   // 只有當有選擇老師時才傳送
@@ -462,6 +512,7 @@ watch(
         rule.effective_range?.start_date?.split('T')[0] || formatDateToString(new Date())
       )
       setFieldValue('end_date', rule.effective_range?.end_date?.split('T')[0] || '')
+      setFieldValue('skip_holiday', rule.skip_holiday ?? true)
     }
   },
   { immediate: true }

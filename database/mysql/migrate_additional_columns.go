@@ -32,6 +32,16 @@ func (db *DB) MigrateAdditionalColumns() {
 		log.Printf("Warning: Failed to add is_active column to schedule_rules: %v", err)
 	}
 
+	// 6. schedule_rules.skip_holiday - 是否跳過假日（預設 true）
+	if err := db.addColumnIfNotExists("schedule_rules", "skip_holiday", "BOOLEAN NOT NULL DEFAULT TRUE"); err != nil {
+		log.Printf("Warning: Failed to add skip_holiday column to schedule_rules: %v", err)
+	}
+
+	// 7. center_holidays.force_cancel - 是否強制取消課堂（預設 false）
+	if err := db.addColumnIfNotExists("center_holidays", "force_cancel", "BOOLEAN NOT NULL DEFAULT FALSE"); err != nil {
+		log.Printf("Warning: Failed to add force_cancel column to center_holidays: %v", err)
+	}
+
 	log.Println("Additional columns migration completed")
 }
 

@@ -39,9 +39,10 @@ func (s *ScheduleExpansionServiceImpl) ExpandRules(ctx context.Context, rules []
 	var schedules []ExpandedSchedule
 
 	holidays, _ := s.holidayRepo.ListByDateRange(ctx, centerID, startDate, endDate)
-	holidaySet := make(map[string]bool)
+	// 使用 map[string]models.CenterHoliday 儲存假日資訊，以便取得 ForceCancel 欄位
+	holidayMap := make(map[string]models.CenterHoliday)
 	for _, h := range holidays {
-		holidaySet[h.Date.Format("2006-01-02")] = true
+		holidayMap[h.Date.Format("2006-01-02")] = h
 	}
 
 	// 批次取得所有規則在日期範圍內的例外資料（消除 N+1 查詢）
@@ -84,10 +85,13 @@ func (s *ScheduleExpansionServiceImpl) ExpandRules(ctx context.Context, rules []
 
 				if isWithinEffectiveRange {
 					dateStr := date.Format("2006-01-02")
-					isHoliday := holidaySet[dateStr]
+					isHoliday, exists := holidayMap[dateStr]
 
-					// 如果是假日，跳過此 session（無感停課）
-					if isHoliday {
+					// 假日邏輯判斷：
+					// 1. ForceCancel = true → 一律跳過（強制停課）
+					// 2. ForceCancel = false 且 rule.SkipHoliday = true → 跳過（無感停課）
+					// 3. ForceCancel = false 且 rule.SkipHoliday = false → 正常產生課程
+					if exists && (isHoliday.ForceCancel || rule.SkipHoliday) {
 						date = date.AddDate(0, 0, 1)
 						continue
 					}
@@ -163,7 +167,7 @@ func (s *ScheduleExpansionServiceImpl) ExpandRules(ctx context.Context, rules []
 							EndTime:      eTime,
 							RoomID:       rule.RoomID,
 							TeacherID:    rule.TeacherID,
-							IsHoliday:    isHoliday,
+							IsHoliday:    exists, // 使用 exists 標記是否為假日（Boolean）
 							HasException: pendingException != nil || approvedException != nil,
 							// 關聯資料
 							OfferingName:   rule.Offering.Name,
