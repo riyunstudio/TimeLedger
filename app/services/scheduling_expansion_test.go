@@ -321,3 +321,281 @@ func TestExpandRulesWithExceptions(t *testing.T) {
 
 	t.Logf("Tested %d schedules for exception handling", len(schedules))
 }
+
+// TestExpandRules_HolidayLogic 測試 ExpandRules 的假日邏輯處理
+func TestExpandRules_HolidayLogic(t *testing.T) {
+	appInstance := setupTestApp(t)
+	if appInstance == nil {
+		return
+	}
+
+	ctx := context.Background()
+	now := time.Now()
+	loc := time.UTC
+
+	// 查詢現有資料用於測試
+	var center models.Center
+	if err := appInstance.MySQL.RDB.WithContext(ctx).Order("id DESC").First(&center).Error; err != nil {
+		t.Skipf("No center data available, skipping test: %v", err)
+		return
+	}
+
+	var course models.Course
+	if err := appInstance.MySQL.RDB.WithContext(ctx).Where("center_id = ?", center.ID).First(&course).Error; err != nil {
+		t.Skipf("No course data available, skipping test: %v", err)
+		return
+	}
+
+	var teacher models.Teacher
+	if err := appInstance.MySQL.RDB.WithContext(ctx).First(&teacher).Error; err != nil {
+		t.Skipf("No teacher data available, skipping test: %v", err)
+		return
+	}
+
+	var room models.Room
+	if err := appInstance.MySQL.RDB.WithContext(ctx).Where("center_id = ?", center.ID).First(&room).Error; err != nil {
+		t.Skipf("No room data available, skipping test: %v", err)
+		return
+	}
+
+	// 建立獨立的 offering 確保測試隔離
+	offering := models.Offering{
+		CenterID:   center.ID,
+		CourseID:   course.ID,
+		CreatedAt:  now,
+		UpdatedAt:  now,
+	}
+	if err := appInstance.MySQL.WDB.WithContext(ctx).Create(&offering).Error; err != nil {
+		t.Fatalf("Failed to create offering: %v", err)
+		return
+	}
+	defer func() {
+		// 清理測試資料
+		appInstance.MySQL.WDB.WithContext(ctx).Where("id = ?", offering.ID).Delete(&models.Offering{})
+	}()
+
+	// 定義測試日期範圍（包含一個假日）
+	testStartDate := time.Date(2026, 1, 20, 0, 0, 0, 0, loc)
+	testEndDate := time.Date(2026, 1, 26, 0, 0, 0, 0, loc)
+
+	// 建立假日（2026-01-22 是假日）
+	holidayDate := time.Date(2026, 1, 22, 0, 0, 0, 0, loc)
+	holiday := models.CenterHoliday{
+		CenterID:  center.ID,
+		Date:      holidayDate,
+		Name:      "春節假期",
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+	if err := appInstance.MySQL.WDB.WithContext(ctx).Create(&holiday).Error; err != nil {
+		t.Fatalf("Failed to create holiday: %v", err)
+		return
+	}
+	defer func() {
+		// 清理測試資料
+		appInstance.MySQL.WDB.WithContext(ctx).Where("id = ?", holiday.ID).Delete(&models.CenterHoliday{})
+	}()
+
+	// 測試情境 A：ForceCancel = true，SkipHoliday = false（應該跳過）
+	t.Run("ScenarioA_ForceCancelTrue_SkipHolidayFalse", func(t *testing.T) {
+		// 更新假日為 ForceCancel = true
+		holiday.ForceCancel = true
+		if err := appInstance.MySQL.WDB.WithContext(ctx).Save(&holiday).Error; err != nil {
+			t.Fatalf("Failed to update holiday: %v", err)
+		}
+
+		// 建立規則（SkipHoliday = false）
+		rule := models.ScheduleRule{
+			CenterID:       center.ID,
+			OfferingID:     offering.ID,
+			TeacherID:      &teacher.ID,
+			RoomID:         room.ID,
+			Name:           "測試課程A",
+			Weekday:        3, // 週三
+			StartTime:      "10:00",
+			EndTime:        "12:00",
+			Duration:       120,
+			SkipHoliday:    false,
+			EffectiveRange: models.DateRange{StartDate: testStartDate, EndDate: testEndDate},
+			CreatedAt:      now,
+			UpdatedAt:      now,
+		}
+		if err := appInstance.MySQL.WDB.WithContext(ctx).Create(&rule).Error; err != nil {
+			t.Fatalf("Failed to create rule: %v", err)
+		}
+		defer func() {
+			appInstance.MySQL.WDB.WithContext(ctx).Where("id = ?", rule.ID).Delete(&models.ScheduleRule{})
+		}()
+
+		expansionSvc := NewScheduleExpansionService(appInstance)
+		schedules := expansionSvc.ExpandRules(ctx, []models.ScheduleRule{rule}, testStartDate, testEndDate, center.ID)
+
+		// 驗證：ForceCancel = true 時應該跳過（不論 SkipHoliday）
+		for _, schedule := range schedules {
+			if schedule.Date.Equal(holidayDate) {
+				t.Errorf("Scenario A: Expected to skip holiday %s, but session was generated", holidayDate.Format("2006-01-02"))
+			}
+		}
+
+		// 統計非假日的天數
+		var nonHolidayCount int
+		for _, s := range schedules {
+			if !s.Date.Equal(holidayDate) {
+				nonHolidayCount++
+			}
+		}
+		t.Logf("Scenario A: Generated %d sessions (holiday ForceCancel=true, SkipHoliday=false)", nonHolidayCount)
+	})
+
+	// 測試情境 B：ForceCancel = false，SkipHoliday = true（應該跳過）
+	t.Run("ScenarioB_ForceCancelFalse_SkipHolidayTrue", func(t *testing.T) {
+		// 更新假日為 ForceCancel = false
+		holiday.ForceCancel = false
+		if err := appInstance.MySQL.WDB.WithContext(ctx).Save(&holiday).Error; err != nil {
+			t.Fatalf("Failed to update holiday: %v", err)
+		}
+
+		// 建立規則（SkipHoliday = true）
+		rule := models.ScheduleRule{
+			CenterID:       center.ID,
+			OfferingID:     offering.ID,
+			TeacherID:      &teacher.ID,
+			RoomID:         room.ID,
+			Name:           "測試課程B",
+			Weekday:        3, // 週三
+			StartTime:      "10:00",
+			EndTime:        "12:00",
+			Duration:       120,
+			SkipHoliday:    true,
+			EffectiveRange: models.DateRange{StartDate: testStartDate, EndDate: testEndDate},
+			CreatedAt:      now,
+			UpdatedAt:      now,
+		}
+		if err := appInstance.MySQL.WDB.WithContext(ctx).Create(&rule).Error; err != nil {
+			t.Fatalf("Failed to create rule: %v", err)
+		}
+		defer func() {
+			appInstance.MySQL.WDB.WithContext(ctx).Where("id = ?", rule.ID).Delete(&models.ScheduleRule{})
+		}()
+
+		expansionSvc := NewScheduleExpansionService(appInstance)
+		schedules := expansionSvc.ExpandRules(ctx, []models.ScheduleRule{rule}, testStartDate, testEndDate, center.ID)
+
+		// 驗證：ForceCancel = false 且 SkipHoliday = true 時應該跳過
+		for _, schedule := range schedules {
+			if schedule.Date.Equal(holidayDate) {
+				t.Errorf("Scenario B: Expected to skip holiday %s, but session was generated", holidayDate.Format("2006-01-02"))
+			}
+		}
+
+		var nonHolidayCount int
+		for _, s := range schedules {
+			if !s.Date.Equal(holidayDate) {
+				nonHolidayCount++
+			}
+		}
+		t.Logf("Scenario B: Generated %d sessions (holiday ForceCancel=false, SkipHoliday=true)", nonHolidayCount)
+	})
+
+	// 測試情境 C：ForceCancel = false，SkipHoliday = false（應該產生課程）
+	t.Run("ScenarioC_ForceCancelFalse_SkipHolidayFalse", func(t *testing.T) {
+		// 更新假日為 ForceCancel = false
+		holiday.ForceCancel = false
+		if err := appInstance.MySQL.WDB.WithContext(ctx).Save(&holiday).Error; err != nil {
+			t.Fatalf("Failed to update holiday: %v", err)
+		}
+
+		// 建立規則（SkipHoliday = false）
+		rule := models.ScheduleRule{
+			CenterID:       center.ID,
+			OfferingID:     offering.ID,
+			TeacherID:      &teacher.ID,
+			RoomID:         room.ID,
+			Name:           "測試課程C",
+			Weekday:        3, // 週三
+			StartTime:      "10:00",
+			EndTime:        "12:00",
+			Duration:       120,
+			SkipHoliday:    false,
+			EffectiveRange: models.DateRange{StartDate: testStartDate, EndDate: testEndDate},
+			CreatedAt:      now,
+			UpdatedAt:      now,
+		}
+		if err := appInstance.MySQL.WDB.WithContext(ctx).Create(&rule).Error; err != nil {
+			t.Fatalf("Failed to create rule: %v", err)
+		}
+		defer func() {
+			appInstance.MySQL.WDB.WithContext(ctx).Where("id = ?", rule.ID).Delete(&models.ScheduleRule{})
+		}()
+
+		expansionSvc := NewScheduleExpansionService(appInstance)
+		schedules := expansionSvc.ExpandRules(ctx, []models.ScheduleRule{rule}, testStartDate, testEndDate, center.ID)
+
+		// 驗證：ForceCancel = false 且 SkipHoliday = false 時應該產生課程
+		var foundHolidaySession bool
+		for _, schedule := range schedules {
+			if schedule.Date.Equal(holidayDate) {
+				foundHolidaySession = true
+				break
+			}
+		}
+		if !foundHolidaySession {
+			t.Errorf("Scenario C: Expected to generate session on holiday %s, but none was generated", holidayDate.Format("2006-01-02"))
+		}
+
+		t.Logf("Scenario C: Generated %d sessions including holiday (ForceCancel=false, SkipHoliday=false)", len(schedules))
+	})
+
+	// 測試現有資料相容性：SkipHoliday 為預設值（true）
+	t.Run("BackwardCompatibility_DefaultSkipHoliday", func(t *testing.T) {
+		// 更新假日為 ForceCancel = false
+		holiday.ForceCancel = false
+		if err := appInstance.MySQL.WDB.WithContext(ctx).Save(&holiday).Error; err != nil {
+			t.Fatalf("Failed to update holiday: %v", err)
+		}
+
+		// 建立規則（不指定 SkipHoliday，使用預設值 true）
+		rule := models.ScheduleRule{
+			CenterID:       center.ID,
+			OfferingID:     offering.ID,
+			TeacherID:      &teacher.ID,
+			RoomID:         room.ID,
+			Name:           "測試課程相容性",
+			Weekday:        3, // 週三
+			StartTime:      "10:00",
+			EndTime:        "12:00",
+			Duration:       120,
+			// SkipHoliday 不設定，使用預設值 true
+			EffectiveRange: models.DateRange{StartDate: testStartDate, EndDate: testEndDate},
+			CreatedAt:      now,
+			UpdatedAt:      now,
+		}
+		if err := appInstance.MySQL.WDB.WithContext(ctx).Create(&rule).Error; err != nil {
+			t.Fatalf("Failed to create rule: %v", err)
+		}
+		defer func() {
+			appInstance.MySQL.WDB.WithContext(ctx).Where("id = ?", rule.ID).Delete(&models.ScheduleRule{})
+		}()
+
+		expansionSvc := NewScheduleExpansionService(appInstance)
+		schedules := expansionSvc.ExpandRules(ctx, []models.ScheduleRule{rule}, testStartDate, testEndDate, center.ID)
+
+		// 驗證：預設 SkipHoliday = true 時應該跳過假日（維持舊有行為）
+		for _, schedule := range schedules {
+			if schedule.Date.Equal(holidayDate) {
+				t.Errorf("Backward Compatibility: Expected to skip holiday %s (default SkipHoliday=true), but session was generated", holidayDate.Format("2006-01-02"))
+			}
+		}
+
+		var nonHolidayCount int
+		for _, s := range schedules {
+			if !s.Date.Equal(holidayDate) {
+				nonHolidayCount++
+			}
+		}
+		t.Logf("Backward Compatibility: Generated %d sessions (holiday skipped with default SkipHoliday=true)", nonHolidayCount)
+	})
+
+	// 清理假日資料
+	appInstance.MySQL.WDB.WithContext(ctx).Where("id = ?", holiday.ID).Delete(&models.CenterHoliday{})
+}
