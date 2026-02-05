@@ -74,8 +74,16 @@ type CreatePersonalEventResult struct {
 
 // CreatePersonalEvent 新增老師個人行程
 func (s *PersonalEventService) CreatePersonalEvent(ctx context.Context, teacherID uint, req *CreatePersonalEventRequest) (*models.PersonalEvent, *errInfos.Res, error) {
+	// 確保時間使用台灣時區
+	loc, err := time.LoadLocation("Asia/Taipei")
+	if err != nil {
+		loc = time.UTC
+	}
+	startAt := req.StartAt.In(loc)
+	endAt := req.EndAt.In(loc)
+
 	// 檢查個人行程是否與中心課程衝突
-	conflictMsg, err := s.checkPersonalEventConflicts(ctx, teacherID, req.StartAt, req.EndAt)
+	conflictMsg, err := s.checkPersonalEventConflicts(ctx, teacherID, startAt, endAt)
 	if err != nil {
 		return nil, s.app.Err.New(errInfos.SQL_ERROR), err
 	}
@@ -87,8 +95,8 @@ func (s *PersonalEventService) CreatePersonalEvent(ctx context.Context, teacherI
 	event := &models.PersonalEvent{
 		TeacherID: teacherID,
 		Title:     req.Title,
-		StartAt:   req.StartAt,
-		EndAt:     req.EndAt,
+		StartAt:   startAt,
+		EndAt:     endAt,
 		IsAllDay:  req.IsAllDay,
 		ColorHex:  req.ColorHex,
 		CreatedAt: time.Now(),
@@ -136,9 +144,17 @@ func (s *PersonalEventService) UpdatePersonalEvent(ctx context.Context, eventID,
 		return nil, s.app.Err.New(errInfos.FORBIDDEN), nil
 	}
 
+	// 確保時間使用台灣時區
+	loc, err := time.LoadLocation("Asia/Taipei")
+	if err != nil {
+		loc = time.UTC
+	}
+
 	// 檢查衝突（如果時間有變更）
 	if req.StartAt != nil && req.EndAt != nil {
-		conflictMsg, err := s.checkPersonalEventConflicts(ctx, teacherID, *req.StartAt, *req.EndAt)
+		startAt := req.StartAt.In(loc)
+		endAt := req.EndAt.In(loc)
+		conflictMsg, err := s.checkPersonalEventConflicts(ctx, teacherID, startAt, endAt)
 		if err != nil {
 			return nil, s.app.Err.New(errInfos.SQL_ERROR), err
 		}
@@ -157,10 +173,10 @@ func (s *PersonalEventService) UpdatePersonalEvent(ctx context.Context, eventID,
 			event.Title = *req.Title
 		}
 		if req.StartAt != nil {
-			event.StartAt = *req.StartAt
+			event.StartAt = req.StartAt.In(loc)
 		}
 		if req.EndAt != nil {
-			event.EndAt = *req.EndAt
+			event.EndAt = req.EndAt.In(loc)
 		}
 		if req.IsAllDay != nil {
 			event.IsAllDay = *req.IsAllDay
@@ -180,10 +196,19 @@ func (s *PersonalEventService) UpdatePersonalEvent(ctx context.Context, eventID,
 		if event.RecurrenceRule.Type == "" {
 			return nil, &errInfos.Res{Code: global.BAD_REQUEST, Msg: "update_mode FUTURE requires a recurring event"}, nil
 		}
+		var startAt, endAt *time.Time
+		if req.StartAt != nil {
+			t := req.StartAt.In(loc)
+			startAt = &t
+		}
+		if req.EndAt != nil {
+			t := req.EndAt.In(loc)
+			endAt = &t
+		}
 		updatedCount, err = s.personalEventRepo.UpdateFutureOccurrences(ctx, eventID, teacherID, repositories.UpdateEventRequest{
 			Title:    req.Title,
-			StartAt:  req.StartAt,
-			EndAt:    req.EndAt,
+			StartAt:  startAt,
+			EndAt:    endAt,
 			IsAllDay: req.IsAllDay,
 			ColorHex: req.ColorHex,
 		}, now)
@@ -195,10 +220,19 @@ func (s *PersonalEventService) UpdatePersonalEvent(ctx context.Context, eventID,
 		if event.RecurrenceRule.Type == "" {
 			return nil, &errInfos.Res{Code: global.BAD_REQUEST, Msg: "update_mode ALL requires a recurring event"}, nil
 		}
+		var startAt, endAt *time.Time
+		if req.StartAt != nil {
+			t := req.StartAt.In(loc)
+			startAt = &t
+		}
+		if req.EndAt != nil {
+			t := req.EndAt.In(loc)
+			endAt = &t
+		}
 		updatedCount, err = s.personalEventRepo.UpdateAllOccurrences(ctx, eventID, teacherID, repositories.UpdateEventRequest{
 			Title:    req.Title,
-			StartAt:  req.StartAt,
-			EndAt:    req.EndAt,
+			StartAt:  startAt,
+			EndAt:    endAt,
 			IsAllDay: req.IsAllDay,
 			ColorHex: req.ColorHex,
 		}, now)
@@ -212,10 +246,10 @@ func (s *PersonalEventService) UpdatePersonalEvent(ctx context.Context, eventID,
 			event.Title = *req.Title
 		}
 		if req.StartAt != nil {
-			event.StartAt = *req.StartAt
+			event.StartAt = req.StartAt.In(loc)
 		}
 		if req.EndAt != nil {
-			event.EndAt = *req.EndAt
+			event.EndAt = req.EndAt.In(loc)
 		}
 		if req.IsAllDay != nil {
 			event.IsAllDay = *req.IsAllDay
