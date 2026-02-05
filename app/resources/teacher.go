@@ -88,9 +88,16 @@ type AdminTeacherResponse struct {
 	CreatedAt     time.Time                   `json:"created_at"`
 	Skills        []AdminTeacherSkillResponse `json:"skills,omitempty"`
 	Certificates  []AdminCertificateResponse  `json:"certificates,omitempty"`
+	Note          *AdminTeacherNoteResponse   `json:"note,omitempty"`
 }
 
-// AdminTeacherSkillResponse 管理員視角的老師技能回應結構
+// AdminTeacherNoteResponse 老師備註回應結構
+type AdminTeacherNoteResponse struct {
+	InternalNote string `json:"internal_note,omitempty"`
+	Rating       int    `json:"rating"`
+}
+
+// ToAdminTeacherResponse 將老師模型轉換為管理員回應
 type AdminTeacherSkillResponse struct {
 	ID        uint   `json:"id"`
 	SkillName string `json:"skill_name"`
@@ -112,6 +119,7 @@ func (r *AdminTeacherResource) ToAdminTeacherResponse(
 	teacher *models.Teacher,
 	skills []models.TeacherSkill,
 	certificates []models.TeacherCertificate,
+	note *models.CenterTeacherNote,
 ) *AdminTeacherResponse {
 	skillResponses := make([]AdminTeacherSkillResponse, 0, len(skills))
 	for _, skill := range skills {
@@ -134,6 +142,14 @@ func (r *AdminTeacherResource) ToAdminTeacherResponse(
 		})
 	}
 
+	var noteResponse *AdminTeacherNoteResponse
+	if note != nil {
+		noteResponse = &AdminTeacherNoteResponse{
+			InternalNote: note.InternalNote,
+			Rating:       note.Rating,
+		}
+	}
+
 	return &AdminTeacherResponse{
 		ID:            teacher.ID,
 		Name:          teacher.Name,
@@ -148,6 +164,7 @@ func (r *AdminTeacherResource) ToAdminTeacherResponse(
 		CreatedAt:     teacher.CreatedAt,
 		Skills:        skillResponses,
 		Certificates:  certResponses,
+		Note:          noteResponse,
 	}
 }
 
@@ -156,12 +173,14 @@ func (r *AdminTeacherResource) ToAdminTeacherResponses(
 	teachers []models.Teacher,
 	skillsMap map[uint][]models.TeacherSkill,
 	certificatesMap map[uint][]models.TeacherCertificate,
+	notesMap map[uint]models.CenterTeacherNote,
 ) []AdminTeacherResponse {
 	responses := make([]AdminTeacherResponse, 0, len(teachers))
 	for _, teacher := range teachers {
 		skills := skillsMap[teacher.ID]
 		certificates := certificatesMap[teacher.ID]
-		responses = append(responses, *r.ToAdminTeacherResponse(&teacher, skills, certificates))
+		note := notesMap[teacher.ID]
+		responses = append(responses, *r.ToAdminTeacherResponse(&teacher, skills, certificates, &note))
 	}
 	return responses
 }

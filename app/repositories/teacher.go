@@ -168,3 +168,77 @@ func (rp *TeacherRepository) GetPlaceholder(ctx context.Context, lineUserID stri
 		First(&data).Error
 	return data, err
 }
+
+// FilterBySearch filters teacher IDs by search query (name or email).
+// Returns filtered teacher IDs that match the search criteria.
+func (rp *TeacherRepository) FilterBySearch(ctx context.Context, teacherIDs []uint, query string) ([]uint, error) {
+	if len(teacherIDs) == 0 {
+		return []uint{}, nil
+	}
+
+	if query == "" {
+		return teacherIDs, nil
+	}
+
+	var filteredIDs []uint
+	// Use a large limit to get all matching teachers
+	err := rp.dbRead.WithContext(ctx).
+		Model(&models.Teacher{}).
+		Select("id").
+		Where("id IN ? AND (name LIKE ? OR email LIKE ?)", teacherIDs, "%"+query+"%", "%"+query+"%").
+		Find(&filteredIDs).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return filteredIDs, nil
+}
+
+// BatchGetSkillsByTeacherIDs retrieves skills for multiple teachers in a single query.
+func (rp *TeacherRepository) BatchGetSkillsByTeacherIDs(ctx context.Context, teacherIDs []uint) (map[uint][]models.TeacherSkill, error) {
+	if len(teacherIDs) == 0 {
+		return make(map[uint][]models.TeacherSkill), nil
+	}
+
+	var skills []models.TeacherSkill
+	err := rp.dbRead.WithContext(ctx).
+		Where("teacher_id IN ?", teacherIDs).
+		Find(&skills).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert to map grouped by teacher ID
+	result := make(map[uint][]models.TeacherSkill, len(teacherIDs))
+	for _, skill := range skills {
+		result[skill.TeacherID] = append(result[skill.TeacherID], skill)
+	}
+
+	return result, nil
+}
+
+// BatchGetCertificatesByTeacherIDs retrieves certificates for multiple teachers in a single query.
+func (rp *TeacherRepository) BatchGetCertificatesByTeacherIDs(ctx context.Context, teacherIDs []uint) (map[uint][]models.TeacherCertificate, error) {
+	if len(teacherIDs) == 0 {
+		return make(map[uint][]models.TeacherCertificate), nil
+	}
+
+	var certificates []models.TeacherCertificate
+	err := rp.dbRead.WithContext(ctx).
+		Where("teacher_id IN ?", teacherIDs).
+		Find(&certificates).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert to map grouped by teacher ID
+	result := make(map[uint][]models.TeacherCertificate, len(teacherIDs))
+	for _, cert := range certificates {
+		result[cert.TeacherID] = append(result[cert.TeacherID], cert)
+	}
+
+	return result, nil
+}

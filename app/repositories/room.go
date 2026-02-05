@@ -40,6 +40,44 @@ func (rp *RoomRepository) ListByCenterID(ctx context.Context, centerID uint) ([]
 	return rp.FindWithCenterScope(ctx, centerID)
 }
 
+// SearchByNamePaginated 搜尋教室（分頁）
+func (rp *RoomRepository) SearchByNamePaginated(ctx context.Context, centerID uint, query string, page, limit int) ([]models.Room, int64, error) {
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 {
+		limit = 20
+	}
+	if limit > 100 {
+		limit = 100
+	}
+	offset := (page - 1) * limit
+
+	// 計算總數
+	var total int64
+	countQuery := rp.dbRead.Table(rp.table).
+		Where("center_id = ?", centerID)
+	if query != "" {
+		countQuery = countQuery.Where("name LIKE ?", "%"+query+"%")
+	}
+	if err := countQuery.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// 查詢資料
+	var rooms []models.Room
+	dataQuery := rp.dbRead.Table(rp.table).
+		Where("center_id = ?", centerID)
+	if query != "" {
+		dataQuery = dataQuery.Where("name LIKE ?", "%"+query+"%")
+	}
+	if err := dataQuery.Order("id DESC").Offset(offset).Limit(limit).Find(&rooms).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return rooms, total, nil
+}
+
 func (rp *RoomRepository) ToggleActive(ctx context.Context, id uint, centerID uint, isActive bool) error {
 	return rp.UpdateFieldsWithCenterScope(ctx, id, centerID, map[string]interface{}{
 		"is_active": isActive,

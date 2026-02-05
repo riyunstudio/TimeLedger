@@ -46,7 +46,10 @@ func NewAdminTeacherController(app *app.App) *AdminTeacherController {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Success 200 {object} global.ApiResponse{data=[]resources.AdminTeacherResponse}
+// @Param q query string false "搜尋關鍵字（姓名或 Email）"
+// @Param page query int false "頁碼，預設 1"
+// @Param limit query int false "每頁筆數，預設 20"
+// @Success 200 {object} global.ApiResponse{data=resources.PaginationResponse}
 // @Router /api/v1/teachers [get]
 func (ctl *AdminTeacherController) ListTeachers(ctx *gin.Context) {
 	helper := NewContextHelper(ctx)
@@ -54,6 +57,22 @@ func (ctl *AdminTeacherController) ListTeachers(ctx *gin.Context) {
 	centerID := helper.MustCenterID()
 	if centerID == 0 {
 		return
+	}
+
+	// 取得搜尋和分頁參數
+	searchQuery := helper.QueryStringOrDefault("q", "")
+	page := helper.QueryIntOrDefault("page", 1)
+	limit := helper.QueryIntOrDefault("limit", 20)
+
+	// 驗證分頁參數
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 {
+		limit = 20
+	}
+	if limit > 100 {
+		limit = 100
 	}
 
 	// 取得該中心的所有會員老師 ID（包含 ACTIVE 和 INVITED 狀態）
@@ -64,29 +83,103 @@ func (ctl *AdminTeacherController) ListTeachers(ctx *gin.Context) {
 	}
 
 	if len(teacherIDs) == 0 {
-		helper.Success([]resources.AdminTeacherResponse{})
+		helper.Success(resources.PaginationResponse{
+			Data:       []resources.AdminTeacherResponse{},
+			Total:      0,
+			Page:       page,
+			Limit:      limit,
+			TotalPages: 0,
+			HasNext:    false,
+			HasPrev:    false,
+		})
 		return
 	}
 
+	// 如果有搜尋關鍵字，先過濾老師
+	if searchQuery != "" {
+		filteredIDs, err := ctl.teacherRepository.FilterBySearch(ctx, teacherIDs, searchQuery)
+		if err != nil {
+			helper.InternalError("Failed to search teachers")
+			return
+		}
+		teacherIDs = filteredIDs
+	}
+
+	total := int64(len(teacherIDs))
+
+	// 計算分頁偏移量
+	offset := (page - 1) * limit
+	if offset >= len(teacherIDs) {
+		// 頁碼超出範圍，回傳空結果
+		helper.Success(resources.PaginationResponse{
+			Data:       []resources.AdminTeacherResponse{},
+			Total:      total,
+			Page:       page,
+			Limit:      limit,
+			TotalPages: int((total + int64(limit) - 1) / int64(limit)),
+			HasNext:    page > 1,
+			HasPrev:    page > 1,
+		})
+		return
+	}
+
+	// 取得分頁後的老師 ID
+	pagedIDs := teacherIDs[offset:]
+	if len(pagedIDs) > limit {
+		pagedIDs = pagedIDs[:limit]
+	}
+
 	// 批次查詢老師資料
-	teachersMap, err := ctl.teacherRepository.BatchGetByIDs(ctx, teacherIDs)
+	teachersMap, err := ctl.teacherRepository.BatchGetByIDs(ctx, pagedIDs)
 	if err != nil {
 		helper.InternalError("Failed to get teachers")
 		return
 	}
 
 	// 按原始順序重建 slice
-	teachers := make([]models.Teacher, 0, len(teacherIDs))
-	for _, id := range teacherIDs {
+	teachers := make([]models.Teacher, 0, len(pagedIDs))
+	for _, id := range pagedIDs {
 		if teacher, ok := teachersMap[id]; ok {
 			teachers = append(teachers, teacher)
 		}
 	}
 
-	// 使用 Resource 轉換（無技能和證照）
-	responses := ctl.adminTeacherResource.ToAdminTeacherResponses(teachers, make(map[uint][]models.TeacherSkill), make(map[uint][]models.TeacherCertificate))
+	// 批次查詢技能
+	skillsMap, err := ctl.teacherRepository.BatchGetSkillsByTeacherIDs(ctx, pagedIDs)
+	if err != nil {
+		helper.InternalError("Failed to get teacher skills")
+		return
+	}
 
-	helper.Success(responses)
+	// 批次查詢證照
+	certificatesMap, err := ctl.teacherRepository.BatchGetCertificatesByTeacherIDs(ctx, pagedIDs)
+	if err != nil {
+		helper.InternalError("Failed to get teacher certificates")
+		return
+	}
+
+	// 批次查詢備註（解決 N+1 問題）
+	notesMap, err := ctl.centerTeacherNoteRepo.BatchGetByCenterAndTeachers(ctx, centerID, pagedIDs)
+	if err != nil {
+		helper.InternalError("Failed to get teacher notes")
+		return
+	}
+
+	// 使用 Resource 轉換
+	responses := ctl.adminTeacherResource.ToAdminTeacherResponses(teachers, skillsMap, certificatesMap, notesMap)
+
+	// 計算分頁資訊
+	totalPages := int((total + int64(limit) - 1) / int64(limit))
+
+	helper.Success(resources.PaginationResponse{
+		Data:       responses,
+		Total:      total,
+		Page:       page,
+		Limit:      limit,
+		TotalPages: totalPages,
+		HasNext:    page < totalPages,
+		HasPrev:    page > 1,
+	})
 }
 
 // CreatePlaceholderTeacher 建立佔位老師（用於中心暫時無 LINE 帳號的老師）
@@ -186,8 +279,8 @@ func (ctl *AdminTeacherController) CreatePlaceholderTeacher(ctx *gin.Context) {
 		return
 	}
 
-	// 轉換回應（無技能和證照）
-	response := ctl.adminTeacherResource.ToAdminTeacherResponse(&teacher, nil, nil)
+	// 轉換回應（無技能、證照和備註）
+	response := ctl.adminTeacherResource.ToAdminTeacherResponse(&teacher, nil, nil, nil)
 	helper.Success(response)
 }
 

@@ -137,6 +137,19 @@ func (h *ContextHelper) QueryStringOrDefault(key, defaultVal string) string {
 	return val
 }
 
+// QueryIntOrDefault 取得查詢參數整數值，如果不存在或解析失敗則使用預設值
+func (h *ContextHelper) QueryIntOrDefault(key string, defaultVal int) int {
+	val := h.ctx.Query(key)
+	if val == "" {
+		return defaultVal
+	}
+	result, err := strconv.Atoi(val)
+	if err != nil {
+		return defaultVal
+	}
+	return result
+}
+
 // QueryUint 從查詢參數取得 uint 值
 func (h *ContextHelper) QueryUint(key string) (uint, error) {
 	val := h.ctx.Query(key)

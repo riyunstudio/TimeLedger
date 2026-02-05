@@ -1,26 +1,70 @@
 <template>
   <div class="space-y-4">
     <!-- 標題區域 -->
-    <div class="flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <h2 class="text-xl font-semibold text-slate-100">課程列表</h2>
-        <span class="text-sm text-slate-500">({{ courses.length }})</span>
+    <div class="flex flex-col gap-4">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <h2 class="text-xl font-semibold text-slate-100">課程列表</h2>
+          <span class="text-sm text-slate-500">({{ pagination.total }})</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button
+            @click="fetchCourses"
+            class="p-2 rounded-lg hover:bg-white/10 transition-colors"
+            title="重新整理"
+          >
+            <svg class="w-5 h-5 text-slate-400" :class="{ 'animate-spin': loading }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </button>
+          <button
+            @click="showCreateModal = true"
+            class="btn-primary px-4 py-2 text-sm font-medium"
+          >
+            + 新增課程
+          </button>
+        </div>
       </div>
+
+      <!-- 搜尋框 -->
+      <div class="relative">
+        <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+        <input
+          v-model="searchQuery"
+          type="text"
+          placeholder="搜尋課程名稱..."
+          class="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-colors"
+        />
+      </div>
+    </div>
+
+    <!-- 分頁控制 -->
+    <div v-if="pagination.totalPages > 1" class="flex items-center justify-between px-2">
+      <span class="text-sm text-slate-500">
+        第 {{ pagination.currentPage }} 頁 / 共 {{ pagination.totalPages }} 頁
+      </span>
       <div class="flex items-center gap-2">
         <button
-          @click="fetchCourses"
-          class="p-2 rounded-lg hover:bg-white/10 transition-colors"
-          title="重新整理"
+          @click="goToPage(pagination.currentPage - 1)"
+          :disabled="pagination.currentPage <= 1"
+          class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+          :class="pagination.currentPage <= 1
+            ? 'bg-white/5 text-slate-600 cursor-not-allowed'
+            : 'bg-white/10 text-slate-300 hover:bg-white/20'"
         >
-          <svg class="w-5 h-5 text-slate-400" :class="{ 'animate-spin': loading }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
+          上一頁
         </button>
         <button
-          @click="showCreateModal = true"
-          class="btn-primary px-4 py-2 text-sm font-medium"
+          @click="goToPage(pagination.currentPage + 1)"
+          :disabled="pagination.currentPage >= pagination.totalPages"
+          class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+          :class="pagination.currentPage >= pagination.totalPages
+            ? 'bg-white/5 text-slate-600 cursor-not-allowed'
+            : 'bg-white/10 text-slate-300 hover:bg-white/20'"
         >
-          + 新增課程
+          下一頁
         </button>
       </div>
     </div>
@@ -58,9 +102,14 @@
       <svg class="w-16 h-16 mx-auto mb-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
       </svg>
-      <h3 class="text-lg font-medium text-slate-300 mb-2">尚無課程</h3>
-      <p class="text-slate-500 mb-4">建立第一個課程來開始使用</p>
+      <h3 class="text-lg font-medium text-slate-300 mb-2">
+        {{ searchQuery ? '沒有符合的課程' : '尚無課程' }}
+      </h3>
+      <p class="text-slate-500 mb-4">
+        {{ searchQuery ? '嘗試其他搜尋關鍵字' : '建立第一個課程來開始使用' }}
+      </p>
       <button
+        v-if="!searchQuery"
         @click="showCreateModal = true"
         class="btn-primary px-4 py-2"
       >
@@ -121,6 +170,35 @@
             ID: {{ course.id }}
           </span>
         </div>
+      </div>
+    </div>
+
+    <!-- 分頁控制 -->
+    <div v-if="pagination.totalPages > 1" class="flex items-center justify-between px-2">
+      <span class="text-sm text-slate-500">
+        第 {{ pagination.currentPage }} 頁 / 共 {{ pagination.totalPages }} 頁
+      </span>
+      <div class="flex items-center gap-2">
+        <button
+          @click="goToPage(pagination.currentPage - 1)"
+          :disabled="pagination.currentPage <= 1"
+          class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+          :class="pagination.currentPage <= 1
+            ? 'bg-white/5 text-slate-600 cursor-not-allowed'
+            : 'bg-white/10 text-slate-300 hover:bg-white/20'"
+        >
+          上一頁
+        </button>
+        <button
+          @click="goToPage(pagination.currentPage + 1)"
+          :disabled="pagination.currentPage >= pagination.totalPages"
+          class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+          :class="pagination.currentPage >= pagination.totalPages
+            ? 'bg-white/5 text-slate-600 cursor-not-allowed'
+            : 'bg-white/10 text-slate-300 hover:bg-white/20'"
+        >
+          下一頁
+        </button>
       </div>
     </div>
 
@@ -206,6 +284,13 @@ interface Course {
   is_active: boolean
 }
 
+interface PaginationState {
+  currentPage: number
+  totalPages: number
+  total: number
+  limit: number
+}
+
 const api = useApi()
 
 const courses = ref<Course[]>([])
@@ -214,26 +299,69 @@ const saving = ref(false)
 const showCreateModal = ref(false)
 const editingCourse = ref<Course | null>(null)
 
+// 搜尋與分頁狀態
+const searchQuery = ref('')
+const pagination = ref<PaginationState>({
+  currentPage: 1,
+  totalPages: 1,
+  total: 0,
+  limit: 12,
+})
+const debounceTimer = ref<NodeJS.Timeout | null>(null)
+
 const form = reactive({
   name: '',
   default_duration: 60,
   is_active: true,
 })
 
-const cities = []
+// Debounce 搜尋
+function updateSearch() {
+  if (debounceTimer.value) {
+    clearTimeout(debounceTimer.value)
+  }
+  debounceTimer.value = setTimeout(() => {
+    pagination.value.currentPage = 1 // 搜尋時重置到第一頁
+    fetchCourses()
+  }, 300) // 300ms debounce
+}
+
+// 監聽搜尋文字變化
+watch(searchQuery, () => {
+  updateSearch()
+})
 
 async function fetchCourses() {
   loading.value = true
   try {
-    const api = useApi()
-    // useApi 已經自動提取了 data/datas 內容
-    const response = await api.get<Course[]>('/admin/courses')
-    courses.value = response || []
+    const params = new URLSearchParams()
+    if (searchQuery.value.trim()) {
+      params.set('query', searchQuery.value.trim())
+    }
+    params.set('page', String(pagination.value.currentPage))
+    params.set('limit', String(pagination.value.limit))
+
+    const queryString = params.toString()
+    const url = `/admin/courses${queryString ? `?${queryString}` : ''}`
+
+    const response = await api.get<{ data: Course[]; total: number; total_pages: number }>(url)
+    courses.value = response.data || []
+
+    // 更新分頁資訊
+    pagination.value.total = response.total || 0
+    pagination.value.totalPages = response.total_pages || 1
   } catch (error) {
     console.error('取得課程列表失敗:', error)
     courses.value = []
   } finally {
     loading.value = false
+  }
+}
+
+function goToPage(page: number) {
+  if (page >= 1 && page <= pagination.value.totalPages) {
+    pagination.value.currentPage = page
+    fetchCourses()
   }
 }
 
@@ -245,14 +373,13 @@ function editCourse(course: Course) {
 }
 
 async function deleteCourse(course: Course) {
-  if (!confirm(`確定要刪除課程「${course.name}」嗎？`)) {
+  if (!await alertConfirm(`確定要刪除課程「${course.name}」嗎？`)) {
     return
   }
 
   try {
     await api.delete(`/admin/courses/${course.id}`)
     await alertSuccess('課程已刪除')
-    // 清除本機快取狀態，確保下次取得最新資料
     courses.value = []
     await fetchCourses()
   } catch (error) {
@@ -296,7 +423,6 @@ async function saveCourse() {
       await alertSuccess('課程已建立')
     }
 
-    // 清除本機快取狀態，確保下次取得最新資料
     courses.value = []
     closeModal()
     await fetchCourses()
@@ -310,5 +436,12 @@ async function saveCourse() {
 
 onMounted(() => {
   fetchCourses()
+})
+
+// 元件卸載時清除計時器
+onUnmounted(() => {
+  if (debounceTimer.value) {
+    clearTimeout(debounceTimer.value)
+  }
 })
 </script>

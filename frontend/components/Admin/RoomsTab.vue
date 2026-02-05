@@ -1,16 +1,61 @@
 <template>
   <div class="space-y-4">
-    <div class="flex items-center justify-between">
-      <h2 class="text-xl font-semibold text-slate-100">教室列表</h2>
-      <button
-        @click="showCreateModal = true"
-        class="btn-primary px-4 py-2 text-sm font-medium flex items-center gap-2"
-      >
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+    <!-- 標題區域與搜尋 -->
+    <div class="flex flex-col gap-4">
+      <div class="flex items-center justify-between">
+        <h2 class="text-xl font-semibold text-slate-100">教室列表</h2>
+        <button
+          @click="showCreateModal = true"
+          class="btn-primary px-4 py-2 text-sm font-medium flex items-center gap-2"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+          新增教室
+        </button>
+      </div>
+
+      <!-- 搜尋框 -->
+      <div class="relative">
+        <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
         </svg>
-        新增教室
-      </button>
+        <input
+          v-model="searchQuery"
+          type="text"
+          placeholder="搜尋教室名稱..."
+          class="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-colors"
+        />
+      </div>
+    </div>
+
+    <!-- 分頁控制 -->
+    <div v-if="pagination.totalPages > 1" class="flex items-center justify-between px-2">
+      <span class="text-sm text-slate-500">
+        第 {{ pagination.currentPage }} 頁 / 共 {{ pagination.totalPages }} 頁
+      </span>
+      <div class="flex items-center gap-2">
+        <button
+          @click="goToPage(pagination.currentPage - 1)"
+          :disabled="pagination.currentPage <= 1"
+          class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+          :class="pagination.currentPage <= 1
+            ? 'bg-white/5 text-slate-600 cursor-not-allowed'
+            : 'bg-white/10 text-slate-300 hover:bg-white/20'"
+        >
+          上一頁
+        </button>
+        <button
+          @click="goToPage(pagination.currentPage + 1)"
+          :disabled="pagination.currentPage >= pagination.totalPages"
+          class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+          :class="pagination.currentPage >= pagination.totalPages
+            ? 'bg-white/5 text-slate-600 cursor-not-allowed'
+            : 'bg-white/10 text-slate-300 hover:bg-white/20'"
+        >
+          下一頁
+        </button>
+      </div>
     </div>
 
     <!-- 骨架屏載入狀態 -->
@@ -53,8 +98,9 @@
       <svg class="w-16 h-16 mx-auto mb-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
       </svg>
-      <p class="mb-4">尚未添加教室</p>
+      <p class="mb-4">{{ searchQuery ? '沒有符合的教室' : '尚未添加教室' }}</p>
       <button
+        v-if="!searchQuery"
         @click="showCreateModal = true"
         class="px-4 py-2 rounded-lg bg-primary-500 text-white hover:bg-primary-600 transition-colors"
       >
@@ -93,7 +139,7 @@
               title="編輯"
             >
               <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 0L21.828 3.172a2 2 0 010-2.828l-7-7a2 2 0 00-2.828 0L2.172 20.828a2 2 0 010 2.828l7 7a2 2 0 0012.828 0l7.172-7.172z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
               </svg>
             </button>
             <button
@@ -146,6 +192,35 @@
       </div>
     </div>
 
+    <!-- 分頁控制 -->
+    <div v-if="pagination.totalPages > 1" class="flex items-center justify-between px-2">
+      <span class="text-sm text-slate-500">
+        第 {{ pagination.currentPage }} 頁 / 共 {{ pagination.totalPages }} 頁
+      </span>
+      <div class="flex items-center gap-2">
+        <button
+          @click="goToPage(pagination.currentPage - 1)"
+          :disabled="pagination.currentPage <= 1"
+          class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+          :class="pagination.currentPage <= 1
+            ? 'bg-white/5 text-slate-600 cursor-not-allowed'
+            : 'bg-white/10 text-slate-300 hover:bg-white/20'"
+        >
+          上一頁
+        </button>
+        <button
+          @click="goToPage(pagination.currentPage + 1)"
+          :disabled="pagination.currentPage >= pagination.totalPages"
+          class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+          :class="pagination.currentPage >= pagination.totalPages
+            ? 'bg-white/5 text-slate-600 cursor-not-allowed'
+            : 'bg-white/10 text-slate-300 hover:bg-white/20'"
+        >
+          下一頁
+        </button>
+      </div>
+    </div>
+
     <RoomModal
       v-if="showCreateModal"
       :room="null"
@@ -165,6 +240,13 @@
 <script setup lang="ts">
 import RoomModal from '~/components/Scheduling/RoomModal.vue'
 
+interface PaginationState {
+  currentPage: number
+  totalPages: number
+  total: number
+  limit: number
+}
+
 const showCreateModal = ref(false)
 const showEditModal = ref(false)
 const editingRoom = ref<any>(null)
@@ -179,16 +261,64 @@ const { invalidate } = useResourceCache()
 
 const rooms = ref<any[]>([])
 
-const fetchRooms = async () => {
+// 搜尋與分頁狀態
+const searchQuery = ref('')
+const pagination = ref<PaginationState>({
+  currentPage: 1,
+  totalPages: 1,
+  total: 0,
+  limit: 12,
+})
+const debounceTimer = ref<NodeJS.Timeout | null>(null)
+
+// Debounce 搜尋
+function updateSearch() {
+  if (debounceTimer.value) {
+    clearTimeout(debounceTimer.value)
+  }
+  debounceTimer.value = setTimeout(() => {
+    pagination.value.currentPage = 1 // 搜尋時重置到第一頁
+    fetchRooms()
+  }, 300) // 300ms debounce
+}
+
+// 監聽搜尋文字變化
+watch(searchQuery, () => {
+  updateSearch()
+})
+
+async function fetchRooms() {
   loading.value = true
   try {
     const api = useApi()
-    rooms.value = await api.get<any[]>('/admin/rooms')
+    const params = new URLSearchParams()
+    if (searchQuery.value.trim()) {
+      params.set('query', searchQuery.value.trim())
+    }
+    params.set('page', String(pagination.value.currentPage))
+    params.set('limit', String(pagination.value.limit))
+
+    const queryString = params.toString()
+    const url = `/admin/rooms${queryString ? `?${queryString}` : ''}`
+
+    const response = await api.get<{ data: any[]; total: number; total_pages: number }>(url)
+    rooms.value = response.data || []
+
+    // 更新分頁資訊
+    pagination.value.total = response.total || 0
+    pagination.value.totalPages = response.total_pages || 1
   } catch (error) {
     console.error('Failed to fetch rooms:', error)
     rooms.value = []
   } finally {
     loading.value = false
+  }
+}
+
+function goToPage(page: number) {
+  if (page >= 1 && page <= pagination.value.totalPages) {
+    pagination.value.currentPage = page
+    fetchRooms()
   }
 }
 
@@ -250,4 +380,11 @@ const formatDate = (dateStr: string): string => {
     day: 'numeric',
   })
 }
+
+// 元件卸載時清除計時器
+onUnmounted(() => {
+  if (debounceTimer.value) {
+    clearTimeout(debounceTimer.value)
+  }
+})
 </script>

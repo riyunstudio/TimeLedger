@@ -46,7 +46,17 @@ type ToggleActiveRequest struct {
 }
 
 // GetRooms 取得教室列表（使用快取）
-func (s *RoomService) GetRooms(ctx context.Context, centerID uint) ([]models.Room, *errInfos.Res, error) {
+func (s *RoomService) GetRooms(ctx context.Context, centerID uint, query string, page, limit int) ([]models.Room, int64, *errInfos.Res, error) {
+	// 如果有查詢參數，直接跳過快取查詢資料庫
+	if query != "" {
+		s.Logger.Debug("room search query, skipping cache", "center_id", centerID, "query", query)
+		rooms, total, err := s.roomRepository.SearchByNamePaginated(ctx, centerID, query, page, limit)
+		if err != nil {
+			return nil, 0, s.app.Err.New(errInfos.SQL_ERROR), err
+		}
+		return rooms, total, nil, nil
+	}
+
 	// 先從快取取得
 	cached, err := s.cacheService.GetRoomList(ctx, centerID)
 	if err == nil && cached != nil {
@@ -61,13 +71,13 @@ func (s *RoomService) GetRooms(ctx context.Context, centerID uint) ([]models.Roo
 				IsActive: item.IsActive,
 			})
 		}
-		return rooms, nil, nil
+		return rooms, int64(len(rooms)), nil, nil
 	}
 
 	// 快取未命中，從資料庫取得
 	rooms, err := s.roomRepository.ListByCenterID(ctx, centerID)
 	if err != nil {
-		return nil, s.app.Err.New(errInfos.SQL_ERROR), err
+		return nil, 0, s.app.Err.New(errInfos.SQL_ERROR), err
 	}
 
 	// 存入快取
@@ -82,7 +92,7 @@ func (s *RoomService) GetRooms(ctx context.Context, centerID uint) ([]models.Roo
 	}
 	_ = s.cacheService.SetRoomList(ctx, centerID, cacheItems)
 
-	return rooms, nil, nil
+	return rooms, int64(len(rooms)), nil, nil
 }
 
 // GetActiveRooms 取得已啟用的教室列表

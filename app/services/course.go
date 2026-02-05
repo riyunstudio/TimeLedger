@@ -46,8 +46,25 @@ type UpdateCourseRequest struct {
 	IsActive         *bool  `json:"is_active"`          // 可選，如果提供則更新啟用狀態
 }
 
-func (s *CourseService) GetCourses(ctx context.Context, centerID uint) ([]models.Course, *errInfos.Res, error) {
-	// 先從快取取得
+func (s *CourseService) GetCourses(ctx context.Context, centerID uint, query string, page, limit int) ([]models.Course, int64, *errInfos.Res, error) {
+	// 如果有查詢參數，直接跳過快取查詢資料庫
+	if query != "" {
+		s.Logger.Debug("course search query, skipping cache", "center_id", centerID, "query", query)
+		courses, total, err := s.courseRepo.SearchByNamePaginated(ctx, centerID, query, page, limit)
+		if err != nil {
+			errInfo := s.app.Err.New(errInfos.SQL_ERROR)
+			if errInfo == nil {
+				errInfo = &errInfos.Res{
+					Code: errInfos.SQL_ERROR,
+					Msg:  "資料庫操作失敗",
+				}
+			}
+			return nil, 0, errInfo, err
+		}
+		return courses, total, nil, nil
+	}
+
+	// 如果沒有查詢參數，先從快取取得
 	cached, cacheErr := s.cacheService.GetCourseList(ctx, centerID)
 	if cacheErr == nil && len(cached) > 0 {
 		s.Logger.Debug("course cache hit", "center_id", centerID, "count", len(cached))
@@ -65,7 +82,7 @@ func (s *CourseService) GetCourses(ctx context.Context, centerID uint) ([]models
 				IsActive:         item.IsActive,
 			})
 		}
-		return courses, nil, nil
+		return courses, int64(len(courses)), nil, nil
 	}
 
 	// 快取未命中或讀取失敗，從資料庫取得
@@ -81,7 +98,7 @@ func (s *CourseService) GetCourses(ctx context.Context, centerID uint) ([]models
 				Msg:  "資料庫操作失敗",
 			}
 		}
-		return nil, errInfo, err
+		return nil, 0, errInfo, err
 	}
 
 	// 存入快取（非同步，不影響主要流程）
@@ -101,7 +118,7 @@ func (s *CourseService) GetCourses(ctx context.Context, centerID uint) ([]models
 		s.Logger.Warn("failed to cache course list", "error", err)
 	}
 
-	return courses, nil, nil
+	return courses, int64(len(courses)), nil, nil
 }
 
 func (s *CourseService) GetActiveCourses(ctx context.Context, centerID uint) ([]models.Course, *errInfos.Res, error) {

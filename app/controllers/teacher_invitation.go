@@ -93,15 +93,6 @@ type PaginationRequest struct {
 	Limit int `form:"limit"`
 }
 
-// PaginationResponse 分頁回應結構
-type PaginationResponse struct {
-	Data       interface{} `json:"data"`
-	Total      int64       `json:"total"`
-	Page       int         `json:"page"`
-	Limit      int         `json:"limit"`
-	TotalPages int64       `json:"total_pages"`
-}
-
 // GetInvitations 取得邀請列表
 // @Summary 取得邀請列表
 // @Tags Admin - Invitations
@@ -112,7 +103,7 @@ type PaginationResponse struct {
 // @Param status query string false "篩選狀態 (PENDING/ACCEPTED/DECLINED/EXPIRED)"
 // @Param page query int false "頁碼"
 // @Param limit query int false "每頁筆數"
-// @Success 200 {object} global.ApiResponse{data=PaginationResponse}
+// @Success 200 {object} global.ApiResponse{data=resources.PaginationResponse}
 // @Router /api/v1/admin/centers/{id}/invitations [get]
 func (ctl *TeacherInvitationController) GetInvitations(ctx *gin.Context) {
 	helper := NewContextHelper(ctx)
@@ -136,13 +127,7 @@ func (ctl *TeacherInvitationController) GetInvitations(ctx *gin.Context) {
 		return
 	}
 
-	helper.Success(PaginationResponse{
-		Data:       invitations,
-		Total:      total,
-		Page:       req.Page,
-		Limit:      req.Limit,
-		TotalPages: (total + int64(req.Limit) - 1) / int64(req.Limit),
-	})
+	helper.Success(resources.NewPaginationResponse(invitations, total, req.Page, req.Limit))
 }
 
 // ========== 通用輔助方法 ==========

@@ -29,7 +29,10 @@ func NewAdminRoomController(app *app.App) *AdminRoomController {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Success 200 {object} global.ApiResponse{data=[]resources.RoomResponse}
+// @Param query query string false "關鍵字搜尋"
+// @Param page query int false "頁碼，預設 1"
+// @Param limit query int false "每頁筆數，預設 20"
+// @Success 200 {object} global.ApiResponse{data=resources.PaginationResponse}
 // @Router /api/v1/admin/rooms [get]
 func (ctl *AdminRoomController) GetRooms(ctx *gin.Context) {
 	helper := NewContextHelper(ctx)
@@ -44,14 +47,23 @@ func (ctl *AdminRoomController) GetRooms(ctx *gin.Context) {
 		return
 	}
 
-	rooms, errInfo, err := ctl.roomService.GetRooms(ctx.Request.Context(), centerID)
+	// 取得查詢參數
+	query := helper.QueryStringOrDefault("query", "")
+	page := helper.QueryIntOrDefault("page", 1)
+	limit := helper.QueryIntOrDefault("limit", 20)
+
+	rooms, total, errInfo, err := ctl.roomService.GetRooms(ctx.Request.Context(), centerID, query, page, limit)
 	if err != nil {
 		helper.ErrorWithInfo(errInfo)
 		return
 	}
 
 	responses := ctl.roomResource.ToRoomResponses(rooms)
-	helper.Success(responses)
+
+	// 建立分頁回應
+	paginationResp := resources.NewPaginationResponse(responses, total, page, limit)
+
+	helper.Success(paginationResp)
 }
 
 // CreateRoom 新增教室

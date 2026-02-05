@@ -57,6 +57,61 @@ func (rp *CenterMembershipRepository) ListTeacherIDsByCenterID(ctx context.Conte
 	return membershipIDs, err
 }
 
+// ListTeachersByCenterPaginated 取得中心的老師列表（分頁）
+func (rp *CenterMembershipRepository) ListTeachersByCenterPaginated(ctx context.Context, centerID uint, query string, page, limit int) ([]models.Teacher, int64, error) {
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 {
+		limit = 20
+	}
+	if limit > 100 {
+		limit = 100
+	}
+	offset := (page - 1) * limit
+
+	// 計算總數
+	var total int64
+	countQuery := rp.app.MySQL.RDB.WithContext(ctx).Model(&models.CenterMembership{}).
+		Joins("INNER JOIN teachers ON center_memberships.teacher_id = teachers.id").
+		Where("center_memberships.center_id = ? AND center_memberships.status IN ?", centerID, []string{"ACTIVE", "INVITED"})
+	if query != "" {
+		countQuery = countQuery.Where("teachers.name LIKE ?", "%"+query+"%")
+	}
+	if err := countQuery.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// 查詢資料
+	var memberships []models.CenterMembership
+	dataQuery := rp.app.MySQL.RDB.WithContext(ctx).Model(&models.CenterMembership{}).
+		Joins("INNER JOIN teachers ON center_memberships.teacher_id = teachers.id").
+		Where("center_memberships.center_id = ? AND center_memberships.status IN ?", centerID, []string{"ACTIVE", "INVITED"})
+	if query != "" {
+		dataQuery = dataQuery.Where("teachers.name LIKE ?", "%"+query+"%")
+	}
+	if err := dataQuery.Order("teachers.name ASC").Offset(offset).Limit(limit).Find(&memberships).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// 提取老師 IDs 並取得老師資料
+	teacherIDs := make([]uint, 0, len(memberships))
+	for _, m := range memberships {
+		teacherIDs = append(teacherIDs, m.TeacherID)
+	}
+
+	// 批次查詢老師資料
+	var teachers []models.Teacher
+	if len(teacherIDs) > 0 {
+		err := rp.app.MySQL.RDB.WithContext(ctx).Where("id IN ?", teacherIDs).Find(&teachers).Error
+		if err != nil {
+			return nil, 0, err
+		}
+	}
+
+	return teachers, total, nil
+}
+
 type CenterMembershipRepositoryInterface interface {
 	Create(ctx context.Context, data models.CenterMembership) (models.CenterMembership, error)
 	Update(ctx context.Context, data models.CenterMembership) error
@@ -67,4 +122,5 @@ type CenterMembershipRepositoryInterface interface {
 	ListActiveByCenterID(ctx context.Context, centerID uint) ([]models.CenterMembership, error)
 	GetActiveByTeacherID(ctx context.Context, teacherID uint) ([]models.CenterMembership, error)
 	ListTeacherIDsByCenterID(ctx context.Context, centerID uint) ([]uint, error)
+	ListTeachersByCenterPaginated(ctx context.Context, centerID uint, query string, page, limit int) ([]models.Teacher, int64, error)
 }

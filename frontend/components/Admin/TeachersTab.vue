@@ -17,11 +17,12 @@
         placeholder="搜尋老師..."
         class="input-field"
         :disabled="loading"
+        @input="debouncedSearch"
       />
     </div>
 
     <!-- 骨架屏載入狀態 -->
-    <div v-if="loading" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div v-if="loading && teachers.length === 0" class="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div
         v-for="i in 6"
         :key="i"
@@ -53,7 +54,7 @@
     </div>
 
     <!-- 空狀態 -->
-    <div v-else-if="filteredTeachers.length === 0" class="text-center py-12 text-slate-500 glass-card">
+    <div v-else-if="teachers.length === 0" class="text-center py-12 text-slate-500 glass-card">
       <svg class="w-16 h-16 mx-auto mb-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20H2v-2a3 3 0 015.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
       </svg>
@@ -63,7 +64,7 @@
     <!-- 老師列表 -->
     <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div
-        v-for="teacher in filteredTeachers"
+        v-for="teacher in teachers"
         :key="teacher.id"
         class="glass-card p-5 hover:bg-white/5 transition-all"
       >
@@ -163,6 +164,32 @@
       </div>
     </div>
 
+    <!-- 分頁控制 -->
+    <div v-if="totalPages > 1" class="flex items-center justify-between pt-4">
+      <div class="text-sm text-slate-400">
+        共 {{ totalCount }} 位老師
+      </div>
+      <div class="flex items-center gap-2">
+        <button
+          @click="goToPage(currentPage - 1)"
+          :disabled="currentPage === 1"
+          class="glass-btn px-3 py-1.5 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          上一頁
+        </button>
+        <span class="text-sm text-slate-300">
+          第 {{ currentPage }} / {{ totalPages }} 頁
+        </span>
+        <button
+          @click="goToPage(currentPage + 1)"
+          :disabled="currentPage === totalPages"
+          class="glass-btn px-3 py-1.5 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          下一頁
+        </button>
+      </div>
+    </div>
+
     <TeacherInviteModal
       v-if="showInviteModal"
       @close="showInviteModal = false"
@@ -179,6 +206,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useDebounceFn } from '@vueuse/core'
 
 // Alert composable
 const { error: alertError, confirm: alertConfirm } = useAlert()
@@ -186,53 +214,79 @@ const { error: alertError, confirm: alertConfirm } = useAlert()
 // 資源快取
 const { invalidate } = useResourceCache()
 
+// 分頁常數
+const PAGE_LIMIT = 20
+
 const showInviteModal = ref(false)
 const searchQuery = ref('')
 const showMenu = ref<Record<number, boolean>>({})
 const loading = ref(false)
 const selectedTeacher = ref<any>(null)
 
+// 分頁狀態
+const currentPage = ref(1)
+const totalPages = ref(0)
+const totalCount = ref(0)
+
 const teachers = ref<any[]>([])
 
-const filteredTeachers = computed(() => {
-  if (!searchQuery.value) return teachers.value
+// 去抖動搜尋函數
+const debouncedSearch = useDebounceFn(() => {
+  currentPage.value = 1 // 搜尋時回到第一頁
+  fetchTeachers()
+}, 300)
 
-  const query = searchQuery.value.toLowerCase()
-  return teachers.value.filter(t =>
-    t.name?.toLowerCase().includes(query) ||
-    t.email?.toLowerCase().includes(query)
-  )
-})
-
+// 帶搜尋和分頁的 API 請求
 const fetchTeachers = async () => {
   loading.value = true
   try {
     const api = useApi()
-    const result = await api.get<any[]>('/admin/teachers')
-    teachers.value = result
+    const params = new URLSearchParams()
 
-    // 背景抓取每位老師的評分資料以填充 UI 中的星星
-    await Promise.all(
-      teachers.value.map(async (teacher) => {
-        try {
-          const noteResponse = await api.get<any>(
-            `/admin/teachers/${teacher.id}/note`
-          )
-          if (noteResponse) {
-            teacher.note = noteResponse
-          }
-        } catch {
-          // 無評分資料為正常情況
-        }
-      })
-    )
+    // 伺服器端搜尋
+    if (searchQuery.value.trim()) {
+      params.append('q', searchQuery.value.trim())
+    }
+
+    // 分頁參數
+    params.append('page', currentPage.value.toString())
+    params.append('limit', PAGE_LIMIT.toString())
+
+    const response = await api.get<any>(`/admin/teachers?${params.toString()}`)
+
+    // API 現在直接回傳分頁格式
+    if (response && response.data) {
+      teachers.value = response.data
+    }
+
+    // 更新分頁資訊
+    if (response) {
+      totalCount.value = response.total || 0
+      totalPages.value = response.total_pages || 1
+    }
   } catch (error) {
     console.error('Failed to fetch teachers:', error)
     teachers.value = []
+    totalCount.value = 0
+    totalPages.value = 0
   } finally {
     loading.value = false
   }
 }
+
+// 跳轉到指定頁面
+const goToPage = (page: number) => {
+  if (page >= 1 && page <= totalPages.value) {
+    currentPage.value = page
+    fetchTeachers()
+  }
+}
+
+// 監聽搜尋變化
+watch(searchQuery, () => {
+  // 搜尋時會由 debouncedSearch 處理
+  // 這裡不需要額外邏輯
+})
 
 onMounted(() => {
   fetchTeachers()
@@ -262,6 +316,12 @@ const removeTeacher = async (teacher: any) => {
   try {
     const api = useApi()
     await api.delete(`/admin/centers/${centerId}/teachers/${teacher.id}`)
+
+    // 移除成功後，如果目前頁面沒有資料了，回到前一頁
+    if (teachers.value.length === 1 && currentPage.value > 1) {
+      currentPage.value--
+    }
+
     await fetchTeachers()
     // 清除老師快取，下次存取會自動重新載入
     invalidate('teachers')
