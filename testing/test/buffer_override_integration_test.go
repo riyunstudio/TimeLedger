@@ -9,6 +9,11 @@ import (
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"gitlab.en.mcbwvx.com/frame/teemo/tools"
+	gormMysql "gorm.io/driver/mysql"
+	"gorm.io/gorm"
+
 	"timeLedger/app"
 	"timeLedger/app/controllers"
 	"timeLedger/app/models"
@@ -19,11 +24,6 @@ import (
 	"timeLedger/database/redis"
 	"timeLedger/global"
 	"timeLedger/global/errInfos"
-
-	"gitlab.en.mcbwvx.com/frame/teemo/tools"
-	gormMysql "gorm.io/driver/mysql"
-	"gorm.io/gorm"
-
 	mockRedis "timeLedger/testing/redis"
 
 	"github.com/gin-gonic/gin"
@@ -63,10 +63,10 @@ func setupBufferOverrideTestApp() (*app.App, *gorm.DB, func()) {
 	tool := tools.Initialize("Asia/Taipei")
 
 	env := &configs.Env{
-		JWTSecret:      "test-jwt-secret-key-for-testing-only",
-		AppEnv:         "test",
-		AppDebug:       true,
-		AppTimezone:    "Asia/Taipei",
+		JWTSecret:   "test-jwt-secret-key-for-testing-only",
+		AppEnv:      "test",
+		AppDebug:    true,
+		AppTimezone: "Asia/Taipei",
 	}
 
 	appInstance := &app.App{
@@ -104,10 +104,10 @@ func createTestData(appInstance *app.App) (center models.Center, teacher models.
 
 	// 建立 Teacher
 	teacher = models.Teacher{
-		Name:      fmt.Sprintf("Test Teacher %d", time.Now().UnixNano()),
-		Email:     fmt.Sprintf("teacher%d@test.com", time.Now().UnixNano()),
+		Name:       fmt.Sprintf("Test Teacher %d", time.Now().UnixNano()),
+		Email:      fmt.Sprintf("teacher%d@test.com", time.Now().UnixNano()),
 		LineUserID: fmt.Sprintf("LINE_%d", time.Now().UnixNano()),
-		CreatedAt: time.Now(),
+		CreatedAt:  time.Now(),
 	}
 	teacherRepo := repositories.NewTeacherRepository(appInstance)
 	teacher, err = teacherRepo.Create(ctx, teacher)
@@ -117,9 +117,9 @@ func createTestData(appInstance *app.App) (center models.Center, teacher models.
 
 	// 建立 Room
 	room = models.Room{
-		CenterID: center.ID,
-		Name:     fmt.Sprintf("Test Room %d", time.Now().UnixNano()),
-		Capacity: 20,
+		CenterID:  center.ID,
+		Name:      fmt.Sprintf("Test Room %d", time.Now().UnixNano()),
+		Capacity:  20,
 		CreatedAt: time.Now(),
 	}
 	roomRepo := repositories.NewRoomRepository(appInstance)
@@ -199,9 +199,9 @@ func TestIntegration_ApplyTemplate_BufferOverride(t *testing.T) {
 
 	// 建立模板
 	template := models.TimetableTemplate{
-		CenterID: center.ID,
-		Name:     fmt.Sprintf("Test Template %d", time.Now().UnixNano()),
-		RowType:  "TIME",
+		CenterID:  center.ID,
+		Name:      fmt.Sprintf("Test Template %d", time.Now().UnixNano()),
+		RowType:   "TIME",
 		CreatedAt: time.Now(),
 	}
 	templateRepo := repositories.NewTimetableTemplateRepository(appInstance)
@@ -348,7 +348,7 @@ func TestIntegration_CreateRule_BufferOverride(t *testing.T) {
 		reqBody := requests.CreateRuleRequest{
 			Name:           fmt.Sprintf("Test Rule %d", time.Now().UnixNano()),
 			OfferingID:     offering.ID,
-			TeacherID:      teacher.ID,
+			TeacherID:      &teacher.ID,
 			RoomID:         room.ID,
 			StartTime:      "09:00",
 			EndTime:        "10:00",
@@ -386,7 +386,7 @@ func TestIntegration_CreateRule_BufferOverride(t *testing.T) {
 		reqBody := requests.CreateRuleRequest{
 			Name:           fmt.Sprintf("Override Test Rule %d", time.Now().UnixNano()),
 			OfferingID:     offering.ID,
-			TeacherID:      teacher.ID,
+			TeacherID:      &teacher.ID,
 			RoomID:         room.ID,
 			StartTime:      "09:00",
 			EndTime:        "10:00",
@@ -460,7 +460,7 @@ func TestIntegration_OverlapConflict_CannotOverride(t *testing.T) {
 		reqBody := requests.CreateRuleRequest{
 			Name:           fmt.Sprintf("Overlap Rule %d", time.Now().UnixNano()),
 			OfferingID:     offering.ID,
-			TeacherID:      teacher.ID,
+			TeacherID:      &teacher.ID,
 			RoomID:         room.ID,
 			StartTime:      "09:00", // 完全在現有規則的時間範圍內
 			EndTime:        "10:00",
