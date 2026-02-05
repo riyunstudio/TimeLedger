@@ -26,13 +26,13 @@
       <!-- 表單 -->
       <form v-else @submit.prevent="handleSubmit" class="p-4 space-y-4">
         <div>
-          <label class="block text-slate-300 mb-2 font-medium text-sm">{{ $t('schedule.course') }}</label>
-          <select v-model="form.course_id" class="input-field text-sm" required>
-            <option value="">{{ $t('schedule.selectCourse') }}</option>
-            <option v-for="course in courses" :key="course.id" :value="course.id">
-              {{ course.name }}
-            </option>
-          </select>
+          <SearchableSelect
+            v-model="form.course_id"
+            :options="courseOptions"
+            :label="$t('schedule.course')"
+            :placeholder="$t('schedule.selectCourse')"
+            required
+          />
         </div>
 
         <div>
@@ -47,23 +47,21 @@
         </div>
 
         <div>
-          <label class="block text-slate-300 mb-2 font-medium text-sm">{{ $t('schedule.defaultTeacher') }}</label>
-          <select v-model="form.default_teacher_id" class="input-field text-sm">
-            <option :value="null">{{ $t('common.none') }}</option>
-            <option v-for="teacher in teachers" :key="teacher.id" :value="teacher.id">
-              {{ teacher.name }}
-            </option>
-          </select>
+          <SearchableSelect
+            v-model="form.default_teacher_id"
+            :options="teacherOptions"
+            :label="$t('schedule.defaultTeacher')"
+            placeholder="無"
+          />
         </div>
 
         <div>
-          <label class="block text-slate-300 mb-2 font-medium text-sm">{{ $t('schedule.defaultRoom') }}</label>
-          <select v-model="form.default_room_id" class="input-field text-sm">
-            <option :value="null">{{ $t('common.none') }}</option>
-            <option v-for="room in rooms" :key="room.id" :value="room.id">
-              {{ room.name }}
-            </option>
-          </select>
+          <SearchableSelect
+            v-model="form.default_room_id"
+            :options="roomOptions"
+            :label="$t('schedule.defaultRoom')"
+            placeholder="無"
+          />
         </div>
 
         <div class="flex items-center gap-2">
@@ -101,6 +99,7 @@
 
 <script setup lang="ts">
 import { alertError } from '~/composables/useAlert'
+import SearchableSelect, { type SelectOption } from '~/components/Common/SearchableSelect.vue'
 
 // 資源快取
 const { invalidate } = useResourceCache()
@@ -120,6 +119,28 @@ const submitting = ref(false)
 const courses = ref<any[]>([])
 const teachers = ref<any[]>([])
 const rooms = ref<any[]>([])
+
+// 轉換為 SearchableSelect 選項格式
+const courseOptions = computed<SelectOption[]>(() =>
+  courses.value.map(c => ({
+    id: c.id,
+    name: c.name
+  }))
+)
+
+const teacherOptions = computed<SelectOption[]>(() =>
+  teachers.value.map(t => ({
+    id: t.id,
+    name: t.name
+  }))
+)
+
+const roomOptions = computed<SelectOption[]>(() =>
+  rooms.value.map(r => ({
+    id: r.id,
+    name: r.name
+  }))
+)
 
 const form = ref({
   course_id: '',

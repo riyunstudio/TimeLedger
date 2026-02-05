@@ -32,57 +32,35 @@
     <!-- 課程和老師 -->
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
       <div>
-        <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">
-          課程
-        </label>
-        <select
-          :value="values.offering_id"
-          @change="(e) => setFieldValue('offering_id', (e.target as HTMLSelectElement).value)"
-          class="input-field text-sm sm:text-base"
-        >
-          <option value="">請選擇課程</option>
-          <option v-for="offering in offerings" :key="offering.id" :value="offering.id">
-            {{ offering.name || `班別 #${offering.id}` }}
-          </option>
-        </select>
-        <span v-if="errors.offering_id" class="text-critical-500 text-xs mt-1">
-          {{ errors.offering_id }}
-        </span>
+        <SearchableSelect
+          v-model="values.offering_id"
+          :options="offeringOptions"
+          label="課程"
+          placeholder="請選擇課程"
+          required
+          :error="errors.offering_id"
+        />
       </div>
 
       <div>
-        <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">
-          老師
-        </label>
-        <select
-          :value="values.teacher_id ?? ''"
-          @change="(e) => setFieldValue('teacher_id', (e.target as HTMLSelectElement).value ? Number((e.target as HTMLSelectElement).value) : null)"
-          class="input-field text-sm sm:text-base"
-        >
-          <option value="">請選擇老師</option>
-          <option v-for="teacher in teachers" :key="teacher.id" :value="teacher.id">
-            {{ teacher.name }}
-          </option>
-        </select>
+        <SearchableSelect
+          v-model="values.teacher_id"
+          :options="teacherOptions"
+          label="老師"
+          placeholder="請選擇老師"
+        />
       </div>
     </div>
 
     <!-- 教室和時間 -->
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
       <div>
-        <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">
-          教室
-        </label>
-        <select
-          :value="values.room_id ?? ''"
-          @change="(e) => setFieldValue('room_id', (e.target as HTMLSelectElement).value ? Number((e.target as HTMLSelectElement).value) : null)"
-          class="input-field text-sm sm:text-base"
-        >
-          <option value="">請選擇教室</option>
-          <option v-for="room in rooms" :key="room.id" :value="room.id">
-            {{ room.name }}
-          </option>
-        </select>
+        <SearchableSelect
+          v-model="values.room_id"
+          :options="roomOptions"
+          label="教室"
+          placeholder="請選擇教室"
+        />
       </div>
 
       <div>
@@ -232,6 +210,7 @@ import { toTypedSchema } from '@vee-validate/zod'
 import { useForm } from 'vee-validate'
 import { formatDateToString } from '~/composables/useTaiwanTime'
 import RecurrencePicker from './RecurrencePicker.vue'
+import SearchableSelect, { type SelectOption } from '~/components/Common/SearchableSelect.vue'
 
 // Props
 interface Props {
@@ -260,6 +239,28 @@ const { resourceCache } = useResourceCache()
 const offerings = computed(() => resourceCache.value.offerings)
 const teachers = computed(() => Array.from(resourceCache.value.teachers.values()))
 const rooms = computed(() => Array.from(resourceCache.value.rooms.values()))
+
+// 轉換為 SearchableSelect 選項格式
+const offeringOptions = computed<SelectOption[]>(() =>
+  offerings.value.map(o => ({
+    id: o.id,
+    name: o.name || `班別 #${o.id}`
+  }))
+)
+
+const teacherOptions = computed<SelectOption[]>(() =>
+  teachers.value.map(t => ({
+    id: t.id,
+    name: t.name
+  }))
+)
+
+const roomOptions = computed<SelectOption[]>(() =>
+  rooms.value.map(r => ({
+    id: r.id,
+    name: r.name
+  }))
+)
 
 // Zod 驗證 Schema
 const createValidationSchema = () => {
