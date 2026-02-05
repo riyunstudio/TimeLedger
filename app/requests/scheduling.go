@@ -66,7 +66,7 @@ type ValidateFullRequest struct {
 type CreateRuleRequest struct {
 	Name           string  `json:"name" binding:"required"`
 	OfferingID     uint    `json:"offering_id" binding:"required"`
-	TeacherID      uint    `json:"teacher_id"`
+	TeacherID      *uint   `json:"teacher_id"`
 	RoomID         uint    `json:"room_id" binding:"required"`
 	StartTime      string  `json:"start_time" binding:"required,time_format"`
 	EndTime        string  `json:"end_time" binding:"required,time_format"`

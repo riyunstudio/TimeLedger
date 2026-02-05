@@ -53,7 +53,7 @@ type ScheduleServiceInterface interface {
 type CreateScheduleRuleRequest struct {
 	Name           string  `json:"name" binding:"required"`
 	OfferingID     uint    `json:"offering_id" binding:"required"`
-	TeacherID      uint    `json:"teacher_id"`
+	TeacherID      *uint   `json:"teacher_id"`
 	RoomID         uint    `json:"room_id" binding:"required"`
 	StartTime      string  `json:"start_time" binding:"required,time_format"`
 	EndTime        string  `json:"end_time" binding:"required,time_format"`
@@ -260,7 +260,7 @@ func (s *ScheduleService) CreateRule(ctx context.Context, centerID, adminID uint
 		}
 	}
 
-	validationResult, err := s.validationSvc.CheckOverlap(ctx, centerID, &req.TeacherID, req.RoomID, startTimeParsed, endTimeParsed, checkWeekday, nil)
+	validationResult, err := s.validationSvc.CheckOverlap(ctx, centerID, req.TeacherID, req.RoomID, startTimeParsed, endTimeParsed, checkWeekday, nil)
 	if err != nil {
 		return nil, s.App.Err.New(errInfos.SQL_ERROR), fmt.Errorf("failed to check overlap: %w", err)
 	}
@@ -305,7 +305,7 @@ func (s *ScheduleService) CreateRule(ctx context.Context, centerID, adminID uint
 			rule := models.ScheduleRule{
 				CenterID:   centerID,
 				OfferingID: req.OfferingID,
-				TeacherID:  &req.TeacherID,
+				TeacherID:  req.TeacherID,
 				RoomID:     req.RoomID,
 				Weekday:    weekday,
 				StartTime:  req.StartTime,
@@ -379,10 +379,10 @@ func (s *ScheduleService) checkBufferConflicts(ctx context.Context, centerID uin
 		newStartTime, _ := time.ParseInLocation("2006-01-02 15:04", targetDateLocal.Format("2006-01-02")+" "+req.StartTime, loc)
 
 		// 檢查 Teacher Buffer
-		if req.TeacherID > 0 {
-			prevEndTime, _ := s.getTeacherPreviousSessionEndTime(ctx, centerID, req.TeacherID, weekday, req.StartTime, newStartTime)
+		if req.TeacherID != nil && *req.TeacherID > 0 {
+			prevEndTime, _ := s.getTeacherPreviousSessionEndTime(ctx, centerID, *req.TeacherID, weekday, req.StartTime, newStartTime)
 			if !prevEndTime.IsZero() {
-				result, err := s.validationSvc.CheckTeacherBuffer(ctx, centerID, req.TeacherID, prevEndTime, newStartTime, offering.CourseID)
+				result, err := s.validationSvc.CheckTeacherBuffer(ctx, centerID, *req.TeacherID, prevEndTime, newStartTime, offering.CourseID)
 				if err != nil {
 					return nil, err
 				}
