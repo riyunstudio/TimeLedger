@@ -131,14 +131,6 @@
               智慧媒合
             </NuxtLink>
             <NuxtLink
-              to="/admin/teacher-ratings"
-              class="flex items-center gap-3 px-4 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700/30 transition-all duration-200 text-sm"
-              active-class="!text-white bg-violet-500/10"
-            >
-              <span class="w-1.5 h-1.5 rounded-full bg-slate-500" />
-              老師評價
-            </NuxtLink>
-            <NuxtLink
               to="/admin/invitations"
               class="flex items-center gap-3 px-4 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700/30 transition-all duration-200 text-sm"
               active-class="!text-white bg-violet-500/10"
@@ -221,14 +213,6 @@
             >
               <span class="w-1.5 h-1.5 rounded-full bg-slate-500" />
               管理員
-            </NuxtLink>
-            <NuxtLink
-              to="/admin/line-bind"
-              class="flex items-center gap-3 px-4 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700/30 transition-all duration-200 text-sm"
-              active-class="!text-white bg-slate-700/50"
-            >
-              <span class="w-1.5 h-1.5 rounded-full bg-slate-500" />
-              LINE 綁定
             </NuxtLink>
             <NuxtLink
               to="/admin/queue-monitor"
@@ -396,14 +380,6 @@
                   智慧媒合
                 </NuxtLink>
                 <NuxtLink
-                  to="/admin/teacher-ratings"
-                  class="flex items-center gap-3 px-4 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700/30 transition-all duration-200 text-sm"
-                  active-class="!text-white bg-violet-500/10"
-                  @click="mobileMenuOpen = false"
-                >
-                  老師評價
-                </NuxtLink>
-                <NuxtLink
                   to="/admin/invitations"
                   class="flex items-center gap-3 px-4 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700/30 transition-all duration-200 text-sm"
                   active-class="!text-white bg-violet-500/10"
@@ -478,14 +454,6 @@
                   @click="mobileMenuOpen = false"
                 >
                   管理員
-                </NuxtLink>
-                <NuxtLink
-                  to="/admin/line-bind"
-                  class="flex items-center gap-3 px-4 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700/30 transition-all duration-200 text-sm"
-                  active-class="!text-white bg-slate-700/50"
-                  @click="mobileMenuOpen = false"
-                >
-                  LINE 綁定
                 </NuxtLink>
                 <NuxtLink
                   to="/admin/queue-monitor"
@@ -628,12 +596,10 @@ const pageTitle = computed(() => {
     '/admin/approval': '審核管理',
     '/admin/broadcast': '一鍵公告',
     '/admin/matching': '智慧媒合',
-    '/admin/teacher-ratings': '老師評價',
     '/admin/templates': '範本管理',
     '/admin/resources': '資源管理',
     '/admin/settings': '系統設定',
     '/admin/admin-list': '管理員帳號',
-    '/admin/line-bind': 'LINE 綁定',
     '/admin/queue-monitor': '系統監控',
     '/admin/holidays': '假日設定',
     '/admin/invitations': '邀請紀錄'

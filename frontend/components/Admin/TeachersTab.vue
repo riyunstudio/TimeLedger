@@ -175,6 +175,12 @@
           >
             移除老師
           </button>
+          <button
+            @click="openRatingModal(teacher)"
+            class="w-full glass-btn px-4 py-2 rounded-xl text-sm text-warning-400 hover:bg-warning-500/10"
+          >
+            編輯評分
+          </button>
         </div>
       </div>
     </div>
@@ -230,6 +236,14 @@
       @close="closeMergeModal"
       @merged="onMerged"
     />
+
+    <TeacherRatingModal
+      :show="showRatingModal"
+      :teacher="ratingTeacher"
+      @close="closeRatingModal"
+      @saved="onRatingSaved"
+      @deleted="onRatingSaved"
+    />
   </div>
 </template>
 
@@ -245,6 +259,7 @@ const { invalidate } = useResourceCache()
 
 import TeacherCreateModal from '~/components/Teacher/TeacherCreateModal.vue'
 import TeacherMergeModal from '~/components/Teacher/TeacherMergeModal.vue'
+import TeacherRatingModal from '~/components/Teacher/TeacherRatingModal.vue'
 
 // 分頁常數
 const PAGE_LIMIT = 20
@@ -265,6 +280,10 @@ const totalCount = ref(0)
 const showMergeModal = ref(false)
 const mergingTeacher = ref<any>(null)
 const allTeachers = ref<any[]>([]) // 用於選擇目標老師 (通常需要全部已綁定的老師)
+
+// 評分狀態
+const showRatingModal = ref(false)
+const ratingTeacher = ref<any>(null)
 
 const teachers = ref<any[]>([])
 
@@ -316,11 +335,11 @@ const fetchTeachers = async () => {
 const fetchAllTeachers = async () => {
   try {
     const api = useApi()
-    const response = await api.get<any[]>('/admin/teachers?limit=1000') // 假設不超過 1000 位
+    const response = await api.get<any>('/admin/teachers?limit=1000') // 假設不超過 1000 位
     if (response && response.data) {
       allTeachers.value = response.data
     } else {
-      allTeachers.value = response || []
+      allTeachers.value = Array.isArray(response) ? response : []
     }
   } catch (err) {
     console.error('Failed to fetch all teachers:', err)
@@ -369,6 +388,21 @@ const onMerged = async () => {
   await fetchTeachers()
   await fetchAllTeachers()
   invalidate('teachers')
+}
+
+const openRatingModal = (teacher: any) => {
+  ratingTeacher.value = teacher
+  showRatingModal.value = true
+  showMenu.value[teacher.id] = false
+}
+
+const closeRatingModal = () => {
+  showRatingModal.value = false
+  ratingTeacher.value = null
+}
+
+const onRatingSaved = async () => {
+  await fetchTeachers()
 }
 
 const removeTeacher = async (teacher: any) => {
