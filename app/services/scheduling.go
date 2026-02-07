@@ -1054,6 +1054,20 @@ func intToString(n int) string {
 	return string(result)
 }
 
+// parseInt 從字串中提取數字並轉換為整數
+func parseInt(s string) int {
+	if s == "" {
+		return 0
+	}
+	var num int
+	for _, c := range s {
+		if c >= '0' && c <= '9' {
+			num = num*10 + int(c-'0')
+		}
+	}
+	return num
+}
+
 // 衝突檢查方法 - 代理到 validationService
 func (s *ScheduleService) CheckOverlap(ctx context.Context, centerID uint, teacherID *uint, roomID uint, startTime, endTime time.Time, weekday int, excludeRuleID *uint) (*OverlapCheckResult, error) {
 	result, err := s.validationSvc.CheckOverlap(ctx, centerID, teacherID, roomID, startTime, endTime, weekday, excludeRuleID)

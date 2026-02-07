@@ -1,11 +1,11 @@
-package services
+package test
 
 import (
 	"context"
-	"image"
 	"testing"
 	"time"
 	"timeLedger/app"
+	"timeLedger/app/services"
 	"timeLedger/database/mysql"
 	"timeLedger/database/redis"
 	"timeLedger/global/errInfos"
@@ -18,17 +18,17 @@ import (
 )
 
 func TestICSCalendarService_GenerateICS(t *testing.T) {
-	app := setupTestApp(t)
-	icsSvc := NewICSCalendarService(app)
+	app := setupICSTestApp(t)
+	icsSvc := services.NewICSCalendarService(app)
 
-	config := &ICSConfig{
+	config := &services.ICSConfig{
 		TeacherID:   1,
 		CenterID:    1,
 		StartDate:   time.Now(),
 		EndDate:     time.Now().AddDate(0, 1, 0),
 		CenterName:  "測試中心",
 		TeacherName: "測試老師",
-		Events: []ScheduleEvent{
+		Events: []services.ScheduleEvent{
 			{
 				ID:          "event-1",
 				Summary:     "瑜珈課程",
@@ -78,61 +78,9 @@ func TestICSCalendarService_GenerateICS(t *testing.T) {
 	t.Logf("Generated ICS:\n%s", icsStr)
 }
 
-func TestICSCalendarService_eventToICS(t *testing.T) {
-	app := setupTestApp(t)
-	icsSvc := NewICSCalendarService(app)
-
-	event := &ScheduleEvent{
-		ID:          "test-event-1",
-		Summary:     "測試課程",
-		Description: "測試描述",
-		Location:    "教室A",
-		StartTime:   time.Date(2026, 1, 20, 10, 0, 0, 0, time.UTC),
-		EndTime:     time.Date(2026, 1, 20, 11, 0, 0, 0, time.UTC),
-		TeacherName: "老師",
-		CenterName:  "中心",
-	}
-
-	icsStr, err := icsSvc.eventToICS(event)
-	if err != nil {
-		t.Fatalf("Failed to convert event to ICS: %v", err)
-	}
-
-	if !contains(icsStr, "UID:test-event-1") {
-		t.Error("Missing event UID")
-	}
-	if !contains(icsStr, "SUMMARY:測試課程") {
-		t.Error("Missing event summary")
-	}
-
-	t.Logf("Generated VEVENT:\n%s", icsStr)
-}
-
-func TestICSCalendarService_escapeICSText(t *testing.T) {
-	app := setupTestApp(t)
-	icsSvc := NewICSCalendarService(app)
-
-	tests := []struct {
-		input    string
-		expected string
-	}{
-		{"hello", "hello"},
-		{"hello;world", "hello\\;world"},
-		{"hello,world", "hello\\,world"},
-		{"hello\\world", "hello\\\\world"},
-	}
-
-	for _, tt := range tests {
-		result := icsSvc.escapeICSText(tt.input)
-		if result != tt.expected {
-			t.Errorf("escapeICSText(%q) = %q, want %q", tt.input, result, tt.expected)
-		}
-	}
-}
-
 func TestICSCalendarService_GenerateSubscriptionToken(t *testing.T) {
-	app := setupTestApp(t)
-	icsSvc := NewICSCalendarService(app)
+	app := setupICSTestApp(t)
+	icsSvc := services.NewICSCalendarService(app)
 
 	token, err := icsSvc.GenerateSubscriptionToken(1, 1)
 	if err != nil {
@@ -150,8 +98,8 @@ func TestICSCalendarService_GenerateSubscriptionToken(t *testing.T) {
 }
 
 func TestICSCalendarService_GenerateSubscriptionURL(t *testing.T) {
-	app := setupTestApp(t)
-	icsSvc := NewICSCalendarService(app)
+	app := setupICSTestApp(t)
+	icsSvc := services.NewICSCalendarService(app)
 
 	// 測試預設 baseURL
 	url := icsSvc.GenerateSubscriptionURL("test-token-123")
@@ -166,43 +114,11 @@ func TestICSCalendarService_GenerateSubscriptionURL(t *testing.T) {
 	t.Logf("Generated subscription URL: %s", url)
 }
 
-func TestImageService_ParseHexColor(t *testing.T) {
-	app := setupTestApp(t)
-	imageSvc := NewImageService(app)
-
-	tests := []struct {
-		hex      string
-		expected bool // 是否為有效顏色
-	}{
-		{"#FFFFFF", true},
-		{"#000000", true},
-		{"#FF0000", true},
-		{"#4F46E5", true},
-		{"FFFFFF", false}, // 缺少 #
-		{"#GGG", false},   // 無效格式
-		{"", false},       // 空值
-	}
-
-	for _, tt := range tests {
-		colorImg := imageSvc.parseHexColor(tt.hex)
-		// 檢查是否返回有效的圖片
-		if tt.expected && colorImg == nil {
-			t.Errorf("Expected valid color for %s, got nil", tt.hex)
-		}
-		// 驗證無效的 hex 返回黑色
-		if !tt.expected && colorImg != nil {
-			// 空值或無效格式應該返回黑色圖片
-			// color.Color 沒有 Bounds 方法，我們只能檢查是否不為 nil
-			_ = colorImg
-		}
-	}
-}
-
 func TestImageService_GenerateScheduleImage(t *testing.T) {
-	app := setupTestApp(t)
-	imageSvc := NewImageService(app)
+	app := setupICSTestApp(t)
+	imageSvc := services.NewImageService(app)
 
-	config := &ImageConfig{
+	config := &services.ImageConfig{
 		TeacherID: 1,
 		CenterID:  1,
 		StartDate: time.Now(),
@@ -210,7 +126,7 @@ func TestImageService_GenerateScheduleImage(t *testing.T) {
 		Width:     800,
 		Height:    600,
 		Title:     "測試課表",
-		Theme:     DefaultTheme,
+		Theme:     services.DefaultTheme,
 	}
 
 	data, err := imageSvc.GenerateScheduleImage(context.Background(), config)
@@ -231,25 +147,6 @@ func TestImageService_GenerateScheduleImage(t *testing.T) {
 	t.Logf("Generated image size: %d bytes", len(data))
 }
 
-func TestImageService_ImageToJPEG(t *testing.T) {
-	app := setupTestApp(t)
-	imageSvc := NewImageService(app)
-
-	// 建立簡單的測試圖片
-	testImg := image.NewRGBA(image.Rect(0, 0, 100, 100))
-
-	data, err := imageSvc.imageToJPEG(testImg)
-	if err != nil {
-		t.Fatalf("Failed to convert to JPEG: %v", err)
-	}
-
-	if len(data) < 100 {
-		t.Error("Generated JPEG data is too small")
-	}
-
-	t.Logf("Generated JPEG size: %d bytes", len(data))
-}
-
 // Helper functions
 
 func contains(s, substr string) bool {
@@ -266,7 +163,7 @@ func containsHelper(s, substr string) bool {
 }
 
 // setupTestApp 建立測試用的 App 實例
-func setupTestApp(t *testing.T) *app.App {
+func setupICSTestApp(t *testing.T) *app.App {
 	t.Helper()
 
 	dsn := "root:timeledger_root_2026@tcp(127.0.0.1:3306)/timeledger?charset=utf8mb4&parseTime=True&loc=Local"

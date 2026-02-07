@@ -1,13 +1,14 @@
-package services
+package test
 
 import (
 	"os"
 	"testing"
+	"timeLedger/app/services"
 )
 
 // TestQRCodeService_GeneratePNG 測試 GeneratePNG 基本功能
 func TestQRCodeService_GeneratePNG(t *testing.T) {
-	service := NewQRCodeService()
+	service := services.NewQRCodeService()
 
 	tests := []struct {
 		name    string
@@ -77,7 +78,7 @@ func TestQRCodeService_GeneratePNG(t *testing.T) {
 
 // TestQRCodeService_GenerateLINEBindingQR 測試產生 LINE 官方帳號 QR Code
 func TestQRCodeService_GenerateLINEBindingQR(t *testing.T) {
-	service := NewQRCodeService()
+	service := services.NewQRCodeService()
 
 	tests := []struct {
 		name               string
@@ -132,7 +133,7 @@ func TestQRCodeService_GenerateLINEBindingQR(t *testing.T) {
 
 // TestQRCodeService_GenerateVerificationCodeQR 測試產生含驗證碼的 QR Code
 func TestQRCodeService_GenerateVerificationCodeQR(t *testing.T) {
-	service := NewQRCodeService()
+	service := services.NewQRCodeService()
 
 	tests := []struct {
 		name               string
@@ -196,7 +197,7 @@ func TestQRCodeService_GenerateVerificationCodeQR(t *testing.T) {
 
 // TestQRCodeService_GetLineOfficialAccountID 測試取得 LINE 官方帳號 ID
 func TestQRCodeService_GetLineOfficialAccountID(t *testing.T) {
-	service := NewQRCodeService()
+	service := services.NewQRCodeService()
 
 	// 測試環境變數未設定的情況
 	originalValue := os.Getenv("LINE_OFFICIAL_ACCOUNT_ID")
@@ -237,7 +238,7 @@ func TestQRCodeService_GetLineOfficialAccountID(t *testing.T) {
 
 // TestQRCodeService_GenerateBindingURLQR 測試產生綁定 URL QR Code
 func TestQRCodeService_GenerateBindingURLQR(t *testing.T) {
-	service := NewQRCodeService()
+	service := services.NewQRCodeService()
 
 	tests := []struct {
 		name      string

@@ -1,4 +1,4 @@
-package services
+package test
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 	"timeLedger/app"
 	"timeLedger/app/models"
 	"timeLedger/app/repositories"
+	"timeLedger/app/services"
 	"timeLedger/configs"
 	"timeLedger/database/mysql"
 	"timeLedger/global/errInfos"
@@ -95,7 +96,7 @@ func TestTeacherProfileService_GetProfile(t *testing.T) {
 		}
 
 		// 執行測試
-		svc := NewTeacherProfileService(appInstance)
+		svc := services.NewTeacherProfileService(appInstance)
 		profile, eInfo, err := svc.GetProfile(ctx, teacher.ID)
 
 		// 驗證結果
@@ -140,7 +141,7 @@ func TestTeacherProfileService_GetProfile(t *testing.T) {
 		}
 
 		ctx := context.Background()
-		svc := NewTeacherProfileService(appInstance)
+		svc := services.NewTeacherProfileService(appInstance)
 
 		// 執行測試（使用不存在的 ID）
 		profile, eInfo, err := svc.GetProfile(ctx, 99999999)
@@ -190,10 +191,10 @@ func TestTeacherProfileService_UpdateProfile(t *testing.T) {
 			t.Fatalf("建立測試老師失敗: %v", err)
 		}
 
-		svc := NewTeacherProfileService(appInstance)
+		svc := services.NewTeacherProfileService(appInstance)
 
 		// 更新資料
-		req := &UpdateProfileRequest{
+		req := &services.UpdateProfileRequest{
 			Bio:               "Updated bio",
 			City:              "新北市",
 			District:          "板橋區",
@@ -264,10 +265,10 @@ func TestTeacherProfileService_UpdateProfile(t *testing.T) {
 			t.Fatalf("建立測試老師失敗: %v", err)
 		}
 
-		svc := NewTeacherProfileService(appInstance)
+		svc := services.NewTeacherProfileService(appInstance)
 
 		// 只更新 Bio，其他欄位保留
-		req := &UpdateProfileRequest{
+		req := &services.UpdateProfileRequest{
 			Bio:            "Only update bio",
 			City:           "", // 空的應該跳過更新
 			District:       "",
@@ -296,9 +297,9 @@ func TestTeacherProfileService_UpdateProfile(t *testing.T) {
 		}
 
 		ctx := context.Background()
-		svc := NewTeacherProfileService(appInstance)
+		svc := services.NewTeacherProfileService(appInstance)
 
-		req := &UpdateProfileRequest{
+		req := &services.UpdateProfileRequest{
 			Bio: "Test bio",
 		}
 		_, eInfo, err := svc.UpdateProfile(ctx, 99999999, req)
@@ -340,10 +341,10 @@ func TestTeacherProfileService_SkillCRUD(t *testing.T) {
 			t.Fatalf("建立測試老師失敗: %v", err)
 		}
 
-		svc := NewTeacherProfileService(appInstance)
+		svc := services.NewTeacherProfileService(appInstance)
 
 		// 建立技能
-		req := &CreateSkillRequest{
+		req := &services.CreateSkillRequest{
 			Category:   "運動",
 			SkillName:  "瑜珈",
 			Level:      "中級",
@@ -409,13 +410,13 @@ func TestTeacherProfileService_SkillCRUD(t *testing.T) {
 				TeacherID: teacher.ID,
 				Category:  "運動",
 				SkillName: fmt.Sprintf("技能%d", i+1),
-				Level:     "初級",
+				Level:     "初一級",
 				CreatedAt: time.Now(),
 				UpdatedAt: time.Now(),
 			})
 		}
 
-		svc := NewTeacherProfileService(appInstance)
+		svc := services.NewTeacherProfileService(appInstance)
 		skills, eInfo, err := svc.GetSkills(ctx, teacher.ID)
 
 		if err != nil {
@@ -469,10 +470,10 @@ func TestTeacherProfileService_SkillCRUD(t *testing.T) {
 			t.Fatalf("建立測試技能失敗: %v", err)
 		}
 
-		svc := NewTeacherProfileService(appInstance)
+		svc := services.NewTeacherProfileService(appInstance)
 
 		// 更新技能
-		req := &UpdateSkillRequest{
+		req := &services.UpdateSkillRequest{
 			Category:  "舞蹈",
 			SkillName: "更新後的技能",
 		}
@@ -537,10 +538,10 @@ func TestTeacherProfileService_SkillCRUD(t *testing.T) {
 		// 調試輸出
 		t.Logf("skill.ID after Create: %d", skill.ID)
 
-		svc := NewTeacherProfileService(appInstance)
+		svc := services.NewTeacherProfileService(appInstance)
 
 		// 嘗試用不同老師 ID 更新
-		req := &UpdateSkillRequest{
+		req := &services.UpdateSkillRequest{
 			Category:  "測試",
 			SkillName: "被拒絕的更新",
 		}
@@ -562,9 +563,9 @@ func TestTeacherProfileService_SkillCRUD(t *testing.T) {
 		}
 
 		ctx := context.Background()
-		svc := NewTeacherProfileService(appInstance)
+		svc := services.NewTeacherProfileService(appInstance)
 
-		req := &UpdateSkillRequest{
+		req := &services.UpdateSkillRequest{
 			Category:  "測試",
 			SkillName: "不存在的技能",
 		}
@@ -618,7 +619,7 @@ func TestTeacherProfileService_SkillCRUD(t *testing.T) {
 			t.Fatalf("建立測試技能失敗: %v", err)
 		}
 
-		svc := NewTeacherProfileService(appInstance)
+		svc := services.NewTeacherProfileService(appInstance)
 
 		// 刪除技能
 		errInfo := svc.DeleteSkill(ctx, skill.ID, teacher.ID)
@@ -674,7 +675,7 @@ func TestTeacherProfileService_SkillCRUD(t *testing.T) {
 			t.Fatalf("建立測試技能失敗: %v", err)
 		}
 
-		svc := NewTeacherProfileService(appInstance)
+		svc := services.NewTeacherProfileService(appInstance)
 
 		// 嘗試用不同老師 ID 刪除
 		errInfo := svc.DeleteSkill(ctx, skill.ID, 99999999)
@@ -716,10 +717,10 @@ func TestTeacherProfileService_CertificateCRUD(t *testing.T) {
 			t.Fatalf("建立測試老師失敗: %v", err)
 		}
 
-		svc := NewTeacherProfileService(appInstance)
+		svc := services.NewTeacherProfileService(appInstance)
 
 		// 建立證照
-		req := &CreateCertificateRequest{
+		req := &services.CreateCertificateRequest{
 			Name:     "瑜珈師資證照",
 			FileURL:  "https://example.com/cert.pdf",
 			IssuedAt: time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC),
@@ -787,7 +788,7 @@ func TestTeacherProfileService_CertificateCRUD(t *testing.T) {
 			})
 		}
 
-		svc := NewTeacherProfileService(appInstance)
+		svc := services.NewTeacherProfileService(appInstance)
 		certs, eInfo, err := svc.GetCertificates(ctx, teacher.ID)
 
 		if err != nil {
@@ -841,7 +842,7 @@ func TestTeacherProfileService_CertificateCRUD(t *testing.T) {
 			t.Fatalf("建立測試證照失敗: %v", err)
 		}
 
-		svc := NewTeacherProfileService(appInstance)
+		svc := services.NewTeacherProfileService(appInstance)
 
 		// 刪除證照
 		errInfo := svc.DeleteCertificate(ctx, cert.ID, teacher.ID)
@@ -897,7 +898,7 @@ func TestTeacherProfileService_CertificateCRUD(t *testing.T) {
 			t.Fatalf("建立測試證照失敗: %v", err)
 		}
 
-		svc := NewTeacherProfileService(appInstance)
+		svc := services.NewTeacherProfileService(appInstance)
 
 		// 嘗試用不同老師 ID 刪除
 		errInfo := svc.DeleteCertificate(ctx, cert.ID, 99999999)
@@ -917,7 +918,7 @@ func TestTeacherProfileService_CertificateCRUD(t *testing.T) {
 		}
 
 		ctx := context.Background()
-		svc := NewTeacherProfileService(appInstance)
+		svc := services.NewTeacherProfileService(appInstance)
 
 		errInfo := svc.DeleteCertificate(ctx, 99999999, 1)
 
@@ -980,7 +981,7 @@ func TestTeacherProfileService_GetCenters(t *testing.T) {
 			t.Fatalf("建立測試會籍失敗: %v", err)
 		}
 
-		svc := NewTeacherProfileService(appInstance)
+		svc := services.NewTeacherProfileService(appInstance)
 		centers, eInfo, err := svc.GetCenters(ctx, teacher.ID)
 
 		if err != nil {
@@ -1025,7 +1026,7 @@ func TestTeacherProfileService_GetCenters(t *testing.T) {
 			t.Fatalf("建立測試老師失敗: %v", err)
 		}
 
-		svc := NewTeacherProfileService(appInstance)
+		svc := services.NewTeacherProfileService(appInstance)
 		centers, _, err := svc.GetCenters(ctx, teacher.ID)
 
 		if err != nil {

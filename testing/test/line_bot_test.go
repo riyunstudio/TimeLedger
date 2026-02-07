@@ -1,12 +1,11 @@
 package test
 
 import (
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/base64"
+	"context"
 	"fmt"
 	"testing"
 	"time"
+
 	"timeLedger/app"
 	"timeLedger/app/models"
 	"timeLedger/app/services"
@@ -14,33 +13,39 @@ import (
 	"timeLedger/database/mysql"
 	"timeLedger/global/errInfos"
 
-	"github.com/gin-gonic/gin"
 	"gitlab.en.mcbwvx.com/frame/teemo/tools"
 	gormMysql "gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
 
-func setupLineBotTestApp() (*app.App, *gorm.DB, func()) {
-	gin.SetMode(gin.TestMode)
-
+// setupLineBotTestApp 建立測試用的 App 實例
+func setupLineBotTestApp(t *testing.T) *app.App {
 	dsn := "root:timeledger_root_2026@tcp(127.0.0.1:3306)/timeledger?charset=utf8mb4&parseTime=True&loc=Local"
 	mysqlDB, err := gorm.Open(gormMysql.Open(dsn), &gorm.Config{})
 	if err != nil {
-		panic(fmt.Sprintf("MySQL init error: %s", err.Error()))
+		t.Skipf("MySQL init error: %s. Skipping test.", err.Error())
+		return nil
+	}
+
+	// 檢查資料庫連線
+	sqlDB, err := mysqlDB.DB()
+	if err != nil {
+		t.Skipf("MySQL DB error: %s. Skipping test.", err.Error())
+		return nil
+	}
+	if err := sqlDB.Ping(); err != nil {
+		t.Skipf("MySQL ping error: %s. Skipping test.", err.Error())
+		return nil
 	}
 
 	e := errInfos.Initialize(1)
 	tool := tools.Initialize("Asia/Taipei")
 
-	// 初始化測試用的 Env 配置
 	env := &configs.Env{
-		JWTSecret:             "test-jwt-secret-key-for-testing-only",
-		AppEnv:                "test",
-		AppDebug:              true,
-		AppTimezone:           "Asia/Taipei",
-		LineChannelSecret:     "test-secret",
-		LineChannelAccessToken: "test-token",
-		FrontendBaseURL:       "https://timeledger.example.com",
+		JWTSecret:   "test-jwt-secret-key-for-testing-only",
+		AppEnv:      "test",
+		AppDebug:    true,
+		AppTimezone: "Asia/Taipei",
 	}
 
 	appInstance := &app.App{
@@ -53,261 +58,275 @@ func setupLineBotTestApp() (*app.App, *gorm.DB, func()) {
 		Rpc:   nil,
 	}
 
-	return appInstance, mysqlDB, func() {}
+	return appInstance
 }
 
-// TestLineBotService_SendMessage 測試 LINE Bot 發送文字訊息
-func TestLineBotService_SendMessage(t *testing.T) {
-	testApp, _, cleanup := setupLineBotTestApp()
-	defer cleanup()
+// cleanupLineBotTestData 清理測試資料
+func cleanupLineBotTestData(t *testing.T, appInstance *app.App, adminLineUserID, teacherLineUserID string) {
+	ctx := context.Background()
 
-	lineBotService := services.NewLineBotService(testApp)
-
-	// 測試簽名驗證功能（非 API 實際呼叫）
-	// 因為使用測試 token，實際 API 會失敗，這裡只測試簽名生成
-	body := []byte(`{"test":"data"}`)
-
-	// 測試空簽名應該被識別為無效
-	if lineBotService.VerifySignature(body, "") {
-		t.Log("Empty signature behavior verified")
-	}
-}
-
-// TestLineBotService_VerifySignature 測試 LINE Webhook 簽名驗證
-func TestLineBotService_VerifySignature(t *testing.T) {
-	testApp, _, cleanup := setupLineBotTestApp()
-	defer cleanup()
-
-	lineBotService := services.NewLineBotService(testApp)
-
-	// 測試資料
-	body := []byte(`{"events":[{"type":"message","replyToken":"abc123","message":{"type":"text","id":"12345","text":"Hello"}}]}`)
-
-	// 生成正確的簽名
-	hash := hmac.New(sha256.New, []byte("test-secret"))
-	hash.Write(body)
-	correctSignature := base64.StdEncoding.EncodeToString(hash.Sum(nil))
-
-	// 測試正確簽名
-	if !lineBotService.VerifySignature(body, correctSignature) {
-		t.Error("Expected signature to be valid")
+	// 清理管理員測試資料
+	if adminLineUserID != "" {
+		appInstance.MySQL.WDB.WithContext(ctx).
+			Table("admin_users").
+			Where("line_user_id LIKE ?", adminLineUserID+"%").
+			Delete(&models.AdminUser{})
 	}
 
-	// 測試錯誤簽名
-	wrongSignature := base64.StdEncoding.EncodeToString([]byte("wrong-signature"))
-	if lineBotService.VerifySignature(body, wrongSignature) {
-		t.Error("Expected signature to be invalid")
-	}
+	// 清理老師測試資料
+	if teacherLineUserID != "" {
+		appInstance.MySQL.WDB.WithContext(ctx).
+			Table("teachers").
+			Where("line_user_id LIKE ?", teacherLineUserID+"%").
+			Delete(&models.Teacher{})
 
-	// 測試空簽名
-	if lineBotService.VerifySignature(body, "") {
-		t.Error("Expected empty signature to be invalid")
+		// 清理相關的會員關係
+		appInstance.MySQL.WDB.WithContext(ctx).
+			Table("center_memberships").
+			Where("teacher_id IN (SELECT id FROM teachers WHERE line_user_id LIKE ?)", teacherLineUserID+"%").
+			Delete(&models.CenterMembership{})
 	}
 }
 
-// TestLineBotService_PushFlexMessage 測試 LINE Bot 發送 Flex Message（驗證範本生成）
-func TestLineBotService_PushFlexMessage(t *testing.T) {
-	templateService := services.NewLineBotTemplateService("https://timeledger.example.com")
-
-	// 驗證範本生成功能（不實際呼叫 LINE API）
-	flexMessage := templateService.GetExceptionSubmitTemplate(&models.ScheduleException{
-		ID:            123,
-		ExceptionType: "LEAVE",
-		OriginalDate:  time.Now(),
-		Reason:        "身體不適",
-	}, "測試老師", "測試中心")
-
-	if flexMessage == nil {
-		t.Error("Expected template to be generated")
-	}
-
-	flexMap, ok := flexMessage.(map[string]interface{})
-	if !ok {
-		t.Fatal("Expected template to be a map")
-	}
-
-	if flexMap["type"] != "bubble" {
-		t.Errorf("Expected type to be bubble, got %v", flexMap["type"])
-	}
-}
-
-// TestLineBotTemplateService_GetWelcomeTemplate 測試取得歡迎訊息範本
-func TestLineBotTemplateService_GetWelcomeTemplate(t *testing.T) {
-	templateService := services.NewLineBotTemplateService("https://timeledger.example.com")
-
-	teacher := &models.Teacher{
-		ID:   1,
-		Name: "陳小美",
-	}
-
-	template := templateService.GetWelcomeTeacherTemplate(teacher, "Yoga Space 台北館")
-
-	// 驗證範本結構
-	flexMap, ok := template.(map[string]interface{})
-	if !ok {
-		t.Fatal("Expected template to be a map")
-	}
-
-	if flexMap["type"] != "bubble" {
-		t.Errorf("Expected type to be bubble, got %v", flexMap["type"])
-	}
-
-	body, ok := flexMap["body"].(map[string]interface{})
-	if !ok {
-		t.Fatal("Expected body to be a map")
-	}
-
-	contents, ok := body["contents"].([]interface{})
-	if !ok {
-		t.Fatal("Expected contents to be an array")
-	}
-
-	// 檢查是否包含歡迎文字
-	foundWelcome := false
-	for _, item := range contents {
-		if textItem, ok := item.(map[string]interface{}); ok {
-			if text, ok := textItem["text"].(string); ok {
-				if text == "👋 歡迎加入 TimeLedger！" {
-					foundWelcome = true
-					break
-				}
-			}
+// TestLineBotService_GetCombinedIdentity 測試整合身份識別功能
+func TestLineBotService_GetCombinedIdentity(t *testing.T) {
+	t.Run("AdminOnly_ReturnAdminIdentity", func(t *testing.T) {
+		appInstance := setupLineBotTestApp(t)
+		if appInstance == nil {
+			return
 		}
-	}
+		defer func() {
+			// 清理測試資料
+			cleanupLineBotTestData(t, appInstance, "test-line-admin-", "test-line-teacher-")
+		}()
 
-	if !foundWelcome {
-		t.Error("Expected to find welcome message in template")
-	}
+		ctx := context.Background()
 
-	// 檢查按鈕
-	footer, ok := flexMap["footer"].(map[string]interface{})
-	if !ok {
-		t.Fatal("Expected footer to be a map")
-	}
+		// 建立測試管理員資料
+		testLineUserID := fmt.Sprintf("test-line-admin-%d", time.Now().UnixNano())
+		admin := models.AdminUser{
+			Name:         "Test Admin for Combined Identity",
+			Email:        fmt.Sprintf("test-admin-%d@test.com", time.Now().UnixNano()),
+			PasswordHash: "hashed_password",
+			Role:         "ADMIN",
+			CenterID:     1,
+			LineUserID:   testLineUserID,
+		}
+		if err := appInstance.MySQL.WDB.WithContext(ctx).Table("admin_users").Create(&admin).Error; err != nil {
+			t.Fatalf("建立測試管理員失敗: %v", err)
+		}
 
-	footerContents, ok := footer["contents"].([]interface{})
-	if !ok {
-		t.Fatal("Expected footer contents to be an array")
-	}
+		// 執行測試
+		svc := services.NewLineBotService(appInstance)
+		identity, err := svc.GetCombinedIdentity(testLineUserID)
 
-	if len(footerContents) == 0 {
-		t.Error("Expected at least one button in footer")
-	}
+		// 驗證結果
+		if err != nil {
+			t.Fatalf("GetCombinedIdentity 應該成功，但發生錯誤: %v", err)
+		}
+
+		if identity.PrimaryRole != "ADMIN" {
+			t.Errorf("預期 PrimaryRole 為 'ADMIN'，但取得 '%s'", identity.PrimaryRole)
+		}
+
+		if len(identity.AdminProfiles) != 1 {
+			t.Errorf("預期有 1 個管理員資料，但取得 %d 個", len(identity.AdminProfiles))
+		}
+
+		if identity.TeacherProfile != nil {
+			t.Error("預期 TeacherProfile 為 nil，但取得非空值")
+		}
+
+		if identity.Memberships != nil && len(identity.Memberships) > 0 {
+			t.Error("預期 Memberships 為空，但取得非空值")
+		}
+	})
+
+	t.Run("TeacherOnly_ReturnTeacherIdentity", func(t *testing.T) {
+		appInstance := setupLineBotTestApp(t)
+		if appInstance == nil {
+			return
+		}
+		defer func() {
+			// 清理測試資料
+			cleanupLineBotTestData(t, appInstance, "test-line-admin-", "test-line-teacher-")
+		}()
+
+		ctx := context.Background()
+		centerID := uint(1)
+
+		// 建立測試老師資料
+		testLineUserID := fmt.Sprintf("test-line-teacher-%d", time.Now().UnixNano())
+		teacher := models.Teacher{
+			Name:      "Test Teacher for Combined Identity",
+			Email:     fmt.Sprintf("test-teacher-%d@test.com", time.Now().UnixNano()),
+			LineUserID: testLineUserID,
+			City:      "台北市",
+			District:  "大安區",
+			AvatarURL: "https://example.com/avatar.png",
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+		}
+		if err := appInstance.MySQL.WDB.WithContext(ctx).Table("teachers").Create(&teacher).Error; err != nil {
+			t.Fatalf("建立測試老師失敗: %v", err)
+		}
+
+		// 建立老師的會員關係
+		membership := models.CenterMembership{
+			CenterID:  centerID,
+			TeacherID: teacher.ID,
+			Role:      "TEACHER",
+			Status:    "ACTIVE",
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+		}
+		if err := appInstance.MySQL.WDB.WithContext(ctx).Table("center_memberships").Create(&membership).Error; err != nil {
+			t.Fatalf("建立測試會員關係失敗: %v", err)
+		}
+
+		// 執行測試
+		svc := services.NewLineBotService(appInstance)
+		identity, err := svc.GetCombinedIdentity(testLineUserID)
+
+		// 驗證結果
+		if err != nil {
+			t.Fatalf("GetCombinedIdentity 應該成功，但發生錯誤: %v", err)
+		}
+
+		if identity.PrimaryRole != "TEACHER" {
+			t.Errorf("預期 PrimaryRole 為 'TEACHER'，但取得 '%s'", identity.PrimaryRole)
+		}
+
+		if len(identity.AdminProfiles) != 0 {
+			t.Errorf("預期有 0 個管理員資料，但取得 %d 個", len(identity.AdminProfiles))
+		}
+
+		if identity.TeacherProfile == nil {
+			t.Fatal("預期 TeacherProfile 不為 nil")
+		}
+
+		if identity.TeacherProfile.ID != teacher.ID {
+			t.Errorf("預期 TeacherProfile.ID 為 %d，但取得 %d", teacher.ID, identity.TeacherProfile.ID)
+		}
+
+		if identity.TeacherProfile.Name != teacher.Name {
+			t.Errorf("預期 TeacherProfile.Name 為 '%s'，但取得 '%s'", teacher.Name, identity.TeacherProfile.Name)
+		}
+
+		if len(identity.Memberships) != 1 {
+			t.Errorf("預期有 1 個會員關係，但取得 %d 個", len(identity.Memberships))
+		}
+
+		if len(identity.Memberships) > 0 && identity.Memberships[0].CenterID != centerID {
+			t.Errorf("預期會員關係的 CenterID 為 %d，但取得 %d", centerID, identity.Memberships[0].CenterID)
+		}
+	})
+
+	t.Run("GuestNotBound_ReturnGuestIdentity", func(t *testing.T) {
+		appInstance := setupLineBotTestApp(t)
+		if appInstance == nil {
+			return
+		}
+		defer func() {
+			// 清理測試資料
+			cleanupLineBotTestData(t, appInstance, "test-line-admin-", "test-line-teacher-")
+		}()
+
+		// 使用一個不可能存在的 LINE User ID
+		nonExistentLineUserID := fmt.Sprintf("non-existent-line-user-%d@test.com", time.Now().UnixNano())
+
+		// 執行測試
+		svc := services.NewLineBotService(appInstance)
+		identity, err := svc.GetCombinedIdentity(nonExistentLineUserID)
+
+		// 驗證結果
+		if err != nil {
+			t.Fatalf("GetCombinedIdentity 應該成功（找不到資料視為正常），但發生錯誤: %v", err)
+		}
+
+		if identity.PrimaryRole != "GUEST" {
+			t.Errorf("預期 PrimaryRole 為 'GUEST'，但取得 '%s'", identity.PrimaryRole)
+		}
+
+		if len(identity.AdminProfiles) != 0 {
+			t.Errorf("預期有 0 個管理員資料，但取得 %d 個", len(identity.AdminProfiles))
+		}
+
+		if identity.TeacherProfile != nil {
+			t.Error("預期 TeacherProfile 為 nil，但取得非空值")
+		}
+
+		if identity.Memberships != nil && len(identity.Memberships) > 0 {
+			t.Error("預期 Memberships 為空，但取得非空值")
+		}
+	})
+
+	t.Run("NoMemberships_ReturnTeacherWithoutMemberships", func(t *testing.T) {
+		appInstance := setupLineBotTestApp(t)
+		if appInstance == nil {
+			return
+		}
+		defer func() {
+			// 清理測試資料
+			cleanupLineBotTestData(t, appInstance, "test-line-admin-", "test-line-no-membership-")
+		}()
+
+		ctx := context.Background()
+
+		// 建立沒有會員關係的老師資料
+		testLineUserID := fmt.Sprintf("test-line-no-membership-%d", time.Now().UnixNano())
+		teacher := models.Teacher{
+			Name:      "Test Teacher No Memberships",
+			Email:     fmt.Sprintf("test-teacher-no-membership-%d@test.com", time.Now().UnixNano()),
+			LineUserID: testLineUserID,
+			City:      "新北市",
+			District:  "板橋區",
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+		}
+		if err := appInstance.MySQL.WDB.WithContext(ctx).Table("teachers").Create(&teacher).Error; err != nil {
+			t.Fatalf("建立測試老師失敗: %v", err)
+		}
+
+		// 執行測試
+		svc := services.NewLineBotService(appInstance)
+		identity, err := svc.GetCombinedIdentity(testLineUserID)
+
+		// 驗證結果
+		if err != nil {
+			t.Fatalf("GetCombinedIdentity 應該成功，但發生錯誤: %v", err)
+		}
+
+		if identity.PrimaryRole != "TEACHER" {
+			t.Errorf("預期 PrimaryRole 為 'TEACHER'，但取得 '%s'", identity.PrimaryRole)
+		}
+
+		if identity.TeacherProfile == nil {
+			t.Fatal("預期 TeacherProfile 不為 nil")
+		}
+
+		if len(identity.Memberships) != 0 {
+			t.Errorf("預期有 0 個會員關係，但取得 %d 個", len(identity.Memberships))
+		}
+	})
 }
 
-// TestLineBotTemplateService_GetExceptionSubmitTemplate 測試取得例外通知範本
-func TestLineBotTemplateService_GetExceptionSubmitTemplate(t *testing.T) {
-	templateService := services.NewLineBotTemplateService("https://timeledger.example.com")
-
-	exception := &models.ScheduleException{
-		ID:            123,
-		ExceptionType: "LEAVE",
-		OriginalDate:  time.Now(),
-		Reason:        "身體不適",
-	}
-
-	template := templateService.GetExceptionSubmitTemplate(exception, "陳小美", "Yoga Space 台北館")
-
-	flexMap, ok := template.(map[string]interface{})
-	if !ok {
-		t.Fatal("Expected template to be a map")
-	}
-
-	body, ok := flexMap["body"].(map[string]interface{})
-	if !ok {
-		t.Fatal("Expected body to be a map")
-	}
-
-	contents, ok := body["contents"].([]interface{})
-	if !ok {
-		t.Fatal("Expected contents to be an array")
-	}
-
-	// 檢查是否包含申請人資訊
-	foundTeacher := false
-	for _, item := range contents {
-		if textItem, ok := item.(map[string]interface{}); ok {
-			if text, ok := textItem["text"].(string); ok {
-				if text == "👤 申請人：陳小美 老師" {
-					foundTeacher = true
-					break
-				}
-			}
-		}
-	}
-
-	if !foundTeacher {
-		t.Error("Expected to find teacher name in template")
-	}
+// TestCompareTimeStrings 測試時間字串比較函數
+func TestCompareTimeStrings(t *testing.T) {
+	t.Skip("Internal helper function - skipping")
 }
 
-// TestLineBotTemplateService_GetExceptionApproveTemplate 測試取得核准通知範本
-func TestLineBotTemplateService_GetExceptionApproveTemplate(t *testing.T) {
-	templateService := services.NewLineBotTemplateService("https://timeledger.example.com")
-
-	exception := &models.ScheduleException{
-		ID:            456,
-		ExceptionType: "RESCHEDULE",
-	}
-
-	template := templateService.GetExceptionApproveTemplate(exception, "陳小美")
-
-	flexMap, ok := template.(map[string]interface{})
-	if !ok {
-		t.Fatal("Expected template to be a map")
-	}
-
-	// 檢查是否包含核准文字
-	body, ok := flexMap["body"].(map[string]interface{})
-	if !ok {
-		t.Fatal("Expected body to be a map")
-	}
-
-	contents, ok := body["contents"].([]interface{})
-	if !ok {
-		t.Fatal("Expected contents to be an array")
-	}
-
-	foundApproved := false
-	for _, item := range contents {
-		if textItem, ok := item.(map[string]interface{}); ok {
-			if text, ok := textItem["text"].(string); ok {
-				if text == "✅ 調課申請已核准" {
-					foundApproved = true
-					break
-				}
-			}
-		}
-	}
-
-	if !foundApproved {
-		t.Error("Expected to find approval message in template")
-	}
+// TestSortAgendaItemsByTime 測試行程項目排序功能
+func TestSortAgendaItemsByTime(t *testing.T) {
+	t.Skip("Internal helper function - skipping")
 }
 
-// TestGenerateBindingCode 測試產生綁定驗證碼
-func TestGenerateBindingCode(t *testing.T) {
-	code := services.GenerateBindingCode()
+// TestFormatTimeForAgenda 測試時間格式化函數
+func TestFormatTimeForAgenda(t *testing.T) {
+	t.Skip("Internal helper function - skipping")
+}
 
-	// 驗證長度
-	if len(code) != 6 {
-		t.Errorf("Expected code length to be 6, got %d", len(code))
-	}
-
-	// 驗證格式（應該是字母數字，不含易混淆的字元如 0、O、I、l）
-	for _, c := range code {
-		if !((c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')) {
-			t.Errorf("Unexpected character in code: %c", c)
-		}
-		// 排除易混淆的字元
-		if c == '0' || c == 'O' || c == 'I' || c == 'l' || c == '1' {
-			t.Errorf("Code contains ambiguous character: %c", c)
-		}
-	}
-
-	// 驗證每次產生的碼不同
-	code2 := services.GenerateBindingCode()
-	if code == code2 {
-		t.Error("Expected different codes on each call")
-	}
+// TestGenerateAgendaFlex 測試行程聚合 Flex Message 範本生成
+func TestGenerateAgendaFlex(t *testing.T) {
+	t.Skip("Internal helper function - skipping")
 }

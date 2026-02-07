@@ -1,10 +1,11 @@
-package controllers
+package test
 
 import (
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"timeLedger/app/controllers"
 	"timeLedger/global"
 
 	"github.com/gin-gonic/gin"
@@ -52,7 +53,7 @@ func TestContextHelper_UserID(t *testing.T) {
 
 			tt.setupCtx(c)
 
-			helper := NewContextHelper(c)
+			helper := controllers.NewContextHelper(c)
 			uid, err := helper.UserID()
 
 			if tt.expectErr && err == nil {
@@ -102,7 +103,7 @@ func TestContextHelper_CenterID(t *testing.T) {
 
 			tt.setupCtx(c)
 
-			helper := NewContextHelper(c)
+			helper := controllers.NewContextHelper(c)
 			centerID, err := helper.CenterID()
 
 			if tt.expectErr && err == nil {
@@ -160,7 +161,7 @@ func TestContextHelper_UserType(t *testing.T) {
 
 			tt.setupCtx(c)
 
-			helper := NewContextHelper(c)
+			helper := controllers.NewContextHelper(c)
 			userType, ok := helper.UserType()
 
 			if ok != tt.expectOK {
@@ -193,7 +194,7 @@ func TestContextHelper_IsAdmin(t *testing.T) {
 			c, _ := gin.CreateTestContext(w)
 			c.Set(global.UserTypeKey, tt.userType)
 
-			helper := NewContextHelper(c)
+			helper := controllers.NewContextHelper(c)
 			if helper.IsAdmin() != tt.expected {
 				t.Errorf("Expected IsAdmin=%v for user type %s", tt.expected, tt.userType)
 			}
@@ -208,7 +209,7 @@ func TestContextHelper_QueryString(t *testing.T) {
 	c, _ := gin.CreateTestContext(w)
 	c.Request, _ = http.NewRequest("GET", "/test?key=value", nil)
 
-	helper := NewContextHelper(c)
+	helper := controllers.NewContextHelper(c)
 	val, ok := helper.QueryString("key")
 
 	if !ok {
@@ -232,7 +233,7 @@ func TestContextHelper_QueryStringOrDefault(t *testing.T) {
 	c, _ := gin.CreateTestContext(w)
 	c.Request, _ = http.NewRequest("GET", "/test?key=value", nil)
 
-	helper := NewContextHelper(c)
+	helper := controllers.NewContextHelper(c)
 
 	// 存在的 key
 	val := helper.QueryStringOrDefault("key", "default")
@@ -286,7 +287,7 @@ func TestContextHelper_QueryDate(t *testing.T) {
 			}
 			c.Request, _ = http.NewRequest("GET", url, nil)
 
-			helper := NewContextHelper(c)
+			helper := controllers.NewContextHelper(c)
 			_, err := helper.QueryDate("date")
 
 			if tt.expectErr && err == nil {
@@ -340,7 +341,7 @@ func TestContextHelper_ParamUint(t *testing.T) {
 			c, _ := gin.CreateTestContext(w)
 			c.Params = gin.Params{{Key: "id", Value: tt.paramValue}}
 
-			helper := NewContextHelper(c)
+			helper := controllers.NewContextHelper(c)
 			id, err := helper.ParamUint("id")
 
 			if tt.expectErr && err == nil {
@@ -388,7 +389,7 @@ func TestContextHelper_BindJSON(t *testing.T) {
 			c.Request, _ = http.NewRequest("POST", "/test", nil)
 			c.Request.Body = mockBody(tt.body)
 
-			helper := NewContextHelper(c)
+			helper := controllers.NewContextHelper(c)
 			var req TestRequest
 			err := helper.BindJSON(&req)
 
@@ -409,7 +410,7 @@ func TestContextHelper_ResponseMethods(t *testing.T) {
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 
-		helper := NewContextHelper(c)
+		helper := controllers.NewContextHelper(c)
 		helper.Success(map[string]string{"key": "value"})
 
 		if w.Code != http.StatusOK {
@@ -421,7 +422,7 @@ func TestContextHelper_ResponseMethods(t *testing.T) {
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 
-		helper := NewContextHelper(c)
+		helper := controllers.NewContextHelper(c)
 		helper.Created(map[string]string{"id": "123"})
 
 		if w.Code != http.StatusCreated {
@@ -433,7 +434,7 @@ func TestContextHelper_ResponseMethods(t *testing.T) {
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 
-		helper := NewContextHelper(c)
+		helper := controllers.NewContextHelper(c)
 		helper.BadRequest("test error")
 
 		if w.Code != http.StatusBadRequest {
@@ -445,7 +446,7 @@ func TestContextHelper_ResponseMethods(t *testing.T) {
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 
-		helper := NewContextHelper(c)
+		helper := controllers.NewContextHelper(c)
 		helper.Unauthorized("auth required")
 
 		if w.Code != http.StatusUnauthorized {
@@ -457,7 +458,7 @@ func TestContextHelper_ResponseMethods(t *testing.T) {
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 
-		helper := NewContextHelper(c)
+		helper := controllers.NewContextHelper(c)
 		helper.NotFound("resource not found")
 
 		if w.Code != http.StatusNotFound {

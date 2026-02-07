@@ -1589,8 +1589,9 @@ func TestIntegration_OfferingManagement(t *testing.T) {
 
 		offeringController.CreateOffering(c)
 
-		if w.Code != http.StatusOK {
-			t.Fatalf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())
+		// POST 創建資源應回傳 201 Created
+		if w.Code != http.StatusCreated {
+			t.Fatalf("Expected status 201, got %d. Body: %s", w.Code, w.Body.String())
 		}
 
 		var response map[string]interface{}
@@ -1667,7 +1668,10 @@ func TestIntegration_OfferingManagement(t *testing.T) {
 		c.Set(global.UserIDKey, createdAdmin.ID)
 		c.Set(global.CenterIDKey, createdCenter.ID)
 		c.Set(global.UserTypeKey, "ADMIN")
-		c.Params = gin.Params{{Key: "id", Value: fmt.Sprintf("%d", createdCenter.ID)}, {Key: "offeringId", Value: fmt.Sprintf("%d", createdOffering.ID)}}
+		c.Params = gin.Params{
+			{Key: "id", Value: fmt.Sprintf("%d", createdCenter.ID)}, 
+			{Key: "offering_id", Value: fmt.Sprintf("%d", createdOffering.ID)},  // 修正：使用 snake_case
+		}
 
 		reqBody := map[string]interface{}{
 			"new_name": fmt.Sprintf("Copied Offering %d", now.UnixNano()),

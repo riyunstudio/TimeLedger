@@ -1,9 +1,10 @@
-package repositories
+package test
 
 import (
 	"testing"
 
 	"timeLedger/app/models"
+	"timeLedger/app/repositories"
 )
 
 // TestGenericRepository_Compilation verifies that GenericRepository compiles correctly
@@ -19,12 +20,12 @@ func TestGenericRepository_Compilation(t *testing.T) {
 
 	t.Run("GenericRepository_TableNames", func(t *testing.T) {
 		// Test that NewGenericRepository sets correct table names with nil DBs
-		teacherRepo := NewGenericRepository[models.Teacher](nil, nil)
+		teacherRepo := repositories.NewGenericRepository[models.Teacher](nil, nil)
 		if teacherRepo.GetTableName() != "teachers" {
 			t.Errorf("Expected 'teachers', got '%s'", teacherRepo.GetTableName())
 		}
 
-		centerRepo := NewGenericRepository[models.Center](nil, nil)
+		centerRepo := repositories.NewGenericRepository[models.Center](nil, nil)
 		if centerRepo.GetTableName() != "centers" {
 			t.Errorf("Expected 'centers', got '%s'", centerRepo.GetTableName())
 		}

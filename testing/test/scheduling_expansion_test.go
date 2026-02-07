@@ -1,13 +1,67 @@
-package services
+package test
 
 import (
 	"context"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 
+	"timeLedger/app"
 	"timeLedger/app/models"
 	"timeLedger/app/repositories"
+	"timeLedger/app/services"
+	"timeLedger/configs"
+	"timeLedger/database/mysql"
+	"timeLedger/global/errInfos"
+
+	"gitlab.en.mcbwvx.com/frame/teemo/tools"
+	gormMysql "gorm.io/driver/mysql"
+	"gorm.io/gorm"
 )
+
+// setupTestApp 建立測試用的 App 實例
+func setupTestApp(t *testing.T) *app.App {
+	dsn := "root:timeledger_root_2026@tcp(127.0.0.1:3306)/timeledger?charset=utf8mb4&parseTime=True&loc=Local"
+	mysqlDB, err := gorm.Open(gormMysql.Open(dsn), &gorm.Config{})
+	if err != nil {
+		t.Skipf("MySQL init error: %s. Skipping test.", err.Error())
+		return nil
+	}
+
+	// 檢查資料庫連線
+	sqlDB, err := mysqlDB.DB()
+	if err != nil {
+		t.Skipf("MySQL DB error: %s. Skipping test.", err.Error())
+		return nil
+	}
+	if err := sqlDB.Ping(); err != nil {
+		t.Skipf("MySQL ping error: %s. Skipping test.", err.Error())
+		return nil
+	}
+
+	e := errInfos.Initialize(1)
+	tool := tools.Initialize("Asia/Taipei")
+
+	env := &configs.Env{
+		JWTSecret:   "test-jwt-secret-key-for-testing-only",
+		AppEnv:      "test",
+		AppDebug:    true,
+		AppTimezone: "Asia/Taipei",
+	}
+
+	appInstance := &app.App{
+		Env:   env,
+		Err:   e,
+		Tools: tool,
+		MySQL: &mysql.DB{WDB: mysqlDB, RDB: mysqlDB},
+		Redis: nil,
+		Api:   nil,
+		Rpc:   nil,
+	}
+
+	return appInstance
+}
 
 // TestScheduleService_HelperFunctions 測試輔助函數
 func TestScheduleService_HelperFunctions(t *testing.T) {
@@ -121,20 +175,20 @@ func TestScheduleService_DeadlineCalculation(t *testing.T) {
 // TestScheduleService_UpdateModeConstants 測試更新模式常量
 func TestScheduleService_UpdateModeConstants(t *testing.T) {
 	t.Run("UpdateModeSingle_Value", func(t *testing.T) {
-		if UpdateModeSingle != "SINGLE" {
-			t.Errorf("Expected 'SINGLE', got '%s'", UpdateModeSingle)
+		if services.UpdateModeSingle != "SINGLE" {
+			t.Errorf("Expected 'SINGLE', got '%s'", services.UpdateModeSingle)
 		}
 	})
 
 	t.Run("UpdateModeFuture_Value", func(t *testing.T) {
-		if UpdateModeFuture != "FUTURE" {
-			t.Errorf("Expected 'FUTURE', got '%s'", UpdateModeFuture)
+		if services.UpdateModeFuture != "FUTURE" {
+			t.Errorf("Expected 'FUTURE', got '%s'", services.UpdateModeFuture)
 		}
 	})
 
 	t.Run("UpdateModeAll_Value", func(t *testing.T) {
-		if UpdateModeAll != "ALL" {
-			t.Errorf("Expected 'ALL', got '%s'", UpdateModeAll)
+		if services.UpdateModeAll != "ALL" {
+			t.Errorf("Expected 'ALL', got '%s'", services.UpdateModeAll)
 		}
 	})
 }
@@ -201,7 +255,7 @@ func TestExpandRulesBatchFetchExceptions(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	expansionSvc := NewScheduleExpansionService(appInstance)
+	expansionSvc := services.NewScheduleExpansionService(appInstance)
 
 	ruleRepo := repositories.NewScheduleRuleRepository(appInstance)
 	rules, err := ruleRepo.ListByCenterID(ctx, 1)
@@ -298,7 +352,7 @@ func TestExpandRulesWithExceptions(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	expansionSvc := NewScheduleExpansionService(appInstance)
+	expansionSvc := services.NewScheduleExpansionService(appInstance)
 	ruleRepo := repositories.NewScheduleRuleRepository(appInstance)
 
 	rules, err := ruleRepo.ListByCenterID(ctx, 1)
@@ -427,7 +481,7 @@ func TestExpandRules_HolidayLogic(t *testing.T) {
 			appInstance.MySQL.WDB.WithContext(ctx).Where("id = ?", rule.ID).Delete(&models.ScheduleRule{})
 		}()
 
-		expansionSvc := NewScheduleExpansionService(appInstance)
+		expansionSvc := services.NewScheduleExpansionService(appInstance)
 		schedules := expansionSvc.ExpandRules(ctx, []models.ScheduleRule{rule}, testStartDate, testEndDate, center.ID)
 
 		// 驗證：ForceCancel = true 時應該跳過（不論 SkipHoliday）
@@ -478,7 +532,7 @@ func TestExpandRules_HolidayLogic(t *testing.T) {
 			appInstance.MySQL.WDB.WithContext(ctx).Where("id = ?", rule.ID).Delete(&models.ScheduleRule{})
 		}()
 
-		expansionSvc := NewScheduleExpansionService(appInstance)
+		expansionSvc := services.NewScheduleExpansionService(appInstance)
 		schedules := expansionSvc.ExpandRules(ctx, []models.ScheduleRule{rule}, testStartDate, testEndDate, center.ID)
 
 		// 驗證：ForceCancel = false 且 SkipHoliday = true 時應該跳過
@@ -528,7 +582,7 @@ func TestExpandRules_HolidayLogic(t *testing.T) {
 			appInstance.MySQL.WDB.WithContext(ctx).Where("id = ?", rule.ID).Delete(&models.ScheduleRule{})
 		}()
 
-		expansionSvc := NewScheduleExpansionService(appInstance)
+		expansionSvc := services.NewScheduleExpansionService(appInstance)
 		schedules := expansionSvc.ExpandRules(ctx, []models.ScheduleRule{rule}, testStartDate, testEndDate, center.ID)
 
 		// 驗證：ForceCancel = false 且 SkipHoliday = false 時應該產生課程
@@ -577,7 +631,7 @@ func TestExpandRules_HolidayLogic(t *testing.T) {
 			appInstance.MySQL.WDB.WithContext(ctx).Where("id = ?", rule.ID).Delete(&models.ScheduleRule{})
 		}()
 
-		expansionSvc := NewScheduleExpansionService(appInstance)
+		expansionSvc := services.NewScheduleExpansionService(appInstance)
 		schedules := expansionSvc.ExpandRules(ctx, []models.ScheduleRule{rule}, testStartDate, testEndDate, center.ID)
 
 		// 驗證：預設 SkipHoliday = true 時應該跳過假日（維持舊有行為）
@@ -598,4 +652,54 @@ func TestExpandRules_HolidayLogic(t *testing.T) {
 
 	// 清理假日資料
 	appInstance.MySQL.WDB.WithContext(ctx).Where("id = ?", holiday.ID).Delete(&models.CenterHoliday{})
+}
+
+// ============ Helper Functions (reimplemented from services package for testing) ============
+
+// splitTime 分割時間字串 (HH:MM 或 HH:MM:SS) 為 [hour, minute]
+func splitTime(timeStr string) []int {
+	if timeStr == "" {
+		return nil
+	}
+	parts := strings.Split(timeStr, ":")
+	if len(parts) < 2 {
+		return nil
+	}
+	hour, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return nil
+	}
+	minute, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return nil
+	}
+	return []int{hour, minute}
+}
+
+// parseInt 從字串中提取數字並轉換為整數
+func parseInt(s string) int {
+	if s == "" {
+		return 0
+	}
+	var num int
+	for _, c := range s {
+		if c >= '0' && c <= '9' {
+			num = num*10 + int(c-'0')
+		}
+	}
+	return num
+}
+
+// intToString 整數轉字串
+func intToString(n int) string {
+	if n == 0 {
+		return "0"
+	}
+	var result []byte
+	for n > 0 {
+		digit := n % 10
+		result = append([]byte{byte('0' + digit)}, result...)
+		n /= 10
+	}
+	return string(result)
 }
