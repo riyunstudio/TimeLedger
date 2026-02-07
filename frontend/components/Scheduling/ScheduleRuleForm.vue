@@ -339,8 +339,8 @@ const getInitialValues = () => {
       end_time: props.editingRule.end_time || '10:00',
       duration: props.editingRule.duration || 60,
       weekdays: [props.editingRule.weekday] || [1],
-      start_date: props.editingRule.effective_range?.start_date?.split('T')[0] || formatDateToString(new Date()),
-      end_date: props.editingRule.effective_range?.end_date?.split('T')[0] || '',
+      start_date: props.editingRule.effective_range?.start_date?.split(/[T ]/)[0] || formatDateToString(new Date()),
+      end_date: props.editingRule.effective_range?.end_date?.split(/[T ]/)[0] || '',
       skip_holiday: props.editingRule.skip_holiday ?? true,
     }
   }
@@ -509,9 +509,9 @@ watch(
       setFieldValue('weekdays', [rule.weekday] || [1])
       setFieldValue(
         'start_date',
-        rule.effective_range?.start_date?.split('T')[0] || formatDateToString(new Date())
+        rule.effective_range?.start_date?.split(/[T ]/)[0] || formatDateToString(new Date())
       )
-      setFieldValue('end_date', rule.effective_range?.end_date?.split('T')[0] || '')
+      setFieldValue('end_date', rule.effective_range?.end_date?.split(/[T ]/)[0] || '')
       setFieldValue('skip_holiday', rule.skip_holiday ?? true)
     }
   },

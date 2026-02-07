@@ -1,0 +1,20 @@
+refactor(admin): integrate ContextHelper and enhance admin controllers
+
+Controllers:
+- Add ContextHelper to admin_course.go, admin_resource.go, admin_room.go, admin_teacher.go
+- Refactor admin_teacher.go with new invitation and membership endpoints
+- Add context helper methods for admin operations
+
+Repositories:
+- Add membership-related query methods to membership.go
+- Add teacher, course, room repository enhancements
+
+Resources:
+- Add paginated resource responses to base.go
+- Update teacher resource with extended fields
+
+Frontend:
+- Integrate SearchableSelect in Admin tabs (courses, rooms, teachers)
+- Add resource management improvements to Admin components
+
+Ref: CLAUDE.md - Thin Controller pattern

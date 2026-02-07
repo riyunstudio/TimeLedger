@@ -24,13 +24,18 @@ type PersonalEventService struct {
 
 // NewPersonalEventService 建立教師行程服務
 func NewPersonalEventService(app *app.App) *PersonalEventService {
-	return &PersonalEventService{
-		app:               app,
-		personalEventRepo: repositories.NewPersonalEventRepository(app),
-		membershipRepo:    repositories.NewCenterMembershipRepository(app),
-		scheduleRuleRepo:  repositories.NewScheduleRuleRepository(app),
-		auditLogRepo:      repositories.NewAuditLogRepository(app),
+	svc := &PersonalEventService{
+		app: app,
 	}
+
+	if app.MySQL != nil {
+		svc.personalEventRepo = repositories.NewPersonalEventRepository(app)
+		svc.membershipRepo = repositories.NewCenterMembershipRepository(app)
+		svc.scheduleRuleRepo = repositories.NewScheduleRuleRepository(app)
+		svc.auditLogRepo = repositories.NewAuditLogRepository(app)
+	}
+
+	return svc
 }
 
 // GetPersonalEvents 取得老師個人行程列表
@@ -300,206 +305,206 @@ func (s *PersonalEventService) UpdatePersonalEventNote(ctx context.Context, even
 
 // OccurrenceInstance 代表行程在特定日期的實例
 type OccurrenceInstance struct {
-    EventID       uint           `json:"event_id"`
-    Title         string         `json:"title"`
-    StartAt       time.Time      `json:"start_at"`
-    EndAt         time.Time      `json:"end_at"`
-    IsAllDay      bool           `json:"is_all_day"`
-    ColorHex      string         `json:"color_hex"`
-    Note          string         `json:"note"`
-    Date          time.Time      `json:"date"`
-    OriginalDate  time.Time      `json:"original_date"` // 原始行程開始日期
+	EventID      uint      `json:"event_id"`
+	Title        string    `json:"title"`
+	StartAt      time.Time `json:"start_at"`
+	EndAt        time.Time `json:"end_at"`
+	IsAllDay     bool      `json:"is_all_day"`
+	ColorHex     string    `json:"color_hex"`
+	Note         string    `json:"note"`
+	Date         time.Time `json:"date"`
+	OriginalDate time.Time `json:"original_date"` // 原始行程開始日期
 }
 
 // GetTodayOccurrences 取得老師在目標日期的所有行程實例
 func (s *PersonalEventService) GetTodayOccurrences(ctx context.Context, teacherID uint, targetDate time.Time) ([]OccurrenceInstance, *errInfos.Res, error) {
-    // 取得該老師的所有行程
-    events, err := s.personalEventRepo.ListByTeacherID(ctx, teacherID)
-    if err != nil {
-        return nil, s.app.Err.New(errInfos.SQL_ERROR), err
-    }
+	// 取得該老師的所有行程
+	events, err := s.personalEventRepo.ListByTeacherID(ctx, teacherID)
+	if err != nil {
+		return nil, s.app.Err.New(errInfos.SQL_ERROR), err
+	}
 
-    var occurrences []OccurrenceInstance
+	var occurrences []OccurrenceInstance
 
-    // 取得目標日期的星期幾（1-7，週一到週日）
-    targetWeekday := int(targetDate.Weekday())
-    if targetWeekday == 0 {
-        targetWeekday = 7
-    }
+	// 取得目標日期的星期幾（1-7，週一到週日）
+	targetWeekday := int(targetDate.Weekday())
+	if targetWeekday == 0 {
+		targetWeekday = 7
+	}
 
-    for _, event := range events {
-        // 判斷行程是否在目標日期發生
-        isOccurring, instance := s.checkEventOccurrenceOnDate(event, targetDate, targetWeekday)
-        if isOccurring {
-            occurrences = append(occurrences, instance)
-        }
-    }
+	for _, event := range events {
+		// 判斷行程是否在目標日期發生
+		isOccurring, instance := s.checkEventOccurrenceOnDate(event, targetDate, targetWeekday)
+		if isOccurring {
+			occurrences = append(occurrences, instance)
+		}
+	}
 
-    return occurrences, nil, nil
+	return occurrences, nil, nil
 }
 
 // checkEventOccurrenceOnDate 判斷行程是否在目標日期發生
 func (s *PersonalEventService) checkEventOccurrenceOnDate(event models.PersonalEvent, targetDate time.Time, targetWeekday int) (bool, OccurrenceInstance) {
-    // 處理單次行程（沒有循環規則）
-    if event.RecurrenceRule.Type == "" {
-        eventDate := time.Date(
-            event.StartAt.Year(), event.StartAt.Month(), event.StartAt.Day(),
-            0, 0, 0, 0, event.StartAt.Location(),
-        )
-        targetDateOnly := time.Date(
-            targetDate.Year(), targetDate.Month(), targetDate.Day(),
-            0, 0, 0, 0, targetDate.Location(),
-        )
+	// 處理單次行程（沒有循環規則）
+	if event.RecurrenceRule.Type == "" {
+		eventDate := time.Date(
+			event.StartAt.Year(), event.StartAt.Month(), event.StartAt.Day(),
+			0, 0, 0, 0, event.StartAt.Location(),
+		)
+		targetDateOnly := time.Date(
+			targetDate.Year(), targetDate.Month(), targetDate.Day(),
+			0, 0, 0, 0, targetDate.Location(),
+		)
 
-        if eventDate.Equal(targetDateOnly) {
-            return true, OccurrenceInstance{
-                EventID:      event.ID,
-                Title:        event.Title,
-                StartAt:      event.StartAt,
-                EndAt:        event.EndAt,
-                IsAllDay:     event.IsAllDay,
-                ColorHex:     event.ColorHex,
-                Note:         event.Note,
-                Date:         targetDate,
-                OriginalDate: event.StartAt,
-            }
-        }
-        return false, OccurrenceInstance{}
-    }
+		if eventDate.Equal(targetDateOnly) {
+			return true, OccurrenceInstance{
+				EventID:      event.ID,
+				Title:        event.Title,
+				StartAt:      event.StartAt,
+				EndAt:        event.EndAt,
+				IsAllDay:     event.IsAllDay,
+				ColorHex:     event.ColorHex,
+				Note:         event.Note,
+				Date:         targetDate,
+				OriginalDate: event.StartAt,
+			}
+		}
+		return false, OccurrenceInstance{}
+	}
 
-    // 處理有循環規則的行程
-    rule := event.RecurrenceRule
+	// 處理有循環規則的行程
+	rule := event.RecurrenceRule
 
-    // 檢查 until 限制
-    if rule.Until != nil {
-        untilDate, parseErr := time.Parse("2006-01-02", *rule.Until)
-        if parseErr == nil {
-            targetDateOnly := time.Date(
-                targetDate.Year(), targetDate.Month(), targetDate.Day(),
-                0, 0, 0, 0, targetDate.Location(),
-            )
-            if targetDateOnly.After(untilDate) {
-                return false, OccurrenceInstance{}
-            }
-        }
-    }
+	// 檢查 until 限制
+	if rule.Until != nil {
+		untilDate, parseErr := time.Parse("2006-01-02", *rule.Until)
+		if parseErr == nil {
+			targetDateOnly := time.Date(
+				targetDate.Year(), targetDate.Month(), targetDate.Day(),
+				0, 0, 0, 0, targetDate.Location(),
+			)
+			if targetDateOnly.After(untilDate) {
+				return false, OccurrenceInstance{}
+			}
+		}
+	}
 
-    // 計算目標日期距離原始開始日期的天數
-    originalDate := time.Date(
-        event.StartAt.Year(), event.StartAt.Month(), event.StartAt.Day(),
-        0, 0, 0, 0, event.StartAt.Location(),
-    )
-    targetDateOnly := time.Date(
-        targetDate.Year(), targetDate.Month(), targetDate.Day(),
-        0, 0, 0, 0, targetDate.Location(),
-    )
+	// 計算目標日期距離原始開始日期的天數
+	originalDate := time.Date(
+		event.StartAt.Year(), event.StartAt.Month(), event.StartAt.Day(),
+		0, 0, 0, 0, event.StartAt.Location(),
+	)
+	targetDateOnly := time.Date(
+		targetDate.Year(), targetDate.Month(), targetDate.Day(),
+		0, 0, 0, 0, targetDate.Location(),
+	)
 
-    // 目標日期必須在原始日期當天或之後
-    if targetDateOnly.Before(originalDate) {
-        return false, OccurrenceInstance{}
-    }
+	// 目標日期必須在原始日期當天或之後
+	if targetDateOnly.Before(originalDate) {
+		return false, OccurrenceInstance{}
+	}
 
-    daysDiff := int(targetDateOnly.Sub(originalDate).Hours() / 24)
+	daysDiff := int(targetDateOnly.Sub(originalDate).Hours() / 24)
 
-    var isValidOccurrence bool
+	var isValidOccurrence bool
 
-    switch rule.Type {
-    case "DAILY":
-        // 每日循環：檢查間隔
-        isValidOccurrence = daysDiff%rule.Interval == 0
+	switch rule.Type {
+	case "DAILY":
+		// 每日循環：檢查間隔
+		isValidOccurrence = daysDiff%rule.Interval == 0
 
-    case "WEEKLY":
-        // 每週循環：檢查星期是否匹配
-        isValidOccurrence = false
-        for _, w := range rule.Weekdays {
-            if w == targetWeekday {
-                // 檢查間隔（每 N 週）
-                if rule.Interval <= 1 {
-                    isValidOccurrence = true
-                    break
-                }
-                // 計算週數
-                weeksDiff := daysDiff / 7
-                if daysDiff%7 == 0 && weeksDiff%rule.Interval == 0 {
-                    isValidOccurrence = true
-                    break
-                }
-            }
-        }
+	case "WEEKLY":
+		// 每週循環：檢查星期是否匹配
+		isValidOccurrence = false
+		for _, w := range rule.Weekdays {
+			if w == targetWeekday {
+				// 檢查間隔（每 N 週）
+				if rule.Interval <= 1 {
+					isValidOccurrence = true
+					break
+				}
+				// 計算週數
+				weeksDiff := daysDiff / 7
+				if daysDiff%7 == 0 && weeksDiff%rule.Interval == 0 {
+					isValidOccurrence = true
+					break
+				}
+			}
+		}
 
-    case "CUSTOM":
-        // 自訂循環：使用 interval 作為天數間隔
-        isValidOccurrence = daysDiff%rule.Interval == 0
+	case "CUSTOM":
+		// 自訂循環：使用 interval 作為天數間隔
+		isValidOccurrence = daysDiff%rule.Interval == 0
 
-    default:
-        // 未知的循環類型，不發生
-        isValidOccurrence = false
-    }
+	default:
+		// 未知的循環類型，不發生
+		isValidOccurrence = false
+	}
 
-    // 檢查 count 限制
-    if isValidOccurrence && rule.Count != nil && *rule.Count > 0 {
-        occurrences := s.countOccurrences(originalDate, targetDateOnly, rule)
-        if occurrences > *rule.Count {
-            isValidOccurrence = false
-        }
-    }
+	// 檢查 count 限制
+	if isValidOccurrence && rule.Count != nil && *rule.Count > 0 {
+		occurrences := s.countOccurrences(originalDate, targetDateOnly, rule)
+		if occurrences > *rule.Count {
+			isValidOccurrence = false
+		}
+	}
 
-    if !isValidOccurrence {
-        return false, OccurrenceInstance{}
-    }
+	if !isValidOccurrence {
+		return false, OccurrenceInstance{}
+	}
 
-    // 計算該實例的實際時間
-    instanceStartAt := time.Date(
-        targetDate.Year(), targetDate.Month(), targetDate.Day(),
-        event.StartAt.Hour(), event.StartAt.Minute(), event.StartAt.Second(), event.StartAt.Nanosecond(),
-        event.StartAt.Location(),
-    )
-    instanceEndAt := time.Date(
-        targetDate.Year(), targetDate.Month(), targetDate.Day(),
-        event.EndAt.Hour(), event.EndAt.Minute(), event.EndAt.Second(), event.EndAt.Nanosecond(),
-        event.EndAt.Location(),
-    )
+	// 計算該實例的實際時間
+	instanceStartAt := time.Date(
+		targetDate.Year(), targetDate.Month(), targetDate.Day(),
+		event.StartAt.Hour(), event.StartAt.Minute(), event.StartAt.Second(), event.StartAt.Nanosecond(),
+		event.StartAt.Location(),
+	)
+	instanceEndAt := time.Date(
+		targetDate.Year(), targetDate.Month(), targetDate.Day(),
+		event.EndAt.Hour(), event.EndAt.Minute(), event.EndAt.Second(), event.EndAt.Nanosecond(),
+		event.EndAt.Location(),
+	)
 
-    return true, OccurrenceInstance{
-        EventID:      event.ID,
-        Title:        event.Title,
-        StartAt:      instanceStartAt,
-        EndAt:        instanceEndAt,
-        IsAllDay:     event.IsAllDay,
-        ColorHex:     event.ColorHex,
-        Note:         event.Note,
-        Date:         targetDate,
-        OriginalDate: event.StartAt,
-    }
+	return true, OccurrenceInstance{
+		EventID:      event.ID,
+		Title:        event.Title,
+		StartAt:      instanceStartAt,
+		EndAt:        instanceEndAt,
+		IsAllDay:     event.IsAllDay,
+		ColorHex:     event.ColorHex,
+		Note:         event.Note,
+		Date:         targetDate,
+		OriginalDate: event.StartAt,
+	}
 }
 
 // countOccurrences 計算從原始日期到目標日期之間的發生次數
 func (s *PersonalEventService) countOccurrences(originalDate, targetDate time.Time, rule models.RecurrenceRule) int {
-    if targetDate.Before(originalDate) {
-        return 0
-    }
+	if targetDate.Before(originalDate) {
+		return 0
+	}
 
-    daysDiff := int(targetDate.Sub(originalDate).Hours() / 24)
+	daysDiff := int(targetDate.Sub(originalDate).Hours() / 24)
 
-    switch rule.Type {
-    case "DAILY", "CUSTOM":
-        // 包括原始日期當天，所以 +1
-        return daysDiff/rule.Interval + 1
+	switch rule.Type {
+	case "DAILY", "CUSTOM":
+		// 包括原始日期當天，所以 +1
+		return daysDiff/rule.Interval + 1
 
-    case "WEEKLY":
-        // 計算完整的週數
-        if daysDiff%7 != 0 {
-            return 0
-        }
-        weeksDiff := daysDiff / 7
-        if rule.Interval <= 1 {
-            return weeksDiff + 1
-        }
-        // 計算符合間隔的週數
-        return weeksDiff/rule.Interval + 1
-    }
+	case "WEEKLY":
+		// 計算完整的週數
+		if daysDiff%7 != 0 {
+			return 0
+		}
+		weeksDiff := daysDiff / 7
+		if rule.Interval <= 1 {
+			return weeksDiff + 1
+		}
+		// 計算符合間隔的週數
+		return weeksDiff/rule.Interval + 1
+	}
 
-    return 1
+	return 1
 }
 
 // checkPersonalEventConflicts 檢查個人行程是否與中心課程衝突

@@ -42,11 +42,16 @@ func NewRedisQueueService(app *app.App) *RedisQueueService {
 	}()
 	log = logger.GetLogger()
 
-	return &RedisQueueService{
-		app:   app,
-		redis: app.Redis.DB0,
-		log:   log,
+	svc := &RedisQueueService{
+		app: app,
+		log: log,
 	}
+
+	if app.Redis != nil {
+		svc.redis = app.Redis.DB0
+	}
+
+	return svc
 }
 
 // NotificationItem 通知佇列項目

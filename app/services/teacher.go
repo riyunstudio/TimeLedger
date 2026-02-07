@@ -35,21 +35,26 @@ type TeacherService struct {
 
 // NewTeacherService 建立教師服務
 func NewTeacherService(app *app.App) *TeacherService {
-	lineBotService := NewLineBotService(app)
-	authService := NewAuthService(app)
-
-	return &TeacherService{
-		app:            app,
-		teacherRepo:    repositories.NewTeacherRepository(app),
-		centerRepo:     repositories.NewCenterRepository(app),
-		membershipRepo: repositories.NewCenterMembershipRepository(app),
-		invitationRepo: repositories.NewCenterInvitationRepository(app),
-		adminUserRepo:  repositories.NewAdminUserRepository(app),
-		auditLogRepo:   repositories.NewAuditLogRepository(app),
-		lineBotService: lineBotService,
-		authService:    authService,
-		redisClient:    redis.Initialize(app.Env),
+	svc := &TeacherService{
+		app: app,
 	}
+
+	if app.Env != nil {
+		svc.redisClient = app.Redis
+		svc.authService = NewAuthService(app)
+		svc.lineBotService = NewLineBotService(app)
+	}
+
+	if app.MySQL != nil {
+		svc.teacherRepo = repositories.NewTeacherRepository(app)
+		svc.centerRepo = repositories.NewCenterRepository(app)
+		svc.membershipRepo = repositories.NewCenterMembershipRepository(app)
+		svc.invitationRepo = repositories.NewCenterInvitationRepository(app)
+		svc.adminUserRepo = repositories.NewAdminUserRepository(app)
+		svc.auditLogRepo = repositories.NewAuditLogRepository(app)
+	}
+
+	return svc
 }
 
 // ==================== 邀請相關業務邏輯 ====================

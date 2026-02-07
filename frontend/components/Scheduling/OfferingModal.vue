@@ -157,15 +157,15 @@ const fetchData = async () => {
     const api = useApi()
     const centerId = getCenterId()
 
-    const [coursesRes, teachersRes, roomsRes] = await Promise.all([
-      api.get<any[]>(`/admin/courses`),
-      api.get<any[]>('/teachers'),
-      api.get<any[]>(`/admin/rooms`)
-    ])
+    // API 回傳格式為 { code, data/datas, message }，需要取出實際資料
+    const coursesRes = await api.get<any[]>(`/admin/courses`)
+    const teachersRes = await api.get<any[]>('/teachers')
+    const roomsRes = await api.get<any[]>(`/admin/rooms`)
 
-    courses.value = coursesRes || []
-    teachers.value = teachersRes || []
-    rooms.value = roomsRes || []
+    // 取出 datas 或 data 欄位，若無則回退為空陣列
+    courses.value = (coursesRes?.datas || coursesRes?.data || coursesRes) || []
+    teachers.value = (teachersRes?.datas || teachersRes?.data || teachersRes) || []
+    rooms.value = (roomsRes?.datas || roomsRes?.data || roomsRes) || []
 
     // 如果是編輯模式，載入現有資料
     if (props.offering) {

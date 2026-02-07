@@ -1726,3 +1726,39 @@ const todayStr = getTodayString()
 
 > **注意**：所有 PDR 文件已整併至此，開發時請直接參考本文件。
 > 原始 PDR 文件位於 `pdr/` 目錄，僅供查閱參考用。
+---
+
+## 13. AI 開發工程規範 (AI Development Principles)
+
+為確保開發品質，避免「改 A 壞 B」，所有 AI 助理在執行任務時必須嚴格遵守以下規範：
+
+### 13.1 預防回歸錯誤 (Prevention of Regressions)
+- **修改前搜尋**：在修改任何函數或欄位前，**必須**先搜尋該項目的所有使用處 (Usage Search)，評估修改對其他功能模組、測試案例或 DTO 的影響。
+- **最小改動原則**：優先採用不會破壞現有合約 (Contract) 的修改方式。
+
+### 13.2 驗證導向開發 (Verification-Driven Development)
+- **TDD 優先**：
+    - 修復 Bug 前，應先撰寫能重現該 Bug 的測試案例 (Red Test)。
+    - 完成修復後，確保測試案例通過 (Green Test)。
+- **自動化驗證**：
+    - 完成開發後，**必須**自動尋找並執行相關的測試組 (如 `go test ./testing/test/...`)。
+    - 若涉及 UI 變動，應使用 `browser` 工具進行關鍵流程的視覺化確認。
+
+### 13.3 透明化開發流程 (Transparency & Reporting)
+- **實作計畫 (Implementation Plan)**：在開始大規模修改前，先產出 `implementation_plan.md` 供使用者審核：
+    - 包含：Bug 根因分析、變動檔案清單、潛在影響評估、驗證策略。
+- **成果報告 (Walkthrough)**：完成後產出 `walkthrough.md`：
+    - 包含：具體修改點、測試執行截圖/日誌、驗證成功的證據。
+
+### 13.4 程式碼品質審查
+- **自我審核**：在完成代碼後，主動檢查：
+    - 是否漏掉 `center_id` 隔離檢查？
+    - 是否有無效的 JSON 欄位提取 (如 `JSON_EXTRACT` 漏掉 `JSON_UNQUOTE`)？
+    - 是否符合 `CLAUDE.md` 中的分層架構規範？
+
+### 13.5 環境適應性 (Environment Adaptability)
+- **指令執行前檢查**：在執行任何終端機指令 (Terminal Commands) 前，**必須**先確認當下的作業系統環境 (如：Windows vs. macOS/Linux)。
+- **跨平台指令相容性**：
+    - Windows 環境下優先使用 PowerShell 或相容指令。
+    - 避開僅限 Unix-like 的指令 (如 `ls`, `grep`, `export`) 或確保有對應的替代方案 (如 `dir`, `findstr`, `$env:VAR`)。
+    - 嚴禁盲目嘗試指令，應先從 `user_information` 或 `run_command` 的系統提示中確認 OS 版本，以減少無謂的錯誤重試與資源浪費。

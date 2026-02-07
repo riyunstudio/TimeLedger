@@ -266,7 +266,7 @@ func (rp *GenericRepository[T]) CreateBatch(ctx context.Context, data []T) ([]T,
 // Returns:
 //   - error: Any error encountered
 func (rp *GenericRepository[T]) Update(ctx context.Context, data T) error {
-	return rp.withContext(ctx).dbWrite.Table(rp.table).Save(&data).Error
+	return rp.withContext(ctx).dbWrite.Table(rp.table).Omit("created_at").Save(&data).Error
 }
 
 // UpdateFields updates specific fields of a record identified by ID.

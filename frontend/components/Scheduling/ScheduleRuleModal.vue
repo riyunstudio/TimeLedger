@@ -208,7 +208,7 @@ const validateScheduleConflicts = async (
         center_id: centerId,
         teacher_id: formData.teacher_id as number | undefined,
         room_id: (formData.room_id as number) || 0,
-        date: formData.start_date as string,
+        date: (formData.start_date as string)?.split(/[T ]/)[0],
         start_time: formData.start_time as string,
         end_time: formData.end_time as string,
         rule_id: props.editingRule?.id,
@@ -281,7 +281,7 @@ const handleFormSubmit = async (formData: Record<string, unknown>, updateMode: s
         center_id: centerId || 1,
         teacher_id: formData.teacher_id as number | undefined,
         room_id: (formData.room_id as number) || 0,
-        date: formData.start_date as string,
+        date: (formData.start_date as string)?.split(/[T ]/)[0],
         start_time: formData.start_time as string,
         end_time: formData.end_time as string,
         rule_id: props.editingRule?.id,
@@ -362,8 +362,8 @@ const handleFormSubmit = async (formData: Record<string, unknown>, updateMode: s
       end_time: formData.end_time,
       duration: formData.duration,
       weekdays: formData.weekdays,
-      start_date: formData.start_date,
-      end_date: formData.end_date || null,
+      start_date: (formData.start_date as string)?.split(/[T ]/)[0],
+      end_date: (formData.end_date as string)?.split(/[T ]/)[0] || null,
     }
 
     // 只有當有選擇老師時才傳送

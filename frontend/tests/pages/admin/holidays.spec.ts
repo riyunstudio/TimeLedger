@@ -659,10 +659,7 @@ describe('admin/holidays.vue 頁面邏輯', () => {
 
     it('getItemCount 應該返回項目數量', () => {
       const logic = new BulkImportLogic()
-      logic.setJsonData('[
-        { "date": "2026-01-01", "name": "元旦" },
-        { "date": "2026-02-11", "name": "春節" }
-      ]')
+      logic.setJsonData('[{"date": "2026-01-01", "name": "元旦"}, {"date": "2026-02-11", "name": "春節"}]')
       expect(logic.getItemCount()).toBe(2)
     })
 
@@ -761,9 +758,7 @@ describe('admin/holidays.vue 頁面邏輯', () => {
       expect(formLogic.isValid()).toBe(true)
 
       // 批次匯入
-      bulkLogic.setJsonData('[
-        { "date": "2026-04-05", "name": "清明節" }
-      ]')
+      bulkLogic.setJsonData('[{"date": "2026-04-05", "name": "清明節"}]')
       expect(bulkLogic.isValidFormat()).toBe(true)
       expect(bulkLogic.getItemCount()).toBe(1)
 
@@ -784,10 +779,7 @@ describe('admin/holidays.vue 頁面邏輯', () => {
 
     it('應該正確驗證批次匯入資料', () => {
       const bulkLogic = new BulkImportLogic()
-      bulkLogic.setJsonData('[
-        { "date": "2026-01-01", "name": "元旦" },
-        { "date": "invalid", "name": "錯誤日期" }
-      ]')
+      bulkLogic.setJsonData('[{"date": "2026-01-01", "name": "元旦"}, {"date": "invalid", "name": "錯誤日期"}]')
       const errors = bulkLogic.getValidationErrors()
       expect(errors.length).toBeGreaterThan(0)
     })

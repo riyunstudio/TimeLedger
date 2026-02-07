@@ -24,18 +24,21 @@ const (
 // CacheService 快取服務
 type CacheService struct {
 	BaseService
-	app    *app.App
-	redis  *redis.Client
+	app   *app.App
+	redis *redis.Client
 }
 
 // NewCacheService 建立 Cache Service
 func NewCacheService(app *app.App) *CacheService {
 	baseSvc := NewBaseService(app, "CacheService")
-	return &CacheService{
+	svc := &CacheService{
 		BaseService: *baseSvc,
 		app:         app,
-		redis:       app.Redis.DB0,
 	}
+	if app.Redis != nil {
+		svc.redis = app.Redis.DB0
+	}
+	return svc
 }
 
 // buildKey 組合快取 Key
@@ -383,13 +386,13 @@ type CenterBasicInfo struct {
 func (s *CacheService) GetCourseList(ctx context.Context, centerID uint) ([]CourseCacheItem, error) {
 	var courses []CourseCacheItem
 	err := s.GetJSON(ctx, &courses, CacheCategoryCourse, fmt.Sprintf("list:%d", centerID))
-	
+
 	// 快取不存在或解析失敗時，返回空切片而非錯誤
 	if err != nil {
 		s.Logger.Debug("course cache miss or parse error", "center_id", centerID, "error", err)
 		return []CourseCacheItem{}, nil
 	}
-	
+
 	return courses, nil
 }
 
@@ -477,26 +480,26 @@ func (s *CacheService) InvalidateAllTodaySchedules(ctx context.Context, centerID
 
 // TodayScheduleCache 今日排課快取結構
 type TodayScheduleCache struct {
-	Date       string              `json:"date"`
-	CenterID   uint                `json:"center_id"`
-	Sessions   []SessionCacheItem  `json:"sessions"`
-	TotalCount int                 `json:"total_count"`
-	CachedAt   time.Time           `json:"cached_at"`
+	Date       string             `json:"date"`
+	CenterID   uint               `json:"center_id"`
+	Sessions   []SessionCacheItem `json:"sessions"`
+	TotalCount int                `json:"total_count"`
+	CachedAt   time.Time          `json:"cached_at"`
 }
 
 // SessionCacheItem 課堂快取項目
 type SessionCacheItem struct {
-	ID         uint   `json:"id"`
-	RuleID     uint   `json:"rule_id"`
-	CourseName string `json:"course_name"`
-	StartTime  string `json:"start_time"`
-	EndTime    string `json:"end_time"`
-	RoomID     uint   `json:"room_id"`
-	RoomName   string `json:"room_name"`
-	TeacherID  uint   `json:"teacher_id"`
+	ID          uint   `json:"id"`
+	RuleID      uint   `json:"rule_id"`
+	CourseName  string `json:"course_name"`
+	StartTime   string `json:"start_time"`
+	EndTime     string `json:"end_time"`
+	RoomID      uint   `json:"room_id"`
+	RoomName    string `json:"room_name"`
+	TeacherID   uint   `json:"teacher_id"`
 	TeacherName string `json:"teacher_name"`
-	Status     string `json:"status"`
-	Color      string `json:"color"`
+	Status      string `json:"status"`
+	Color       string `json:"color"`
 }
 
 // =====================================================

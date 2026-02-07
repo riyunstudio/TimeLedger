@@ -280,6 +280,7 @@ const getWeekStart = (date: Date): Date => {
     date = new Date()
   }
   const d = new Date(date)
+  d.setHours(0, 0, 0, 0)
   const day = d.getDay()
   const diff = d.getDate() - day + (day === 0 ? -6 : 1)
   return new Date(d.setDate(diff))
@@ -511,8 +512,12 @@ const fetchSchedules = async () => {
           // 檢查是否在有效範圍內
           if (effectiveStartDate) {
             const start = new Date(effectiveStartDate)
-            if (targetDate < start) {
-              targetDate = start
+            // 比較日期部分（忽略時間）
+            const targetTime = new Date(targetDate).setHours(0, 0, 0, 0)
+            const startTime = new Date(start).setHours(0, 0, 0, 0)
+            
+            if (targetTime < startTime) {
+              return null
             }
           }
 

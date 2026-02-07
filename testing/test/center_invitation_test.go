@@ -115,7 +115,7 @@ func TestCenterInvitationRepository_CRUD(t *testing.T) {
 			Status:     models.InvitationStatusPending,
 			InviteType: models.InvitationTypeTalentPool,
 			Message:    "歡迎加入！",
-			ExpiresAt:  &time.Time{}, // 會在 repository 層自動設定
+			ExpiresAt:  nil, // 會在 repository 層自動設定
 			CreatedAt:  time.Now(),
 		}
 
@@ -161,7 +161,7 @@ func TestCenterInvitationRepository_CRUD(t *testing.T) {
 			Token:      factory.CreateUniqueToken(),
 			Status:     models.InvitationStatusPending,
 			InviteType: models.InvitationTypeTalentPool,
-			ExpiresAt:  &time.Time{}, // 會在 repository 層自動設定
+			ExpiresAt:  nil, // 會在 repository 層自動設定
 			CreatedAt:  time.Now(),
 		}
 		if err := db.WithContext(ctx).Create(&invitation).Error; err != nil {
@@ -220,7 +220,7 @@ func TestCenterInvitationRepository_CRUD(t *testing.T) {
 				Token:      factory.CreateUniqueToken(),
 				Status:     models.InvitationStatusPending,
 				InviteType: models.InvitationTypeTalentPool,
-				ExpiresAt:  &time.Time{}, // 會在 repository 層自動設定
+				ExpiresAt:  nil, // 會在 repository 層自動設定
 				CreatedAt:  time.Now(),
 			}
 			if err := db.WithContext(ctx).Create(&invitation).Error; err != nil {
@@ -273,7 +273,7 @@ func TestCenterInvitationRepository_CRUD(t *testing.T) {
 			Token:      factory.CreateUniqueToken(),
 			Status:     models.InvitationStatusPending,
 			InviteType: models.InvitationTypeTalentPool,
-			ExpiresAt:  &time.Time{}, // 會在 repository 層自動設定
+			ExpiresAt:  nil, // 會在 repository 層自動設定
 			CreatedAt:  time.Now(),
 		}
 		if err := db.WithContext(ctx).Create(&pendingInvitation).Error; err != nil {
@@ -333,7 +333,7 @@ func TestCenterInvitationRepository_CRUD(t *testing.T) {
 			Token:      factory.CreateUniqueToken(),
 			Status:     models.InvitationStatusPending,
 			InviteType: models.InvitationTypeTalentPool,
-			ExpiresAt:  &time.Time{}, // 會在 repository 層自動設定
+			ExpiresAt:  nil, // 會在 repository 層自動設定
 			CreatedAt:  time.Now(),
 		}
 		if err := db.WithContext(ctx).Create(&invitation).Error; err != nil {

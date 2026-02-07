@@ -469,7 +469,7 @@ describe('admin/resources.vue 頁面邏輯', () => {
       expect(logic.courses).toHaveLength(1)
     })
 
-    it('updateCourse 應該更新課程資訊', () {
+    it('updateCourse 應該更新課程資訊', () => {
       const logic = new CourseTabLogic()
       logic.setCourses([{ id: 1, name: '舊課程', duration: 60 }])
       logic.updateCourse(1, { name: '新课程', duration: 90 })

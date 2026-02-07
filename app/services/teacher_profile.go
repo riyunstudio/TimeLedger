@@ -116,7 +116,7 @@ func (s *TeacherProfileService) UpdateProfile(ctx context.Context, teacherID uin
 
 	txErr := s.app.MySQL.WDB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		// 更新老師資料
-		if err := tx.Save(&teacher).Error; err != nil {
+		if err := tx.Omit("created_at").Save(&teacher).Error; err != nil {
 			return fmt.Errorf("failed to update teacher: %w", err)
 		}
 

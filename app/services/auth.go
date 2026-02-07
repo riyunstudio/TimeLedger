@@ -136,16 +136,24 @@ func base64URLDecode(input string) ([]byte, error) {
 
 func NewAuthService(app *app.App) *authService {
 	baseService := NewBaseService(app, "AuthService")
-	return &authService{
-		BaseService:                 *baseService,
-		app:                         app,
-		adminRepository:             repositories.NewAdminUserRepository(app),
-		teacherRepository:           repositories.NewTeacherRepository(app),
-		centerRepository:            repositories.NewCenterRepository(app),
-		notificationService:         NewNotificationQueueService(app),
-		adminLoginHistoryRepository: repositories.NewAdminLoginHistoryRepository(app),
-		jwt:                         jwt.NewJWT(app.Env.JWTSecret),
+	svc := &authService{
+		BaseService: *baseService,
+		app:         app,
 	}
+
+	if app.Env != nil {
+		svc.jwt = jwt.NewJWT(app.Env.JWTSecret)
+	}
+
+	if app.MySQL != nil {
+		svc.adminRepository = repositories.NewAdminUserRepository(app)
+		svc.teacherRepository = repositories.NewTeacherRepository(app)
+		svc.centerRepository = repositories.NewCenterRepository(app)
+		svc.notificationService = NewNotificationQueueService(app)
+		svc.adminLoginHistoryRepository = repositories.NewAdminLoginHistoryRepository(app)
+	}
+
+	return svc
 }
 
 func (s *authService) AdminLogin(ctx context.Context, email, password, ipAddress, userAgent string) (LoginResponse, error) {

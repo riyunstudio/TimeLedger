@@ -412,7 +412,7 @@ describe('admin/login.vue 頁面邏輯', () => {
     })
   })
 
-  describe('ValidationLogic 驗證邏輯', () {
+  describe('ValidationLogic 驗證邏輯', () => {
     it('validateEmail 應該正確驗證 Email', () => {
       const logic = new ValidationLogic()
       expect(logic.validateEmail('test@example.com').valid).toBe(true)

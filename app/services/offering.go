@@ -175,7 +175,7 @@ func (s *OfferingService) UpdateOffering(ctx context.Context, input *UpdateOffer
 			existingOffering.Name = *input.Name
 		}
 
-		if err := tx.Save(&existingOffering).Error; err != nil {
+		if err := tx.Omit("created_at").Save(&existingOffering).Error; err != nil {
 			return fmt.Errorf("failed to update offering: %w", err)
 		}
 		updatedOffering = existingOffering

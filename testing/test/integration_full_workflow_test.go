@@ -937,8 +937,8 @@ func TestIntegration_ValidationAndException(t *testing.T) {
 		c.Set(global.UserTypeKey, "ADMIN")
 		c.Params = gin.Params{{Key: "id", Value: fmt.Sprintf("%d", createdCenter.ID)}}
 
-		startDate := now.Format(time.RFC3339)
-		endDate := now.AddDate(0, 3, 0).Format(time.RFC3339)
+		startDate := now.Format("2006-01-02")
+		endDate := now.AddDate(0, 3, 0).Format("2006-01-02")
 
 		reqBody := map[string]interface{}{
 			"offering_id": createdOffering.ID,
@@ -1424,8 +1424,8 @@ func TestIntegration_RecurrenceEditing(t *testing.T) {
 		c.Set(global.CenterIDKey, createdCenter.ID)
 		c.Set(global.UserTypeKey, "ADMIN")
 
-		startDate := now.Format(time.RFC3339)
-		endDate := now.AddDate(0, 1, 0).Format(time.RFC3339)
+		startDate := now.Format("2006-01-02")
+		endDate := now.AddDate(0, 1, 0).Format("2006-01-02")
 
 		reqBody := map[string]interface{}{
 			"rule_id":    createdRule.ID,

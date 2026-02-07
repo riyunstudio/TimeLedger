@@ -12,8 +12,6 @@ import (
 	"io"
 	"net/http"
 	"sort"
-	"strconv"
-	"strings"
 	"time"
 	"timeLedger/app"
 	"timeLedger/app/models"
@@ -51,36 +49,44 @@ type LineBotService interface {
 
 // LineBotServiceImpl LINE Messaging API 服務實現
 type LineBotServiceImpl struct {
-	app                   *app.App
-	channelSecret         string
-	channelToken          string
-	apiURL                string
-	profileURL            string
-	replyURL              string
-	multicastURL          string
-	client                *http.Client
-	templateService       LineBotTemplateService
-	scheduleExpansionSvc  ScheduleExpansionService
-	personalEventSvc      *PersonalEventService
+	app                  *app.App
+	channelSecret        string
+	channelToken         string
+	apiURL               string
+	profileURL           string
+	replyURL             string
+	multicastURL         string
+	client               *http.Client
+	templateService      LineBotTemplateService
+	scheduleExpansionSvc ScheduleExpansionService
+	personalEventSvc     *PersonalEventService
 }
 
 // NewLineBotService 建立 LINE Bot Service
 func NewLineBotService(app *app.App) LineBotService {
-	return &LineBotServiceImpl{
-		app:                   app,
-		channelSecret:         app.Env.LineChannelSecret,
-		channelToken:          app.Env.LineChannelAccessToken,
-		apiURL:                "https://api.line.me/v2/bot/message/push",
-		profileURL:            "https://api.line.me/v2/bot/profile",
-		replyURL:              "https://api.line.me/v2/bot/message/reply",
-		multicastURL:          "https://api.line.me/v2/bot/message/multicast",
-		templateService:       NewLineBotTemplateService(app.Env.FrontendBaseURL),
-		scheduleExpansionSvc:  NewScheduleExpansionService(app),
-		personalEventSvc:      NewPersonalEventService(app),
+	svc := &LineBotServiceImpl{
+		app: app,
 		client: &http.Client{
 			Timeout: 30 * time.Second,
 		},
 	}
+
+	if app.Env != nil {
+		svc.channelSecret = app.Env.LineChannelSecret
+		svc.channelToken = app.Env.LineChannelAccessToken
+		svc.apiURL = "https://api.line.me/v2/bot/message/push"
+		svc.profileURL = "https://api.line.me/v2/bot/profile"
+		svc.replyURL = "https://api.line.me/v2/bot/message/reply"
+		svc.multicastURL = "https://api.line.me/v2/bot/message/multicast"
+		svc.templateService = NewLineBotTemplateService(app.Env.FrontendBaseURL)
+	}
+
+	if app.MySQL != nil {
+		svc.scheduleExpansionSvc = NewScheduleExpansionService(app)
+		svc.personalEventSvc = NewPersonalEventService(app)
+	}
+
+	return svc
 }
 
 // LineBotRequest LINE Bot API 請求結構
@@ -515,14 +521,15 @@ func (s *LineBotServiceImpl) getScheduleRulesForDate(ctx context.Context, center
 		weekday = 7 // 週日對應 7
 	}
 
+	// 處理零值時間
+	startDateStr := date.Format("2006-01-02")
+
 	err := s.app.MySQL.RDB.WithContext(ctx).
 		Where("center_id = ?", centerID).
 		Where("teacher_id = ?", teacherID).
 		Where("weekday = ?", weekday).
-		Where("JSON_EXTRACT(effective_range, '$.start_date') <= ?", date.Format("2006-01-02")).
-		Where(func() string {
-			return "JSON_EXTRACT(effective_range, '$.end_date') >= ? OR JSON_EXTRACT(effective_range, '$.end_date') = '\"0001-01-01\"' OR JSON_EXTRACT(effective_range, '$.end_date') IS NULL"
-		}()).
+		Where("COALESCE(NULLIF(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(effective_range, '$.start_date')), ''), 'null'), '0001-01-01') <= ?", startDateStr).
+		Where("COALESCE(NULLIF(NULLIF(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(effective_range, '$.end_date')), ''), 'null'), '0001-01-01 00:00:00'), '9999-12-31') >= ?", startDateStr).
 		Preload("Offering").
 		Preload("Teacher").
 		Preload("Room").
@@ -541,34 +548,6 @@ func sortAgendaItemsByTime(items []AgendaItem) {
 	sort.Slice(items, func(i, j int) bool {
 		return compareTimeStrings(items[i].Time, items[j].Time) < 0
 	})
-}
-
-// compareTimeStrings 比較兩個時間字串 HH:MM 格式
-// 回傳 -1 表示 t1 < t2, 0 表示相等, 1 表示 t1 > t2
-func compareTimeStrings(t1, t2 string) int {
-	// 解析時間字串
-	parseTime := func(s string) int {
-		parts := strings.Split(s, ":")
-		if len(parts) < 2 {
-			return 0
-		}
-		hour, err1 := strconv.Atoi(parts[0])
-		minute, err2 := strconv.Atoi(parts[1])
-		if err1 != nil || err2 != nil {
-			return 0
-		}
-		return hour*60 + minute
-	}
-
-	m1 := parseTime(t1)
-	m2 := parseTime(t2)
-
-	if m1 < m2 {
-		return -1
-	} else if m1 > m2 {
-		return 1
-	}
-	return 0
 }
 
 // formatTimeForAgenda 將 time.Time 轉換為 HH:MM 格式

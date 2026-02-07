@@ -583,7 +583,7 @@ describe('teacher/exceptions.vue 頁面邏輯', () => {
       expect(logic.centers).toHaveLength(0)
     })
 
-    it('setCenters 應該正確設定中心列表', () {
+    it('setCenters 應該正確設定中心列表', () => {
       const logic = new CenterFilterLogic()
       logic.setCenters([
         { center_id: 1, center_name: '中心 A' },

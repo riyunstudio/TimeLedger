@@ -17,6 +17,7 @@ func (db *DB) AutoMigrate() {
 		&models.Teacher{},
 		&models.CenterMembership{},
 		&models.CenterInvitation{},
+		&models.CenterTerm{},
 		&models.GeoCity{},
 		&models.GeoDistrict{},
 		&models.Course{},

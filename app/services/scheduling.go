@@ -143,9 +143,9 @@ type TodaySummary struct {
 
 // TodaySession 今日課程場次
 type TodaySession struct {
-	ID        uint        `json:"id"`
-	StartTime time.Time   `json:"start_time"`
-	EndTime   time.Time   `json:"end_time"`
+	ID        uint          `json:"id"`
+	StartTime time.Time     `json:"start_time"`
+	EndTime   time.Time     `json:"end_time"`
 	Offering  TodayOffering `json:"offering"`
 	Teacher   TodayTeacher  `json:"teacher"`
 	Room      TodayRoom     `json:"room"`
@@ -478,51 +478,6 @@ func (s *ScheduleService) getRoomPreviousSessionEndTime(ctx context.Context, cen
 	}
 
 	return time.Time{}, nil
-}
-
-// splitTime 分割時間字串
-func splitTime(timeStr string) []int {
-	if timeStr == "" {
-		return nil
-	}
-	parts := splitString(timeStr, ":")
-	if len(parts) < 2 {
-		return nil
-	}
-	hour := parseInt(parts[0])
-	minute := parseInt(parts[1])
-	return []int{hour, minute}
-}
-
-// splitString 分割字串
-func splitString(s, sep string) []string {
-	if s == "" {
-		return nil
-	}
-	var result []string
-	start := 0
-	for i := 0; i < len(s); i++ {
-		if s[i] == sep[0] {
-			result = append(result, s[start:i])
-			start = i + 1
-		}
-	}
-	result = append(result, s[start:])
-	return result
-}
-
-// parseInt 解析整數
-func parseInt(s string) int {
-	if s == "" {
-		return 0
-	}
-	var result int
-	for _, c := range s {
-		if c >= '0' && c <= '9' {
-			result = result*10 + int(c-'0')
-		}
-	}
-	return result
 }
 
 // UpdateRule 更新排課規則（使用交易確保原子性）

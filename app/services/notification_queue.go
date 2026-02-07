@@ -58,16 +58,30 @@ func NewNotificationQueueService(app *app.App) NotificationQueueService {
 	}()
 	log = logger.GetLogger()
 
-	return &NotificationQueueServiceImpl{
-		app:             app,
-		adminRepo:       repositories.NewAdminUserRepository(app),
-		teacherRepo:     repositories.NewTeacherRepository(app),
-		lineBotService:  NewLineBotService(app),
-		templateService: NewLineBotTemplateService(app.Env.FrontendBaseURL),
-		redisQueue:      NewRedisQueueService(app),
-		asynqService:    NewAsynqNotificationService(app, nil),
-		log:             log,
+	svc := &NotificationQueueServiceImpl{
+		app: app,
+		log: log,
 	}
+
+	if app.Env != nil {
+		svc.templateService = NewLineBotTemplateService(app.Env.FrontendBaseURL)
+	}
+
+	if app.MySQL != nil {
+		svc.adminRepo = repositories.NewAdminUserRepository(app)
+		svc.teacherRepo = repositories.NewTeacherRepository(app)
+		svc.lineBotService = NewLineBotService(app)
+	}
+
+	if app.Redis != nil {
+		svc.redisQueue = NewRedisQueueService(app)
+	}
+
+	if app.Env != nil {
+		svc.asynqService = NewAsynqNotificationService(app, nil)
+	}
+
+	return svc
 }
 
 // logInfo 安全記錄 Info 級別日誌

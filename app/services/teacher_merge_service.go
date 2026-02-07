@@ -177,11 +177,12 @@ func (s *TeacherMergeService) migrateScheduleRules(tx *gorm.DB, sourceID, target
 // migrateScheduleExceptions 遷移例外記錄（包含 NewTeacherID）
 func (s *TeacherMergeService) migrateScheduleExceptions(tx *gorm.DB, sourceID, targetID, centerID uint) error {
 	// 更新原始教師（Rule 的 teacher_id）
+	// 使用子查詢來過濾屬於該教師的規則
 	result1 := tx.Model(&models.ScheduleException{}).
-		Joins("JOIN schedule_exceptions se ON schedule_rules.id = se.rule_id").
-		Where("schedule_rules.teacher_id = ? AND schedule_exceptions.center_id = ?", sourceID, centerID).
-		Where("se.new_teacher_id IS NULL OR se.new_teacher_id = ?", sourceID).
-		Update("se.new_teacher_id", targetID)
+		Where("center_id = ?", centerID).
+		Where("rule_id IN (SELECT id FROM schedule_rules WHERE teacher_id = ?)", sourceID).
+		Where("(new_teacher_id IS NULL OR new_teacher_id = ?)", sourceID).
+		Update("new_teacher_id", targetID)
 
 	if result1.Error != nil {
 		s.Logger.Error("遷移例外記錄（原始教師）失敗", "error", result1.Error)
@@ -307,6 +308,12 @@ func (s *TeacherMergeService) migrateTeacherSkills(tx *gorm.DB, sourceID, target
 	if result.Error != nil {
 		s.Logger.Error("遷移教師技能失敗", "error", result.Error)
 		return fmt.Errorf("遷移教師技能失敗: %w", result.Error)
+	}
+
+	// 清理來源教師剩餘的重複技能（那些因目標教師已有而未被更新 TeacherID 的技能）
+	if err := tx.Where("teacher_id = ?", sourceID).Delete(&models.TeacherSkill{}).Error; err != nil {
+		s.Logger.Error("清理來源教師重複技能失敗", "error", err)
+		return fmt.Errorf("清理來源教師重複技能失敗: %w", err)
 	}
 
 	if result.RowsAffected > 0 {
@@ -449,7 +456,7 @@ func (s *TeacherMergeService) handleTeacherNotes(tx *gorm.DB, sourceID, targetID
 			Where("id = ?", targetNote.ID).
 			Updates(map[string]interface{}{
 				"internal_note": targetNote.InternalNote,
-				"updated_at":     now,
+				"updated_at":    now,
 			})
 
 		if updateResult.Error != nil {

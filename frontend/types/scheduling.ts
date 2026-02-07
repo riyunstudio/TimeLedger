@@ -565,3 +565,100 @@ export type MoveScheduleItemResponse = ApiResponse<{
   /** 移動後的個人行程 */
   event?: PersonalEvent
 }>
+
+// ==================== 資源佔用相關類型 ====================
+
+/**
+ * 學期期間 (Term)
+ */
+export interface Term {
+  /** 學期 ID */
+  id: ID
+  /** 所屬中心 ID */
+  center_id: ID
+  /** 學期名稱 */
+  name: string
+  /** 開始日期 (YYYY-MM-DD) */
+  start_date: DateString
+  /** 結束日期 (YYYY-MM-DD) */
+  end_date: DateString
+  /** 建立時間 */
+  created_at?: Timestamp
+  /** 更新時間 */
+  updated_at?: Timestamp
+}
+
+/**
+ * 佔用規則查詢參數
+ */
+export interface OccupancyRulesParams {
+  /** 學期 ID */
+  term_id: ID
+  /** 老師 ID (可選) */
+  teacher_id?: ID
+  /** 教室 ID (可選) */
+  room_id?: ID
+}
+
+/**
+ * 佔用規則 (用於週曆視圖)
+ *
+ * 此類型用於資源佔用表頁面，簡化了 ScheduleRule 以提高效能
+ */
+export interface OccupancyRule {
+  /** 規則 ID */
+  id: ID
+  /** 關聯開課 ID */
+  offering_id: ID
+  /** 開課名稱 */
+  offering_name?: string
+  /** 關聯課程 ID */
+  course_id?: ID
+  /** 課程名稱 */
+  course_name?: string
+  /** 指定教師 ID (可選) */
+  teacher_id?: ID
+  /** 教師名稱 */
+  teacher_name?: string
+  /** 教室 ID */
+  room_id: ID
+  /** 教室名稱 */
+  room_name?: string
+  /** 星期幾 (0-6, 0 為週日) */
+  weekday: number
+  /** 開始時間 (HH:mm) */
+  start_time: string
+  /** 結束時間 (HH:mm) */
+  end_time: string
+  /** 有效範圍 */
+  effective_range: DateRange
+}
+
+/**
+ * 佔用規則列表回應
+ */
+export type OccupancyRulesResponse = ApiResponse<OccupancyRule[]>
+
+/**
+ * 規則複製請求
+ */
+export interface CopyRulesRequest {
+  /** 來源學期 ID */
+  source_term_id: ID
+  /** 目標學期 ID */
+  target_term_id: ID
+  /** 要複製的規則 ID 列表 */
+  rule_ids: ID[]
+}
+
+/**
+ * 規則複製回應
+ */
+export type CopyRulesResponse = ApiResponse<{
+  /** 成功複製的規則數量 */
+  copied_count: number
+  /** 失敗的規則 ID 列表 */
+  failed_ids?: ID[]
+  /** 訊息 */
+  message?: string
+}>

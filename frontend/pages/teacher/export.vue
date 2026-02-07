@@ -842,7 +842,7 @@ const viewOptions = [
 
 // 網格視圖所需的計算屬性
 const weekDays = computed(() => {
-  const days = []
+  const days: { date: string; weekday: string; monthDay: string }[] = []
   const weekdays = ['週日', '週一', '週二', '週三', '週四', '週五', '週六']
   scheduleDays.value.forEach(day => {
     const date = new Date(day.date)
@@ -1531,7 +1531,7 @@ const handleDownloadICal = async () => {
       return
     }
 
-    const response = await api.raw<Blob>(`/api/v1/teacher/me/schedule.ics?start_date=${startDate}&end_date=${endDate}`)
+    const response = await api.raw<Blob>(`/teacher/me/schedule.ics?start_date=${startDate}&end_date=${endDate}`)
 
     // 建立下載連結
     const url = URL.createObjectURL(response)

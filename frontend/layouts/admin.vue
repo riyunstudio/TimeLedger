@@ -63,6 +63,14 @@
               <span class="w-1.5 h-1.5 rounded-full bg-slate-500" />
               排課管理
             </NuxtLink>
+            <NuxtLink
+              to="/admin/resource-occupancy"
+              class="flex items-center gap-3 px-4 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700/30 transition-all duration-200 text-sm"
+              active-class="!text-white bg-primary-500/10"
+            >
+              <span class="w-1.5 h-1.5 rounded-full bg-slate-500" />
+              資源佔用表
+            </NuxtLink>
           </div>
         </div>
 
@@ -318,6 +326,14 @@
                   @click="mobileMenuOpen = false"
                 >
                   排課管理
+                </NuxtLink>
+                <NuxtLink
+                  to="/admin/resource-occupancy"
+                  class="flex items-center gap-3 px-4 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700/30 transition-all duration-200 text-sm"
+                  active-class="!text-white bg-primary-500/10"
+                  @click="mobileMenuOpen = false"
+                >
+                  資源佔用表
                 </NuxtLink>
               </div>
             </div>
@@ -593,6 +609,7 @@ const pageTitle = computed(() => {
   const titles: Record<string, string> = {
     '/admin/dashboard': '首頁',
     '/admin/schedules': '排課管理',
+    '/admin/resource-occupancy': '資源佔用表',
     '/admin/approval': '審核管理',
     '/admin/broadcast': '一鍵公告',
     '/admin/matching': '智慧媒合',

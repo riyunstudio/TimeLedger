@@ -20,12 +20,17 @@ type ScheduleValidationServiceImpl struct {
 
 func NewScheduleValidationService(app *app.App) ScheduleValidationService {
 	baseSvc := NewBaseService(app, "ScheduleValidationService")
-	return &ScheduleValidationServiceImpl{
-		BaseService:      *baseSvc,
-		scheduleRuleRepo: repositories.NewScheduleRuleRepository(app),
-		roomRepo:         repositories.NewRoomRepository(app),
-		courseRepo:       repositories.NewCourseRepository(app),
+	svc := &ScheduleValidationServiceImpl{
+		BaseService: *baseSvc,
 	}
+
+	if app.MySQL != nil {
+		svc.scheduleRuleRepo = repositories.NewScheduleRuleRepository(app)
+		svc.roomRepo = repositories.NewRoomRepository(app)
+		svc.courseRepo = repositories.NewCourseRepository(app)
+	}
+
+	return svc
 }
 
 func (s *ScheduleValidationServiceImpl) CheckOverlap(ctx context.Context, centerID uint, teacherID *uint, roomID uint, startTime, endTime time.Time, weekday int, excludeRuleID *uint) (ValidationResult, error) {
@@ -40,13 +45,19 @@ func (s *ScheduleValidationServiceImpl) CheckOverlap(ctx context.Context, center
 	startTimeStr := startTime.Format("15:04:05")
 	endTimeStr := endTime.Format("15:04:05")
 
+	// 處理零值時間，避免 MySQL 8.0 報錯 (如 0000-01-01)
+	startDateStr := "0001-01-01"
+	if !startTime.IsZero() {
+		startDateStr = startTime.Format("2006-01-02")
+	}
+
 	query := s.App.MySQL.RDB.WithContext(ctx).Model(&models.ScheduleRule{}).
 		Where("center_id = ?", centerID).
 		Where("weekday = ?", weekday).
 		Where("start_time < ?", endTimeStr).
 		Where("end_time > ?", startTimeStr).
-		Where("JSON_EXTRACT(effective_range, '$.start_date') <= ?", startTime.Format("2006-01-02")).
-		Where("JSON_EXTRACT(effective_range, '$.end_date') >= ?", startTime.Format("2006-01-02"))
+		Where("COALESCE(NULLIF(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(effective_range, '$.start_date')), ''), 'null'), '0001-01-01') <= ?", startDateStr).
+		Where("COALESCE(NULLIF(NULLIF(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(effective_range, '$.end_date')), ''), 'null'), '0001-01-01 00:00:00'), '9999-12-31') >= ?", startDateStr)
 
 	if teacherID != nil {
 		query = query.Where("teacher_id = ?", *teacherID)
@@ -262,11 +273,19 @@ func (s *ScheduleValidationServiceImpl) getPreviousSessionEndTime(ctx context.Co
 	}
 	startTimeStr := beforeTime.Format("15:04:05")
 
+	// 處理零值時間
+	startDateStr := "0001-01-01"
+	if !beforeTime.IsZero() {
+		startDateStr = beforeTime.Format("2006-01-02")
+	}
+
 	var rule models.ScheduleRule
 	err := s.App.MySQL.RDB.WithContext(ctx).
 		Where("center_id = ?", centerID).
 		Where("teacher_id = ?", teacherID).
 		Where("weekday = ?", weekday).
+		Where("COALESCE(NULLIF(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(effective_range, '$.start_date')), ''), 'null'), '0001-01-01') <= ?", startDateStr).
+		Where("COALESCE(NULLIF(NULLIF(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(effective_range, '$.end_date')), ''), 'null'), '0001-01-01 00:00:00'), '9999-12-31') >= ?", startDateStr).
 		Where("end_time <= ?", startTimeStr).
 		Order("end_time DESC").
 		First(&rule).Error
@@ -307,11 +326,19 @@ func (s *ScheduleValidationServiceImpl) getPreviousSessionEndTimeByRoom(ctx cont
 	}
 	startTimeStr := beforeTime.Format("15:04:05")
 
+	// 處理零值時間
+	startDateStr := "0001-01-01"
+	if !beforeTime.IsZero() {
+		startDateStr = beforeTime.Format("2006-01-02")
+	}
+
 	var rule models.ScheduleRule
 	err := s.App.MySQL.RDB.WithContext(ctx).
 		Where("center_id = ?", centerID).
 		Where("room_id = ?", roomID).
 		Where("weekday = ?", weekday).
+		Where("COALESCE(NULLIF(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(effective_range, '$.start_date')), ''), 'null'), '0001-01-01') <= ?", startDateStr).
+		Where("COALESCE(NULLIF(NULLIF(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(effective_range, '$.end_date')), ''), 'null'), '0001-01-01 00:00:00'), '9999-12-31') >= ?", startDateStr).
 		Where("end_time <= ?", startTimeStr).
 		Order("end_time DESC").
 		First(&rule).Error

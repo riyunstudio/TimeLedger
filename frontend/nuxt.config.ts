@@ -176,9 +176,17 @@ export default defineNuxtConfig({
     optimizeDeps: {
       include: [],
     },
-    // Fix module preload polyfill on Windows
+    // Fix module preload polyfill on Windows - completely disable
     modulePreload: {
       polyfill: false,
     },
+    // Disable features that cause Windows path issues
+    build: {
+      modulePreload: {
+        polyfill: false,
+      },
+    },
+    // Enable strict path handling
+    plugins: [],
   },
 })

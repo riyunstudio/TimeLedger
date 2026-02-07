@@ -27,6 +27,7 @@ type actions struct {
 	adminRoom         *controllers.AdminRoomController
 	adminCourse       *controllers.AdminCourseController
 	adminHoliday      *controllers.AdminHolidayController
+	adminTerm         *controllers.AdminTermController
 	teacherProfile    *controllers.TeacherProfileController
 	teacherSchedule   *controllers.TeacherScheduleController
 	teacherSession    *controllers.TeacherSessionController
@@ -230,6 +231,16 @@ func (s *Server) LoadRoutes() {
 		{http.MethodDelete, "/api/v1/admin/centers/:id/holidays/:holiday_id", s.action.adminHoliday.DeleteHoliday, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodPost, "/api/v1/admin/centers/:id/holidays/bulk", s.action.adminHoliday.BulkCreateHolidays, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 
+		// Admin - Terms
+		{http.MethodGet, "/api/v1/admin/terms", s.action.adminTerm.GetTerms, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodGet, "/api/v1/admin/terms/active", s.action.adminTerm.GetActiveTerms, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodPost, "/api/v1/admin/terms", s.action.adminTerm.CreateTerm, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodPut, "/api/v1/admin/terms/:term_id", s.action.adminTerm.UpdateTerm, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodDelete, "/api/v1/admin/terms/:term_id", s.action.adminTerm.DeleteTerm, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		// Admin - Occupancy & Copy Rules
+		{http.MethodGet, "/api/v1/admin/occupancy/rules", s.action.adminTerm.GetOccupancyRules, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodPost, "/api/v1/admin/terms/copy-rules", s.action.adminTerm.CopyRules, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+
 		// Admin - Teacher Notes (評分與備註)
 		{http.MethodGet, "/api/v1/admin/teachers/:teacher_id/note", s.action.adminTeacher.GetTeacherNote, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodPut, "/api/v1/admin/teachers/:teacher_id/note", s.action.adminTeacher.UpsertTeacherNote, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
@@ -342,6 +353,7 @@ func (s *Server) NewControllers() {
 	s.action.adminRoom = controllers.NewAdminRoomController(s.app)
 	s.action.adminCourse = controllers.NewAdminCourseController(s.app)
 	s.action.adminHoliday = controllers.NewAdminHolidayController(s.app)
+	s.action.adminTerm = controllers.NewAdminTermController(s.app)
 	s.action.teacherProfile = controllers.NewTeacherProfileController(s.app)
 	s.action.teacherSchedule = controllers.NewTeacherScheduleController(s.app)
 	s.action.teacherSession = controllers.NewTeacherSessionController(s.app)

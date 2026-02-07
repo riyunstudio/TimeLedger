@@ -1,107 +1,101 @@
-# LINE Webhook 2.0 UX Upgrade - 終極開發藍圖 (Ultimate Technical Spec)
+# Implementation Plan - Academic Terms & Resource Occupancy View
 
-這份文件旨在提供給 **Cursor (AI Coding Assistant)** 進行自動化開發。它包含了精確的檔案修改路徑、邏輯演算法、單元測試規劃及預期結果。
+Introduce "Terms" as named date ranges for center management and provide a specialized weekly calendar view to analyze teacher and room utilization based on scheduling rules.
 
----
+## UX Optimizations & Features
 
-## 🚀 專案模組 1：身份感知與分流 (Identity Awareness)
+### 1. 視覺化輔助 (Visual Aids)
+- **衝突警示燈**：在週曆視圖中，若時段重疊，背景轉為紅色並加上驚嘆號。
+- **空網格點選 (Ghost Slot)**：點擊週曆上的空白處，直接彈出「新增規則」視窗並預填該時間與星期。
+- **拖拽與縮放 (Drag & Drop)**：在週曆上拖拽課程塊可直接變更星期/時間；拉動底部邊緣可調整課程長度。
 
-### 1.1 修改範圍與邏輯
-*   **檔案**：`app/services/line_bot.go`
-*   **功能描述**：識別 LINE 使用者的多重身份（管理員、各中心老師、訪客）。
-*   **技術邏輯**：
-    1.  建立 `CombinedIdentity` 結構：
-        ```go
-        type CombinedIdentity struct {
-            AdminProfile *models.AdminUser
-            TeacherProfile *models.Teacher
-            Memberships []models.CenterMembership
-            PrimaryRole string // "ADMIN" or "TEACHER" or "GUEST"
-        }
-        ```
-    2.  實作 `IdentifyUser(lineUID string)`：
-        - 併行呼叫 `AdminRepo.GetByLineID` 與 `TeacherRepo.GetByLineID`。
-        - 若是教師，需同步加載 `CenterMembership` 與關聯的 `Center` 名稱。
-*   **單元測試**：
-    - 輸入綁定管理員的 UID，預期返回 `PrimaryRole: ADMIN`。
-    - 輸入綁定老師的 UID，預期返回包含多個中心的 `Memberships`。
+### 2. 智慧化工具 (Smart Tools)
+- **閒置時段搜尋 (Empty Slot Finder)**：針對特定教室，一鍵反白「無課時段」，協助管理員安排新學期的補課或空檔填補。
+- **批量編輯模式**：進入編輯模式後，可勾選多個課程區塊，統一修改「任課老師」或「地點」。
+- **學期對照檢視 (Split View)**：複製學期時，提供左/右對照視圖，一邊顯示「來源學期」，一邊預覽「複製後的標的學期」，避免漏看課程。
 
-### 1.2 Cursor 實作指令
-> 「請修改 `app/services/line_bot.go`，新增 `CombinedIdentity` 結構與 `IdentifyUser` 方法。需同時檢查 `AdminUsers` 與 `Teachers` 表。若是老師，請確保預載入其所有參與中心的名稱。請為此邏輯編寫對應的單元測試。」
+### 3. 操作效率 (Efficiency)
+- **快速篩選器預設**：提供「僅顯示有衝突的老師」、「僅顯示空堂較多的教室」等智慧篩選條件。
+- **響應式視圖切換**：在手機查看佔用表時，自動從「網格視圖」切換為「垂直列表視圖」，解決行動版螢幕過窄的問題。
 
----
+## Proposed Changes
 
-## 📅 專案模組 2：跨來源行程聚合 (Agenda Aggregator)
+### 1. Database & Backend [Component]
 
-### 2.1 修改範圍與邏輯
-*   **檔案**：`app/services/line_bot.go`, `app/services/personal_event.go`, `app/services/line_bot_template.go`
-*   **功能描述**：合併跨中心課表與個人私事，按時間排序。
-*   **技術邏輯**：
-    1.  **資料收集**：
-        - Loop `Memberships` -> 調用 `ScheduleExpansionService.Expand(today)`。
-        - 調用 `PersonalEventService.GetTodayOccurrences(teacherID)`。
-    2.  **標準化物件**：統一轉為 `AgendaItem{Time, Title, CenterName, Type}`。
-    3.  **排序演算法**：使用 `sort.Slice` 對 `Time` 進行升序排序。
-    4.  **視覺範本**：在 `line_bot_template.go` 中，中心課用主題藍色，個人行程用對比紫色。
-*   **預期結果**：老師在 LINE 收到一個 Flex Message，依序顯示「09:00 中心 A 數學」、「14:00 個人 牙醫門診」。
+#### [NEW] [center_term.go](file:///d:/project/TimeLedger/app/models/center_term.go)
+- **Schema**:
+    - `ID` (uint): 主鍵
+    - `CenterID` (uint): 中心 ID (外鍵)
+    - `Name` (string): 期間名稱 (例如 "2026-Q1")
+    - `StartDate` (time.Time): 開始日期
+    - `EndDate` (time.Time): 結束日期
+    - `CreatedAt`, `UpdatedAt`, `DeletedAt`
 
-### 2.2 Cursor 實作指令
-> 「實作 `LineBotService.GetTodayAgenda(lineUID)`。它必須合併來自多個中心的排課規則與老師的個人行程 `PersonalEvent`。請確保所有行程按起始時間正確排序。接著，請更新 `line_bot_template.go` 以支持這種動態列表的渲染。」
+#### [NEW] [AdminTermController](file:///d:/project/TimeLedger/app/controllers/admin_term_controller.go)
+- **CRUD**: 標準 GORM API 實作。
+- **Aggregation Endpoint**: `GET /admin/occupancy/rules`
+    - **邏輯**:
+        1. 根據 `teacher_id` 或 `room_id` 查詢。
+        2. 篩選 `ScheduleRule`，其中 `(rule.StartDate <= term.EndDate) AND (rule.EndDate >= term.StartDate)`。
+        3. 按 `DayOfWeek` 分組返回，前端負責渲染到週曆格點中。
+- **Batch Copy Endpoint**: `POST /admin/terms/copy-rules`
+    - **邏輯**:
+        1. 取得來源 `rule_ids` 列表。
+        2. 針對每條規則進行 `Deep Copy`（排除 ID）。
+        3. **日期重對齊 (Date Re-alignment)**：將新規則的 `StartDate` 設為標的學期的 `StartDate`，`EndDate` 設為標的學期的 `EndDate`。
+        4. 保存新規則，並觸發 `ScheduleExpansionService` 重新展開課程。
 
 ---
 
-## 📢 專案模組 3：一鍵廣播系統 (Admin Broadcast)
+### 2. Resource Management UI [Component]
 
-### 3.1 修改範圍與邏輯
-*   **後端檔案**：`app/controllers/admin_notification.go` (NEW), `app/servers/route.go`
-*   **前端檔案**：`frontend/pages/admin/broadcast.vue` (NEW), `frontend/components/Notification/LineFlexPreview.vue` (NEW)
-*   **功能描述**：管理員後台輸入文字，即時預覽 LINE 效果並一鍵廣播。
-*   **技術邏輯**：
-    - **前端預覽**：在 Vue 中實作一個模擬手機外殼的組件，根據輸入的 `title` 與 `body` 即時生成 Flex Message 預覽圖。
-    - **後端廣播**：API 權限校驗 -> 撈取該中心所有綁定老師的 UID -> 呼叫 `LineBotSvc.Multicast`。
-    - **防呆**：發送前需彈出二次確認視窗。
-*   **單元測試**：
-    - 準備測試資料：中心 A 有 3 位老師，2 位有 LINE 綁定。
-    - 呼叫廣播 API，預期 Multicast 被呼叫 2 次。
+#### [MODIFY] [resources.vue](file:///d:/project/TimeLedger/frontend/pages/admin/resources.vue)
+- Add "學期期間 (Terms)" tab.
+- Integrate `TermsTab` component.
 
-### 3.2 Cursor 實作指令
-> 「1. 在後端建立 `AdminNotificationController.Broadcast` API，僅允許管理員發送給該中心成員。
-> 2. 在前端建立 `admin/broadcast.vue` 頁面，左側為輸入框，右側為 `LineFlexPreview` 組件。
-> 3. `LineFlexPreview` 必須能根據輸入內容，即時渲染出模擬的 LINE 氣泡訊息樣式。」
+#### [NEW] [TermsTab.vue](file:///d:/project/TimeLedger/frontend/components/Admin/TermsTab.vue)
+- CRUD interface for terms.
 
 ---
 
-## 🧭 專案模組 4：導航與連結閉環 (Navigation & Home Link)
+### 3. Occupancy Visualization [Component]
 
-### 4.1 修改範圍與邏輯
-*   **網頁端**：`frontend/layouts/admin.vue`
-*   **LINE 端**：`app/services/line_bot_template.go`
-*   **功能描述**：Logo 點擊回首頁，LINE 訊息按鈕連回網站。
-*   **技術邏輯**：
-    - 將側邊欄 Logo 用 `NuxtLink` 包裝，目標為 `/admin/dashboard`。
-    - 在所有今日摘要的 Flex Message 底部增加一個 `UriAction` 按鈕，標籤為「進入系統」，連結為前端 Dashboard。
-*   **預期結果**：Logo 點擊必跳轉；LINE 訊息底部必有進入系統之按鈕。
-
-### 4.2 Cursor 實作指令
-> 「請將 `frontend/layouts/admin.vue` 中的 Logo 修改為可點擊跳轉至 Dashboard。同時，在 `line_bot_template.go` 生成的所有摘要訊息底部，增加一個導向 Web 版首頁的連結按鈕。」
+#### [NEW] [resource-occupancy.vue](file:///d:/project/TimeLedger/frontend/pages/admin/resource-occupancy.vue)
+- Filter Bar: Term selection, Teacher/Room search.
+- **Rule Weekly Grid**: A specialized grid that displays rules on a 7-day layout.
+- **Conflict Detection**: Highlight overlapping rules in the same slot.
+- **Batch Copy Wizard**:
+    - Select source term -> Filter rules (all/by course) -> Select target term -> Confirm copy.
 
 ---
 
-## 🛡️ 驗證與上線 (Testing & Verification)
+### 4. Integration [Component]
 
-### ✅ 測試鏈條與回歸測試 (Regression Testing)
-1.  **現有功能檢查**：在實作後，必須先執行既存的 `LineBotController` 測試，確保基本的「綁定指令」與「文字回覆」功能未受影響。
-2.  **身分模擬**：手動在 DB 建立一個具有雙重身份的測試帳號。
-3.  **廣播攔截**：檢查日誌 `global.Log.Info` 是否正確產出廣播紀錄。
-4.  **邊界測試**：若當天沒有行程，預期回覆「今日尚無規劃」之友善訊息。
+#### [MODIFY] [ScheduleRuleForm.vue](file:///d:/project/TimeLedger/frontend/components/Scheduling/ScheduleRuleForm.vue)
+- Add "快速填寫學期" dropdown to auto-fill Start/End dates based on defined Terms.
 
-### 🛡️ 邏輯隔離原則 (Safety Guards)
-*   **非破壞性修改**：新增功能應以「擴充」為主。例如，修改 `handleMessageEvent` 時，應保留原有的 `default` 處理邏輯，確保未定義的指令仍能正常回傳預設訊息。
-*   **例外安全**：身分識別邏輯 (`IdentifyUser`) 應包含 `defer recover` 或強大的 `Error Handling`，即使 SQL 報錯，也要能回傳 `GUEST` 身份，而非導致 Webhook 崩潰。
-*   **版本並行**：若更動幅度大，建議先建立 `v2` 版本的 Handler，待測試無誤後再進行切換。
+## Verification Plan
 
-### 📋 最終檢查表 (Definition of Done)
-- [ ] 老師能看到跨中心與個人行程的合併排序列表。
-- [ ] 管理員有專屬概況畫面且能發送廣播（含預覽）。
-- [ ] 導航列 Logo 與 LINE 按鈕均能正確導引回首頁。
-- [ ] 系統詳細記錄 Webhook 入口日誌。
+### 1. 自動化測試 (Automated Tests)
+- **Backend Unit Tests**:
+    - 在 `center_term_test.go` 中測試 CRUD。
+    - 在 `term_copy_service_test.go` 中測試複製邏輯：驗證複製後的日期是否正確對齊標的學期。
+    - 驗證重複複製時的錯誤處理（或覆蓋邏輯）。
+
+### 2. 手動驗證流程 (Manual Verification)
+#### [階段 A] 學期管理
+1. 建立兩個學期：「2026 第一學期」(1/1~3/31) 與「2026 第二學期」(4/1~6/30)。
+2. 確認列表顯示正確，且起訖日期邏輯正常。
+
+#### [階段 B] 資源週曆 (Occupancy View)
+1. 為老師 A 在第一學期排一堂「週一 09:00 - 10:00」的課。
+2. 開啟 `resource-occupancy` 頁面，選擇第一學期並搜尋老師 A。
+3. 驗證該課程正確顯示在週一網格中，且不帶具體日期標籤。
+4. 加入一堂「週一 09:30」的教室重疊課程，驗證系統是否顯示「衝突警告」。
+
+#### [階段 C] 批量複製測試
+1. 在週曆視圖使用「複製工具」。
+2. 來源：第一學期；標的：第二學期。
+3. 選取剛才建立的課程，執行複製。
+4. 切換到第二學期視圖，驗證課程已成功複製，且日期已自動調整為 4/1~6/30。
+5. 檢查 `schedules` 列表，確認新產生的規則數量正確。

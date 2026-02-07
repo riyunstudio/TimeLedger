@@ -50,28 +50,35 @@ type AsynqNotificationService struct {
 
 // NewAsynqNotificationService 建立 Asynq 通知服務
 func NewAsynqNotificationService(app *app.App, cfg *AsynqConfig) *AsynqNotificationService {
-	if cfg == nil {
-		// 從環境變數讀取 Redis 配置
-		cfg = &AsynqConfig{
-			RedisAddr:     fmt.Sprintf("%s:%s", app.Env.RedisHost, app.Env.RedisPort),
-			RedisPassword: app.Env.RedisPass,
-			Concurrency:   10,
-			MaxRetry:      3,
-			RetryInterval: 5 * time.Second,
-			QueueName:     "notifications",
-		}
+	svc := &AsynqNotificationService{
+		app: app,
+		log: logger.GetLogger(),
 	}
 
-	return &AsynqNotificationService{
-		app:             app,
-		adminRepo:       repositories.NewAdminUserRepository(app),
-		teacherRepo:     repositories.NewTeacherRepository(app),
-		lineBotService:  NewLineBotService(app),
-		templateService: NewLineBotTemplateService(app.Env.FrontendBaseURL),
-		client:          asynq.NewClient(asynq.RedisClientOpt{Addr: cfg.RedisAddr, Password: cfg.RedisPassword}),
-		log:             logger.GetLogger(),
-		config:          cfg,
+	if app.Env != nil {
+		if cfg == nil {
+			// 從環境變數讀取 Redis 配置
+			cfg = &AsynqConfig{
+				RedisAddr:     fmt.Sprintf("%s:%s", app.Env.RedisHost, app.Env.RedisPort),
+				RedisPassword: app.Env.RedisPass,
+				Concurrency:   10,
+				MaxRetry:      3,
+				RetryInterval: 5 * time.Second,
+				QueueName:     "notifications",
+			}
+		}
+		svc.config = cfg
+		svc.client = asynq.NewClient(asynq.RedisClientOpt{Addr: cfg.RedisAddr, Password: cfg.RedisPassword})
+		svc.templateService = NewLineBotTemplateService(app.Env.FrontendBaseURL)
 	}
+
+	if app.MySQL != nil {
+		svc.adminRepo = repositories.NewAdminUserRepository(app)
+		svc.teacherRepo = repositories.NewTeacherRepository(app)
+		svc.lineBotService = NewLineBotService(app)
+	}
+
+	return svc
 }
 
 // TaskPayload 通知任務負載

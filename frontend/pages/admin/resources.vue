@@ -38,6 +38,13 @@
       >
         老師
       </button>
+      <button
+        @click="activeTab = 'terms'"
+        class="px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-colors"
+        :class="activeTab === 'terms' ? 'bg-primary-500/30 border border-primary-500 text-primary-400' : 'bg-white/5 text-slate-300 hover:bg-white/10'"
+      >
+        學期期間
+      </button>
     </div>
 
     <!-- Tab Content -->
@@ -45,6 +52,7 @@
     <CoursesTab v-else-if="activeTab === 'courses'" />
     <OfferingsTab v-else-if="activeTab === 'offerings'" />
     <TeachersTab v-else-if="activeTab === 'teachers'" />
+    <TermsTab v-else-if="activeTab === 'terms'" />
   </div>
 </template>
 
@@ -53,6 +61,7 @@ import RoomsTab from '~/components/Admin/RoomsTab.vue'
 import CoursesTab from '~/components/Admin/CoursesTab.vue'
 import OfferingsTab from '~/components/Admin/OfferingsTab.vue'
 import TeachersTab from '~/components/Admin/TeachersTab.vue'
+import TermsTab from '~/components/Admin/TermsTab.vue'
 
 definePageMeta({
   auth: 'ADMIN',

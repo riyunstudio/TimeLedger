@@ -60,7 +60,7 @@ type InvitationStatsResponse struct {
 func (ctl *TeacherInvitationController) GetInvitationStats(ctx *gin.Context) {
 	helper := NewContextHelper(ctx)
 
-	centerID := helper.MustParamUint("id")
+	centerID := helper.MustCenterID()
 	if centerID == 0 {
 		return
 	}
@@ -108,7 +108,7 @@ type PaginationRequest struct {
 func (ctl *TeacherInvitationController) GetInvitations(ctx *gin.Context) {
 	helper := NewContextHelper(ctx)
 
-	centerID := helper.MustParamUint("id")
+	centerID := helper.MustCenterID()
 	if centerID == 0 {
 		return
 	}
@@ -150,13 +150,9 @@ func (ctl *TeacherInvitationController) requireAdminID(helper *ContextHelper) ui
 	return adminID
 }
 
-// requireCenterID 從 URL 參數取得中心 ID
+// requireCenterID 取得中心 ID
 func (ctl *TeacherInvitationController) requireCenterID(helper *ContextHelper) uint {
-	centerID := helper.MustParamUint("id")
-	if centerID == 0 {
-		return 0
-	}
-	return centerID
+	return helper.MustCenterID()
 }
 
 // requireAdminAndCenterID 取得管理員 ID 和中心 ID
@@ -346,7 +342,7 @@ func (ctl *TeacherInvitationController) GetPendingInvitationsCount(ctx *gin.Cont
 // @Router /api/v1/admin/centers/{id}/invitations [post]
 func (ctl *TeacherInvitationController) InviteTeacher(ctx *gin.Context) {
 	helper := NewContextHelper(ctx)
-	_, centerID := ctl.requireAdminAndCenterID(helper)
+	centerID := helper.MustCenterID()
 	if centerID == 0 {
 		return
 	}
@@ -381,7 +377,7 @@ func (ctl *TeacherInvitationController) InviteTeacher(ctx *gin.Context) {
 // @Router /api/v1/admin/centers/{id}/invitations/generate-link [post]
 func (ctl *TeacherInvitationController) GenerateInvitationLink(ctx *gin.Context) {
 	helper := NewContextHelper(ctx)
-	_, centerID := ctl.requireAdminAndCenterID(helper)
+	centerID := helper.MustCenterID()
 	if centerID == 0 {
 		return
 	}
@@ -472,7 +468,7 @@ func (ctl *TeacherInvitationController) RevokeInvitationLink(ctx *gin.Context) {
 // @Router /api/v1/admin/centers/{id}/invitations/general-link [post]
 func (ctl *TeacherInvitationController) GenerateGeneralInvitationLink(ctx *gin.Context) {
 	helper := NewContextHelper(ctx)
-	_, centerID := ctl.requireAdminAndCenterID(helper)
+	centerID := helper.MustCenterID()
 	if centerID == 0 {
 		return
 	}
@@ -549,7 +545,7 @@ func (ctl *TeacherInvitationController) GetGeneralInvitationLink(ctx *gin.Contex
 // @Router /api/v1/admin/centers/{id}/invitations/general-link/toggle [post]
 func (ctl *TeacherInvitationController) ToggleGeneralInvitationStatus(ctx *gin.Context) {
 	helper := NewContextHelper(ctx)
-	_, centerID := ctl.requireAdminAndCenterID(helper)
+	centerID := helper.MustCenterID()
 	if centerID == 0 {
 		return
 	}
@@ -577,7 +573,7 @@ func (ctl *TeacherInvitationController) ToggleGeneralInvitationStatus(ctx *gin.C
 // @Router /api/v1/admin/centers/{id}/invitations/general-link/regenerate [post]
 func (ctl *TeacherInvitationController) RegenerateGeneralInvitationLink(ctx *gin.Context) {
 	helper := NewContextHelper(ctx)
-	_, centerID := ctl.requireAdminAndCenterID(helper)
+	centerID := helper.MustCenterID()
 	if centerID == 0 {
 		return
 	}
