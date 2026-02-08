@@ -1,7 +1,7 @@
 <template>
   <div class="min-h-screen bg-slate-900 flex">
     <!-- Desktop Sidebar -->
-    <aside class="hidden lg:flex w-64 bg-slate-800/50 border-r border-slate-700 flex-col shrink-0">
+    <aside class="hidden lg:flex w-64 bg-slate-800/50 border-r border-slate-700 flex-col shrink-0 relative z-20">
       <!-- Logo 區域 -->
       <div class="p-5 border-b border-slate-700">
         <NuxtLink to="/admin/dashboard" class="flex items-center gap-3 group">
@@ -628,6 +628,19 @@ const pageTitle = computed(() => {
 function toggleSubmenu(menu: keyof typeof expandedMenus) {
   expandedMenus[menu] = !expandedMenus[menu]
 }
+
+// 自動展開選單邏輯
+watch(() => route.path, (path) => {
+  if (path.startsWith('/admin/settings') || path.startsWith('/admin/admin-list') || path.startsWith('/admin/queue-monitor') || path.startsWith('/admin/holidays')) {
+    expandedMenus.settings = true
+  }
+  if (path.startsWith('/admin/dashboard') || path.startsWith('/admin/schedules') || path.startsWith('/admin/resource-occupancy')) {
+    expandedMenus.scheduling = true
+  }
+  if (path.startsWith('/admin/matching') || path.startsWith('/admin/invitations')) {
+    expandedMenus.talent = true
+  }
+}, { immediate: true })
 
 // 登出
 const handleLogout = async () => {

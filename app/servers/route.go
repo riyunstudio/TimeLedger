@@ -127,7 +127,9 @@ func (s *Server) LoadRoutes() {
 
 		// Admin - Center Management
 		{http.MethodGet, "/api/v1/admin/centers", s.action.adminCenter.GetCenters, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodGet, "/api/v1/admin/centers/:id/settings", s.action.adminCenter.GetSettings, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodPost, "/api/v1/admin/centers", s.action.adminCenter.CreateCenter, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodPatch, "/api/v1/admin/centers/:center_id/settings", s.action.adminCenter.UpdateSettings, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 
 		// Admin - Teacher Resources
 		{http.MethodGet, "/api/v1/admin/teachers", s.action.adminResource.GetTeachers, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},

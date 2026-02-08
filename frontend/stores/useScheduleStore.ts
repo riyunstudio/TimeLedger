@@ -80,9 +80,10 @@ export const useScheduleStore = defineStore('schedule', () => {
 
   const changeWeek = (delta: number) => {
     if (!weekStart.value) return
+    // 直接加減 7 天，不再強制對齊週一，保持選中的日期為該週第一天
     const newStart = new Date(weekStart.value)
     newStart.setDate(newStart.getDate() + (delta * 7))
-    weekStart.value = getWeekStart(newStart)
+    weekStart.value = newStart
   }
 
   const formatDate = (date: Date): string => {

@@ -9,6 +9,7 @@ import (
 type Course struct {
 	ID               uint           `gorm:"primaryKey" json:"id"`
 	CenterID         uint           `gorm:"type:bigint unsigned;not null;index" json:"center_id"`
+	Code             string         `gorm:"type:varchar(50)" json:"code"`
 	Name             string         `gorm:"type:varchar(255);not null" json:"name"`
 	DefaultDuration  int            `gorm:"type:int;not null;default:60" json:"default_duration"`
 	ColorHex         string         `gorm:"type:varchar(7);not null" json:"color_hex"`

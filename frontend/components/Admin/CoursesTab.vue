@@ -18,7 +18,7 @@
             </svg>
           </button>
           <button
-            @click="showCreateModal = true"
+            @click="openCreateModal"
             class="btn-primary px-4 py-2 text-sm font-medium"
           >
             + 新增課程
@@ -126,12 +126,33 @@
       >
         <div class="flex items-start justify-between mb-3">
           <div>
-            <h3 class="text-lg font-medium text-slate-100">{{ course.name }}</h3>
+            <div class="flex items-center gap-2 mb-1">
+              <span
+                v-if="course.code"
+                class="px-2 py-0.5 text-xs rounded bg-primary-500/20 text-primary-400 font-mono"
+              >
+                {{ course.code }}
+              </span>
+              <h3 class="text-lg font-medium text-slate-100">{{ course.name }}</h3>
+            </div>
           </div>
-          <div class="flex gap-2">
+          <div class="flex gap-1">
+            <button
+              @click="toggleCourseActive(course)"
+              class="p-1.5 rounded-lg transition-colors"
+              :class="course.is_active
+                ? 'hover:bg-green-500/20 text-green-400'
+                : 'hover:bg-slate-500/20 text-slate-500'"
+              :title="course.is_active ? '停用課程' : '啟用課程'"
+            >
+              <svg class="w-4 h-4" :class="{ 'opacity-50': togglingId === course.id }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path v-if="course.is_active" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
             <button
               @click="editCourse(course)"
-              class="p-2 rounded-lg hover:bg-white/10 transition-colors"
+              class="p-1.5 rounded-lg hover:bg-white/10 transition-colors"
               title="編輯"
             >
               <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -140,7 +161,7 @@
             </button>
             <button
               @click="deleteCourse(course)"
-              class="p-2 rounded-lg hover:bg-red-500/20 transition-colors"
+              class="p-1.5 rounded-lg hover:bg-red-500/20 transition-colors"
               title="刪除"
             >
               <svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -214,17 +235,30 @@
         </h3>
 
         <form @submit.prevent="saveCourse" class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-slate-300 mb-2">
-              課程名稱 <span class="text-red-400">*</span>
-            </label>
-            <input
-              v-model="form.name"
-              type="text"
-              class="input-field"
-              placeholder="輸入課程名稱"
-              required
-            />
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-slate-300 mb-2">
+                課程代號
+              </label>
+              <input
+                v-model="form.code"
+                type="text"
+                class="input-field"
+                placeholder="例：Piano-101"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-300 mb-2">
+                課程名稱 <span class="text-red-400">*</span>
+              </label>
+              <input
+                v-model="form.name"
+                type="text"
+                class="input-field"
+                placeholder="輸入課程名稱"
+                required
+              />
+            </div>
           </div>
 
           <div>
@@ -279,6 +313,7 @@ import { alertError, alertSuccess } from '~/composables/useAlert'
 
 interface Course {
   id: number
+  code: string
   name: string
   default_duration: number
   is_active: boolean
@@ -291,13 +326,19 @@ interface PaginationState {
   limit: number
 }
 
+interface CenterSettings {
+  default_course_duration: number
+}
+
 const api = useApi()
 
 const courses = ref<Course[]>([])
 const loading = ref(false)
 const saving = ref(false)
+const togglingId = ref<number | null>(null)
 const showCreateModal = ref(false)
 const editingCourse = ref<Course | null>(null)
+const centerSettings = ref<CenterSettings | null>(null)
 
 // 搜尋與分頁狀態
 const searchQuery = ref('')
@@ -310,10 +351,39 @@ const pagination = ref<PaginationState>({
 const debounceTimer = ref<NodeJS.Timeout | null>(null)
 
 const form = reactive({
+  code: '',
   name: '',
   default_duration: 60,
   is_active: true,
 })
+
+// 取得中心設定
+async function fetchCenterSettings() {
+  try {
+    const { getCenterId } = useCenterId()
+    const centerId = getCenterId()
+    if (!centerId) return
+
+    const response = await api.get<CenterSettings>(`/admin/centers/${centerId}/settings`)
+    centerSettings.value = response
+    // 如果是新增課程，使用中心預設時長
+    if (!editingCourse.value) {
+      form.default_duration = response.default_course_duration || 60
+    }
+  } catch (error) {
+    console.error('取得中心設定失敗:', error)
+    // 使用預設值
+    form.default_duration = 60
+  }
+}
+
+// 打開新增課程 Modal
+function openCreateModal() {
+  editingCourse.value = null
+  resetForm()
+  fetchCenterSettings()
+  showCreateModal.value = true
+}
 
 // Debounce 搜尋
 function updateSearch() {
@@ -367,6 +437,7 @@ function goToPage(page: number) {
 
 function editCourse(course: Course) {
   editingCourse.value = course
+  form.code = course.code || ''
   form.name = course.name
   form.default_duration = course.default_duration || 60
   form.is_active = course.is_active
@@ -388,6 +459,25 @@ async function deleteCourse(course: Course) {
   }
 }
 
+async function toggleCourseActive(course: Course) {
+  if (togglingId.value === course.id) return
+
+  togglingId.value = course.id
+  try {
+    const newStatus = !course.is_active
+    await api.patch(`/admin/courses/${course.id}/toggle-active`, {
+      is_active: newStatus,
+    })
+    course.is_active = newStatus
+    await alertSuccess(newStatus ? '課程已啟用' : '課程已停用')
+  } catch (error) {
+    console.error('切換課程狀態失敗:', error)
+    await alertError('操作失敗，請稍後再試')
+  } finally {
+    togglingId.value = null
+  }
+}
+
 function closeModal() {
   showCreateModal.value = false
   editingCourse.value = null
@@ -395,8 +485,9 @@ function closeModal() {
 }
 
 function resetForm() {
+  form.code = ''
   form.name = ''
-  form.default_duration = 60
+  form.default_duration = centerSettings.value?.default_course_duration || 60
   form.is_active = true
 }
 
@@ -409,6 +500,7 @@ async function saveCourse() {
   saving.value = true
   try {
     const data = {
+      code: form.code.trim() || null,
       name: form.name,
       duration: form.default_duration,
       is_active: form.is_active,

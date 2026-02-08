@@ -1762,3 +1762,20 @@ const todayStr = getTodayString()
     - Windows 環境下優先使用 PowerShell 或相容指令。
     - 避開僅限 Unix-like 的指令 (如 `ls`, `grep`, `export`) 或確保有對應的替代方案 (如 `dir`, `findstr`, `$env:VAR`)。
     - 嚴禁盲目嘗試指令，應先從 `user_information` 或 `run_command` 的系統提示中確認 OS 版本，以減少無謂的錯誤重試與資源浪費。
+
+---
+
+## 34. 前端開發規範 (Nuxt 3 Frontend Standards)
+
+為確保開發品質並預防導覽列或頁面整合問題，AI 助手必須遵循以下規範：
+
+### 34.1 Composable (Hooks) 使用
+- **解構執行**：所有 Composable（如 `useCenterId`）不可直接 import 內部函數。必須先執行 Hook 並進行解構。
+- **正確範例**：`const { getCenterId } = useCenterId()`
+
+### 34.2 側邊欄與佈局安全
+- **層級管理**：桌面版側邊欄 `<aside>` 必須具備 `relative` 或 `fixed` 定位，且 `z-index` 至少為 `20`。
+- **自動狀態管理**：在 `layouts/admin.vue` 中必須實作 `watch` 監聽 `route.path`，根據當前路徑自動將 `expandedMenus` 對應項設為 `true`。
+
+### 34.3 導覽安全性
+- **跳轉前檢查**：在修改側邊欄或 `NuxtLink` 連結後，必須確認目標頁面的 script 區塊無語法錯誤或致命 Import 錯誤。前端模組崩潰會導致路由系統拒絕執行跳轉。

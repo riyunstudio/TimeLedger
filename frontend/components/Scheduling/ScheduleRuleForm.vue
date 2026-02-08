@@ -150,6 +150,27 @@
       </p>
     </div>
 
+    <!-- 停課日期管理 -->
+    <div class="mt-4">
+      <button
+        type="button"
+        @click="openSuspendedDatesModal"
+        class="w-full glass-btn py-2.5 rounded-xl font-medium text-sm sm:text-base flex items-center justify-center gap-2"
+        :class="suspendedDatesCount > 0 ? 'border-warning-500/50 text-warning-500' : 'text-slate-300'"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd" />
+        </svg>
+        <span>停課日期管理</span>
+        <span v-if="suspendedDatesCount > 0" class="bg-warning-500 text-white text-xs px-2 py-0.5 rounded-full">
+          {{ suspendedDatesCount }}
+        </span>
+      </button>
+      <p class="mt-1.5 text-xs text-slate-400">
+        設定特定日期停課，例如國定假日、補課日等
+      </p>
+    </div>
+
     <!-- 編輯模式的日期欄位 -->
     <div v-if="isEditMode" class="mb-4 p-3 rounded-lg bg-slate-800/50 border border-slate-700/50">
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -230,6 +251,153 @@
       </button>
     </div>
   </form>
+
+  <!-- 停課日期管理 Modal -->
+  <Teleport to="body">
+    <div
+      v-if="showSuspendedDatesModal"
+      class="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+      @click.self="closeSuspendedDatesModal"
+    >
+      <div class="bg-slate-800 rounded-2xl w-full max-w-3xl max-h-[80vh] overflow-hidden shadow-2xl border border-slate-700">
+        <!-- Modal Header -->
+        <div class="p-4 border-b border-slate-700 flex items-center justify-between">
+          <div>
+            <h3 class="text-lg font-semibold text-white">停課日期管理</h3>
+            <p class="text-sm text-slate-400 mt-1">
+              勾選要在 {{ values.start_date }} ~ {{ values.end_date || '無限期' }} 期間停課的日期
+            </p>
+          </div>
+          <button
+            @click="closeSuspendedDatesModal"
+            class="p-2 hover:bg-slate-700 rounded-lg transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-400" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Modal Content -->
+        <div class="p-4 overflow-y-auto max-h-[60vh]">
+          <!-- 篩選器 -->
+          <div class="mb-4 flex gap-2">
+            <button
+              @click="filterMode = 'all'"
+              class="px-3 py-1.5 text-sm rounded-lg transition-colors"
+              :class="filterMode === 'all' ? 'bg-primary-500 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'"
+            >
+              全部 ({{ allDates.length }})
+            </button>
+            <button
+              @click="filterMode = 'suspended'"
+              class="px-3 py-1.5 text-sm rounded-lg transition-colors"
+              :class="filterMode === 'suspended' ? 'bg-warning-500 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'"
+            >
+              已選停課 ({{ suspendedDates.length }})
+            </button>
+            <button
+              @click="filterMode = 'available'"
+              class="px-3 py-1.5 text-sm rounded-lg transition-colors"
+              :class="filterMode === 'available' ? 'bg-green-500 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'"
+            >
+              可選日期 ({{ allDates.length - suspendedDates.length }})
+            </button>
+          </div>
+
+          <!-- 群組操作按鈕 -->
+          <div class="mb-4 flex gap-2">
+            <button
+              v-if="filterMode !== 'suspended'"
+              @click="selectAllVisible"
+              class="px-3 py-1.5 text-sm bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg transition-colors"
+            >
+              全選可見日期
+            </button>
+            <button
+              v-if="filterMode !== 'available'"
+              @click="deselectAllVisible"
+              class="px-3 py-1.5 text-sm bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg transition-colors"
+            >
+              取消全選可見日期
+            </button>
+          </div>
+
+          <!-- 日期列表 -->
+          <div v-if="filteredDates.length > 0" class="space-y-4">
+            <div
+              v-for="(dates, monthKey) in groupedDates"
+              :key="monthKey"
+              class="bg-slate-700/50 rounded-lg p-3"
+            >
+              <h4 class="text-sm font-medium text-slate-300 mb-2">{{ monthKey }}</h4>
+              <div class="grid grid-cols-4 sm:grid-cols-6 gap-2">
+                <label
+                  v-for="date in dates"
+                  :key="date.value"
+                  class="flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-all"
+                  :class="isDateSuspended(date.value)
+                    ? 'bg-warning-500/20 border border-warning-500/50'
+                    : 'bg-slate-700 hover:bg-slate-600 border border-transparent'"
+                >
+                  <input
+                    type="checkbox"
+                    :checked="isDateSuspended(date.value)"
+                    @change="toggleSuspendedDate(date.value)"
+                    class="w-4 h-4 rounded border-slate-500 text-warning-500 focus:ring-warning-500"
+                  />
+                  <div class="flex flex-col">
+                    <span class="text-xs text-slate-300">{{ date.weekday }}</span>
+                    <span class="text-sm font-medium" :class="isDateSuspended(date.value) ? 'text-warning-500' : 'text-white'">
+                      {{ date.day }}
+                    </span>
+                  </div>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- 無日期提示 -->
+          <div v-else class="text-center py-8 text-slate-400">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto mb-3 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <p v-if="!values.start_date || !values.end_date">
+              請先設定開始日期和結束日期
+            </p>
+            <p v-else-if="allDates.length === 0">
+              在指定的日期範圍內沒有符合的重複星期
+            </p>
+            <p v-else>
+              沒有符合篩選條件的日期
+            </p>
+          </div>
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="p-4 border-t border-slate-700 flex items-center justify-between">
+          <div class="text-sm text-slate-400">
+            已選擇 <span class="text-warning-500 font-medium">{{ suspendedDatesCount }}</span> 個停課日期
+          </div>
+          <div class="flex gap-2">
+            <button
+              @click="clearAllSuspendedDates"
+              class="px-4 py-2 text-sm text-slate-300 hover:text-white transition-colors"
+              :disabled="suspendedDatesCount === 0"
+            >
+              清除全部
+            </button>
+            <button
+              @click="closeSuspendedDatesModal"
+              class="px-4 py-2 text-sm bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-colors"
+            >
+              確定
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <style scoped>
@@ -255,6 +423,7 @@ import { z } from 'zod'
 import { toTypedSchema } from '@vee-validate/zod'
 import { useForm } from 'vee-validate'
 import { formatDateToString } from '~/composables/useTaiwanTime'
+import { alertWarning } from '~/composables/useAlert'
 import RecurrencePicker from './RecurrencePicker.vue'
 import SearchableSelect, { type SelectOption } from '~/components/Common/SearchableSelect.vue'
 
@@ -279,6 +448,146 @@ const emit = defineEmits<{
 
 // 計算屬性
 const isEditMode = computed(() => !!props.editingRule)
+
+// 停課日期管理相關
+const showSuspendedDatesModal = ref(false)
+const suspendedDates = ref<string[]>([])
+const filterMode = ref<'all' | 'suspended' | 'available'>('all')
+
+// 星期對照表
+const weekdayNames = ['日', '一', '二', '三', '四', '五', '六']
+
+// 計算所有可能的上课日期
+const allDates = computed(() => {
+  const startDate = values.start_date
+  const endDate = values.end_date
+  const weekdays = values.weekdays || []
+
+  if (!startDate || !endDate || weekdays.length === 0) {
+    return []
+  }
+
+  const dates: Array<{
+    value: string
+    day: string
+    weekday: string
+    monthKey: string
+  }> = []
+
+  const start = new Date(startDate)
+  const end = new Date(endDate)
+  const current = new Date(start)
+
+  // 設定為當天開始
+  current.setHours(0, 0, 0, 0)
+  end.setHours(23, 59, 59, 999)
+
+  while (current <= end) {
+    const dayOfWeek = current.getDay()
+    if (weekdays.includes(dayOfWeek)) {
+      const dateStr = formatDateToString(current)
+      const monthKey = `${current.getFullYear()}年${current.getMonth() + 1}月`
+      dates.push({
+        value: dateStr,
+        day: `${current.getDate()}`,
+        weekday: weekdayNames[dayOfWeek],
+        monthKey,
+      })
+    }
+    current.setDate(current.getDate() + 1)
+  }
+
+  return dates
+})
+
+// 過濾後的日期
+const filteredDates = computed(() => {
+  switch (filterMode.value) {
+    case 'suspended':
+      return allDates.value.filter(d => suspendedDates.value.includes(d.value))
+    case 'available':
+      return allDates.value.filter(d => !suspendedDates.value.includes(d.value))
+    default:
+      return allDates.value
+  }
+})
+
+// 按月份分組
+const groupedDates = computed(() => {
+  const groups: Record<string, typeof filteredDates.value> = {}
+  for (const date of filteredDates.value) {
+    if (!groups[date.monthKey]) {
+      groups[date.monthKey] = []
+    }
+    groups[date.monthKey].push(date)
+  }
+  return groups
+})
+
+// 已選擇的停課日期數量
+const suspendedDatesCount = computed(() => suspendedDates.value.length)
+
+// 檢查日期是否已選擇停課
+function isDateSuspended(date: string): boolean {
+  return suspendedDates.value.includes(date)
+}
+
+// 切換停課日期
+function toggleSuspendedDate(date: string) {
+  const index = suspendedDates.value.indexOf(date)
+  if (index > -1) {
+    suspendedDates.value.splice(index, 1)
+  } else {
+    suspendedDates.value.push(date)
+  }
+  // 同步到表單值
+  setFieldValue('suspended_dates', [...suspendedDates.value])
+}
+
+// 全選可見日期
+function selectAllVisible() {
+  for (const date of filteredDates.value) {
+    if (!suspendedDates.value.includes(date.value)) {
+      suspendedDates.value.push(date.value)
+    }
+  }
+  setFieldValue('suspended_dates', [...suspendedDates.value])
+}
+
+// 取消全選可見日期
+function deselectAllVisible() {
+  for (const date of filteredDates.value) {
+    const index = suspendedDates.value.indexOf(date.value)
+    if (index > -1) {
+      suspendedDates.value.splice(index, 1)
+    }
+  }
+  setFieldValue('suspended_dates', [...suspendedDates.value])
+}
+
+// 清除全部停課日期
+function clearAllSuspendedDates() {
+  suspendedDates.value = []
+  setFieldValue('suspended_dates', [])
+}
+
+// 開啟停課日期 Modal
+function openSuspendedDatesModal() {
+  if (!values.start_date || !values.end_date) {
+    alertWarning('請先設定開始日期和結束日期')
+    return
+  }
+  if (!values.weekdays || values.weekdays.length === 0) {
+    alertWarning('請先選擇重複星期')
+    return
+  }
+  showSuspendedDatesModal.value = true
+}
+
+// 關閉停課日期 Modal
+function closeSuspendedDatesModal() {
+  showSuspendedDatesModal.value = false
+}
 
 // 從共享緩存取得資料
 const { resourceCache } = useResourceCache()
@@ -322,6 +631,7 @@ const createValidationSchema = () => {
     start_date: z.string().min(1, '請選擇開始日期'),
     end_date: z.string().optional(),
     skip_holiday: z.boolean().default(true),
+    suspended_dates: z.array(z.string()).default([]),
   }
 
   return z.object(baseSchema)
@@ -330,6 +640,22 @@ const createValidationSchema = () => {
 // 初始化表單值
 const getInitialValues = () => {
   if (props.editingRule) {
+    // 解析 suspended_dates（可能是 JSON 字串或陣列）
+    let suspendedDatesData: string[] = []
+    if (props.editingRule.suspended_dates) {
+      if (Array.isArray(props.editingRule.suspended_dates)) {
+        suspendedDatesData = props.editingRule.suspended_dates
+      } else if (typeof props.editingRule.suspended_dates === 'string') {
+        try {
+          suspendedDatesData = JSON.parse(props.editingRule.suspended_dates)
+        } catch {
+          suspendedDatesData = []
+        }
+      }
+    }
+    // 同步到組件狀態
+    suspendedDates.value = suspendedDatesData
+
     return {
       name: props.editingRule.name || '',
       offering_id: String(props.editingRule.offering_id || ''),
@@ -342,6 +668,7 @@ const getInitialValues = () => {
       start_date: props.editingRule.effective_range?.start_date?.split(/[T ]/)[0] || formatDateToString(new Date()),
       end_date: props.editingRule.effective_range?.end_date?.split(/[T ]/)[0] || '',
       skip_holiday: props.editingRule.skip_holiday ?? true,
+      suspended_dates: suspendedDatesData,
     }
   }
 
@@ -357,6 +684,7 @@ const getInitialValues = () => {
     start_date: formatDateToString(new Date()),
     end_date: '',
     skip_holiday: true,
+    suspended_dates: [] as string[],
   }
 }
 
@@ -466,6 +794,7 @@ const onFormSubmit = handleSubmit(async (formValues) => {
     start_date: formValues.start_date,
     end_date: formValues.end_date || null,
     skip_holiday: formValues.skip_holiday,
+    suspended_dates: formValues.suspended_dates || [],
   }
 
   // 只有當有選擇老師時才傳送
@@ -513,6 +842,22 @@ watch(
       )
       setFieldValue('end_date', rule.effective_range?.end_date?.split(/[T ]/)[0] || '')
       setFieldValue('skip_holiday', rule.skip_holiday ?? true)
+
+      // 解析並同步 suspended_dates
+      let suspendedDatesData: string[] = []
+      if (rule.suspended_dates) {
+        if (Array.isArray(rule.suspended_dates)) {
+          suspendedDatesData = rule.suspended_dates
+        } else if (typeof rule.suspended_dates === 'string') {
+          try {
+            suspendedDatesData = JSON.parse(rule.suspended_dates)
+          } catch {
+            suspendedDatesData = []
+          }
+        }
+      }
+      suspendedDates.value = suspendedDatesData
+      setFieldValue('suspended_dates', suspendedDatesData)
     }
   },
   { immediate: true }

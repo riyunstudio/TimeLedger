@@ -460,12 +460,16 @@ const getCourseColor = (courseName: string): string => {
 }
 
 const changeWeek = (delta: number) => {
-  weekStart.value = getWeekStart(new Date(weekStart.value.getTime() + delta * 7 * 24 * 60 * 60 * 1000))
+  // 直接加減 7 天，不再強制對齊週一
+  const currentDate = new Date(weekStart.value)
+  currentDate.setDate(currentDate.getDate() + delta * 7)
+  weekStart.value = currentDate
   fetchSessions()
 }
 
 const goToCurrentWeek = () => {
-  weekStart.value = getWeekStart(new Date())
+  // 回到今天，但不強制對齊週一
+  weekStart.value = new Date()
   fetchSessions()
 }
 

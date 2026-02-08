@@ -926,3 +926,43 @@
 {"level":"info","time":"2026-02-06T14:18:44.659+0800","message":"rules copied successfully, expansion will be handled by expand query","component":"TermService","copied_count":2}
 {"level":"info","time":"2026-02-06T14:18:47.711+0800","message":"fetching terms","component":"TermService","center_id":1}
 {"level":"debug","time":"2026-02-06T14:18:47.713+0800","message":"terms fetched successfully","component":"TermService","count":2}
+{"level":"info","time":"2026-02-07T18:54:49.194+0800","message":"Application shutting down gracefully"}
+{"level":"info","time":"2026-02-07T18:54:49.194+0800","message":"Application exited"}
+{"level":"info","time":"2026-02-07T18:55:00.880+0800","message":"Starting TimeLedger application..."}
+{"level":"info","time":"2026-02-07T18:55:08.659+0800","message":"Notification worker disabled (set NOTIFICATION_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-02-07T18:55:08.659+0800","message":"Asynq worker disabled (set ASYNQ_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-02-07T19:49:12.544+0800","message":"Application shutting down gracefully"}
+{"level":"info","time":"2026-02-07T19:49:12.544+0800","message":"Application exited"}
+{"level":"info","time":"2026-02-07T19:49:15.514+0800","message":"Starting TimeLedger application..."}
+{"level":"info","time":"2026-02-07T19:49:16.309+0800","message":"Notification worker disabled (set NOTIFICATION_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-02-07T19:49:16.309+0800","message":"Asynq worker disabled (set ASYNQ_WORKER_ENABLED=true to enable)"}
+{"level":"debug","time":"2026-02-07T20:11:29.396+0800","message":"caching room list","component":"CacheService","center_id":1,"count":4}
+{"level":"info","time":"2026-02-07T22:39:31.183+0800","message":"fetching terms","component":"TermService","center_id":1}
+{"level":"debug","time":"2026-02-07T22:39:31.185+0800","message":"terms fetched successfully","component":"TermService","count":0}
+{"level":"info","time":"2026-02-07T22:45:15.288+0800","message":"fetching terms","component":"TermService","center_id":1}
+{"level":"debug","time":"2026-02-07T22:45:15.289+0800","message":"terms fetched successfully","component":"TermService","count":0}
+{"level":"debug","time":"2026-02-07T23:11:03.569+0800","message":"deleting cache by pattern","component":"CacheService","pattern":"timeledger:schedule:schedule:expand:center:1:*"}
+{"level":"debug","time":"2026-02-07T23:11:03.570+0800","message":"found keys to delete","component":"CacheService","keys":[],"count":0}
+{"level":"info","time":"2026-02-07T23:11:03.570+0800","message":"center schedule cache invalidated","component":"ScheduleService","center_id":1}
+{"level":"debug","time":"2026-02-07T23:12:17.656+0800","message":"deleting cache by pattern","component":"CacheService","pattern":"timeledger:schedule:schedule:expand:center:1:*"}
+{"level":"debug","time":"2026-02-07T23:12:17.658+0800","message":"found keys to delete","component":"CacheService","keys":[],"count":0}
+{"level":"info","time":"2026-02-07T23:12:17.658+0800","message":"center schedule cache invalidated","component":"ScheduleService","center_id":1}
+{"level":"info","time":"2026-02-07T23:12:59.426+0800","message":"fetching terms","component":"TermService","center_id":1}
+{"level":"debug","time":"2026-02-07T23:12:59.428+0800","message":"terms fetched successfully","component":"TermService","count":0}
+{"level":"debug","time":"2026-02-07T23:13:20.606+0800","message":"caching room list","component":"CacheService","center_id":1,"count":4}
+{"level":"debug","time":"2026-02-07T23:13:23.500+0800","message":"deleting cache by pattern","component":"CacheService","pattern":"timeledger:schedule:schedule:expand:center:1:*"}
+{"level":"debug","time":"2026-02-07T23:13:23.500+0800","message":"found keys to delete","component":"CacheService","keys":[],"count":0}
+{"level":"debug","time":"2026-02-07T23:13:23.500+0800","message":"deleting cache by pattern","component":"CacheService","pattern":"timeledger:schedule:schedule:expand:teacher:1:center:1:*"}
+{"level":"debug","time":"2026-02-07T23:13:23.501+0800","message":"found keys to delete","component":"CacheService","keys":[],"count":0}
+{"level":"info","time":"2026-02-07T23:13:23.501+0800","message":"exception-related cache invalidated","component":"ScheduleExceptionService","center_id":1,"exception_id":1,"rule_id":1,"teacher_id":1}
+{"level":"info","time":"2026-02-08T01:41:20.822+0800","message":"fetching terms","component":"TermService","center_id":1}
+{"level":"debug","time":"2026-02-08T01:41:20.824+0800","message":"terms fetched successfully","component":"TermService","count":0}
+{"level":"info","time":"2026-02-08T01:52:53.417+0800","message":"fetching terms","component":"TermService","center_id":1}
+{"level":"debug","time":"2026-02-08T01:52:53.420+0800","message":"terms fetched successfully","component":"TermService","count":0}
+{"level":"info","time":"2026-02-08T01:59:14.123+0800","message":"fetching terms","component":"TermService","center_id":1}
+{"level":"debug","time":"2026-02-08T01:59:14.128+0800","message":"terms fetched successfully","component":"TermService","count":0}
+{"level":"info","time":"2026-02-08T02:05:27.832+0800","message":"Application shutting down gracefully"}
+{"level":"info","time":"2026-02-08T02:05:27.832+0800","message":"Application exited"}
+{"level":"info","time":"2026-02-08T02:05:30.717+0800","message":"Starting TimeLedger application..."}
+{"level":"info","time":"2026-02-08T02:05:31.253+0800","message":"Notification worker disabled (set NOTIFICATION_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-02-08T02:05:31.253+0800","message":"Asynq worker disabled (set ASYNQ_WORKER_ENABLED=true to enable)"}

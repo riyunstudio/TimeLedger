@@ -1,5 +1,5 @@
 <template>
-  <div class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" @click.self="emit('close')">
+  <div class="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" @click.self="emit('close')">
     <div class="glass-card w-full max-w-md sm:max-w-lg max-h-[90vh] overflow-y-auto animate-spring" @click.stop>
       <div class="flex items-center justify-between p-4 border-b border-white/10 sticky top-0 bg-slate-900/95 backdrop-blur-sm z-10">
         <h3 class="text-lg font-semibold text-slate-100">
@@ -13,15 +13,26 @@
       </div>
 
       <form @submit.prevent="handleSubmit" class="p-4 space-y-4">
-        <div>
-          <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">課程名稱</label>
-          <input
-            v-model="form.name"
-            type="text"
-            placeholder="例：鋼琴基礎"
-            class="input-field text-sm sm:text-base"
-            required
-          />
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">課程代號</label>
+            <input
+              v-model="form.code"
+              type="text"
+              placeholder="例：Piano-101"
+              class="input-field text-sm sm:text-base"
+            />
+          </div>
+          <div>
+            <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">課程名稱</label>
+            <input
+              v-model="form.name"
+              type="text"
+              placeholder="例：鋼琴基礎"
+              class="input-field text-sm sm:text-base"
+              required
+            />
+          </div>
         </div>
 
         <div class="grid grid-cols-2 gap-4">
@@ -125,6 +136,7 @@ import { alertError, alertSuccess } from '~/composables/useAlert'
 
 const props = defineProps<{
   course: any | null
+  defaultDuration?: number
 }>()
 
 const emit = defineEmits<{
@@ -135,8 +147,9 @@ const emit = defineEmits<{
 const loading = ref(false)
 const { getCenterId } = useCenterId()
 const form = ref({
+  code: props.course?.code || '',
   name: props.course?.name || '',
-  duration: props.course?.default_duration || 60,
+  duration: props.course?.default_duration || props.defaultDuration || 60,
   color_hex: props.course?.color_hex || '#3B82F6',
   teacher_buffer_min: props.course?.teacher_buffer_min || 10,
   room_buffer_min: props.course?.room_buffer_min || 5,
@@ -145,16 +158,18 @@ const form = ref({
 watch(() => props.course, (newCourse) => {
   if (newCourse) {
     form.value = {
+      code: newCourse.code || '',
       name: newCourse.name,
-      duration: newCourse.default_duration || 60,
+      duration: newCourse.default_duration || props.defaultDuration || 60,
       color_hex: newCourse.color_hex || '#3B82F6',
       teacher_buffer_min: newCourse.teacher_buffer_min,
       room_buffer_min: newCourse.room_buffer_min,
     }
   } else {
     form.value = {
+      code: '',
       name: '',
-      duration: 60,
+      duration: props.defaultDuration || 60,
       color_hex: '#3B82F6',
       teacher_buffer_min: 10,
       room_buffer_min: 5,
@@ -162,12 +177,19 @@ watch(() => props.course, (newCourse) => {
   }
 }, { immediate: true })
 
+watch(() => props.defaultDuration, (newDuration) => {
+  if (!props.course && newDuration) {
+    form.value.duration = newDuration
+  }
+})
+
 const handleSubmit = async () => {
   loading.value = true
 
   try {
     const api = useApi()
     const courseData = {
+      code: form.value.code.trim() || null,
       name: form.value.name,
       duration: form.value.duration,
       color_hex: form.value.color_hex,

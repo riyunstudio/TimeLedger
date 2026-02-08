@@ -90,6 +90,19 @@ func (s *ScheduleExpansionServiceImpl) ExpandRules(ctx context.Context, rules []
 						continue
 					}
 
+					// 檢查日期是否在 SuspendedDates 中
+					isSuspended := false
+					for _, suspendedDate := range rule.SuspendedDates {
+						if suspendedDate.Format("2006-01-02") == dateStr {
+							isSuspended = true
+							break
+						}
+					}
+					if isSuspended {
+						date = date.AddDate(0, 0, 1)
+						continue
+					}
+
 					ruleExceptions := exceptionsMap[rule.ID]
 					exceptions := []models.ScheduleException{}
 					if ruleExceptions != nil {

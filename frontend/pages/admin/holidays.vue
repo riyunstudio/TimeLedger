@@ -133,7 +133,7 @@
 
   <!-- 新增假日 Modal -->
   <Teleport to="body">
-    <div v-if="showAddModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" @click.self="showAddModal = false">
+    <div v-if="showAddModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50" @click.self="showAddModal = false">
       <div class="glass-card w-full max-w-md">
         <div class="flex items-center justify-between p-4 border-b border-white/10">
           <h3 class="text-lg font-semibold text-white">新增假日</h3>
@@ -190,7 +190,7 @@
 
   <!-- 批次匯入 Modal -->
   <Teleport to="body">
-    <div v-if="showBulkModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" @click.self="showBulkModal = false">
+    <div v-if="showBulkModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50" @click.self="showBulkModal = false">
       <div class="glass-card w-full max-w-lg">
         <div class="flex items-center justify-between p-4 border-b border-white/10">
           <h3 class="text-lg font-semibold text-white">批次匯入假日</h3>

@@ -16,6 +16,7 @@
       :show-export-button="effectiveShowExportButton"
       :show-help-tooltip="effectiveShowHelpTooltip"
       @change-week="changeWeek"
+      @select-date="handleDateSelect"
       @create-schedule="showCreateModal = true"
       @add-personal-event="$emit('add-personal-event')"
       @add-exception="$emit('add-exception')"
@@ -136,6 +137,7 @@
         @close="closeSchedulePanel"
         @edit="handleEdit"
         @delete="handleDelete"
+        @suspend="handleSuspend"
       />
     </Teleport>
 
@@ -147,6 +149,19 @@
         :rule-date="editingRule?.date ? formatDate(editingRule.date) : ''"
         @close="handleUpdateModeClose"
         @confirm="handleUpdateModeConfirm"
+      />
+    </Teleport>
+
+    <!-- 停課模式選擇彈窗 -->
+    <Teleport to="body">
+      <UpdateModeModal
+        v-if="showSuspendModal && mode === 'admin'"
+        :show="showSuspendModal"
+        :rule-name="selectedSchedule?.offering_name || selectedSchedule?.title || ''"
+        :rule-date="selectedSchedule?.date ? formatDate(selectedSchedule.date) : ''"
+        :is-suspend-mode="true"
+        @close="showSuspendModal = false"
+        @confirm="processSuspend"
       />
     </Teleport>
 
@@ -325,6 +340,7 @@ onMounted(() => {
 const showCreateModal = ref(false)
 const showEditModal = ref(false)
 const showUpdateModeModal = ref(false)
+const showSuspendModal = ref(false)
 const editingRule = ref<any>(null)
 const pendingUpdateMode = ref<string>('')
 const selectedSchedule = ref<any>(null)
@@ -422,10 +438,29 @@ const filteredSchedules = computed(() => {
 // 週切換
 // ============================================
 
+// 週切換 - 固定加減 7 天，不再強制對齊週一
 const changeWeek = (delta: number) => {
   isLoading.value = true
   hasError.value = false
-  weekStart.value = getWeekStart(new Date(weekStart.value.getTime() + delta * 7 * 24 * 60 * 60 * 1000))
+
+  // 直接加減 7 天，保持選中的日期為該週第一天
+  const currentDate = new Date(weekStart.value)
+  currentDate.setDate(currentDate.getDate() + delta * 7)
+  weekStart.value = currentDate
+
+  emit('update:weekStart', weekStart.value)
+}
+
+// 處理日期選擇 - 直接跳轉到指定日期
+const handleDateSelect = (date: Date) => {
+  isLoading.value = true
+  hasError.value = false
+
+  // 設定選中的日期為該週第一天
+  const newDate = new Date(date)
+  newDate.setHours(0, 0, 0, 0)
+  weekStart.value = newDate
+
   emit('update:weekStart', weekStart.value)
 }
 
@@ -741,6 +776,58 @@ const handleDelete = async () => {
     console.error('Failed to delete rule:', err)
     await alertError('刪除失敗，請稍後再試')
   }
+}
+
+// ============================================
+// 停課處理
+// ============================================
+
+const handleSuspend = () => {
+  if (selectedSchedule.value) {
+    showSuspendModal.value = true
+  }
+}
+
+const processSuspend = async (mode: 'SINGLE' | 'FUTURE') => {
+  if (!selectedSchedule.value) return
+
+  try {
+    const api = useApi()
+
+    if (mode === 'SINGLE') {
+      // 單次停課：建立 Exception 取消該場次
+      await api.post('/admin/scheduling/exceptions', {
+        center_id: selectedSchedule.value.center_id,
+        rule_id: selectedSchedule.value.id,
+        original_date: selectedSchedule.value.date,
+        type: 'CANCEL',
+        reason: '由管理員於首頁停課(單次)',
+      })
+    } else if (mode === 'FUTURE') {
+      // 從此以後停課：更新規則結束日期
+      const currentDate = new Date(selectedSchedule.value.date)
+      currentDate.setDate(currentDate.getDate() - 1)
+      const endDate = formatDateToString(currentDate)
+
+      await api.put(`/admin/rules/${selectedSchedule.value.id}`, {
+        end_date: endDate,
+        update_mode: 'ALL',
+        name: selectedSchedule.value.title,
+        reason: '由管理員於首頁選擇從此以後停課',
+      })
+    }
+
+    // 刷新課表
+    await fetchSchedules()
+  } catch (err) {
+    console.error('Failed to suspend schedule:', err)
+    await alertError('停課失敗，請稍後再試')
+    return
+  }
+
+  // 關閉所有彈窗
+  showSuspendModal.value = false
+  selectedSchedule.value = null
 }
 
 const handleRuleUpdated = async (formData: any, updateMode: string) => {

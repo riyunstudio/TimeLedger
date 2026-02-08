@@ -11,9 +11,75 @@
             <Icon icon="chevron-left" size="lg" />
           </button>
 
-          <h2 class="text-lg font-semibold text-slate-100 whitespace-nowrap mx-2">
-            {{ weekLabel }}
-          </h2>
+          <!-- 日期選擇區域 - 可點擊彈出 DatePicker -->
+          <div class="relative">
+            <button
+              @click="showDatePicker = true"
+              class="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-white/10 transition-colors"
+            >
+              <h2 class="text-lg font-semibold text-slate-100 whitespace-nowrap">
+                {{ weekLabel }}
+              </h2>
+              <Icon icon="calendar" size="sm" class="text-slate-400" />
+            </button>
+
+            <!-- DatePicker 彈出層 -->
+            <Teleport to="body">
+              <div
+                v-if="showDatePicker"
+                class="fixed inset-0 z-50 flex items-center justify-center"
+                @click.self="showDatePicker = false"
+              >
+                <!-- 遮罩層 -->
+                <div class="absolute inset-0 bg-black/50" @click="showDatePicker = false"></div>
+
+                <!-- DatePicker 容器 -->
+                <div class="relative glass-card p-4 rounded-xl shadow-2xl w-auto">
+                  <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-white font-medium">選擇日期</h3>
+                    <button
+                      @click="showDatePicker = false"
+                      class="p-1 rounded-lg hover:bg-white/10 transition-colors"
+                    >
+                      <Icon icon="close" size="sm" />
+                    </button>
+                  </div>
+
+                  <!-- 原生 Date Picker -->
+                  <input
+                    type="date"
+                    v-model="selectedDate"
+                    :min="minDate"
+                    :max="maxDate"
+                    class="w-full px-4 py-3 bg-slate-800 border border-white/10 rounded-lg text-white text-lg focus:outline-none focus:border-primary-500"
+                    @change="handleDateSelect"
+                  />
+
+                  <!-- 快捷按鈕 -->
+                  <div class="mt-4 flex gap-2">
+                    <button
+                      @click="quickSelectToday"
+                      class="flex-1 px-3 py-2 rounded-lg bg-primary-500/20 text-primary-400 hover:bg-primary-500/30 transition-colors text-sm"
+                    >
+                      回到今天
+                    </button>
+                    <button
+                      @click="showDatePicker = false"
+                      class="flex-1 px-3 py-2 rounded-lg bg-slate-700 text-white hover:bg-slate-600 transition-colors text-sm"
+                    >
+                      取消
+                    </button>
+                    <button
+                      @click="confirmDateSelection"
+                      class="flex-1 px-3 py-2 rounded-lg bg-primary-500 text-white hover:bg-primary-600 transition-colors text-sm"
+                    >
+                      確定
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </Teleport>
+          </div>
 
           <button
             @click="$emit('change-week', 1)"
@@ -159,7 +225,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 
 // 引入圖示和提示元件
 import Icon from '~/components/base/Icon.vue'
@@ -199,11 +265,59 @@ const props = defineProps<{
 }>()
 
 // ============================================
+// DatePicker 相關狀態
+// ============================================
+
+const showDatePicker = ref(false)
+const selectedDate = ref('')
+const today = new Date()
+const minDate = computed(() => {
+  const d = new Date(today)
+  d.setFullYear(d.getFullYear() - 2)
+  return d.toISOString().split('T')[0]
+})
+const maxDate = computed(() => {
+  const d = new Date(today)
+  d.setFullYear(d.getFullYear() + 2)
+  return d.toISOString().split('T')[0]
+})
+
+// 初始化今天的日期
+const initializeToday = () => {
+  selectedDate.value = today.toISOString().split('T')[0]
+}
+
+// 快速選擇今天
+const quickSelectToday = () => {
+  initializeToday()
+  emit('select-date', new Date())
+  showDatePicker.value = false
+}
+
+// 當日期改變時自動更新
+const handleDateSelect = () => {
+  // 選擇日期後自動確認並發送事件
+  if (selectedDate.value) {
+    emit('select-date', new Date(selectedDate.value))
+    showDatePicker.value = false
+  }
+}
+
+// 確認選擇
+const confirmDateSelection = () => {
+  if (selectedDate.value) {
+    emit('select-date', new Date(selectedDate.value))
+  }
+  showDatePicker.value = false
+}
+
+// ============================================
 // Emits 定義
 // ============================================
 
-defineEmits<{
+const emit = defineEmits<{
   'change-week': [delta: number]
+  'select-date': [date: Date]
   'create-schedule': []
   'add-personal-event': []
   'add-exception': []
@@ -214,4 +328,7 @@ defineEmits<{
   'clear-room-filter': []
   'clear-all-filters': []
 }>()
+
+// 初始化
+initializeToday()
 </script>

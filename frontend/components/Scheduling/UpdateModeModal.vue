@@ -7,7 +7,7 @@
     >
       <div class="glass-card w-full max-w-md animate-spring">
         <div class="flex items-center justify-between p-4 border-b border-white/10">
-          <h3 class="text-lg font-semibold text-white">選擇更新範圍</h3>
+          <h3 class="text-lg font-semibold text-white">{{ isSuspendMode ? '選擇停課範圍' : '選擇更新範圍' }}</h3>
           <button @click="$emit('close')" class="p-2 rounded-lg hover:bg-white/10">
             <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -16,10 +16,10 @@
         </div>
 
         <div class="p-4 space-y-3">
-          <p class="text-slate-400 text-sm mb-4">請選擇要更新哪些場次：</p>
+          <p class="text-slate-400 text-sm mb-4">{{ isSuspendMode ? '請選擇要停課的範圍：' : '請選擇要更新哪些場次：' }}</p>
 
           <button
-            v-for="option in updateOptions"
+            v-for="option in visibleOptions"
             :key="option.value"
             @click="selectOption(option.value)"
             class="w-full p-4 rounded-xl border text-left transition-all"
@@ -44,7 +44,7 @@
             :disabled="!selectedMode"
             class="flex-1 py-2.5 rounded-xl font-medium bg-primary-500 text-white hover:bg-primary-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            確認修改
+            {{ isSuspendMode ? '確認停課' : '確認修改' }}
           </button>
         </div>
       </div>
@@ -57,12 +57,14 @@ interface Props {
   show: boolean
   ruleName?: string
   ruleDate?: string
+  isSuspendMode?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   show: false,
   ruleName: '',
   ruleDate: '',
+  isSuspendMode: false,
 })
 
 const emit = defineEmits<{
@@ -71,6 +73,8 @@ const emit = defineEmits<{
 }>()
 
 const selectedMode = ref<string>('')
+
+const isSuspendMode = computed(() => props.isSuspendMode || false)
 
 const updateOptions = [
   {
@@ -89,6 +93,23 @@ const updateOptions = [
     description: '修改這個循環規則的所有場次（包括過去）',
   },
 ]
+
+const suspendOptions = [
+  {
+    value: 'SINGLE',
+    label: '僅停課這一天',
+    description: `僅停課 ${props.ruleDate || '當前'} 這個日期的課程`,
+  },
+  {
+    value: 'FUTURE',
+    label: '從此以後停課',
+    description: `從 ${props.ruleDate || '當前'} 起至課程結束的所有場次都停課`,
+  },
+]
+
+const visibleOptions = computed(() => {
+  return isSuspendMode.value ? suspendOptions : updateOptions
+})
 
 const selectOption = (mode: string) => {
   selectedMode.value = mode

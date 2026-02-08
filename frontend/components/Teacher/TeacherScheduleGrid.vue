@@ -15,6 +15,7 @@
     :schedules="props.schedules"
     :week-start="props.weekStart"
     @update:week-start="handleWeekStartChange"
+    @select-date="handleDateSelect"
     @select-schedule="$emit('select-schedule', $event)"
     @add-personal-event="$emit('add-personal-event')"
     @add-exception="$emit('add-exception')"
@@ -44,6 +45,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:weekStart': [value: Date]
+  'select-date': [date: Date]
   'select-schedule': [schedule: any]
   'add-personal-event': []
   'add-exception': []
@@ -74,6 +76,11 @@ const effectiveShowHelpTooltip = computed(() => props.showHelpTooltip ?? true)
 
 const handleWeekStartChange = (date: Date) => {
   emit('update:weekStart', date)
+}
+
+// 處理日期選擇 - 直接跳轉到指定日期
+const handleDateSelect = (date: Date) => {
+  emit('select-date', date)
 }
 
 // ============================================

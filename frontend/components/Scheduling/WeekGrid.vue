@@ -183,8 +183,15 @@ const calendarContainerRef = ref<HTMLElement | null>(null)
 // 本地 slotWidth 計算（不再依賴父組件傳入）
 // ============================================
 
+// ============================================
+// 本地 slotWidth 計算（不再依賴父組件傳入）
+// ============================================
+
 // 使用 ref 來存儲本地計算的 slotWidth
 const localSlotWidth = ref<number>(120)
+
+// Debounce 定時器引用
+let resizeDebounceTimer: ReturnType<typeof setTimeout> | null = null
 
 // 計算 slotWidth 的函數
 const calculateSlotWidth = () => {
@@ -199,12 +206,27 @@ const calculateSlotWidth = () => {
   const timeColumnWidth = 80
   const calculatedSlotWidth = Math.max(80, (containerWidth - timeColumnWidth) / 7)
 
-  if (calculatedSlotWidth !== localSlotWidth.value) {
+  // 只有當計算出的寬度確實改變時才更新
+  if (Math.abs(calculatedSlotWidth - localSlotWidth.value) > 0.5) {
     localSlotWidth.value = calculatedSlotWidth
     // 清除樣式快取，讓卡片重新計算位置
     styleCache.clear()
     overlapDataCache.clear()
   }
+}
+
+// 防抖動的 Resize 處理函數
+const handleResize = () => {
+  // 清除現有的定時器
+  if (resizeDebounceTimer) {
+    clearTimeout(resizeDebounceTimer)
+  }
+  
+  // 設置新的定時器，100ms 後執行計算
+  resizeDebounceTimer = setTimeout(() => {
+    calculateSlotWidth()
+    resizeDebounceTimer = null
+  }, 100)
 }
 
 // ResizeObserver 引用
@@ -328,20 +350,36 @@ const computeOverlapData = (schedules: any[]) => {
 // 計算屬性
 // ============================================
 
+// ============================================
 // 去重後的課程（保持引用穩定性）
-const uniqueSchedules = computed(() => {
-  const seen = new Set<string>()
-  const result: any[] = []
+// ============================================
 
-  for (const schedule of props.schedules) {
-    const key = `${schedule.id}-${schedule.weekday}-${schedule.start_time}`
-    if (!seen.has(key)) {
-      seen.add(key)
-      result.push(schedule)
-    }
+interface ScheduleKey {
+  id: number
+  weekday: number
+  startTime: string
+  durationMinutes: number
+}
+
+const uniqueSchedules = computed(() => {
+  if (!props.schedules || props.schedules.length === 0) {
+    return []
   }
 
-  return result
+  // 使用 Map 來優化去重邏輯，確保保留最後一個（最新）資料
+  const scheduleMap = new Map<string, any>()
+
+  for (const schedule of props.schedules) {
+    // 建立唯一鍵，包含足夠的識別資訊
+    const key = `${schedule.id}-${schedule.weekday}-${schedule.start_time}-${schedule.duration_minutes || 0}`
+    
+    // 覆蓋策略：同樣的鍵保留最後一個（覆蓋舊值）
+    // 這樣可以確保顯示最新的課程資訊
+    scheduleMap.set(key, schedule)
+  }
+
+  // 轉回陣列，保持插入順序
+  return Array.from(scheduleMap.values())
 })
 
 // 預計算每個課程的重疊數據和樣式
@@ -446,16 +484,29 @@ onMounted(async () => {
   // 設置 ResizeObserver 監控容器大小變化
   if (calendarContainerRef.value) {
     resizeObserver = new ResizeObserver(() => {
-      calculateSlotWidth()
+      handleResize()
     })
     resizeObserver.observe(calendarContainerRef.value)
   }
+
+  // 監控 window resize 事件（用於全視窗調整）
+  window.addEventListener('resize', handleResize)
 })
 
 onUnmounted(() => {
+  // 清理 ResizeObserver
   if (resizeObserver) {
     resizeObserver.disconnect()
     resizeObserver = null
+  }
+  
+  // 清理 window resize 監聽
+  window.removeEventListener('resize', handleResize)
+  
+  // 清理防抖動定時器
+  if (resizeDebounceTimer) {
+    clearTimeout(resizeDebounceTimer)
+    resizeDebounceTimer = null
   }
 })
 </script>

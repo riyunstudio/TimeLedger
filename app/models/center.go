@@ -19,6 +19,7 @@ type CenterSettings struct {
 	AllowPublicRegister bool   `json:"allow_public_register"`
 	DefaultLanguage     string `json:"default_language"`
 	ExceptionLeadDays   int    `json:"exception_lead_days"`
+	DefaultCourseDuration int `json:"default_course_duration"`
 }
 
 func (cs *CenterSettings) Scan(value interface{}) error {

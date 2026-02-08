@@ -75,22 +75,41 @@
               >
                 <!-- 當日課程 -->
                 <template v-for="schedule in getSchedulesForCell(time, day.value)" :key="schedule.key">
-                  <div
-                    class="absolute left-1 right-1 rounded p-1 cursor-pointer hover:opacity-90 transition-colors overflow-hidden"
-                    :class="getScheduleCardClass(schedule)"
-                    :style="getScheduleCardStyle(schedule, time)"
-                    @click="$emit('select-schedule', schedule)"
-                  >
-                    <div class="text-xs font-medium truncate" :class="getScheduleTitleClass(schedule)">
-                      {{ schedule.offering_name }}
+                  <template v-if="schedule._overlapCount === 1">
+                    <!-- 單一課程：正常顯示 -->
+                    <div
+                      class="absolute left-1 right-1 rounded p-1 cursor-pointer hover:opacity-90 transition-colors overflow-hidden"
+                      :class="getScheduleCardClass(schedule)"
+                      :style="getScheduleCardStyle(schedule, time)"
+                      @click="$emit('select-schedule', schedule)"
+                    >
+                      <div class="text-xs font-medium truncate" :class="getScheduleTitleClass(schedule)">
+                        {{ schedule.offering_name }}
+                      </div>
+                      <div class="text-xs truncate" :class="getScheduleTimeClass(schedule)">
+                        {{ schedule.start_time }}-{{ schedule.end_time }}
+                      </div>
+                      <div v-if="schedule.teacher_name" class="text-xs truncate opacity-70" :class="getScheduleTimeClass(schedule)">
+                        {{ schedule.teacher_name }}
+                      </div>
                     </div>
-                    <div class="text-xs truncate" :class="getScheduleTimeClass(schedule)">
-                      {{ schedule.start_time }}-{{ schedule.end_time }}
+                  </template>
+                  <!-- 重疊指示器：僅第一個課程顯示 -->
+                  <template v-else-if="schedule._overlapCount > 1 && schedule._isFirstInOverlap">
+                    <div
+                      class="absolute left-1 right-1 rounded p-1 cursor-pointer hover:opacity-90 transition-colors overflow-hidden"
+                      :class="getScheduleCardClass(schedule)"
+                      :style="getScheduleCardStyle(schedule, time)"
+                      @click="$emit('select-schedule', schedule)"
+                    >
+                      <div class="flex items-center justify-center h-full">
+                        <span class="text-warning-400 font-bold text-sm">
+                          {{ schedule._overlapCount }}
+                        </span>
+                        <span class="text-warning-300 ml-1 text-xs">堂課</span>
+                      </div>
                     </div>
-                    <div v-if="schedule.teacher_name" class="text-xs truncate opacity-70" :class="getScheduleTimeClass(schedule)">
-                      {{ schedule.teacher_name }}
-                    </div>
-                  </div>
+                  </template>
                 </template>
               </div>
             </div>
@@ -123,7 +142,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, shallowRef } from 'vue'
 import { formatDateToString } from '~/composables/useTaiwanTime'
 
 // ============================================
@@ -164,12 +183,65 @@ const viewMode = ref<'3day' | '5day' | 'week'>('5day')
 
 const calendarContainerRef = ref<HTMLElement | null>(null)
 const containerWidth = ref(800)
+const cellWidth = ref(120)
 
 const updateWidth = () => {
   if (calendarContainerRef.value) {
     containerWidth.value = calendarContainerRef.value.offsetWidth
+    // 計算格子寬度（扣除時間列）
+    const timeColumnWidth = 64
+    const visibleDaysCount = visibleDays.value.length
+    cellWidth.value = Math.max(60, (containerWidth.value - timeColumnWidth) / visibleDaysCount)
   }
 }
+
+// ============================================
+// 重疊偵測快取
+// ============================================
+
+// 重疊數據快取
+const overlapDataCache = new Map<string, { count: number; firstId: number }>()
+
+// 課程快照，用於檢測變化
+const schedulesSnapshot = shallowRef<string>('')
+
+// ============================================
+// 計算重疊數據
+// ============================================
+
+const computeOverlapData = (schedules: any[]) => {
+  const countMap: Record<string, number> = {}
+  const firstIdMap: Record<string, number> = {}
+
+  for (const schedule of schedules) {
+    const key = `${schedule.weekday}-${schedule.start_hour}-${schedule.start_minute}`
+    countMap[key] = (countMap[key] || 0) + 1
+
+    // 記錄最小的 ID 作為第一個
+    if (!firstIdMap[key] || schedule.id < firstIdMap[key]) {
+      firstIdMap[key] = schedule.id
+    }
+  }
+
+  // 儲存到快取
+  overlapDataCache.clear()
+  for (const key in countMap) {
+    overlapDataCache.set(key, {
+      count: countMap[key],
+      firstId: firstIdMap[key]
+    })
+  }
+}
+
+// 取得重疊數據
+const getOverlapData = (weekday: number, startHour: number, startMinute: number) => {
+  const key = `${weekday}-${startHour}-${startMinute}`
+  return overlapDataCache.get(key)
+}
+
+// ============================================
+// 生命週期
+// ============================================
 
 onMounted(() => {
   updateWidth()
@@ -179,6 +251,27 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('resize', updateWidth)
 })
+
+// 監控 schedules 變化，更新重疊數據
+watch(() => props.schedules, (newSchedules) => {
+  if (!newSchedules || newSchedules.length === 0) {
+    overlapDataCache.clear()
+    schedulesSnapshot.value = ''
+    return
+  }
+
+  // 建立快照
+  const snapshot = newSchedules
+    .map(s => `${s.id}-${s.weekday}-${s.start_hour}-${s.start_minute}-${s.duration_minutes}`)
+    .sort()
+    .join(',')
+
+  // 只有當課程實際變化時才重新計算
+  if (snapshot !== schedulesSnapshot.value) {
+    schedulesSnapshot.value = snapshot
+    computeOverlapData(newSchedules)
+  }
+}, { deep: false })
 
 // ============================================
 // 計算屬性
@@ -245,9 +338,9 @@ const formatTime = (hour: number): string => {
   return `${hour.toString().padStart(2, '0')}:00`
 }
 
-// 取得某個時間和星期幾的課程
+// 取得某個時間和星期幾的課程（加入重疊數據）
 const getSchedulesForCell = (time: number, weekday: number) => {
-  return props.schedules.filter(schedule => {
+  const cellSchedules = props.schedules.filter(schedule => {
     // 檢查星期幾
     if (schedule.weekday !== weekday) return false
 
@@ -273,12 +366,27 @@ const getSchedulesForCell = (time: number, weekday: number) => {
     return scheduleStartHour < time + 1 &&
            (scheduleEndHour > time || (scheduleEndHour === time && scheduleEndMinute > 0))
   })
+
+  // 為每個課程添加重疊數據
+  return cellSchedules.map(schedule => {
+    const overlapData = getOverlapData(weekday, schedule.start_hour, schedule.start_minute)
+    return {
+      ...schedule,
+      _overlapCount: overlapData?.count || 1,
+      _isFirstInOverlap: overlapData?.firstId === schedule.id
+    }
+  })
 }
 
 // 取得格子樣式
 const getCellClass = (time: number, weekday: number) => {
   const schedules = getSchedulesForCell(time, weekday)
   if (schedules.length > 0) {
+    // 檢查是否有重疊
+    const hasOverlap = schedules.some(s => s._overlapCount > 1)
+    if (hasOverlap) {
+      return 'bg-warning-500/5'
+    }
     return 'bg-primary-500/5'
   }
   return 'hover:bg-white/5'
@@ -305,6 +413,24 @@ const getScheduleCardStyle = (schedule: any, time: number) => {
     top = minuteOffset
   }
 
+  // 重疊課程調整寬度和位置
+  let left = '0.25rem'
+  let right = '0.25rem'
+
+  if (schedule._overlapCount > 1) {
+    // 重疊課程使用警告色
+    const colorHex = '#F59E0B' // warning color
+    const bgColor = hexToRgba(colorHex, 0.3)
+    return {
+      top: `${top}px`,
+      height: `${Math.max(durationHeight - 2, 20)}px`,
+      left,
+      right,
+      backgroundColor: bgColor,
+      borderColor: hexToRgba(colorHex, 0.6),
+    }
+  }
+
   // 個人行程使用 color_hex 設定背景顏色
   if (schedule.is_personal_event) {
     const colorHex = schedule.color_hex || '#6366F1'
@@ -312,6 +438,8 @@ const getScheduleCardStyle = (schedule: any, time: number) => {
     return {
       top: `${top}px`,
       height: `${Math.max(durationHeight - 2, 20)}px`,
+      left,
+      right,
       backgroundColor: bgColor,
       borderColor: hexToRgba(colorHex, 0.8),
     }
@@ -320,6 +448,8 @@ const getScheduleCardStyle = (schedule: any, time: number) => {
   return {
     top: `${top}px`,
     height: `${Math.max(durationHeight - 2, 20)}px`,
+    left,
+    right,
   }
 }
 
@@ -349,6 +479,10 @@ const hexToRgba = (hex: string, alpha: number): string => {
 
 // 取得卡片樣式類別
 const getScheduleCardClass = (schedule: any): string => {
+  if (schedule._overlapCount > 1) {
+    // 重疊課程使用警告樣式
+    return 'border'
+  }
   if (schedule.is_personal_event) {
     const colorHex = schedule.color_hex || '#6366F1'
     const borderColor = hexToRgba(colorHex, 0.8)
@@ -359,6 +493,9 @@ const getScheduleCardClass = (schedule: any): string => {
 
 // 取得標題樣式類別
 const getScheduleTitleClass = (schedule: any): string => {
+  if (schedule._overlapCount > 1) {
+    return 'text-warning-400'
+  }
   if (schedule.is_personal_event) {
     return 'text-white'
   }
@@ -367,6 +504,9 @@ const getScheduleTitleClass = (schedule: any): string => {
 
 // 取得時間樣式類別
 const getScheduleTimeClass = (schedule: any): string => {
+  if (schedule._overlapCount > 1) {
+    return 'text-warning-300'
+  }
   if (schedule.is_personal_event) {
     return 'text-white/80'
   }

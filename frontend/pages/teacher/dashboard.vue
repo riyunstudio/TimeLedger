@@ -147,6 +147,7 @@
         :week-start="scheduleStore.weekStart"
         :loading="scheduleStore.isLoading"
         @update:weekStart="handleWeekStartChange"
+        @select-date="handleDateSelect"
         @select-schedule="handleScheduleNoteAction"
         @add-personal-event="showPersonalEventModal = true"
         @add-exception="goToExceptions"
@@ -343,6 +344,19 @@ const weekRangeLabel = computed(() => {
 const handleWeekStartChange = (newStart: Date) => {
   scheduleStore.weekStart = newStart
   changeWeek(0)
+}
+
+// 處理日期選擇 - 直接跳轉到指定日期
+const handleDateSelect = async (date: Date) => {
+  isChangingWeek.value = true
+  scheduleStore.weekStart = date
+  try {
+    await scheduleStore.fetchSchedule()
+    calculateTodayStats()
+  } finally {
+    isChangingWeek.value = false
+  }
+  scheduleStore.fetchPersonalEvents()
 }
 
 // 處理課表備註動作（來自 ScheduleGrid）

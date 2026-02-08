@@ -29,9 +29,18 @@ type CenterResponse struct {
 
 // CenterSettings 中心設置響應
 type CenterSettings struct {
-	AllowPublicRegister bool   `json:"allow_public_register"`
-	DefaultLanguage     string `json:"default_language"`
-	ExceptionLeadDays   int    `json:"exception_lead_days"`
+	AllowPublicRegister   bool   `json:"allow_public_register"`
+	DefaultLanguage       string `json:"default_language"`
+	ExceptionLeadDays     int    `json:"exception_lead_days"`
+	DefaultCourseDuration int    `json:"default_course_duration"`
+}
+
+// CenterSettingsResponse 僅包含設置的響應
+type CenterSettingsResponse struct {
+	AllowPublicRegister   bool   `json:"allow_public_register"`
+	DefaultLanguage       string `json:"default_language"`
+	ExceptionLeadDays     int    `json:"exception_lead_days"`
+	DefaultCourseDuration int    `json:"default_course_duration"`
 }
 
 // ToCenterResponse 將中心模型轉換為響應格式
@@ -41,9 +50,10 @@ func (r *CenterResource) ToCenterResponse(center models.Center) *CenterResponse 
 		Name:      center.Name,
 		PlanLevel: center.PlanLevel,
 		Settings: CenterSettings{
-			AllowPublicRegister: center.Settings.AllowPublicRegister,
-			DefaultLanguage:     center.Settings.DefaultLanguage,
-			ExceptionLeadDays:   center.Settings.ExceptionLeadDays,
+			AllowPublicRegister:   center.Settings.AllowPublicRegister,
+			DefaultLanguage:       center.Settings.DefaultLanguage,
+			ExceptionLeadDays:     center.Settings.ExceptionLeadDays,
+			DefaultCourseDuration: center.Settings.DefaultCourseDuration,
 		},
 		CreatedAt: center.CreatedAt,
 	}
@@ -60,4 +70,14 @@ func (r *CenterResource) ToCenterResponses(centers []models.Center) []CenterResp
 		responses[i] = *r.ToCenterResponse(center)
 	}
 	return responses
+}
+
+// ToSettingsResponse 將中心設置模型轉換為響應格式
+func (r *CenterResource) ToSettingsResponse(settings models.CenterSettings) *CenterSettingsResponse {
+	return &CenterSettingsResponse{
+		AllowPublicRegister:   settings.AllowPublicRegister,
+		DefaultLanguage:       settings.DefaultLanguage,
+		ExceptionLeadDays:     settings.ExceptionLeadDays,
+		DefaultCourseDuration: settings.DefaultCourseDuration,
+	}
 }

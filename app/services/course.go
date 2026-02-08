@@ -30,6 +30,7 @@ func NewCourseService(app *app.App) *CourseService {
 }
 
 type CreateCourseRequest struct {
+	Code             string `json:"code" binding:"required"`
 	Name             string `json:"name" binding:"required"`
 	Duration         int    `json:"duration" binding:"required"`
 	ColorHex         string `json:"color_hex" binding:"required"`
@@ -38,6 +39,7 @@ type CreateCourseRequest struct {
 }
 
 type UpdateCourseRequest struct {
+	Code             string `json:"code" binding:"required"`
 	Name             string `json:"name" binding:"required"`
 	Duration         int    `json:"duration" binding:"required"`
 	ColorHex         string `json:"color_hex" binding:"required"`
@@ -132,6 +134,7 @@ func (s *CourseService) GetActiveCourses(ctx context.Context, centerID uint) ([]
 func (s *CourseService) CreateCourse(ctx context.Context, centerID, adminID uint, req *CreateCourseRequest) (*models.Course, *errInfos.Res, error) {
 	course := models.Course{
 		CenterID:         centerID,
+		Code:             req.Code,
 		Name:             req.Name,
 		DefaultDuration:  req.Duration,
 		ColorHex:         req.ColorHex,
@@ -198,6 +201,7 @@ func (s *CourseService) UpdateCourse(ctx context.Context, centerID, adminID, cou
 		before := course
 
 		// 更新基本欄位
+		course.Code = req.Code
 		course.Name = req.Name
 		course.DefaultDuration = req.Duration
 		course.ColorHex = req.ColorHex
