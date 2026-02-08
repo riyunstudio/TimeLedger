@@ -195,6 +195,10 @@
     },
     "features": {
       "title": "精彩特色",
+      "scheduling": {
+        "title": "智能排課管理",
+        "description": "自動偵測時段衝突，支持多據點統一調度"
+      },
       "export": {
         "title": "精美分享圖",
         "description": "多種漸層主題、個人品牌資訊、社交分享",

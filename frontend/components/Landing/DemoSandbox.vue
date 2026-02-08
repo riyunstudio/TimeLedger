@@ -1,7 +1,8 @@
 <template>
-  <div class="relative z-10 mt-16">
-    <div class="text-center mb-8">
-      <h2 class="text-3xl font-bold text-slate-100 mb-2">
+  <div class="py-20 px-4">
+    <!-- Section Header -->
+    <div class="max-w-3xl mx-auto text-center mb-10">
+      <h2 class="text-3xl lg:text-4xl font-bold text-slate-100 mb-3">
         {{ $t('landing.demo.title') }}
       </h2>
       <p class="text-lg text-slate-400">
@@ -10,12 +11,12 @@
     </div>
 
     <!-- Mini Sandbox -->
-    <div class="max-w-3xl mx-auto glass-card p-3 sm:p-4 lg:p-6 overflow-x-auto">
+    <div class="max-w-4xl mx-auto glass-card p-3 sm:p-4 lg:p-6 overflow-x-auto">
       <!-- Mobile Navigation -->
-      <div v-if="isMobile" class="flex items-center justify-between mb-2 sm:mb-3">
+      <div v-if="isMobile" class="flex items-center justify-between mb-3 sm:mb-4">
         <button
           @click="changeMobileDays(-1)"
-          class="glass-btn p-2 rounded-lg shrink-0"
+          class="glass-btn p-2.5 rounded-lg shrink-0 transition-all duration-300 hover:bg-white/10 hover:scale-105 active:scale-95"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
@@ -24,7 +25,7 @@
         <span class="text-[clamp(12px,2.5vw,16px)] font-medium text-slate-200">{{ mobileDayLabel }}</span>
         <button
           @click="changeMobileDays(1)"
-          class="glass-btn p-2 rounded-lg shrink-0"
+          class="glass-btn p-2.5 rounded-lg shrink-0 transition-all duration-300 hover:bg-white/10 hover:scale-105 active:scale-95"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
@@ -53,9 +54,9 @@
             <div
               v-for="day in displayWeekDays"
               :key="`${hour}-${day.value}`"
-              class="p-0.5 min-h-[45px] sm:min-h-[60px] border-t border-l border-white/5 relative transition-all"
+              class="p-0.5 min-h-[45px] sm:min-h-[60px] border-t border-l border-white/5 relative transition-all duration-300"
               :class="{
-                'bg-success-500/10': !getScheduleAt(hour, day.value) && !hasConflict,
+                'bg-success-500/5': !getScheduleAt(hour, day.value) && !hasConflict,
                 'ring-2 ring-primary-500/50': selectedCell && isTargetCell(hour, day.value),
                 'bg-white/5': hourIndex % 2 === 0
               }"
@@ -71,23 +72,30 @@
                 @dragstart="handleScheduleDragStart(hour, day.value, $event)"
                 @dragend="handleDragEnd"
                 @click="handleScheduleClick(hour, day.value, $event)"
-                class="schedule-card p-1 rounded cursor-grab transition-all hover:scale-105 h-full"
+                class="schedule-card p-1.5 rounded-lg cursor-grab transition-all duration-300 hover:scale-[1.02] h-full relative overflow-hidden"
                 :class="{
                   'bg-critical-500/20 border-critical-500/50': hasConflict,
                   'ring-2 ring-primary-500': selectedCell?.time === hour && selectedCell?.day === day.value
                 }"
               >
-                <div class="font-medium text-[clamp(11px,2.5vw,15px)] truncate text-white leading-tight">
-                  {{ getScheduleAt(hour, day.value)?.offering_name }}
-                </div>
-                <div class="text-[clamp(9px,2vw,12px)] text-slate-400 truncate leading-tight">
-                  {{ getScheduleAt(hour, day.value)?.teacher_name }}
+                <!-- Gradient overlay -->
+                <div class="absolute inset-0 bg-gradient-to-br from-indigo-500/20 via-primary-500/10 to-purple-500/20 opacity-0 hover:opacity-100 transition-opacity duration-300"></div>
+                
+                <!-- Content -->
+                <div class="relative z-10">
+                  <div class="font-medium text-[clamp(11px,2.5vw,15px)] truncate text-white leading-tight">
+                    {{ getScheduleAt(hour, day.value)?.offering_name }}
+                  </div>
+                  <div class="text-[clamp(9px,2vw,12px)] text-slate-400 truncate leading-tight">
+                    {{ getScheduleAt(hour, day.value)?.teacher_name }}
+                  </div>
                 </div>
               </div>
 
+              <!-- Drop zone highlight -->
               <div
                 v-if="!getScheduleAt(hour, day.value) && isDragging && isTargetCell(hour, day.value)"
-                class="absolute inset-0 border-2 border-dashed border-primary-500/50 bg-primary-500/10 flex items-center justify-center rounded"
+                class="absolute inset-0 border-2 border-dashed border-primary-500/50 bg-primary-500/10 flex items-center justify-center rounded-lg"
               >
                 <span class="text-[clamp(9px,1.8vw,11px)] text-primary-400">{{ $t('landing.demo.drop_here') }}</span>
               </div>
@@ -97,45 +105,61 @@
       </div>
     </div>
 
-      <div class="text-center mt-6">
-      <div class="inline-flex items-center gap-2 mb-2">
+    <!-- Status Bar -->
+    <div class="max-w-4xl mx-auto text-center mt-6">
+      <div class="inline-flex items-center gap-2 mb-3">
+        <!-- Conflict Status -->
         <div
           v-if="hasConflict"
-          class="flex items-center gap-2 p-3 rounded-xl bg-critical-500/20 border border-critical-500/50"
+          class="flex items-center gap-2 p-3 rounded-xl bg-critical-500/20 border border-critical-500/50 transition-all duration-300"
         >
           <svg class="w-5 h-5 text-critical-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 2.502-3.25V6.718c0-1.583 1.667-2.502-3.25H5.082c0-1.54 0-2.502-1.657-2.502-1.657a2 2 0 002.502 1.657a3.25z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 2.502-3.25V6.718c0-1.583 1.667-2.502-3.25-2.502-1.657 0-2.502 0.845-2.502 2.502 0 1.657 0.845 2.502 2.502 2.502" />
           </svg>
           <span class="text-sm text-critical-500 font-medium">{{ $t('landing.demo.conflict') }}</span>
         </div>
+        
+        <!-- Ready to Drop -->
         <div
           v-else-if="isDragging"
-          class="flex items-center gap-2 p-3 rounded-xl bg-success-500/20 border border-success-500/50"
+          class="flex items-center gap-2 p-3 rounded-xl bg-success-500/20 border border-success-500/50 transition-all duration-300"
         >
           <svg class="w-5 h-5 text-success-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
           </svg>
           <span class="text-sm text-success-500 font-medium">{{ $t('landing.demo.drop_ready') }}</span>
         </div>
+        
+        <!-- Cell Selected -->
         <div
           v-else-if="selectedCell"
-          class="flex items-center gap-2 p-3 rounded-xl bg-primary-500/20 border border-primary-500/50"
+          class="flex items-center gap-2 p-3 rounded-xl bg-primary-500/20 border border-primary-500/50 transition-all duration-300"
         >
           <svg class="w-5 h-5 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <span class="text-sm text-primary-500 font-medium">{{ $t('landing.demo.cell_selected') }}</span>
         </div>
+        
+        <!-- Default hint -->
         <div v-else class="text-slate-400 text-sm">
           {{ $t('landing.demo.drag_hint') }}
         </div>
       </div>
 
+      <!-- Reset Button -->
       <button
         @click="resetDemo"
-        class="glass-btn px-6 py-3 rounded-xl font-medium"
+        class="glass-btn group relative inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl font-medium text-slate-300 transition-all duration-300 hover:text-white hover:bg-white/10 hover:shadow-indigo-500/20 hover:scale-105 active:scale-95"
       >
-        {{ $t('landing.demo.reset') }}
+        <!-- Icon -->
+        <svg class="w-5 h-5 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg>
+        <span>{{ $t('landing.demo.reset') }}</span>
+
+        <!-- Hover glow -->
+        <div class="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" style="box-shadow: 0 0 20px rgba(99, 102, 241, 0.2);"></div>
       </button>
     </div>
   </div>
@@ -326,11 +350,55 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+/* Premium Glass Card Styling */
+.glass-card {
+  @apply bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl shadow-black/20;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-card:hover {
+  @apply border-white/20;
+}
+
+/* Glass Button Styling */
+.glass-btn {
+  @apply bg-white/5 border border-white/10 transition-all duration-300;
+}
+
+.glass-btn:hover {
+  @apply border-white/20 bg-white/10;
+}
+
+/* Enhanced Schedule Card Styling */
 .schedule-card {
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  @apply bg-gradient-to-br from-indigo-500/20 via-primary-500/10 to-purple-500/20 border border-white/10;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .schedule-card:hover {
-  transform: scale(1.02);
+  @apply shadow-indigo-500/20;
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 10px 40px -15px rgba(99, 102, 241, 0.3);
+}
+
+.schedule-card:active {
+  @apply scale-[0.98];
+}
+
+/* Drop zone highlight */
+.border-dashed {
+  border-style: dashed;
+}
+
+/* Hover effects */
+.glass-btn {
+  @apply hover:shadow-indigo-500/20;
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .glass-card {
+    @apply p-3 rounded-xl;
+  }
 }
 </style>
