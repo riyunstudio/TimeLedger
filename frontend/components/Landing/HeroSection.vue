@@ -95,14 +95,61 @@
       </div>
 
       <!-- RIGHT SIDE: Login Card -->
-      <div class="order-1 lg:order-2 w-full max-w-md mx-auto lg:mx-0">
+      <div class="order-1 lg:order-2 w-full max-w-md mx-auto lg:mx-0 pt-8 lg:pt-0">
         <!-- Mobile Logo (visible only on mobile) -->
-        <div class="lg:hidden mb-6 text-center">
-          <div class="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-primary-500 to-secondary-500 shadow-xl shadow-primary-500/20">
-            <svg class="w-10 h-10 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3-4 4m4-4h6a2 2 0 012 2v8a2 2 0 01-2 2H6a2 2 0 00-2 2v12" />
-            </svg>
-          </div>
+        <div class="lg:hidden mx-auto w-28 h-28 flex items-center justify-center rounded-3xl bg-white/5 backdrop-blur-xl border border-white/10 shadow-2xl shadow-primary-500/20 mb-6">
+          <!-- Compact Clock SVG - Connected to hourRotation and minuteRotation -->
+          <svg
+            class="w-20 h-20 drop-shadow-xl"
+            viewBox="0 0 200 200"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <!-- Gradients -->
+            <defs>
+              <linearGradient id="clockFaceMobileCompact" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#1e1b4b" />
+                <stop offset="100%" stop-color="#312e81" />
+              </linearGradient>
+              <linearGradient id="clockRingMobileCompact" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#6366f1" />
+                <stop offset="100%" stop-color="#a855f7" />
+              </linearGradient>
+            </defs>
+
+            <!-- Outer Ring -->
+            <circle cx="100" cy="100" r="90" stroke="url(#clockRingMobileCompact)" stroke-width="3" fill="none" class="opacity-40" />
+
+            <!-- Inner Clock Face -->
+            <circle cx="100" cy="100" r="82" fill="url(#clockFaceMobileCompact)" stroke="rgba(99, 102, 241, 0.3)" stroke-width="1" />
+
+            <!-- Hour Markers (Simplified) -->
+            <line x1="100" y1="28" x2="100" y2="38" stroke="#6366f1" stroke-width="4" stroke-linecap="round" />
+            <line x1="100" y1="162" x2="100" y2="172" stroke="#6366f1" stroke-width="4" stroke-linecap="round" />
+            <line x1="28" y1="100" x2="38" y2="100" stroke="#6366f1" stroke-width="4" stroke-linecap="round" />
+            <line x1="162" y1="100" x2="172" y2="100" stroke="#6366f1" stroke-width="4" stroke-linecap="round" />
+
+            <!-- Center Dot -->
+            <circle cx="100" cy="100" r="5" fill="url(#clockRingMobileCompact)" />
+            <circle cx="100" cy="100" r="2" fill="#ffffff" />
+
+            <!-- Hour Hand - Connected to hourRotation -->
+            <g :style="{ transform: `rotate(${hourRotation}deg)`, transformOrigin: '100px 100px', transition: 'transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)' }">
+              <line x1="100" y1="100" x2="100" y2="55" stroke="#ffffff" stroke-width="5" stroke-linecap="round" />
+              <line x1="100" y1="100" x2="100" y2="55" stroke="#e0e7ff" stroke-width="2.5" stroke-linecap="round" />
+            </g>
+
+            <!-- Minute Hand - Connected to minuteRotation -->
+            <g :style="{ transform: `rotate(${minuteRotation}deg)`, transformOrigin: '100px 100px', transition: 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)' }">
+              <line x1="100" y1="100" x2="100" y2="38" stroke="#a855f7" stroke-width="4" stroke-linecap="round" />
+              <line x1="100" y1="100" x2="100" y2="38" stroke="#c4b5fd" stroke-width="2" stroke-linecap="round" />
+            </g>
+
+            <!-- Second Hand -->
+            <g :style="{ transform: `rotate(${secondRotation}deg)`, transformOrigin: '100px 100px', transition: 'transform 0.1s ease-out' }">
+              <line x1="100" y1="110" x2="100" y2="35" stroke="#06c755" stroke-width="2" stroke-linecap="round" opacity="0.9" />
+            </g>
+          </svg>
         </div>
 
         <!-- Card Header -->
