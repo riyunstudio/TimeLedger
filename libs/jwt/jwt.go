@@ -33,7 +33,7 @@ func NewJWT(secretKey string) *JWT {
 }
 
 func (j *JWT) GenerateToken(claims Claims) (string, error) {
-	claims.Exp = time.Now().Add(1 * time.Hour).Unix()
+	claims.Exp = time.Now().Add(24 * time.Hour).Unix()
 
 	header := Header{
 		Alg: "HS256",
