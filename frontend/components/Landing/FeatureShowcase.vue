@@ -13,7 +13,7 @@
     <div class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
       <!-- Feature 1: Smart Scheduling -->
       <div
-        class="group glass-card p-6 lg:p-8 rounded-2xl transition-all duration-500 hover:shadow-indigo-500/10 hover:-translate-y-2 opacity-0 animate-fade-in-up"
+        class="group glass-card p-6 lg:p-8 rounded-2xl transition-all duration-500 hover:shadow-indigo-500/10 hover:-translate-y-2 opacity-0 animate-fade-in-up clock-pattern"
         style="animation-delay: 0ms;"
       >
         <!-- Icon Container -->
@@ -113,7 +113,7 @@
 
       <!-- Feature 2: Smart Matching -->
       <div
-        class="group glass-card p-6 lg:p-8 rounded-2xl transition-all duration-500 hover:shadow-purple-500/10 hover:-translate-y-2 opacity-0 animate-fade-in-up"
+        class="group glass-card p-6 lg:p-8 rounded-2xl transition-all duration-500 hover:shadow-purple-500/10 hover:-translate-y-2 opacity-0 animate-fade-in-up avatar-pattern"
         style="animation-delay: 150ms;"
       >
         <!-- Icon Container -->
@@ -194,7 +194,7 @@
 
       <!-- Feature 3: Real-time Notifications -->
       <div
-        class="group glass-card p-6 lg:p-8 rounded-2xl transition-all duration-500 hover:shadow-rose-500/10 hover:-translate-y-2 opacity-0 animate-fade-in-up"
+        class="group glass-card p-6 lg:p-8 rounded-2xl transition-all duration-500 hover:shadow-rose-500/10 hover:-translate-y-2 opacity-0 animate-fade-in-up notification-pattern"
         style="animation-delay: 300ms;"
       >
         <!-- Icon Container -->
@@ -332,7 +332,7 @@ defineProps({
 </script>
 
 <style scoped>
-/* Glass Card - Unified premium styling */
+/* Glass Card - Premium refined styling */
 .glass-card {
   @apply bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl shadow-black/20;
   transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
@@ -341,13 +341,14 @@ defineProps({
 .glass-card:hover {
   @apply border-white/20;
   box-shadow: 0 25px 50px -12px rgba(99, 102, 241, 0.15);
+  transform: translateY(-4px);
 }
 
-/* Staggered Entry Animations */
+/* Staggered Entry Animations with Logo-inspired patterns */
 @keyframes fadeInUp {
   from {
     opacity: 0;
-    transform: translateY(30px);
+    transform: translateY(40px);
   }
   to {
     opacity: 1;
@@ -355,8 +356,40 @@ defineProps({
   }
 }
 
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.3;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+}
+
 .animate-fade-in-up {
-  animation: fadeInUp 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  animation: fadeInUp 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.animate-pulse-ring {
+  animation: pulse-ring 3s ease-in-out infinite;
 }
 
 /* Pulse animation for notification dot */
@@ -382,6 +415,45 @@ button {
 
 button:active {
   @apply scale-[0.98];
+}
+
+/* Logo-inspired decorative patterns */
+.clock-pattern {
+  position: relative;
+}
+
+.clock-pattern::before {
+  content: '';
+  position: absolute;
+  inset: -20px;
+  background: radial-gradient(circle at 50% 50%, rgba(99, 102, 241, 0.1) 0%, transparent 70%);
+  border-radius: 50%;
+  z-index: 0;
+}
+
+.avatar-pattern {
+  position: relative;
+}
+
+.avatar-pattern::before {
+  content: '';
+  position: absolute;
+  inset: -15px;
+  background: radial-gradient(circle at 50% 50%, rgba(168, 85, 247, 0.08) 0%, transparent 70%);
+  border-radius: 50%;
+  z-index: 0;
+}
+
+.notification-pattern {
+  position: relative;
+}
+
+.notification-pattern::before {
+  content: '';
+  position: absolute;
+  inset: -10px;
+  background: radial-gradient(ellipse at 50% 100%, rgba(244, 63, 94, 0.1) 0%, transparent 70%);
+  z-index: 0;
 }
 
 /* Responsive adjustments */

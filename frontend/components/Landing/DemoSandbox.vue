@@ -51,55 +51,74 @@
             </div>
 
             <!-- Day Cells -->
-            <div
-              v-for="day in displayWeekDays"
-              :key="`${hour}-${day.value}`"
-              class="p-0.5 min-h-[45px] sm:min-h-[60px] border-t border-l border-white/5 relative transition-all duration-300"
-              :class="{
-                'bg-success-500/5': !getScheduleAt(hour, day.value) && !hasConflict,
-                'ring-2 ring-primary-500/50': selectedCell && isTargetCell(hour, day.value),
-                'bg-white/5': hourIndex % 2 === 0
-              }"
-              @dragenter.prevent="handleDragEnter(hour, day.value)"
-              @dragleave.prevent="handleDragLeave"
-              @drop.prevent="handleDrop"
-              @dragover.prevent
-              @click="selectCell(hour, day.value)"
-            >
+            <template v-for="day in displayWeekDays" :key="`${hour}-${day.value}`">
               <div
-                v-if="getScheduleAt(hour, day.value)"
-                draggable="true"
-                @dragstart="handleScheduleDragStart(hour, day.value, $event)"
-                @dragend="handleDragEnd"
-                @click="handleScheduleClick(hour, day.value, $event)"
-                class="schedule-card p-1.5 rounded-lg cursor-grab transition-all duration-300 hover:scale-[1.02] h-full relative overflow-hidden"
+                class="p-0.5 min-h-[45px] sm:min-h-[60px] border-t border-l border-white/5 relative transition-all duration-300"
                 :class="{
-                  'bg-critical-500/20 border-critical-500/50': hasConflict,
-                  'ring-2 ring-primary-500': selectedCell?.time === hour && selectedCell?.day === day.value
+                  'bg-success-500/5': getSchedulesAt(hour, day.value).length === 0 && !hasConflictAt(hour, day.value),
+                  'ring-2 ring-primary-500/50': selectedCell && isTargetCell(hour, day.value),
+                  'bg-white/5': hourIndex % 2 === 0,
+                  'bg-critical-500/10 border-critical-500/50': hasConflictAt(hour, day.value) && getSchedulesAt(hour, day.value).length > 1
                 }"
+                @dragenter.prevent="handleDragEnter(hour, day.value)"
+                @dragleave.prevent="handleDragLeave"
+                @drop.prevent="handleDrop"
+                @dragover.prevent
+                @click="selectCell(hour, day.value)"
               >
-                <!-- Gradient overlay -->
-                <div class="absolute inset-0 bg-gradient-to-br from-indigo-500/20 via-primary-500/10 to-purple-500/20 opacity-0 hover:opacity-100 transition-opacity duration-300"></div>
-                
-                <!-- Content -->
-                <div class="relative z-10">
-                  <div class="font-medium text-[clamp(11px,2.5vw,15px)] truncate text-white leading-tight">
-                    {{ getScheduleAt(hour, day.value)?.offering_name }}
+                <!-- Stacked Schedule Cards with overlapping deck effect -->
+                <template v-if="getSchedulesAt(hour, day.value).length > 0">
+                  <div class="absolute inset-0 p-0.5 flex flex-col" :class="{ 'justify-center': getSchedulesAt(hour, day.value).length > 1 }">
+                    <template v-for="(item, index) in getSchedulesAt(hour, day.value)" :key="`${hour}-${day.value}-${item.id}`">
+                      <div
+                        class="schedule-card flex-1 rounded-lg cursor-grab transition-all duration-300 relative overflow-hidden"
+                        :class="{
+                          'bg-critical-500/20 border-critical-500/50': hasConflictAt(hour, day.value) && getSchedulesAt(hour, day.value).length > 1,
+                          'ring-2 ring-primary-500': selectedCell?.time === hour && selectedCell?.day === day.value && index === 0,
+                          'mb-0.5': index < getSchedulesAt(hour, day.value).length - 1
+                        }"
+                        :draggable="index === 0"
+                        @dragstart="handleScheduleDragStart(hour, day.value, item.id, $event)"
+                        @dragend="handleDragEnd"
+                        @click.stop="handleScheduleClick(hour, day.value, item.id, $event)"
+                        :style="getSchedulesAt(hour, day.value).length > 1 ? `transform: scale(${1 - index * 0.08}); z-index: ${10 - index}` : ''"
+                      >
+                        <!-- Gradient overlay -->
+                        <div class="absolute inset-0 bg-gradient-to-br from-indigo-500/20 via-primary-500/10 to-purple-500/20 opacity-0 hover:opacity-100 transition-opacity duration-300"></div>
+
+                        <!-- Content -->
+                        <div class="relative z-10 p-1.5">
+                          <div class="font-medium text-[clamp(11px,2.5vw,15px)] truncate text-white leading-tight">
+                            {{ item.offering_name }}
+                          </div>
+                          <div class="text-[clamp(9px,2vw,12px)] text-slate-400 truncate leading-tight">
+                            {{ item.teacher_name }}
+                          </div>
+                        </div>
+
+                        <!-- Conflict indicator for stacked cards -->
+                        <div
+                          v-if="hasConflictAt(hour, day.value) && index === getSchedulesAt(hour, day.value).length - 1"
+                          class="absolute -top-1 -right-1 w-4 h-4 bg-critical-500 rounded-full flex items-center justify-center"
+                        >
+                          <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </div>
+                      </div>
+                    </template>
                   </div>
-                  <div class="text-[clamp(9px,2vw,12px)] text-slate-400 truncate leading-tight">
-                    {{ getScheduleAt(hour, day.value)?.teacher_name }}
-                  </div>
+                </template>
+
+                <!-- Drop zone highlight -->
+                <div
+                  v-if="getSchedulesAt(hour, day.value).length === 0 && isDragging && isTargetCell(hour, day.value)"
+                  class="absolute inset-0 border-2 border-dashed border-primary-500/50 bg-primary-500/10 flex items-center justify-center rounded-lg"
+                >
+                  <span class="text-[clamp(9px,1.8vw,11px)] text-primary-400">{{ $t('landing.demo.drop_here') }}</span>
                 </div>
               </div>
-
-              <!-- Drop zone highlight -->
-              <div
-                v-if="!getScheduleAt(hour, day.value) && isDragging && isTargetCell(hour, day.value)"
-                class="absolute inset-0 border-2 border-dashed border-primary-500/50 bg-primary-500/10 flex items-center justify-center rounded-lg"
-              >
-                <span class="text-[clamp(9px,1.8vw,11px)] text-primary-400">{{ $t('landing.demo.drop_here') }}</span>
-              </div>
-            </div>
+            </template>
           </template>
         </div>
       </div>
@@ -107,18 +126,19 @@
 
     <!-- Status Bar -->
     <div class="max-w-4xl mx-auto text-center mt-6">
-      <div class="inline-flex items-center gap-2 mb-3">
+      <div class="inline-flex items-center gap-2 mb-3 flex-wrap justify-center">
         <!-- Conflict Status -->
         <div
           v-if="hasConflict"
           class="flex items-center gap-2 p-3 rounded-xl bg-critical-500/20 border border-critical-500/50 transition-all duration-300"
         >
-          <svg class="w-5 h-5 text-critical-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-5 h-5 text-critical-500 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 2.502-3.25V6.718c0-1.583 1.667-2.502-3.25-2.502-1.657 0-2.502 0.845-2.502 2.502 0 1.657 0.845 2.502 2.502 2.502" />
           </svg>
           <span class="text-sm text-critical-500 font-medium">{{ $t('landing.demo.conflict') }}</span>
+          <span class="text-xs text-critical-400">(時間衝突)</span>
         </div>
-        
+
         <!-- Ready to Drop -->
         <div
           v-else-if="isDragging"
@@ -129,7 +149,7 @@
           </svg>
           <span class="text-sm text-success-500 font-medium">{{ $t('landing.demo.drop_ready') }}</span>
         </div>
-        
+
         <!-- Cell Selected -->
         <div
           v-else-if="selectedCell"
@@ -140,7 +160,7 @@
           </svg>
           <span class="text-sm text-primary-500 font-medium">{{ $t('landing.demo.cell_selected') }}</span>
         </div>
-        
+
         <!-- Default hint -->
         <div v-else class="text-slate-400 text-sm">
           {{ $t('landing.demo.drag_hint') }}
@@ -193,11 +213,11 @@ const weekDays = [
 const isMobile = ref(false)
 const mobileDayOffset = ref(0)
 
-const schedules = ref<Record<string, Schedule>>({
-  '14-1': { id: 1, offering_name: '鋼琴基礎', teacher_name: 'Alice', room_id: 1 },
-  '14-2': { id: 2, offering_name: '鋼琴基礎', teacher_name: 'Alice', room_id: 1 },
-  '14-3': { id: 3, offering_name: '小提琴入門', teacher_name: 'Bob', room_id: 2 },
-  '15-1': { id: 4, offering_name: '鋼琴進階', teacher_name: 'Alice', room_id: 1 },
+const schedules = ref<Record<string, Schedule[]>>({
+  '14-1': [{ id: 1, offering_name: '鋼琴基礎', teacher_name: 'Alice', room_id: 1 }],
+  '14-2': [{ id: 2, offering_name: '鋼琴基礎', teacher_name: 'Alice', room_id: 1 }],
+  '14-3': [{ id: 3, offering_name: '小提琴入門', teacher_name: 'Bob', room_id: 2 }],
+  '15-1': [{ id: 4, offering_name: '鋼琴進階', teacher_name: 'Alice', room_id: 1 }],
 })
 
 const isDragging = ref(false)
@@ -230,17 +250,22 @@ const changeMobileDays = (delta: number) => {
   mobileDayOffset.value = (mobileDayOffset.value + delta + 7) % 7
 }
 
+const getSchedulesAt = (hour: number, weekday: number): Schedule[] => {
+  return schedules.value[`${hour}-${weekday}`] || []
+}
+
 const getScheduleAt = (hour: number, weekday: number): Schedule | undefined => {
-  return schedules.value[`${hour}-${weekday}`]
+  const items = schedules.value[`${hour}-${weekday}`]
+  return items && items.length > 0 ? items[0] : undefined
 }
 
 const isTargetCell = (hour: number, weekday: number): boolean => {
   return dragTarget.value?.time === hour && dragTarget.value?.day === weekday
 }
 
-const handleScheduleDragStart = (hour: number, weekday: number, event: DragEvent) => {
+const handleScheduleDragStart = (hour: number, weekday: number, itemId: number, event: DragEvent) => {
   isDragging.value = true
-  const schedule = getScheduleAt(hour, weekday)
+  const schedule = getSchedulesAt(hour, weekday).find(s => s.id === itemId)
   event.dataTransfer?.setData('application/json', JSON.stringify({
     type: 'schedule',
     time: hour,
@@ -276,10 +301,24 @@ const handleDrop = (event: DragEvent) => {
     const targetKey = `${dragTarget.value.time}-${dragTarget.value.day}`
     const sourceKey = `${parsed.time}-${parsed.day}`
 
-    schedules.value[targetKey] = parsed.data
-    delete schedules.value[sourceKey]
+    // Remove from source
+    const sourceItems = schedules.value[sourceKey]
+    if (sourceItems) {
+      const remaining = sourceItems.filter(s => s.id !== parsed.data.id)
+      if (remaining.length > 0) {
+        schedules.value[sourceKey] = remaining
+      } else {
+        delete schedules.value[sourceKey]
+      }
+    }
 
-    hasConflict.value = false
+    // Push to target (stacking behavior)
+    if (!schedules.value[targetKey]) {
+      schedules.value[targetKey] = []
+    }
+    schedules.value[targetKey].push(parsed.data)
+
+    hasConflict.value = checkConflictAt(dragTarget.value.time, dragTarget.value.day)
     isDragging.value = false
     dragTarget.value = null
   }
@@ -289,19 +328,33 @@ const selectCell = (hour: number, weekday: number) => {
   if (selectedCell.value) {
     const sourceKey = `${selectedCell.value.time}-${selectedCell.value.day}`
     const targetKey = `${hour}-${weekday}`
-    const schedule = schedules.value[sourceKey]
+    const sourceItems = schedules.value[sourceKey]
 
-    if (schedule) {
-      schedules.value[targetKey] = schedule
-      delete schedules.value[sourceKey]
-      selectedCell.value = null
-      hasConflict.value = false
+    if (sourceItems && sourceItems.length > 0) {
+      // Move first item from source to target
+      const item = sourceItems.shift()
+      if (item) {
+        if (!schedules.value[targetKey]) {
+          schedules.value[targetKey] = []
+        }
+        schedules.value[targetKey].push(item)
+
+        // Clean up empty arrays
+        if (sourceItems.length === 0) {
+          delete schedules.value[sourceKey]
+        }
+      }
     }
+    selectedCell.value = null
+    hasConflict.value = checkConflictAt(hour, weekday)
   }
 }
 
-const handleScheduleClick = (hour: number, weekday: number, event: MouseEvent) => {
+const handleScheduleClick = (hour: number, weekday: number, itemId: number, event: MouseEvent) => {
   event.stopPropagation()
+
+  const items = getSchedulesAt(hour, weekday)
+  const selectedItem = items.find(s => s.id === itemId)
 
   if (selectedCell.value?.time === hour && selectedCell.value?.day === weekday) {
     selectedCell.value = null
@@ -311,23 +364,26 @@ const handleScheduleClick = (hour: number, weekday: number, event: MouseEvent) =
 }
 
 const checkConflict = (hour: number, weekday: number) => {
-  const key = `${hour}-${weekday}`
-  const current = getScheduleAt(hour, weekday)
-  const newSchedule = getScheduleAt(hour, weekday)
+  hasConflict.value = checkConflictAt(hour, weekday)
+}
 
-  if (current && newSchedule && current.id !== newSchedule.id) {
-    hasConflict.value = true
-  } else {
-    hasConflict.value = false
-  }
+const checkConflictAt = (hour: number, weekday: number): boolean => {
+  const key = `${hour}-${weekday}`
+  const items = schedules.value[key]
+  return items ? items.length > 1 : false
+}
+
+const hasConflictAt = (hour: number, weekday: number): boolean => {
+  return checkConflictAt(hour, weekday)
 }
 
 const resetDemo = () => {
-  Object.keys(schedules.value).forEach(key => {
-    if (key !== '14-1') {
-      delete schedules.value[key]
-    }
-  })
+  schedules.value = {
+    '14-1': [{ id: 1, offering_name: '鋼琴基礎', teacher_name: 'Alice', room_id: 1 }],
+    '14-2': [{ id: 2, offering_name: '鋼琴基礎', teacher_name: 'Alice', room_id: 1 }],
+    '14-3': [{ id: 3, offering_name: '小提琴入門', teacher_name: 'Bob', room_id: 2 }],
+    '15-1': [{ id: 4, offering_name: '鋼琴進階', teacher_name: 'Alice', room_id: 1 }],
+  }
   hasConflict.value = false
   selectedCell.value = null
 }
@@ -350,7 +406,7 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* Premium Glass Card Styling */
+/* Premium Glass Card Styling - Enhanced */
 .glass-card {
   @apply bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl shadow-black/20;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -358,18 +414,19 @@ onUnmounted(() => {
 
 .glass-card:hover {
   @apply border-white/20;
+  box-shadow: 0 25px 50px -12px rgba(99, 102, 241, 0.15);
 }
 
-/* Glass Button Styling */
+/* Glass Button Styling - Enhanced */
 .glass-btn {
-  @apply bg-white/5 border border-white/10 transition-all duration-300;
+  @apply bg-white/5 backdrop-blur-lg border border-white/10 transition-all duration-300;
 }
 
 .glass-btn:hover {
   @apply border-white/20 bg-white/10;
 }
 
-/* Enhanced Schedule Card Styling */
+/* Enhanced Schedule Card Styling with stacking support */
 .schedule-card {
   @apply bg-gradient-to-br from-indigo-500/20 via-primary-500/10 to-purple-500/20 border border-white/10;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -385,14 +442,47 @@ onUnmounted(() => {
   @apply scale-[0.98];
 }
 
+/* Stacked card deck effect */
+.schedule-card:nth-child(2) {
+  transform: translateY(-4px);
+}
+
+.schedule-card:nth-child(3) {
+  transform: translateY(-8px);
+}
+
 /* Drop zone highlight */
 .border-dashed {
   border-style: dashed;
 }
 
-/* Hover effects */
+/* Enhanced hover effects */
 .glass-btn {
   @apply hover:shadow-indigo-500/20;
+}
+
+/* Conflict cell styling */
+.bg-critical-500\/10 {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(239, 68, 68, 0.05) 100%);
+}
+
+/* Success cell styling */
+.bg-success-500\/5 {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.05) 0%, rgba(34, 197, 94, 0.02) 100%);
+}
+
+/* Cell hover effects */
+.p-0\.5:hover {
+  background: rgba(99, 102, 241, 0.05);
+}
+
+/* Ring effects */
+.ring-primary-500\/50 {
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.5);
+}
+
+.ring-primary-500 {
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 1);
 }
 
 /* Responsive adjustments */
@@ -400,5 +490,23 @@ onUnmounted(() => {
   .glass-card {
     @apply p-3 rounded-xl;
   }
+
+  .schedule-card {
+    @apply text-xs;
+  }
+}
+
+/* Animation for conflict pulse */
+@keyframes conflict-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0);
+  }
+}
+
+.animate-pulse {
+  animation: conflict-pulse 2s infinite;
 }
 </style>
