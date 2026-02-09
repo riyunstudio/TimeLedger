@@ -26,7 +26,7 @@
         style="grid-template-columns: 80px repeat(7, 1fr);"
       >
         <!-- 時間標籤 -->
-        <div class="p-2 border-r border-b border-white/5 text-right text-xs text-slate-400">
+        <div class="p-2 border-r border-b border-white/5 text-right text-xs text-slate-400 h-[60px] flex items-center justify-end">
           {{ formatTime(time) }}
         </div>
 
@@ -34,7 +34,7 @@
         <div
           v-for="day in weekDays"
           :key="`${time}-${day.value}`"
-          class="p-0 min-h-[60px] border-b border-white/5 border-r relative z-0"
+          class="p-0 h-[60px] border-b border-white/5 border-r relative z-0"
           :class="cellClassMap[`${time}-${day.value}`]"
           @dragenter="$emit('drag-enter', time, day.value)"
           @dragleave="$emit('drag-leave')"
@@ -43,8 +43,11 @@
       </div>
 
       <!-- 課程卡片層 -->
-      <div class="absolute top-0 left-0 right-0 bottom-0 pointer-events-none z-10" style="height: 1440px;">
-        <!-- 1440px = 24小時 * 60px 每小時 -->
+      <!-- 容器高度根據時間段數量動態計算，或使用固定 24 小時高度 -->
+      <div
+        class="absolute top-0 left-0 right-0 bottom-0 pointer-events-none z-10"
+        :style="containerStyle"
+      >
         <!-- 直接渲染卡片，移除 DynamicScroller 以避免定位問題 -->
         <template v-for="item in schedulesWithOverlapData" :key="item.key">
           <template v-if="item.is_personal_event">
@@ -109,6 +112,10 @@ const props = defineProps<{
   validationResults: Record<string, any>
   // 槽寬度（由父組件傳入，但自己也會計算）
   slotWidth: number
+  // 動態時間段（由矩陣視圖 API 回傳，可選）
+  timeSlots?: number[]
+  // 是否使用後端計算的 CSS 定位偏移（可選，預設 false）
+  useBackendOffsets?: boolean
 }>()
 
 // ============================================
@@ -129,8 +136,27 @@ const emit = defineEmits<{
 const TIME_SLOT_HEIGHT = 60 // 每個時段格子的高度 (px)
 const TIME_COLUMN_WIDTH = 80 // 時間列寬度 (px)
 
-// 時間段（連續顯示所有時段）
-const timeSlots = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
+// 預設時間段（當沒有動態時間段時使用）
+const DEFAULT_TIME_SLOTS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
+
+// 動態或預設時間段
+const timeSlots = computed(() => {
+  // 如果父組件提供了動態時間段，使用它
+  if (props.timeSlots && props.timeSlots.length > 0) {
+    return props.timeSlots
+  }
+  // 否則使用預設時間段
+  return DEFAULT_TIME_SLOTS
+})
+
+// 容器高度樣式
+// 固定使用 24 小時高度，確保與後端計算的百分比偏移一致
+const containerStyle = computed(() => {
+  // 固定高度：24 小時 * 60px = 1440px
+  return {
+    height: '1440px',
+  }
+})
 
 // 星期幾（需要傳入週起始日期來計算日期）
 const weekDays = computed(() => {
@@ -273,19 +299,22 @@ const getScheduleStyle = (schedule: any): Record<string, string> => {
 
   const { start_hour, start_minute, duration_minutes, end_time } = schedule
 
-  // 計算垂直位置 - 時間格子是連續的 0-23 小時
-  const slotHeight = TIME_SLOT_HEIGHT
-
-  // 計算 top 和 height
+  // 計算垂直位置
   let top: number
   let height: number
+  const slotHeight = TIME_SLOT_HEIGHT
 
-  if (schedule.is_cross_day_part && schedule.start_time === '00:00') {
-    // 跨日課程的結束部分（00:00 開始）
-    top = 0
-    height = (duration_minutes / 60) * slotHeight
+  // 檢查是否使用後端計算的偏移（Phase 2 新功能）
+  if (props.useBackendOffsets && schedule._topOffset !== undefined && schedule._heightPercent !== undefined) {
+    // 使用後端直接計算的 CSS 百分比偏移
+    // top_offset 是相對於 24 小時的百分比 (0-100)
+    // height_percent 是相對於 24 小時的百分比
+    // 轉換為像素值
+    const totalDayHeight = 24 * slotHeight // 1440px
+    top = (schedule._topOffset / 100) * totalDayHeight
+    height = (schedule._heightPercent / 100) * totalDayHeight
   } else {
-    // 一般課程
+    // 使用原有的計算方式（後端已拆分跨日課程）
     const baseTop = start_hour * slotHeight
     const minuteOffset = (start_minute / 60) * slotHeight
     top = baseTop + minuteOffset
@@ -467,6 +496,29 @@ watch(
     }
   },
   { deep: false }
+)
+
+// 監控 timeSlots 變化，清除快取
+watch(
+  () => props.timeSlots,
+  (newTimeSlots, oldTimeSlots) => {
+    if (JSON.stringify(newTimeSlots) !== JSON.stringify(oldTimeSlots)) {
+      styleCache.clear()
+      overlapDataCache.clear()
+    }
+  },
+  { deep: true }
+)
+
+// 監控 useBackendOffsets 變化，清除快取
+watch(
+  () => props.useBackendOffsets,
+  (newValue, oldValue) => {
+    if (newValue !== oldValue) {
+      styleCache.clear()
+      overlapDataCache.clear()
+    }
+  }
 )
 
 // ============================================

@@ -98,6 +98,8 @@
           :card-info-type="effectiveCardInfoType"
           :validation-results="validationResults"
           :slot-width="slotWidth"
+          :time-slots="dynamicTimeSlots"
+          :use-backend-offsets="true"
           @drag-enter="handleDragEnter"
           @drag-leave="handleDragLeave"
           @select-schedule="selectSchedule"
@@ -203,6 +205,10 @@
 <script setup lang="ts">
 import { formatDateToString, formatDate } from '~/composables/useTaiwanTime'
 import { nextTick, ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import type {
+  MatrixViewResponse,
+  MatrixViewApiResponse,
+} from '~/types/scheduling'
 
 // 引入子組件
 import CalendarHeader from './CalendarHeader.vue'
@@ -465,10 +471,14 @@ const handleDateSelect = (date: Date) => {
 }
 
 // ============================================
-// 取得排課資料
+// 矩陣視圖 API 獲取函數 (Phase 2)
 // ============================================
 
-const fetchSchedules = async () => {
+/**
+ * 從矩陣視圖 API 獲取課表資料
+ * 使用新的 /matrix-view 端點，後端直接返回可渲染的矩陣結構
+ */
+const fetchMatrixView = async () => {
   isLoading.value = true
   hasError.value = false
   errorMessage.value = ''
@@ -479,178 +489,129 @@ const fetchSchedules = async () => {
     const startDate = formatDateToString(weekStart.value)
     const endDate = formatDateToString(weekEnd.value)
 
-    let response
-    if (props.mode === 'teacher') {
-      response = await api.get<{ code: number; datas: any[] }>('/teacher/schedules', {
-        start_date: startDate,
-        end_date: endDate,
-      })
-    } else {
-      response = await api.post<{ code: number; datas: any[] }>(effectiveApiEndpoint.value, {
-        rule_ids: [],
-        start_date: startDate,
-        end_date: endDate,
-      })
+    // 查詢參數
+    const params: Record<string, string> = {
+      start_date: startDate,
+      end_date: endDate,
+      type: 'all', // 獲取所有資源
     }
+
+    // 如果有選擇特定老師或教室，加入篩選
+    if (selectedTeacherId.value > 0) {
+      params.type = 'teacher'
+      params.resource_ids = selectedTeacherId.value.toString()
+    } else if (selectedRoomId.value > 0) {
+      params.type = 'room'
+      params.resource_ids = selectedRoomId.value.toString()
+    }
+
+    // 呼叫新的矩陣視圖 API
+    const endpoint = effectiveApiEndpoint.value
+    const response = await api.get<MatrixViewApiResponse>(
+      endpoint,
+      params
+    )
 
     // 處理 API 響應格式
-    let expandedSchedules: any[] = []
-    if (Array.isArray(response)) {
-      // 後端直接返回陣列
-      expandedSchedules = response
-    } else if (response?.datas) {
-      // 後端返回 { code, datas } 格式
-      expandedSchedules = response.datas
-    } else if (response?.data) {
-      // 另一種格式 { code, data }
-      expandedSchedules = response.data
+    // useApi 的 parseResponse 已經提取了 datas 欄位，所以 response 直接是 MatrixViewResponse
+    let matrixData: MatrixViewResponse | null = null
+
+    // 檢查 response 是否為 MatrixViewResponse 格式
+    if (response && typeof response === 'object' && 'resources' in response && 'time_slots' in response) {
+      matrixData = response as MatrixViewResponse
     } else {
-      expandedSchedules = []
+      schedules.value = []
+      // 設定預設時間段
+      dynamicTimeSlots.value = Array.from({ length: 13 }, (_, i) => i + 9) // 9-21點
+      return
     }
 
-    // 確保 expandedSchedules 是陣列
-    if (!Array.isArray(expandedSchedules)) {
-      expandedSchedules = []
-    }
+    // 將矩陣視圖資料轉換為週曆可用的格式
+    const transformedSchedules: any[] = []
 
-    const scheduleList = expandedSchedules.map((schedule: any, index: number) => {
-      try {
-        // 檢測數據格式：後端可能返回排課規則或展開後的課表場次
-        const isExpandedFormat = schedule.date !== undefined
-        const isRuleFormat = schedule.weekday !== undefined
+    for (const resource of matrixData.resources) {
+      for (const item of resource.items) {
+        // 計算星期幾 (1-7，週一到週日)
+        const itemDate = new Date(item.date + 'T00:00:00+08:00')
+        const weekday = itemDate.getDay() === 0 ? 7 : itemDate.getDay()
 
-        let date: Date
-        let weekday: number
-
-        if (isExpandedFormat) {
-          // 展開後的課表場次格式：已有 date 欄位
-          // 注意：後端返回的 date 可能是 "2026-02-01" 格式
-          date = new Date(schedule.date + 'T00:00:00+08:00')
-          weekday = date.getDay() === 0 ? 7 : date.getDay()
-        } else if (isRuleFormat) {
-          // 排課規則格式：需要根據 weekday 和 effective_range 計算
-          // 對於週視圖，我們需要計算每個規則在該週的具體日期
-          const effectiveStartDate = schedule.effective_range?.start_date
-          const effectiveEndDate = schedule.effective_range?.end_date
-
-          // 計算規則適用的第一個日期（與週視圖的開始日期最接近的規則日期）
-          const ruleWeekday = schedule.weekday
-          const weekStartDate = new Date(weekStart.value)
-
-          // 找到週開始日期之後第一個符合 weekday 的日期
-          let targetDate = new Date(weekStartDate)
-          const targetDay = ruleWeekday === 7 ? 0 : ruleWeekday
-          while (targetDate.getDay() !== targetDay) {
-            targetDate.setDate(targetDate.getDate() + 1)
-          }
-
-          // 檢查是否在有效範圍內
-          if (effectiveStartDate) {
-            const start = new Date(effectiveStartDate)
-            // 比較日期部分（忽略時間）
-            const targetTime = new Date(targetDate).setHours(0, 0, 0, 0)
-            const startTime = new Date(start).setHours(0, 0, 0, 0)
-            
-            if (targetTime < startTime) {
-              return null
-            }
-          }
-
-          if (effectiveEndDate) {
-            const end = new Date(effectiveEndDate)
-            if (targetDate > end) {
-              return null
-            }
-          }
-
-          date = targetDate
-          // 確保 weekday 從計算出的 date 重新計算，而不是依賴後端可能錯誤的 weekday
-          weekday = date.getDay() === 0 ? 7 : date.getDay()
-        } else {
-          // 無法識別的格式，跳過
-          return null
-        }
-
-        const startTime = schedule.start_time || '09:00'
-        const endTime = schedule.end_time || '10:00'
-        const [startHour, startMinute] = startTime.split(':').map(Number)
-        const durationMinutes = calculateDurationMinutes(startTime, endTime)
-
-        // 從關聯資料中取得老師和教室名稱
-        const teacherName = schedule.teacher?.name || schedule.teacher_name || '-'
-        const roomName = schedule.room?.name || schedule.room_name || '-'
-        const offeringName = schedule.offering?.name || schedule.offering_name || schedule.title || '-'
-
-        const dateString = date.toISOString().split('T')[0]
-
-        return {
-          id: schedule.rule_id || schedule.id,
-          key: `${schedule.rule_id || schedule.id}-${weekday}-${startTime}-${dateString}`,
-          offering_name: offeringName,
-          teacher_name: teacherName,
-          teacher_id: schedule.teacher_id || schedule.teacher?.id,
-          center_name: schedule.center_name || '-',
-          center_id: schedule.center_id,
-          room_id: schedule.room_id || schedule.room?.id,
-          room_name: roomName,
+        // 轉換為週曆格式
+        const scheduleItem = {
+          id: item.id,
+          key: `${item.rule_id}-${item.date}-${item.start_time}-${resource.type}-${resource.id}`,
+          offering_name: item.offering_name,
+          teacher_name: item.teacher_name,
+          teacher_id: item.teacher_id,
+          center_name: '-',
+          center_id: 0,
+          room_id: item.room_id,
+          room_name: item.room_name,
           weekday: weekday,
-          start_time: startTime,
-          end_time: endTime,
-          start_hour: startHour,
-          start_minute: startMinute,
-          duration_minutes: durationMinutes,
-          date: dateString,
-          has_exception: schedule.has_exception || false,
-          exception_type: schedule.exception_type || null,
-          exception_info: schedule.exception_info || null,
-          rule: schedule.rule || null,
-          offering_id: schedule.offering_id || schedule.offering?.id,
-          effective_range: schedule.effective_range || null,
-          rule_id: schedule.rule_id || schedule.id, // 添加 rule_id 欄位
+          start_time: item.start_time,
+          end_time: item.end_time,
+          start_hour: item.start_hour,
+          start_minute: item.start_minute,
+          duration_minutes: item.duration,
+          date: item.date,
+          has_exception: item.has_exception,
+          exception_type: item.exception_type,
+          exception_info: null,
+          rule: null,
+          offering_id: item.offering_id,
+          effective_range: null,
+          rule_id: item.rule_id,
+          // 矩陣視圖新增欄位
+          _resourceType: resource.type,
+          _resourceId: resource.id,
+          _resourceName: resource.name,
+          _topOffset: item.top_offset,
+          _heightPercent: item.height_percent,
+          is_holiday: item.is_holiday,
+          is_suspended: item.is_suspended,
+          color: item.color,
         }
-      } catch (err) {
-        console.error('[ScheduleGrid] Error processing schedule at index', index, err)
-        return null
+
+        transformedSchedules.push(scheduleItem)
       }
-    }).filter((item): item is NonNullable<typeof item> => item !== null)
+    }
 
-    schedules.value = scheduleList
+    schedules.value = transformedSchedules
 
-    // 注意：slotWidth 現在由 WeekGrid 組件自己計算，不需要在這裡呼叫
+    // 直接使用 API 返回的 time_slots（0-24 代表 24 小時制）
+    if (matrixData.time_slots && matrixData.time_slots.length > 0) {
+      // API 返回的 time_slots 已經是排序好的連續時間段
+      // 確保只包含有效的 0-24 小時值
+      dynamicTimeSlots.value = matrixData.time_slots.filter(t => t >= 0 && t <= 24)
+    } else {
+      // 設定預設時間段（0-23 點，共 24 個時段）
+      dynamicTimeSlots.value = Array.from({ length: 24 }, (_, i) => i)
+    }
   } catch (error: any) {
     hasError.value = true
     errorMessage.value = error?.message || '無法載入課表資料，請稍後重試'
     schedules.value = []
+    // 設定預設時間段
+    dynamicTimeSlots.value = Array.from({ length: 13 }, (_, i) => i + 9)
   } finally {
     isLoading.value = false
   }
 }
 
+// 動態時間段（由矩陣視圖 API 回傳）
+const dynamicTimeSlots = ref<number[]>([])
+
+// ============================================
+// 取得排課資料
+// ============================================
+
+const fetchSchedules = async () => {
+  // Phase 2: 使用矩陣視圖 API
+  await fetchMatrixView()
+}
+
 // 重試載入
 const retryFetch = async () => {
   await fetchSchedules()
-}
-
-// ============================================
-// 計算工具函數
-// ============================================
-
-const calculateDurationMinutes = (startTime: string, endTime: string): number => {
-  const [startHour, startMinute] = startTime.split(':').map(Number)
-  const [endHour, endMinute] = endTime.split(':').map(Number)
-
-  const startMinutes = startHour * 60 + startMinute
-  let endMinutes = endHour * 60 + endMinute
-
-  if (endMinutes <= startMinutes) {
-    endMinutes += 24 * 60
-  }
-
-  return endMinutes - startMinutes
-}
-
-const formatTime = (hour: number): string => {
-  return `${hour.toString().padStart(2, '0')}:00`
 }
 
 // ============================================
