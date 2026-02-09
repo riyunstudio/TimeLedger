@@ -4,12 +4,12 @@ import "time"
 
 // CheckOverlapRequest 衝突檢查請求
 type CheckOverlapRequest struct {
-	TeacherID     *uint   `json:"teacher_id"`
-	RoomID        uint    `json:"room_id" binding:"required"`
-	StartTime     string  `json:"start_time" binding:"required"`
-	EndTime       string  `json:"end_time" binding:"required"`
-	Weekday       int     `json:"weekday"` // 可選，如果未提供則從 StartTime 推算
-	ExcludeRuleID *uint   `json:"exclude_rule_id"`
+	TeacherID     *uint  `json:"teacher_id"`
+	RoomID        uint   `json:"room_id" binding:"required"`
+	StartTime     string `json:"start_time" binding:"required"`
+	EndTime       string `json:"end_time" binding:"required"`
+	Weekday       int    `json:"weekday"` // 可選，如果未提供則從 StartTime 推算
+	ExcludeRuleID *uint  `json:"exclude_rule_id"`
 }
 
 // CheckBufferRequest 緩衝時間檢查請求
@@ -43,20 +43,20 @@ type ReviewExceptionRequest struct {
 
 // ExpandRulesRequest 展開規則請求
 type ExpandRulesRequest struct {
-	RuleIDs   []uint   `json:"rule_ids"`
-	StartDate string   `json:"start_date" binding:"required,date_format"`
-	EndDate   string   `json:"end_date" binding:"required,date_format"`
+	RuleIDs   []uint `json:"rule_ids"`
+	StartDate string `json:"start_date" binding:"required,date_format"`
+	EndDate   string `json:"end_date" binding:"required,date_format"`
 }
 
 // ValidateFullRequest 完整驗證請求
 type ValidateFullRequest struct {
-	TeacherID           *uint    `json:"teacher_id"`
-	RoomID              uint     `json:"room_id" binding:"required"`
-	CourseID            uint     `json:"course_id" binding:"required"`
-	StartTime           string   `json:"start_time" binding:"required,time_format"`
-	EndTime             string   `json:"end_time" binding:"required,time_format"`
-	ExcludeRuleID       *uint    `json:"exclude_rule_id"`
-	AllowBufferOverride bool     `json:"allow_buffer_override"`
+	TeacherID           *uint  `json:"teacher_id"`
+	RoomID              uint   `json:"room_id" binding:"required"`
+	CourseID            uint   `json:"course_id" binding:"required"`
+	StartTime           string `json:"start_time" binding:"required,time_format"`
+	EndTime             string `json:"end_time" binding:"required,time_format"`
+	ExcludeRuleID       *uint  `json:"exclude_rule_id"`
+	AllowBufferOverride bool   `json:"allow_buffer_override"`
 	// 以下欄位可選，如果未提供，系統會自動計算上一堂課的結束時間
 	PrevEndTime   *string `json:"prev_end_time"`
 	NextStartTime *string `json:"next_start_time"`
@@ -95,9 +95,9 @@ type UpdateRuleRequest struct {
 
 // DetectPhaseTransitionsRequest 偵測階段轉換請求
 type DetectPhaseTransitionsRequest struct {
-	OfferingID uint      `json:"offering_id" binding:"required"`
-	StartDate  string    `json:"start_date" binding:"required,date_format"`
-	EndDate    string    `json:"end_date" binding:"required,date_format"`
+	OfferingID uint   `json:"offering_id" binding:"required"`
+	StartDate  string `json:"start_date" binding:"required,date_format"`
+	EndDate    string `json:"end_date" binding:"required,date_format"`
 }
 
 // CheckRuleLockStatusRequest 檢查規則鎖定狀態請求
@@ -108,16 +108,16 @@ type CheckRuleLockStatusRequest struct {
 
 // CreateScheduleRuleFromOfferingRequest 從開課建立規則請求
 type CreateScheduleRuleFromOfferingRequest struct {
-	OfferingID  uint     `json:"offering_id" binding:"required"`
-	RoomID      uint     `json:"room_id" binding:"required"`
-	TeacherID   *uint    `json:"teacher_id"`
-	StartTime   string   `json:"start_time" binding:"required,time_format"`
-	EndTime     string   `json:"end_time" binding:"required,time_format"`
-	Weekdays    []int    `json:"weekdays" binding:"required,min=1"`
-	StartDate   string   `json:"start_date" binding:"required,date_format"`
-	EndDate     *string  `json:"end_date"`
-	Duration    int      `json:"duration" binding:"required"`
-	OverrideBuffer bool `json:"override_buffer"`
+	OfferingID     uint    `json:"offering_id" binding:"required"`
+	RoomID         uint    `json:"room_id" binding:"required"`
+	TeacherID      *uint   `json:"teacher_id"`
+	StartTime      string  `json:"start_time" binding:"required,time_format"`
+	EndTime        string  `json:"end_time" binding:"required,time_format"`
+	Weekdays       []int   `json:"weekdays" binding:"required,min=1"`
+	StartDate      string  `json:"start_date" binding:"required,date_format"`
+	EndDate        *string `json:"end_date"`
+	Duration       int     `json:"duration" binding:"required"`
+	OverrideBuffer bool    `json:"override_buffer"`
 }
 
 // BatchCreateRulesRequest 批量建立規則請求
@@ -127,6 +127,24 @@ type BatchCreateRulesRequest struct {
 
 // UpdateRulesBatchRequest 批量更新規則請求
 type UpdateRulesBatchRequest struct {
-	Updates []UpdateRuleRequest `json:"updates" binding:"required,min=1,dive"`
-	DeleteIDs []uint           `json:"delete_ids"`
+	Updates   []UpdateRuleRequest `json:"updates" binding:"required,min=1,dive"`
+	DeleteIDs []uint              `json:"delete_ids"`
+}
+
+// MatrixViewRequest 矩陣視圖請求
+type MatrixViewRequest struct {
+	StartDate        string `json:"start_date" binding:"required,date_format"`
+	EndDate          string `json:"end_date" binding:"required,date_format"`
+	Type             string `json:"type" binding:"required"` // teacher | room | all
+	IncludeSuspended *bool  `json:"include_suspended"`       // 是否包含停課，預設 true
+	ResourceIDs      []uint `json:"resource_ids"`            // 指定資源篩選
+}
+
+// MatrixViewQueryRequest 矩陣視圖查詢請求（Query Parameters）
+type MatrixViewQueryRequest struct {
+	StartDate        string `form:"start_date" binding:"required"`
+	EndDate          string `form:"end_date" binding:"required"`
+	Type             string `form:"type" binding:"required"` // teacher | room | all
+	IncludeSuspended string `form:"include_suspended"`       // true | false, default "true"
+	ResourceIDs      string `form:"resource_ids"`            // comma-separated IDs
 }

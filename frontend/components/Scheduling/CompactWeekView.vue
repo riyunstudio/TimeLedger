@@ -347,19 +347,9 @@ const getSchedulesForCell = (time: number, weekday: number) => {
     // 檢查時間（課程開始時間等於或早於當前時段，且結束時間晚於當前時段）
     const scheduleStartHour = schedule.start_hour
 
-    // 解析結束時間，判斷是否跨日
+    // 解析結束時間
     const [endHourStr, endMinuteStr] = (schedule.end_time || '23:59').split(':').map(Number)
-    let scheduleEndHour = endHourStr
-
-    // 跨日課程：結束時間早於開始時間，視為跨越到隔天
-    const isOvernight = endHourStr < scheduleStartHour ||
-                       (endHourStr === scheduleStartHour && endMinuteStr < schedule.start_minute)
-
-    if (isOvernight) {
-      // 跨日課程：顯示在當日格子的 00:00-時段
-      // 檢查 00:00 到 24:00 這個範圍內的時段
-      return time >= 0 && time < 24
-    }
+    const scheduleEndHour = endHourStr
 
     // 當日課程
     const scheduleEndMinute = endMinuteStr
@@ -398,20 +388,8 @@ const getScheduleCardStyle = (schedule: any, time: number) => {
   const minuteOffset = (schedule.start_minute / 60) * slotHeight
   const durationHeight = (schedule.duration_minutes / 60) * slotHeight
 
-  // 解析結束時間，判斷是否跨日
-  const [endHourStr, endMinuteStr] = (schedule.end_time || '23:59').split(':').map(Number)
-  const isOvernight = endHourStr < schedule.start_hour ||
-                     (endHourStr === schedule.start_hour && endMinuteStr < schedule.start_minute)
-
-  let top: number
-
-  if (isOvernight) {
-    // 跨日課程：從 00:00 開始
-    top = 0
-  } else {
-    // 當日課程：從開始時間計算
-    top = minuteOffset
-  }
+  // 從開始時間計算位置（後端已拆分跨日課程）
+  const top = minuteOffset
 
   // 重疊課程調整寬度和位置
   let left = '0.25rem'

@@ -194,6 +194,8 @@ func (s *Server) LoadRoutes() {
 		{http.MethodPost, "/api/v1/admin/expand-rules", s.action.scheduling.ExpandRules, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodPost, "/api/v1/admin/detect-phase-transitions", s.action.scheduling.DetectPhaseTransitions, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodPost, "/api/v1/admin/scheduling/check-rule-lock", s.action.scheduling.CheckRuleLockStatus, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		// Matrix View
+		{http.MethodGet, "/api/v1/admin/scheduling/matrix-view", s.action.scheduling.GetMatrixView, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 
 		// Admin - Rooms
 		{http.MethodGet, "/api/v1/admin/rooms", s.action.adminRoom.GetRooms, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},

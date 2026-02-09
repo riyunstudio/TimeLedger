@@ -1,6 +1,8 @@
 package controllers
 
 import (
+	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -831,4 +833,100 @@ func (ctl *SchedulingController) GetTodaySummary(ctx *gin.Context) {
 	}
 
 	helper.Success(summary)
+}
+
+// GetMatrixView 取得矩陣視圖資料
+// @Summary 取得矩陣視圖資料（BFF 模式：後端直接回傳前端可直接渲染的矩陣結構）
+// @Tags Admin - Scheduling
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param start_date query string true "開始日期 (YYYY-MM-DD)"
+// @Param end_date query string true "結束日期 (YYYY-MM-DD)"
+// @Param type query string true "查詢類型：teacher | room | all"
+// @Param include_suspended query string false "是否包含停課 (true/false，預設 true)"
+// @Param resource_ids query string false "指定資源 ID（逗號分隔）"
+// @Success 200 {object} global.ApiResponse{data=resources.MatrixViewResponse}
+// @Router /api/v1/admin/scheduling/matrix-view [get]
+func (ctl *SchedulingController) GetMatrixView(ctx *gin.Context) {
+	helper := NewContextHelper(ctx)
+
+	centerID := ctl.requireCenterID(helper)
+	if centerID == 0 {
+		return
+	}
+
+	// 解析查詢參數
+	startDate := ctx.Query("start_date")
+	endDate := ctx.Query("end_date")
+	viewType := ctx.Query("type")
+	includeSuspendedStr := ctx.Query("include_suspended")
+	resourceIDsStr := ctx.Query("resource_ids")
+
+	// 驗證必填參數
+	if startDate == "" {
+		helper.BadRequest("缺少必要參數：start_date")
+		return
+	}
+	if endDate == "" {
+		helper.BadRequest("缺少必要參數：end_date")
+		return
+	}
+	if viewType == "" {
+		helper.BadRequest("缺少必要參數：type")
+		return
+	}
+
+	// 驗證 type 參數
+	if viewType != "teacher" && viewType != "room" && viewType != "all" {
+		helper.BadRequest("無效的 type 參數，僅支援：teacher, room, all")
+		return
+	}
+
+	// 解析 include_suspended
+	includeSuspended := true
+	if includeSuspendedStr != "" && includeSuspendedStr != "true" {
+		if includeSuspendedStr == "false" {
+			includeSuspended = false
+		} else {
+			helper.BadRequest("無效的 include_suspended 參數，僅支援：true, false")
+			return
+		}
+	}
+
+	// 解析 resource_ids
+	var resourceIDs []uint
+	if resourceIDsStr != "" {
+		idStrings := strings.Split(resourceIDsStr, ",")
+		for _, idStr := range idStrings {
+			idStr = strings.TrimSpace(idStr)
+			if idStr == "" {
+				continue
+			}
+			id, err := strconv.ParseUint(idStr, 10, 32)
+			if err != nil {
+				helper.BadRequest(fmt.Sprintf("無效的資源 ID：%s", idStr))
+				return
+			}
+			resourceIDs = append(resourceIDs, uint(id))
+		}
+	}
+
+	// 構建請求
+	svcReq := &requests.MatrixViewRequest{
+		StartDate:        startDate,
+		EndDate:          endDate,
+		Type:             viewType,
+		IncludeSuspended: &includeSuspended,
+		ResourceIDs:      resourceIDs,
+	}
+
+	// 呼叫服務層
+	response, err := ctl.scheduleSvc.GetMatrixViewData(ctx.Request.Context(), centerID, svcReq)
+	if err != nil {
+		helper.InternalError(err.Error())
+		return
+	}
+
+	helper.Success(response)
 }

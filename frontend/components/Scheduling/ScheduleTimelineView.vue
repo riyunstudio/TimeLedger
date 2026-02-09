@@ -403,14 +403,8 @@ const getSessionStyle = (session: any) => {
   const [startHour, startMin] = session.start_time.split(':').map(Number)
   const [endHour, endMin] = session.end_time.split(':').map(Number)
 
-  // 處理跨日課程（結束時間早於開始時間）
-  let adjustedEndHour = endHour
-  let duration = (endHour - startHour) * 60 + (endMin - startMin)
-  if (endHour < startHour) {
-    // 跨日：結束時間加 24 小時
-    adjustedEndHour = endHour + 24
-    duration = (adjustedEndHour - startHour) * 60 + (endMin - startMin)
-  }
+  // 計算持續時間（分鐘）
+  const duration = (endHour - startHour) * 60 + (endMin - startMin)
 
   // 計算 top 位置（從 0:00 開始）
   const startOffset = startHour * 60 + startMin

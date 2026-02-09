@@ -662,3 +662,153 @@ export type CopyRulesResponse = ApiResponse<{
   /** 訊息 */
   message?: string
 }>
+
+// ==================== 矩陣視圖相關類型 (Phase 2) ====================
+
+/**
+ * 矩陣視圖日期範圍
+ */
+export interface MatrixDateRange {
+  /** 開始日期 (YYYY-MM-DD) */
+  start_date: string
+  /** 結束日期 (YYYY-MM-DD) */
+  end_date: string
+}
+
+/**
+ * 矩陣視圖項目（課程場次）
+ *
+ * 包含後端已計算好的 CSS 定位屬性
+ */
+export interface MatrixItem {
+  /** 項目 ID（展開後的課程場次 ID） */
+  id: number
+  /** 原始規則 ID */
+  rule_id: number
+  /** 課程名稱 */
+  title: string
+  /** 日期 (YYYY-MM-DD) */
+  date: string
+  /** 開始時間 (HH:mm) */
+  start_time: string
+  /** 結束時間 (HH:mm) */
+  end_time: string
+  /** 開始小時 (用於定位) */
+  start_hour: number
+  /** 開始分鐘 */
+  start_minute: number
+  /** 持續分鐘數 */
+  duration: number
+  /** CSS top 百分比 (0-100)，後端已計算 */
+  top_offset: number
+  /** CSS height 百分比 (相對於時段)，後端已計算 */
+  height_percent: number
+  /** 開課 ID */
+  offering_id: number
+  /** 開課名稱 */
+  offering_name: string
+  /** 教師 ID */
+  teacher_id?: number
+  /** 教師名稱 */
+  teacher_name: string
+  /** 教室 ID */
+  room_id: number
+  /** 教室名稱 */
+  room_name: string
+  /** 是否為假日 */
+  is_holiday: boolean
+  /** 是否有例外 */
+  has_exception: boolean
+  /** 例外類型 */
+  exception_type?: string
+  /** 是否為停課 */
+  is_suspended: boolean
+  /** 課程顏色 */
+  color?: string
+}
+
+/**
+ * 矩陣視圖資源（老師或教室）
+ */
+export interface MatrixResource {
+  /** 資源 ID */
+  id: number
+  /** 資源名稱 */
+  name: string
+  /** 資源類型：'teacher' | 'room' */
+  type: 'teacher' | 'room'
+  /** 該資源的課程項目 */
+  items: MatrixItem[]
+}
+
+/**
+ * 矩陣視圖回應（BFF 模式）
+ *
+ * 後端直接回傳前端可直接渲染的矩陣結構
+ */
+export interface MatrixViewResponse {
+  /** 橫軸時段，如 [9, 10, 11, ...] */
+  time_slots: number[]
+  /** 縱軸資源（老師或教室） */
+  resources: MatrixResource[]
+  /** 日期範圍 */
+  date_range: MatrixDateRange
+}
+
+/**
+ * 矩陣視圖查詢參數
+ */
+export interface MatrixViewParams {
+  /** 開始日期 (YYYY-MM-DD) */
+  start_date: string
+  /** 結束日期 (YYYY-MM-DD) */
+  end_date: string
+  /** 查詢類型：'teacher' | 'room' | 'all' */
+  type: 'teacher' | 'room' | 'all'
+  /** 是否包含停課 (預設 true) */
+  include_suspended?: boolean
+  /** 指定資源 ID（逗號分隔，可選） */
+  resource_ids?: string
+}
+
+/**
+ * 矩陣視圖 API 回應類型
+ */
+export type MatrixViewApiResponse = ApiResponse<MatrixViewResponse>
+
+/**
+ * 矩陣視圖週曆卡片（用於前端渲染）
+ */
+export interface MatrixScheduleCard {
+  /** 唯一鍵值 */
+  key: string
+  /** 矩陣項目資料 */
+  item: MatrixItem
+  /** CSS 樣式（直接使用後端計算的值） */
+  style: {
+    top: string
+    height: string
+    left?: string
+    width?: string
+  }
+  /** 是否為重疊課程 */
+  isOverlapping: boolean
+  /** 重疊數量 */
+  overlapCount: number
+  /** 是否為重疊中的第一個 */
+  isFirstInOverlap: boolean
+}
+
+/**
+ * 矩陣視圖週曆格子
+ */
+export interface MatrixWeekCell {
+  /** 星期幾 (1-7，週一到週日) */
+  weekday: number
+  /** 日期 (YYYY-MM-DD) */
+  date: string
+  /** 該格子的課程列表 */
+  items: MatrixScheduleCard[]
+  /** 是否為假日 */
+  isHoliday: boolean
+}

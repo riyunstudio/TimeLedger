@@ -60,22 +60,22 @@ type DateRange struct {
 
 // ScheduleExceptionResponse 例外申請響應
 type ScheduleExceptionResponse struct {
-	ID           uint        `json:"id"`
-	CenterID     uint        `json:"center_id"`
-	RuleID       uint        `json:"rule_id"`
-	OriginalDate time.Time   `json:"original_date"`
+	ID            uint       `json:"id"`
+	CenterID      uint       `json:"center_id"`
+	RuleID        uint       `json:"rule_id"`
+	OriginalDate  time.Time  `json:"original_date"`
 	ExceptionType string     `json:"exception_type"`
-	Status       string      `json:"status"`
-	NewStartAt   *time.Time  `json:"new_start_at,omitempty"`
-	NewEndAt     *time.Time  `json:"new_end_at,omitempty"`
-	NewTeacherID *uint       `json:"new_teacher_id,omitempty"`
-	NewRoomID    *uint       `json:"new_room_id,omitempty"`
-	Reason       string      `json:"reason"`
-	ReviewNote   string      `json:"review_note,omitempty"`
-	ReviewedBy   *uint       `json:"reviewed_by,omitempty"`
-	ReviewedAt   *time.Time  `json:"reviewed_at,omitempty"`
-	CreatedAt    time.Time   `json:"created_at"`
-	UpdatedAt    time.Time   `json:"updated_at"`
+	Status        string     `json:"status"`
+	NewStartAt    *time.Time `json:"new_start_at,omitempty"`
+	NewEndAt      *time.Time `json:"new_end_at,omitempty"`
+	NewTeacherID  *uint      `json:"new_teacher_id,omitempty"`
+	NewRoomID     *uint      `json:"new_room_id,omitempty"`
+	Reason        string     `json:"reason"`
+	ReviewNote    string     `json:"review_note,omitempty"`
+	ReviewedBy    *uint      `json:"reviewed_by,omitempty"`
+	ReviewedAt    *time.Time `json:"reviewed_at,omitempty"`
+	CreatedAt     time.Time  `json:"created_at"`
+	UpdatedAt     time.Time  `json:"updated_at"`
 	// 關聯資料
 	Rule *ScheduleRuleResponse `json:"rule,omitempty"`
 }
@@ -94,13 +94,13 @@ type BufferCheckResultResponse struct {
 
 // BufferConflictResponse 緩衝衝突響應
 type BufferConflictResponse struct {
-	Type             string `json:"type"`
-	Message          string `json:"message"`
-	RequiredMinutes  int    `json:"required_minutes"`
-	DiffMinutes      int    `json:"diff_minutes"`
-	CanOverride      bool   `json:"can_override"`
-	PreviousEndTime  string `json:"previous_end_time,omitempty"`
-	NextStartTime    string `json:"next_start_time,omitempty"`
+	Type            string `json:"type"`
+	Message         string `json:"message"`
+	RequiredMinutes int    `json:"required_minutes"`
+	DiffMinutes     int    `json:"diff_minutes"`
+	CanOverride     bool   `json:"can_override"`
+	PreviousEndTime string `json:"previous_end_time,omitempty"`
+	NextStartTime   string `json:"next_start_time,omitempty"`
 }
 
 // FullValidationResultResponse 完整驗證結果響應
@@ -225,4 +225,65 @@ func (r *ScheduleResource) ToExceptionResponse(exception models.ScheduleExceptio
 		CreatedAt:     exception.CreatedAt,
 		UpdatedAt:     exception.UpdatedAt,
 	}
+}
+
+// =========================================
+// Matrix View Response Types
+// =========================================
+
+// MatrixViewResponse 矩陣視圖響應
+type MatrixViewResponse struct {
+	TimeSlots []int            `json:"time_slots"` // 橫軸時段，如 [9, 10, 11, ...]
+	Resources []MatrixResource `json:"resources"`  // 縱軸資源（老師或教室）
+	DateRange MatrixDateRange  `json:"date_range"`
+}
+
+// MatrixDateRange 日期範圍
+type MatrixDateRange struct {
+	StartDate string `json:"start_date"` // YYYY-MM-DD
+	EndDate   string `json:"end_date"`   // YYYY-MM-DD
+}
+
+// MatrixResource 矩陣資源（老師或教室）
+type MatrixResource struct {
+	ID    uint         `json:"id"`
+	Name  string       `json:"name"`
+	Type  string       `json:"type"` // "teacher" | "room"
+	Items []MatrixItem `json:"items"`
+}
+
+// MatrixItem 矩陣項目（課程場次）
+type MatrixItem struct {
+	ID            uint    `json:"id"`
+	RuleID        uint    `json:"rule_id"`
+	Title         string  `json:"title"`          // 課程名稱
+	Date          string  `json:"date"`           // YYYY-MM-DD
+	StartTime     string  `json:"start_time"`     // HH:mm
+	EndTime       string  `json:"end_time"`       // HH:mm
+	StartHour     int     `json:"start_hour"`     // 開始小時 (用於 CSS 定位)
+	StartMinute   int     `json:"start_minute"`   // 開始分鐘
+	Duration      int     `json:"duration"`       // 持續分鐘數
+	TopOffset     float64 `json:"top_offset"`     // CSS top 百分比 (0-100)
+	HeightPercent float64 `json:"height_percent"` // CSS height 百分比 (相對於時段)
+	OfferingID    uint    `json:"offering_id"`
+	OfferingName  string  `json:"offering_name"`
+	TeacherID     *uint   `json:"teacher_id,omitempty"`
+	TeacherName   string  `json:"teacher_name"`
+	RoomID        uint    `json:"room_id"`
+	RoomName      string  `json:"room_name"`
+	IsHoliday     bool    `json:"is_holiday"`
+	HasException  bool    `json:"has_exception"`
+	ExceptionType string  `json:"exception_type,omitempty"`
+	IsSuspended   bool    `json:"is_suspended"`    // 是否為停課
+	Color         string  `json:"color,omitempty"` // 課程顏色
+}
+
+// MatrixViewResource 矩陣視圖資源轉換
+type MatrixViewResource struct {
+	app *app.App
+}
+
+// NewMatrixViewResource 建立 MatrixViewResource
+func NewMatrixViewResource(app *app.App) *MatrixViewResource {
+	return &MatrixViewResource{app: app}
 }

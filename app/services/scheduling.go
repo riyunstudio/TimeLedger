@@ -3,10 +3,14 @@ package services
 import (
 	"context"
 	"fmt"
+	"sort"
+	"strconv"
+	"strings"
 	"time"
 	"timeLedger/app"
 	"timeLedger/app/models"
 	"timeLedger/app/repositories"
+	"timeLedger/app/requests"
 	"timeLedger/app/resources"
 	"timeLedger/global/errInfos"
 	"timeLedger/libs"
@@ -48,6 +52,9 @@ type ScheduleServiceInterface interface {
 	InvalidateCenterScheduleCache(ctx context.Context, centerID uint) error
 	InvalidateTeacherScheduleCache(ctx context.Context, teacherID, centerID uint) error
 	InvalidateExceptionRelatedCache(ctx context.Context, centerID uint, exception *models.ScheduleException) error
+
+	// 矩陣視圖
+	GetMatrixViewData(ctx context.Context, centerID uint, req *requests.MatrixViewRequest) (*resources.MatrixViewResponse, error)
 }
 
 // CreateScheduleRuleRequest 建立排課規則請求
@@ -185,6 +192,7 @@ type ScheduleService struct {
 	offeringRepo      *repositories.OfferingRepository
 	courseRepo        *repositories.CourseRepository
 	centerRepo        *repositories.CenterRepository
+	roomRepo          *repositories.RoomRepository
 	auditLogRepo      *repositories.AuditLogRepository
 	holidayRepo       *repositories.CenterHolidayRepository
 	teacherRepo       *repositories.TeacherRepository
@@ -206,6 +214,7 @@ func NewScheduleService(app *app.App) ScheduleServiceInterface {
 		offeringRepo:      repositories.NewOfferingRepository(app),
 		courseRepo:        repositories.NewCourseRepository(app),
 		centerRepo:        repositories.NewCenterRepository(app),
+		roomRepo:          repositories.NewRoomRepository(app),
 		auditLogRepo:      repositories.NewAuditLogRepository(app),
 		holidayRepo:       repositories.NewCenterHolidayRepository(app),
 		teacherRepo:       repositories.NewTeacherRepository(app),
@@ -1299,4 +1308,399 @@ func (r *ScheduleResource) ToRuleResponse(rule models.ScheduleRule) *resources.S
 		EffectiveFrom: rule.EffectiveRange.StartDate.Format("2006-01-02"),
 		EffectiveTo:   rule.EffectiveRange.EndDate.Format("2006-01-02"),
 	}
+}
+
+// =========================================
+// Matrix View Service Implementation
+// =========================================
+
+// GetMatrixViewData 取得矩陣視圖資料
+// 實現 BFF 模式：後端直接回傳前端可直接渲染的矩陣結構
+func (s *ScheduleService) GetMatrixViewData(ctx context.Context, centerID uint, req *requests.MatrixViewRequest) (*resources.MatrixViewResponse, error) {
+	// 解析日期
+	loc := libs.GetTaiwanLocation()
+	startDate, err := time.ParseInLocation("2006-01-02", req.StartDate, loc)
+	if err != nil {
+		return nil, fmt.Errorf("invalid start_date format: %w", err)
+	}
+	endDate, err := time.ParseInLocation("2006-01-02", req.EndDate, loc)
+	if err != nil {
+		return nil, fmt.Errorf("invalid end_date format: %w", err)
+	}
+
+	// 取得展開後的課表
+	expandReq := &ExpandRulesRequest{
+		StartDate: startDate,
+		EndDate:   endDate,
+	}
+	expandedSchedules, err := s.ExpandRules(ctx, centerID, expandReq)
+	if err != nil {
+		return nil, fmt.Errorf("failed to expand rules: %w", err)
+	}
+
+	// 取得資源列表
+	teacherMap := make(map[uint]*models.Teacher)
+	roomMap := make(map[uint]*models.Room)
+
+	// 收集所有資源 ID
+	teacherIDs := make([]uint, 0)
+	roomIDs := make([]uint, 0)
+	for _, schedule := range expandedSchedules {
+		if schedule.TeacherID != nil && *schedule.TeacherID > 0 {
+			if _, exists := teacherMap[*schedule.TeacherID]; !exists {
+				teacherIDs = append(teacherIDs, *schedule.TeacherID)
+			}
+		}
+		if schedule.RoomID > 0 {
+			if _, exists := roomMap[schedule.RoomID]; !exists {
+				roomIDs = append(roomIDs, schedule.RoomID)
+			}
+		}
+	}
+
+	// 取得老師資料
+	if len(teacherIDs) > 0 {
+		teachers, _ := s.teacherRepo.BatchGetByIDs(ctx, teacherIDs)
+		for _, t := range teachers {
+			teacherMap[t.ID] = &t
+		}
+	}
+
+	// 取得教室資料
+	if len(roomIDs) > 0 {
+		// 取得該中心的所有教室，然後過濾
+		allRooms, _ := s.roomRepo.ListByCenterID(ctx, centerID)
+		for _, r := range allRooms {
+			// 只保留在 roomIDs 中的教室
+			for _, id := range roomIDs {
+				if r.ID == id {
+					roomMap[r.ID] = &r
+					break
+				}
+			}
+		}
+	}
+
+	// 解析 include_suspended 參數
+	includeSuspended := true
+	if req.IncludeSuspended != nil {
+		includeSuspended = *req.IncludeSuspended
+	}
+
+	// 解析 resource_ids 參數
+	filterResourceIDs := make(map[uint]bool)
+	if len(req.ResourceIDs) > 0 {
+		for _, id := range req.ResourceIDs {
+			filterResourceIDs[id] = true
+		}
+	}
+
+	// 根據類型分組資源
+	var matrixResources []resources.MatrixResource
+	var usedResourceIDs map[uint]bool
+
+	if req.Type == "teacher" || req.Type == "all" {
+		matrixResources, usedResourceIDs = s.groupByTeacher(expandedSchedules, teacherMap, roomMap, filterResourceIDs, includeSuspended)
+	}
+	if req.Type == "room" || req.Type == "all" {
+		roomResources, _ := s.groupByRoom(expandedSchedules, teacherMap, roomMap, filterResourceIDs, includeSuspended)
+		// 如果是 all 類型，過濾掉已重複的資源
+		if req.Type == "all" && usedResourceIDs != nil {
+			var filteredRoomResources []resources.MatrixResource
+			for _, r := range roomResources {
+				if req.Type == "all" {
+					// 檢查是否已在 teacher 中出現
+					isDuplicate := false
+					for _, mr := range matrixResources {
+						if mr.ID == r.ID && mr.Type == r.Type {
+							isDuplicate = true
+							break
+						}
+					}
+					if !isDuplicate {
+						filteredRoomResources = append(filteredRoomResources, r)
+					}
+				}
+			}
+			matrixResources = append(matrixResources, filteredRoomResources...)
+		} else {
+			matrixResources = append(matrixResources, roomResources...)
+		}
+	}
+
+	// 生成 time_slots
+	timeSlots := s.generateTimeSlots(expandedSchedules)
+
+	// 構建響應
+	response := &resources.MatrixViewResponse{
+		TimeSlots: timeSlots,
+		Resources: matrixResources,
+		DateRange: resources.MatrixDateRange{
+			StartDate: req.StartDate,
+			EndDate:   req.EndDate,
+		},
+	}
+
+	return response, nil
+}
+
+// groupByTeacher 將課表按老師分組
+func (s *ScheduleService) groupByTeacher(
+	expandedSchedules []ExpandedSchedule,
+	teacherMap map[uint]*models.Teacher,
+	roomMap map[uint]*models.Room,
+	filterResourceIDs map[uint]bool,
+	includeSuspended bool,
+) ([]resources.MatrixResource, map[uint]bool) {
+	usedResourceIDs := make(map[uint]bool)
+	teacherSchedules := make(map[uint][]ExpandedSchedule)
+
+	for _, schedule := range expandedSchedules {
+		if schedule.TeacherID == nil || *schedule.TeacherID == 0 {
+			continue
+		}
+
+		// 過濾資源
+		if len(filterResourceIDs) > 0 && !filterResourceIDs[*schedule.TeacherID] {
+			continue
+		}
+
+		// 過濾停課
+		if !includeSuspended && schedule.IsHoliday {
+			continue
+		}
+
+		teacherSchedules[*schedule.TeacherID] = append(teacherSchedules[*schedule.TeacherID], schedule)
+		usedResourceIDs[*schedule.TeacherID] = true
+	}
+
+	var matrixResources []resources.MatrixResource
+	for teacherID, schedules := range teacherSchedules {
+		teacher := teacherMap[teacherID]
+		name := "未安排老師"
+		if teacher != nil && teacher.Name != "" {
+			name = teacher.Name
+		}
+
+		items := s.buildMatrixItems(schedules, teacherMap, roomMap)
+
+		matrixResources = append(matrixResources, resources.MatrixResource{
+			ID:    teacherID,
+			Name:  name,
+			Type:  "teacher",
+			Items: items,
+		})
+	}
+
+	return matrixResources, usedResourceIDs
+}
+
+// groupByRoom 將課表按教室分組
+func (s *ScheduleService) groupByRoom(
+	expandedSchedules []ExpandedSchedule,
+	teacherMap map[uint]*models.Teacher,
+	roomMap map[uint]*models.Room,
+	filterResourceIDs map[uint]bool,
+	includeSuspended bool,
+) ([]resources.MatrixResource, map[uint]bool) {
+	usedResourceIDs := make(map[uint]bool)
+	roomSchedules := make(map[uint][]ExpandedSchedule)
+
+	for _, schedule := range expandedSchedules {
+		if schedule.RoomID == 0 {
+			continue
+		}
+
+		// 過濾資源
+		if len(filterResourceIDs) > 0 && !filterResourceIDs[schedule.RoomID] {
+			continue
+		}
+
+		// 過濾停課
+		if !includeSuspended && schedule.IsHoliday {
+			continue
+		}
+
+		roomSchedules[schedule.RoomID] = append(roomSchedules[schedule.RoomID], schedule)
+		usedResourceIDs[schedule.RoomID] = true
+	}
+
+	var matrixResources []resources.MatrixResource
+	for roomID, schedules := range roomSchedules {
+		room := roomMap[roomID]
+		name := "未安排教室"
+		if room != nil && room.Name != "" {
+			name = room.Name
+		}
+
+		items := s.buildMatrixItems(schedules, teacherMap, roomMap)
+
+		matrixResources = append(matrixResources, resources.MatrixResource{
+			ID:    roomID,
+			Name:  name,
+			Type:  "room",
+			Items: items,
+		})
+	}
+
+	return matrixResources, usedResourceIDs
+}
+
+// buildMatrixItems 構建矩陣項目列表
+func (s *ScheduleService) buildMatrixItems(
+	schedules []ExpandedSchedule,
+	teacherMap map[uint]*models.Teacher,
+	roomMap map[uint]*models.Room,
+) []resources.MatrixItem {
+	items := make([]resources.MatrixItem, 0, len(schedules))
+
+	for _, schedule := range schedules {
+		// 解析時間
+		startHour, startMinute := s.parseTimeToHourMinute(schedule.StartTime)
+		_, _ = s.parseTimeToHourMinute(schedule.EndTime)
+
+		// 計算持續分鐘數
+		duration := s.calculateDuration(schedule.StartTime, schedule.EndTime)
+
+		// 計算 CSS 位置和高度
+		topOffset := float64(startHour*60+startMinute) / 1440 * 100 // 一天 1440 分鐘
+		heightPercent := float64(duration) / 1440 * 100
+
+		// 取得老師名稱
+		teacherName := "未安排老師"
+		if schedule.TeacherID != nil && *schedule.TeacherID > 0 {
+			if teacher, exists := teacherMap[*schedule.TeacherID]; exists {
+				teacherName = teacher.Name
+			}
+		}
+
+		// 取得教室名稱
+		roomName := "未安排教室"
+		if schedule.RoomID > 0 {
+			if room, exists := roomMap[schedule.RoomID]; exists {
+				roomName = room.Name
+			}
+		}
+
+		// 判斷是否為停課
+		isSuspended := schedule.IsHoliday
+
+		item := resources.MatrixItem{
+			ID:            schedule.RuleID,
+			RuleID:        schedule.RuleID,
+			Title:         schedule.OfferingName,
+			Date:          schedule.Date.Format("2006-01-02"),
+			StartTime:     schedule.StartTime,
+			EndTime:       schedule.EndTime,
+			StartHour:     startHour,
+			StartMinute:   startMinute,
+			Duration:      duration,
+			TopOffset:     topOffset,
+			HeightPercent: heightPercent,
+			OfferingID:    schedule.OfferingID,
+			OfferingName:  schedule.OfferingName,
+			TeacherID:     schedule.TeacherID,
+			TeacherName:   teacherName,
+			RoomID:        schedule.RoomID,
+			RoomName:      roomName,
+			IsHoliday:     schedule.IsHoliday,
+			HasException:  schedule.HasException,
+			IsSuspended:   isSuspended,
+		}
+
+		items = append(items, item)
+	}
+
+	return items
+}
+
+// parseTimeToHourMinute 解析時間字串為小時和分鐘
+func (s *ScheduleService) parseTimeToHourMinute(timeStr string) (int, int) {
+	parts := strings.Split(timeStr, ":")
+	if len(parts) < 2 {
+		return 0, 0
+	}
+	hour, _ := strconv.Atoi(parts[0])
+	minute, _ := strconv.Atoi(parts[1])
+	return hour, minute
+}
+
+// calculateDuration 計算持續分鐘數
+func (s *ScheduleService) calculateDuration(startTime, endTime string) int {
+	startParts := strings.Split(startTime, ":")
+	endParts := strings.Split(endTime, ":")
+
+	if len(startParts) < 2 || len(endParts) < 2 {
+		return 60 // 預設 60 分鐘
+	}
+
+	startHour, _ := strconv.Atoi(startParts[0])
+	startMinute, _ := strconv.Atoi(startParts[1])
+	endHour, _ := strconv.Atoi(endParts[0])
+	endMinute, _ := strconv.Atoi(endParts[1])
+
+	startTotal := startHour*60 + startMinute
+	endTotal := endHour*60 + endMinute
+
+	// 跨日處理
+	if endTotal <= startTotal {
+		endTotal += 24 * 60
+	}
+
+	return endTotal - startTotal
+}
+
+// generateTimeSlots 生成時段列表
+// 根據課表資料動態生成業務時段
+func (s *ScheduleService) generateTimeSlots(schedules []ExpandedSchedule) []int {
+	if len(schedules) == 0 {
+		// 預設返回常用時段 (9:00 - 22:00)
+		slots := make([]int, 0, 14)
+		for i := 9; i <= 22; i++ {
+			slots = append(slots, i)
+		}
+		return slots
+	}
+
+	// 找出所有使用的時段
+	hourSet := make(map[int]bool)
+	for _, schedule := range schedules {
+		startHour, _ := s.parseTimeToHourMinute(schedule.StartTime)
+		endHour, _ := s.parseTimeToHourMinute(schedule.EndTime)
+
+		hourSet[startHour] = true
+		// 包含結束時段的前一個小時
+		if endHour > startHour {
+			hourSet[endHour-1] = true
+		}
+	}
+
+	// 轉換為排序後的列表
+	hours := make([]int, 0, len(hourSet))
+	for hour := range hourSet {
+		hours = append(hours, hour)
+	}
+	sort.Ints(hours)
+
+	// 補全連續時段
+	var result []int
+	for i := 0; i < len(hours); i++ {
+		result = append(result, hours[i])
+		// 如果下一個時段不是連續的，補中間的時段
+		if i < len(hours)-1 && hours[i+1] > hours[i]+1 {
+			for h := hours[i] + 1; h < hours[i+1]; h++ {
+				result = append(result, h)
+			}
+		}
+	}
+
+	// 確保範圍合理（最小 9 點，最大 23 點）
+	if len(result) > 0 && result[0] > 9 {
+		// 不需要在前面補時段
+	}
+	if len(result) > 0 && result[len(result)-1] < 23 {
+		// 不需要在後面補時段
+	}
+
+	return result
 }
