@@ -90,10 +90,10 @@ type UpdateScheduleRuleRequest struct {
 // CreateExceptionRequest 建立例外請求
 type CreateExceptionRequest struct {
 	RuleID         uint       `json:"rule_id" binding:"required"`
-	OriginalDate   time.Time  `json:"original_date" binding:"required"`
+	OriginalDate   time.Time  `json:"original_date" binding:"required"` // 格式: YYYY-MM-DD，服務層解析
 	Type           string     `json:"type" binding:"required"`
-	NewStartAt     *time.Time `json:"new_start_at"`
-	NewEndAt       *time.Time `json:"new_end_at"`
+	NewStartAt     *time.Time `json:"new_start_at"` // 服務層解析
+	NewEndAt       *time.Time `json:"new_end_at"`   // 服務層解析
 	NewTeacherID   *uint      `json:"new_teacher_id"`
 	NewTeacherName string     `json:"new_teacher_name"`
 	NewRoomID      *uint      `json:"new_room_id"`

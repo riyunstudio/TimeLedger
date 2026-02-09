@@ -1,7 +1,5 @@
 package requests
 
-import "time"
-
 // CheckOverlapRequest 衝突檢查請求
 type CheckOverlapRequest struct {
 	TeacherID     *uint  `json:"teacher_id"`
@@ -24,10 +22,10 @@ type CheckBufferRequest struct {
 // CreateExceptionRequest 建立例外請求
 type CreateExceptionRequest struct {
 	RuleID         uint       `json:"rule_id" binding:"required"`
-	OriginalDate   time.Time  `json:"original_date" binding:"required"`
+	OriginalDate   string     `json:"original_date" binding:"required"` // 格式: YYYY-MM-DD
 	Type           string     `json:"type" binding:"required"`
-	NewStartAt     *time.Time `json:"new_start_at"`
-	NewEndAt       *time.Time `json:"new_end_at"`
+	NewStartAt     *string    `json:"new_start_at"` // 格式: YYYY-MM-DD HH:mm:ss
+	NewEndAt       *string    `json:"new_end_at"`   // 格式: YYYY-MM-DD HH:mm:ss
 	NewTeacherID   *uint      `json:"new_teacher_id"`
 	NewTeacherName string     `json:"new_teacher_name"`
 	NewRoomID      *uint      `json:"new_room_id"`
@@ -102,8 +100,8 @@ type DetectPhaseTransitionsRequest struct {
 
 // CheckRuleLockStatusRequest 檢查規則鎖定狀態請求
 type CheckRuleLockStatusRequest struct {
-	RuleID        uint      `json:"rule_id" binding:"required"`
-	ExceptionDate time.Time `json:"exception_date" binding:"required"`
+	RuleID        uint   `json:"rule_id" binding:"required"`
+	ExceptionDate string `json:"exception_date" binding:"required"` // 格式: YYYY-MM-DD
 }
 
 // CreateScheduleRuleFromOfferingRequest 從開課建立規則請求

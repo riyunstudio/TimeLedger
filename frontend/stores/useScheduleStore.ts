@@ -216,7 +216,6 @@ export const useScheduleStore = defineStore('schedule', () => {
   }
 
   const createException = async (data: {
-    center_id: number
     rule_id: number
     original_date: string
     type: 'CANCEL' | 'RESCHEDULE' | 'REPLACE_TEACHER'

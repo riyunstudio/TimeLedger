@@ -244,20 +244,24 @@ const displayScheduleRules = computed(() => {
   const propRules = props.scheduleRules
 
   // 判斷 props.scheduleRules 是否有有效資料
-  // 需要處理 ref 物件的情況（Vue 3 中 props 不會自動解包 ref）
   let hasPropRules = false
   if (propRules) {
-    if (Array.isArray(propRules)) {
-      hasPropRules = propRules.length > 0
-    } else if (typeof propRules === 'object' && 'value' in propRules) {
+    // 檢查是否為 ref 物件
+    if ('value' in propRules) {
       // 是 ref 物件
-      hasPropRules = propRules.value && propRules.value.length > 0
+      const refValue = (propRules as { value?: ScheduleRuleData[] }).value
+      hasPropRules = refValue && refValue.length > 0
+    } else if (Array.isArray(propRules)) {
+      hasPropRules = propRules.length > 0
     }
   }
 
   if (hasPropRules) {
     // 如果 props 有資料，返回 props 的值
-    return Array.isArray(propRules) ? propRules : (propRules.value || [])
+    if ('value' in propRules) {
+      return (propRules as { value: ScheduleRuleData[] }).value || []
+    }
+    return propRules
   }
 
   // 否則使用本地的資料
@@ -290,13 +294,10 @@ const formatRuleDisplay = (rule: ScheduleRuleData): string => {
 const handleSubmit = async () => {
   loading.value = true
   try {
-    // 確保日期格式正確 (ISO 8601 台灣時區)
-    const originalDate = form.original_date
-      ? formatDateToString(new Date(form.original_date))
-      : ''
+    // original_date 已經是 YYYY-MM-DD 格式（來自 HTML date input），直接使用
+    const originalDate = form.original_date || ''
 
     const submitData: any = {
-      center_id: form.center_id,
       rule_id: form.rule_id,
       original_date: originalDate,
       type: form.type,
@@ -305,11 +306,25 @@ const handleSubmit = async () => {
 
     // 根據類型添加相應欄位
     if (form.type === 'RESCHEDULE') {
+      // new_start_at 和 new_end_at 需要 YYYY-MM-DD HH:mm:ss 格式
+      // datetime-local 輸入格式為 YH:mm，需要轉YYY-MM-DDTH換
       if (form.new_start_at) {
-        submitData.new_start_at = formatDateToString(new Date(form.new_start_at))
+        const dt = new Date(form.new_start_at)
+        const year = dt.getFullYear()
+        const month = String(dt.getMonth() + 1).padStart(2, '0')
+        const day = String(dt.getDate()).padStart(2, '0')
+        const hours = String(dt.getHours()).padStart(2, '0')
+        const minutes = String(dt.getMinutes()).padStart(2, '0')
+        submitData.new_start_at = `${year}-${month}-${day} ${hours}:${minutes}:00`
       }
       if (form.new_end_at) {
-        submitData.new_end_at = formatDateToString(new Date(form.new_end_at))
+        const dt = new Date(form.new_end_at)
+        const year = dt.getFullYear()
+        const month = String(dt.getMonth() + 1).padStart(2, '0')
+        const day = String(dt.getDate()).padStart(2, '0')
+        const hours = String(dt.getHours()).padStart(2, '0')
+        const minutes = String(dt.getMinutes()).padStart(2, '0')
+        submitData.new_end_at = `${year}-${month}-${day} ${hours}:${minutes}:00`
       }
     } else if (form.type === 'REPLACE_TEACHER') {
       // 如果選擇手動輸入代課老師，才傳送名字

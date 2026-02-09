@@ -758,7 +758,6 @@ const processSuspend = async (mode: 'SINGLE' | 'FUTURE') => {
     if (mode === 'SINGLE') {
       // 單次停課：建立 Exception 取消該場次
       await api.post('/admin/scheduling/exceptions', {
-        center_id: selectedSchedule.value.center_id,
         rule_id: selectedSchedule.value.id,
         original_date: selectedSchedule.value.date,
         type: 'CANCEL',

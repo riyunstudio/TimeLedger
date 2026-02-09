@@ -587,12 +587,39 @@ func (ctl *SchedulingController) CreateException(ctx *gin.Context) {
 		return
 	}
 
+	// 解析日期字串為 time.Time（格式：YYYY-MM-DD）
+	originalDate, err := time.Parse("2006-01-02", req.OriginalDate)
+	if err != nil {
+		helper.BadRequest("無效的 original_date 格式，請使用 YYYY-MM-DD")
+		return
+	}
+
+	// 解析新時段的時間字串（如果有提供）
+	var newStartAt, newEndAt *time.Time
+	if req.NewStartAt != nil {
+		startAt, err := time.Parse("2006-01-02 15:04:05", *req.NewStartAt)
+		if err != nil {
+			helper.BadRequest("無效的 new_start_at 格式，請使用 YYYY-MM-DD HH:mm:ss")
+			return
+		}
+		newStartAt = &startAt
+	}
+	if req.NewEndAt != nil {
+		endAt, err := time.Parse("2006-01-02 15:04:05", *req.NewEndAt)
+		if err != nil {
+			helper.BadRequest("無效的 new_end_at 格式，請使用 YYYY-MM-DD HH:mm:ss")
+			return
+		}
+		newEndAt = &endAt
+	}
+
+	// 建立 Service 層的請求結構
 	svcReq := &services.CreateExceptionRequest{
 		RuleID:         req.RuleID,
-		OriginalDate:   req.OriginalDate,
+		OriginalDate:   originalDate,
 		Type:           req.Type,
-		NewStartAt:     req.NewStartAt,
-		NewEndAt:       req.NewEndAt,
+		NewStartAt:     newStartAt,
+		NewEndAt:       newEndAt,
 		NewTeacherID:   req.NewTeacherID,
 		NewTeacherName: req.NewTeacherName,
 		NewRoomID:      req.NewRoomID,
@@ -801,7 +828,14 @@ func (ctl *SchedulingController) CheckRuleLockStatus(ctx *gin.Context) {
 		return
 	}
 
-	status, err := ctl.scheduleSvc.CheckRuleLockStatus(ctx.Request.Context(), centerID, req.RuleID, req.ExceptionDate)
+	// 解析日期字串為 time.Time（格式：YYYY-MM-DD）
+	exceptionDate, err := time.Parse("2006-01-02", req.ExceptionDate)
+	if err != nil {
+		helper.BadRequest("無效的 exception_date 格式，請使用 YYYY-MM-DD")
+		return
+	}
+
+	status, err := ctl.scheduleSvc.CheckRuleLockStatus(ctx.Request.Context(), centerID, req.RuleID, exceptionDate)
 	if err != nil {
 		helper.InternalError(err.Error())
 		return
