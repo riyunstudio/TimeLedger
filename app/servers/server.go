@@ -39,7 +39,7 @@ func Initialize(app *app.App) *Server {
 	}
 	config.AllowMethods = []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"}
 	config.AllowHeaders = []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Requested-With", "Access-Control-Request-Method", "Access-Control-Request-Headers"}
-	config.ExposeHeaders = []string{"Content-Length", "Authorization"}
+	config.ExposeHeaders = []string{"Content-Length", "Content-Disposition", "Authorization"}
 	config.AllowCredentials = true
 	config.AllowOriginFunc = func(origin string) bool {
 		return true

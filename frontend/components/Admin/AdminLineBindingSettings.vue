@@ -213,22 +213,21 @@ const initBinding = async () => {
 
 const fetchQRCode = async (code: string) => {
   try {
-    // 調試：記錄 API URL
     console.log('Fetching QR Code from:', `/admin/me/line/qrcode-with-code?code=${code}`)
 
-    // 使用 useApi.raw() 獲取二進制資料（QR Code 圖片）
-    const blob = await api.raw<Blob>(`/admin/me/line/qrcode-with-code?code=${code}`)
+    // 取得 base64 格式的 QR Code
+    const response = await api.get<{ image: string }>(`/admin/me/line/qrcode-with-code?code=${code}`)
 
-    console.log('Blob type:', blob.type)
-    console.log('Blob size:', blob.size)
+    console.log('Response received:', response)
 
-    if (blob.size === 0) {
-      console.error('Received empty blob')
-      error('QR Code 生成失敗：收到的資料為空')
-      return
+    if (response && response.image) {
+      // 直接使用 data URL（已經是完整的 data:image/png;base64,... 格式）
+      qrCodeUrl.value = response.image
+      console.log('QR Code loaded successfully')
+    } else {
+      console.error('Invalid response format:', response)
+      error('QR Code 資料格式錯誤')
     }
-
-    qrCodeUrl.value = URL.createObjectURL(blob)
   } catch (err: any) {
     console.error('Failed to fetch QR Code:', err)
     error(err.message || '取得 QR Code 失敗，請稍後再試')

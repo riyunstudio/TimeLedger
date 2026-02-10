@@ -531,16 +531,30 @@ export const useApi = () => {
     schema?: ZodSchema<T>
   ): Promise<T> {
     const url = `${apiBase}${endpoint}`
-    const headers = buildStandardHeaders()
+    // 取得二進制資料時需要 Authorization 和 Cache-Control header
+    const headers = {
+      ...getAuthHeader(),
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+    }
 
     try {
       const response = await fetch(url, { headers })
+      // 先處理統一的 401
       await checkResponse(response)
+
+      // 確保回應是成功的，否則交給 parseResponse 處理報錯邏輯（解析 JSON 錯誤）
+      if (!response.ok) {
+        return await parseResponse<T>(response, false)
+      }
+
       const result = await parseResponse<T>(response, true)
 
       // Schema 驗證 (開發環境專用)
       if (schema) {
         const validation = validateWithSchema(result, schema, `RAW ${endpoint}`)
+        // 驗證失敗時仍回傳原始資料，避免影響功能
         return validation.success ? validation.data : result
       }
 

@@ -8,6 +8,10 @@ export default defineNuxtConfig({
     routeRules: {
       '/api/**': {
         proxy: process.env.API_TARGET || 'http://localhost:8888/api/**',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+        },
       },
     },
   },

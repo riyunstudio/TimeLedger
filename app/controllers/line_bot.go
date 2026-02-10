@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -414,7 +415,6 @@ func (c *LineBotController) sendScheduleMessage(gctx *gin.Context, replyToken st
 				"type": "text",
 				"text": fmt.Sprintf("📅 %s (%s)\n\n"+
 
-
 					"目前沒有課表。\n\n"+
 					"💡 您可以透過 LIFF 頁面查看完整課表。", dateStr, weekdayStr),
 			}
@@ -591,6 +591,10 @@ func (c *LineBotController) GenerateVerificationCodeQR(ctx *gin.Context) {
 
 	// 取得 LINE 官方帳號 ID
 	lineOfficialAccountID := c.qrCodeService.GetLineOfficialAccountID()
+	c.logger.Debug("generating verification QR code",
+		"line_id", lineOfficialAccountID,
+		"verification_code", code,
+	)
 
 	// 如果環境變數沒有設定，回傳預設的 LINE ID
 	if lineOfficialAccountID == "" {
@@ -603,13 +607,22 @@ func (c *LineBotController) GenerateVerificationCodeQR(ctx *gin.Context) {
 		c.logger.Error("failed to generate verification code QR code", "error", err)
 		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
 			Code:    errInfos.SYSTEM_ERROR,
-			Message: "系統錯誤",
+			Message: err.Error(),
 		})
 		return
 	}
 
-	// 輸出 PNG 圖片
-	ctx.Header("Content-Type", "image/png")
-	ctx.Header("Content-Disposition", "inline; filename=line-verification-qr.png")
-	ctx.Data(http.StatusOK, "image/png", qrBytes)
+	c.logger.Debug("QR code generated successfully", "size", len(qrBytes))
+
+	// 將 QR Code 轉換為 base64 字串返回，避免二進制流被代理截斷
+	base64Image := base64.StdEncoding.EncodeToString(qrBytes)
+
+	// 回傳 JSON，包含完整的 data URL
+	ctx.JSON(http.StatusOK, global.ApiResponse{
+		Code:    0,
+		Message: "success",
+		Datas: map[string]string{
+			"image": "data:image/png;base64," + base64Image,
+		},
+	})
 }
