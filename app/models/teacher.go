@@ -8,7 +8,7 @@ import (
 
 type Teacher struct {
 	ID                uint           `gorm:"primaryKey" json:"id"`
-	LineUserID        string         `gorm:"type:varchar(255);uniqueIndex" json:"line_user_id"`
+	LineUserID        string         `gorm:"type:varchar(255);index" json:"line_user_id"`
 	LineNotifyToken   string         `gorm:"type:varchar(255)" json:"line_notify_token"`
 	Name              string         `gorm:"type:varchar(255);not null" json:"name"`
 	Email             string         `gorm:"type:varchar(255)" json:"email"`
