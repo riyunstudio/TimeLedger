@@ -154,14 +154,14 @@ func (s *Server) LoadRoutes() {
 		{http.MethodPost, "/api/v1/admin/templates/:templateId/validate-apply", s.action.timetableTemplate.ValidateApplyTemplate, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 
 		// Admin - LINE 綁定
-		{http.MethodGet, "/api/v1/admin/me/line-binding", s.action.adminUser.GetLINEBindingStatus, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
-		{http.MethodPost, "/api/v1/admin/me/line/bind", s.action.adminUser.InitLINEBinding, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
-		{http.MethodDelete, "/api/v1/admin/me/line/unbind", s.action.adminUser.UnbindLINE, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
-		{http.MethodGet, "/api/v1/admin/me/line/notify-settings", s.action.adminUser.GetLINENotifySettings, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
-		{http.MethodPatch, "/api/v1/admin/me/line/notify-settings", s.action.adminUser.UpdateLINENotifySettings, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodGet, "/api/v1/admin/me/line-binding", s.action.adminUser.GetLINEBindingStatus, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireAdmin()}},
+		{http.MethodPost, "/api/v1/admin/me/line/bind", s.action.adminUser.InitLINEBinding, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireAdmin()}},
+		{http.MethodDelete, "/api/v1/admin/me/line/unbind", s.action.adminUser.UnbindLINE, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireAdmin()}},
+		{http.MethodGet, "/api/v1/admin/me/line/notify-settings", s.action.adminUser.GetLINENotifySettings, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireAdmin()}},
+		{http.MethodPatch, "/api/v1/admin/me/line/notify-settings", s.action.adminUser.UpdateLINENotifySettings, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireAdmin()}},
 		// Admin - LINE QR Code
-		{http.MethodGet, "/api/v1/admin/me/line/qrcode", s.action.lineBot.GenerateLINEBindingQR, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
-		{http.MethodGet, "/api/v1/admin/me/line/qrcode-with-code", s.action.lineBot.GenerateVerificationCodeQR, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodGet, "/api/v1/admin/me/line/qrcode", s.action.lineBot.GenerateLINEBindingQR, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireAdmin()}},
+		{http.MethodGet, "/api/v1/admin/me/line/qrcode-with-code", s.action.lineBot.GenerateVerificationCodeQR, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireAdmin()}},
 
 		// Admin - Profile
 		{http.MethodGet, "/api/v1/admin/me/profile", s.action.adminUser.GetAdminProfile, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},

@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"strings"
+
+	"image/png"
 
 	"github.com/skip2/go-qrcode"
-	"image/png"
 )
 
 // QRCodeService QR Code 生成服務
@@ -65,12 +67,18 @@ func (s *QRCodeService) GenerateVerificationCodeQR(lineOfficialAccountID, verifi
 		return nil, fmt.Errorf("LINE官方帳號ID未設定，請聯繫系統管理員設定環境變數LINE_OFFICIAL_ACCOUNT_ID")
 	}
 
-	// 使用 LINE Message API 的 URL 格式
-	// https://line.me/R/ti/p/{LINE_ID}?text={message}
-	// 這種方式可以開啟 LINE 並自動填入訊息文字
+	// 確保 ID 包含 @（LINE 官方帳號規範）
+	formattedID := lineOfficialAccountID
+	if !strings.HasPrefix(formattedID, "@") {
+		formattedID = "@" + formattedID
+	}
+
+	// 使用更可靠的 LINE oaMessage URL 格式
+	// https://line.me/R/oaMessage/{LINE_ID}/?{message}
+	// 這種方式在行動裝置上能更穩定地開啟聊天視窗並填入內容
 	url := fmt.Sprintf(
-		"https://line.me/R/ti/p/%s?text=%s",
-		lineOfficialAccountID,
+		"https://line.me/R/oaMessage/%s/?%s",
+		formattedID,
 		verificationCode,
 	)
 
@@ -81,13 +89,8 @@ func (s *QRCodeService) GenerateVerificationCodeQR(lineOfficialAccountID, verifi
 func (s *QRCodeService) GetLineOfficialAccountID() string {
 	lineID := os.Getenv("LINE_OFFICIAL_ACCOUNT_ID")
 	if lineID == "" {
-		// 如果環境變數沒有設定，回傳空字串
-		// 前端應該要有預設值
 		return ""
 	}
-	// 移除 @ 符號（如果有的話）
-	if len(lineID) > 0 && lineID[0] == '@' {
-		lineID = lineID[1:]
-	}
+	// 不再主動移除 @，交給 Generate 函數處理格式
 	return lineID
 }

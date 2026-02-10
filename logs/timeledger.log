@@ -1130,3 +1130,90 @@
 {"level":"info","time":"2026-02-10T18:19:06.366+0800","message":"Notification worker disabled (set NOTIFICATION_WORKER_ENABLED=true to enable)"}
 {"level":"info","time":"2026-02-10T18:19:06.366+0800","message":"Asynq worker disabled (set ASYNQ_WORKER_ENABLED=true to enable)"}
 {"level":"debug","time":"2026-02-10T18:19:19.211+0800","message":"caching room list","component":"CacheService","center_id":1,"count":4}
+{"level":"info","time":"2026-02-10T18:19:45.662+0800","message":"Application shutting down gracefully"}
+{"level":"info","time":"2026-02-10T18:19:45.662+0800","message":"Application exited"}
+{"level":"info","time":"2026-02-10T18:19:56.519+0800","message":"Starting TimeLedger application..."}
+{"level":"info","time":"2026-02-10T18:19:57.058+0800","message":"Notification worker disabled (set NOTIFICATION_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-02-10T18:19:57.058+0800","message":"Asynq worker disabled (set ASYNQ_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-02-10T18:26:02.940+0800","message":"Application shutting down gracefully"}
+{"level":"info","time":"2026-02-10T18:26:02.940+0800","message":"Application exited"}
+{"level":"info","time":"2026-02-10T18:26:04.099+0800","message":"Starting TimeLedger application..."}
+{"level":"info","time":"2026-02-10T18:26:04.622+0800","message":"Notification worker disabled (set NOTIFICATION_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-02-10T18:26:04.622+0800","message":"Asynq worker disabled (set ASYNQ_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-02-10T18:28:10.088+0800","message":"Application shutting down gracefully"}
+{"level":"info","time":"2026-02-10T18:28:10.088+0800","message":"Application exited"}
+{"level":"info","time":"2026-02-10T18:28:14.034+0800","message":"Starting TimeLedger application..."}
+{"level":"info","time":"2026-02-10T18:28:14.530+0800","message":"Notification worker disabled (set NOTIFICATION_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-02-10T18:28:14.530+0800","message":"Asynq worker disabled (set ASYNQ_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-02-10T18:29:57.606+0800","message":"Application shutting down gracefully"}
+{"level":"info","time":"2026-02-10T18:29:57.606+0800","message":"Application exited"}
+{"level":"info","time":"2026-02-10T18:30:04.715+0800","message":"Starting TimeLedger application..."}
+{"level":"info","time":"2026-02-10T18:30:05.275+0800","message":"Notification worker disabled (set NOTIFICATION_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-02-10T18:30:05.275+0800","message":"Asynq worker disabled (set ASYNQ_WORKER_ENABLED=true to enable)"}
+{"level":"debug","time":"2026-02-10T18:30:13.540+0800","message":"generating verification QR code","component":"LineBotController","line_id":"373nmzzt","verification_code":"GJ2Q4C"}
+{"level":"debug","time":"2026-02-10T18:30:13.541+0800","message":"QR code generated successfully","component":"LineBotController","size":582}
+{"level":"debug","time":"2026-02-10T18:31:38.185+0800","message":"generating verification QR code","component":"LineBotController","line_id":"373nmzzt","verification_code":"FVHDME"}
+{"level":"debug","time":"2026-02-10T18:31:38.186+0800","message":"QR code generated successfully","component":"LineBotController","size":590}
+{"level":"debug","time":"2026-02-10T18:33:56.053+0800","message":"generating verification QR code","component":"LineBotController","line_id":"373nmzzt","verification_code":"TH4VFP"}
+{"level":"debug","time":"2026-02-10T18:33:56.054+0800","message":"QR code generated successfully","component":"LineBotController","size":578}
+{"level":"debug","time":"2026-02-10T18:34:06.987+0800","message":"generating verification QR code","component":"LineBotController","line_id":"373nmzzt","verification_code":"TN9J95"}
+{"level":"debug","time":"2026-02-10T18:34:06.988+0800","message":"QR code generated successfully","component":"LineBotController","size":593}
+{"level":"debug","time":"2026-02-10T18:34:31.243+0800","message":"generating verification QR code","component":"LineBotController","line_id":"373nmzzt","verification_code":"CJUE2U"}
+{"level":"debug","time":"2026-02-10T18:34:31.245+0800","message":"QR code generated successfully","component":"LineBotController","size":586}
+{"level":"debug","time":"2026-02-10T18:35:12.755+0800","message":"generating verification QR code","component":"LineBotController","line_id":"373nmzzt","verification_code":"WC3X3K"}
+{"level":"debug","time":"2026-02-10T18:35:12.756+0800","message":"QR code generated successfully","component":"LineBotController","size":578}
+{"level":"info","time":"2026-02-10T18:37:52.366+0800","message":"Application shutting down gracefully"}
+{"level":"info","time":"2026-02-10T18:37:52.366+0800","message":"Application exited"}
+{"level":"info","time":"2026-02-10T18:37:55.006+0800","message":"Starting TimeLedger application..."}
+{"level":"info","time":"2026-02-10T18:37:55.508+0800","message":"Notification worker disabled (set NOTIFICATION_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-02-10T18:37:55.508+0800","message":"Asynq worker disabled (set ASYNQ_WORKER_ENABLED=true to enable)"}
+{"level":"debug","time":"2026-02-10T18:38:09.090+0800","message":"generating verification QR code","component":"LineBotController","line_id":"373nmzzt","verification_code":"X3S6G4"}
+{"level":"debug","time":"2026-02-10T18:38:09.091+0800","message":"QR code generated successfully","component":"LineBotController","size":580}
+{"level":"info","time":"2026-02-10T18:39:53.682+0800","message":"Application shutting down gracefully"}
+{"level":"info","time":"2026-02-10T18:39:53.682+0800","message":"Application exited"}
+{"level":"info","time":"2026-02-10T18:39:56.057+0800","message":"Starting TimeLedger application..."}
+{"level":"info","time":"2026-02-10T18:39:56.542+0800","message":"Notification worker disabled (set NOTIFICATION_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-02-10T18:39:56.542+0800","message":"Asynq worker disabled (set ASYNQ_WORKER_ENABLED=true to enable)"}
+{"level":"debug","time":"2026-02-10T18:40:04.633+0800","message":"generating verification QR code","component":"LineBotController","line_id":"373nmzzt","verification_code":"X3S6G4"}
+{"level":"debug","time":"2026-02-10T18:40:04.635+0800","message":"QR code generated successfully","component":"LineBotController","size":580}
+{"level":"debug","time":"2026-02-10T18:40:05.579+0800","message":"generating verification QR code","component":"LineBotController","line_id":"373nmzzt","verification_code":"H5RMCU"}
+{"level":"debug","time":"2026-02-10T18:40:05.580+0800","message":"QR code generated successfully","component":"LineBotController","size":591}
+{"level":"debug","time":"2026-02-10T18:40:08.932+0800","message":"generating verification QR code","component":"LineBotController","line_id":"373nmzzt","verification_code":"7GWNED"}
+{"level":"debug","time":"2026-02-10T18:40:08.934+0800","message":"QR code generated successfully","component":"LineBotController","size":594}
+{"level":"info","time":"2026-02-10T18:42:25.367+0800","message":"Application shutting down gracefully"}
+{"level":"info","time":"2026-02-10T18:42:25.367+0800","message":"Application exited"}
+{"level":"info","time":"2026-02-10T18:42:26.592+0800","message":"Starting TimeLedger application..."}
+{"level":"info","time":"2026-02-10T18:42:27.129+0800","message":"Notification worker disabled (set NOTIFICATION_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-02-10T18:42:27.129+0800","message":"Asynq worker disabled (set ASYNQ_WORKER_ENABLED=true to enable)"}
+{"level":"debug","time":"2026-02-10T18:42:35.149+0800","message":"generating verification QR code","component":"LineBotController","line_id":"373nmzzt","verification_code":"QFEWHE"}
+{"level":"debug","time":"2026-02-10T18:42:35.150+0800","message":"QR code generated successfully","component":"LineBotController","size":591}
+{"level":"info","time":"2026-02-10T20:18:25.797+0800","message":"Application shutting down gracefully"}
+{"level":"info","time":"2026-02-10T20:18:25.797+0800","message":"Application exited"}
+{"level":"info","time":"2026-02-10T20:18:31.416+0800","message":"Starting TimeLedger application..."}
+{"level":"info","time":"2026-02-10T20:18:31.913+0800","message":"Notification worker disabled (set NOTIFICATION_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-02-10T20:18:31.913+0800","message":"Asynq worker disabled (set ASYNQ_WORKER_ENABLED=true to enable)"}
+{"level":"debug","time":"2026-02-10T20:18:53.966+0800","message":"generating verification QR code","component":"LineBotController","line_id":"@373nmzzt","verification_code":"ZAFYQL"}
+{"level":"debug","time":"2026-02-10T20:18:53.967+0800","message":"QR code generated successfully","component":"LineBotController","size":585}
+{"level":"debug","time":"2026-02-10T20:19:03.781+0800","message":"generating verification QR code","component":"LineBotController","line_id":"@373nmzzt","verification_code":"6JV8WH"}
+{"level":"debug","time":"2026-02-10T20:19:03.782+0800","message":"QR code generated successfully","component":"LineBotController","size":584}
+{"level":"info","time":"2026-02-10T20:22:09.972+0800","message":"Application shutting down gracefully"}
+{"level":"info","time":"2026-02-10T20:22:09.972+0800","message":"Application exited"}
+{"level":"info","time":"2026-02-10T20:22:14.486+0800","message":"Starting TimeLedger application..."}
+{"level":"info","time":"2026-02-10T20:22:15.013+0800","message":"Notification worker disabled (set NOTIFICATION_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-02-10T20:22:15.013+0800","message":"Asynq worker disabled (set ASYNQ_WORKER_ENABLED=true to enable)"}
+{"level":"debug","time":"2026-02-10T20:22:28.531+0800","message":"generating verification QR code","component":"LineBotController","line_id":"@373nmzzt","verification_code":"7YBFXW"}
+{"level":"debug","time":"2026-02-10T20:22:28.532+0800","message":"QR code generated successfully","component":"LineBotController","size":591}
+{"level":"info","time":"2026-02-10T20:28:14.629+0800","message":"Application shutting down gracefully"}
+{"level":"info","time":"2026-02-10T20:28:14.629+0800","message":"Application exited"}
+{"level":"info","time":"2026-02-10T20:28:19.672+0800","message":"Starting TimeLedger application..."}
+{"level":"info","time":"2026-02-10T20:28:20.161+0800","message":"Notification worker disabled (set NOTIFICATION_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-02-10T20:28:20.161+0800","message":"Asynq worker disabled (set ASYNQ_WORKER_ENABLED=true to enable)"}
+{"level":"debug","time":"2026-02-10T20:28:36.396+0800","message":"generating verification QR code","component":"LineBotController","line_id":"@373nmzzt","verification_code":"GUAUWQ"}
+{"level":"debug","time":"2026-02-10T20:28:36.397+0800","message":"QR code generated successfully","component":"LineBotController","size":587}
+{"level":"info","time":"2026-02-10T20:33:19.910+0800","message":"Application shutting down gracefully"}
+{"level":"info","time":"2026-02-10T20:33:19.910+0800","message":"Application exited"}
+{"level":"info","time":"2026-02-10T20:33:23.386+0800","message":"Starting TimeLedger application..."}
+{"level":"info","time":"2026-02-10T20:33:23.876+0800","message":"Notification worker disabled (set NOTIFICATION_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-02-10T20:33:23.876+0800","message":"Asynq worker disabled (set ASYNQ_WORKER_ENABLED=true to enable)"}
+{"level":"debug","time":"2026-02-10T20:33:33.794+0800","message":"generating verification QR code","component":"LineBotController","line_id":"@373nmzzt","verification_code":"J4WGTK"}
+{"level":"debug","time":"2026-02-10T20:33:33.795+0800","message":"QR code generated successfully","component":"LineBotController","size":581}
