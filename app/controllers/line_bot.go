@@ -95,30 +95,37 @@ func (c *LineBotController) HandleWebhook(ctx *gin.Context) {
 		return
 	}
 
-	// 處理每個事件
+	// 處理每個事件 - 每個事件由獨立的 goroutine 處理
 	for _, event := range webhookReq.Events {
 		go c.handleEvent(ctx, &event)
 	}
 
+	// 立即返回 200 OK，goroutine 會在背景繼續處理
 	ctx.JSON(http.StatusOK, gin.H{"status": "ok"})
 }
 
 // handleEvent 處理單個事件
+// 使用 gin.Context 來獲取 replyToken 等資訊
+// 在內部為資料庫操作創建不會被取消的 context
 func (c *LineBotController) handleEvent(gctx *gin.Context, event *LINEWebhookEvent) {
+	// 為資料庫操作建立不會被取消的上下文
+	// 避免 HTTP 請求結束後 goroutine 中的資料庫操作被取消
+	dbCtx := context.WithoutCancel(gctx.Request.Context())
+
 	switch event.Type {
 	case "message":
-		c.handleMessageEvent(gctx, event)
+		c.handleMessageEvent(dbCtx, event)
 	case "follow":
-		c.handleFollowEvent(gctx, event)
+		c.handleFollowEvent(dbCtx, event)
 	case "unfollow":
-		c.handleUnfollowEvent(gctx, event)
+		c.handleUnfollowEvent(dbCtx, event)
 	default:
 		c.logger.Debug("unhandled event type", "event_type", event.Type)
 	}
 }
 
 // handleMessageEvent 處理訊息事件
-func (c *LineBotController) handleMessageEvent(gctx *gin.Context, event *LINEWebhookEvent) {
+func (c *LineBotController) handleMessageEvent(ctx context.Context, event *LINEWebhookEvent) {
 	if event.Message.Type != "text" {
 		return
 	}
@@ -136,36 +143,38 @@ func (c *LineBotController) handleMessageEvent(gctx *gin.Context, event *LINEWeb
 	)
 
 	// 處理驗證碼（6位數大寫字母數字）
+	// 注意：這裡使用 context 傳遞，但 processBindingCode 內部會調用 lineBotService.ReplyMessage
+	// 由於我們已經在 goroutine 中，回覆消息不會受到 HTTP 請求結束的影響
 	if len(text) == 6 && isValidBindingCode(text) {
-		c.processBindingCode(gctx, text, userID, event.ReplyToken)
+		c.processBindingCode(ctx, text, userID, event.ReplyToken)
 		return
 	}
 
 	// 處理關鍵字
 	switch text {
 	case "綁定", "bind", "Bind":
-		c.sendBindingInstructions(gctx, event.ReplyToken)
+		c.sendBindingInstructions(ctx, event.ReplyToken)
 	case "幫助", "幫我", "help", "Help":
-		c.sendHelpMessage(gctx, event.ReplyToken)
+		c.sendHelpMessage(ctx, event.ReplyToken)
 	case "狀態", "status", "Status":
-		c.sendStatusMessage(gctx, event.ReplyToken, userID)
+		c.sendStatusMessage(ctx, event.ReplyToken, userID)
 	case "解除綁定", "unbind", "Unbind":
-		c.sendUnbindInstructions(gctx, event.ReplyToken)
+		c.sendUnbindInstructions(ctx, event.ReplyToken)
 	case "了解更多", "更多", "more", "More":
-		c.sendMoreInfoMessage(gctx, event.ReplyToken)
+		c.sendMoreInfoMessage(ctx, event.ReplyToken)
 	case "稍後綁定", "稍後再說":
-		c.sendAckMessage(gctx, event.ReplyToken)
+		c.sendAckMessage(ctx, event.ReplyToken)
 	case "課表", "我的課表", "今日課表", "schedule", "Schedule":
-		c.sendScheduleMessage(gctx, event.ReplyToken, userID)
+		c.sendScheduleMessage(ctx, event.ReplyToken, userID)
 	case "明天課表", "明日課表":
-		c.sendScheduleMessage(gctx, event.ReplyToken, userID, true)
+		c.sendScheduleMessage(ctx, event.ReplyToken, userID, true)
 	default:
-		c.sendDefaultResponse(gctx, event.ReplyToken)
+		c.sendDefaultResponse(ctx, event.ReplyToken)
 	}
 }
 
 // handleFollowEvent 處理加入好友事件
-func (c *LineBotController) handleFollowEvent(gctx *gin.Context, event *LINEWebhookEvent) {
+func (c *LineBotController) handleFollowEvent(ctx context.Context, event *LINEWebhookEvent) {
 	userID := event.Source.UserID
 
 	// 【監控日誌】記錄用戶關注
@@ -176,9 +185,6 @@ func (c *LineBotController) handleFollowEvent(gctx *gin.Context, event *LINEWebh
 		"is_bound_admin", identity.PrimaryRole == "ADMIN",
 		"is_bound_teacher", identity.PrimaryRole == "TEACHER",
 	)
-
-	// 嘗試判斷用戶類型並發送個人化歡迎訊息
-	ctx := gctx.Request.Context()
 
 	// 1. 檢查是否為已綁定的管理員
 	adminStatus, _, _ := c.adminService.GetLINEBindingStatusByLineUserID(ctx, userID)
@@ -222,7 +228,7 @@ func (c *LineBotController) handleFollowEvent(gctx *gin.Context, event *LINEWebh
 }
 
 // handleUnfollowEvent 處理封鎖/取消好友事件
-func (c *LineBotController) handleUnfollowEvent(gctx *gin.Context, event *LINEWebhookEvent) {
+func (c *LineBotController) handleUnfollowEvent(ctx context.Context, event *LINEWebhookEvent) {
 	userID := event.Source.UserID
 
 	// 【監控日誌】記錄用戶取消關注
@@ -232,8 +238,8 @@ func (c *LineBotController) handleUnfollowEvent(gctx *gin.Context, event *LINEWe
 }
 
 // processBindingCode 處理綁定驗證碼
-func (c *LineBotController) processBindingCode(gctx *gin.Context, code string, userID string, replyToken string) {
-	adminID, eInfo, err := c.adminService.VerifyLINEBinding(gctx.Request.Context(), code, userID)
+func (c *LineBotController) processBindingCode(ctx context.Context, code string, userID string, replyToken string) {
+	adminID, eInfo, err := c.adminService.VerifyLINEBinding(ctx, code, userID)
 	if err != nil {
 		c.logger.Error("failed to verify binding code", "error", err)
 		errorMsg := "❌ 綁定失敗，驗證碼錯誤或已過期。"
@@ -242,7 +248,7 @@ func (c *LineBotController) processBindingCode(gctx *gin.Context, code string, u
 				errorMsg = "❌ 驗證碼已過期，請至後台重新產生。"
 			}
 		}
-		c.lineBotService.ReplyMessage(gctx.Request.Context(), replyToken, map[string]interface{}{
+		c.lineBotService.ReplyMessage(ctx, replyToken, map[string]interface{}{
 			"type": "text",
 			"text": errorMsg,
 		})
@@ -250,7 +256,7 @@ func (c *LineBotController) processBindingCode(gctx *gin.Context, code string, u
 	}
 
 	// 綁定成功
-	c.lineBotService.ReplyMessage(gctx.Request.Context(), replyToken, map[string]interface{}{
+	c.lineBotService.ReplyMessage(ctx, replyToken, map[string]interface{}{
 		"type": "text",
 		"text": "✅ 綁定成功！\n\n" +
 			"您將會收到：\n" +
@@ -261,16 +267,16 @@ func (c *LineBotController) processBindingCode(gctx *gin.Context, code string, u
 
 	// 發送歡迎訊息（異步）
 	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		welcomeCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-		if err := c.adminService.SendWelcomeMessageIfNeeded(ctx, adminID); err != nil {
+		if err := c.adminService.SendWelcomeMessageIfNeeded(welcomeCtx, adminID); err != nil {
 			c.logger.Error("failed to send welcome message after binding", "admin_id", adminID, "error", err)
 		}
 	}()
 }
 
 // sendBindingInstructions 發送綁定說明
-func (c *LineBotController) sendBindingInstructions(gctx *gin.Context, replyToken string) {
+func (c *LineBotController) sendBindingInstructions(ctx context.Context, replyToken string) {
 	message := map[string]interface{}{
 		"type": "text",
 		"text": "🔗 綁定步驟：\n\n" +
@@ -281,11 +287,11 @@ func (c *LineBotController) sendBindingInstructions(gctx *gin.Context, replyToke
 			"5. 掃描 QR Code 或輸入顯示的驗證碼\n\n" +
 			"如有問題，請聯繫系統管理員。",
 	}
-	c.lineBotService.ReplyMessage(gctx.Request.Context(), replyToken, message)
+	c.lineBotService.ReplyMessage(ctx, replyToken, message)
 }
 
 // sendHelpMessage 發送幫助訊息
-func (c *LineBotController) sendHelpMessage(gctx *gin.Context, replyToken string) {
+func (c *LineBotController) sendHelpMessage(ctx context.Context, replyToken string) {
 	message := map[string]interface{}{
 		"type": "text",
 		"text": "❓ TimeLedger 指令說明：\n\n" +
@@ -297,22 +303,22 @@ func (c *LineBotController) sendHelpMessage(gctx *gin.Context, replyToken string
 			"• 「幫助」- 顯示此說明訊息\n\n" +
 			"如有問題，請聯繫系統管理員。",
 	}
-	c.lineBotService.ReplyMessage(gctx.Request.Context(), replyToken, message)
+	c.lineBotService.ReplyMessage(ctx, replyToken, message)
 }
 
 // sendStatusMessage 發送狀態訊息
-func (c *LineBotController) sendStatusMessage(gctx *gin.Context, replyToken string, userID string) {
+func (c *LineBotController) sendStatusMessage(ctx context.Context, replyToken string, userID string) {
 	message := map[string]interface{}{
 		"type": "text",
 		"text": "📊 狀態查詢：\n\n" +
 			"您的 LINE 帳號已與 TimeLedger 綁定。\n\n" +
 			"如需調整設定，請至管理後台。",
 	}
-	c.lineBotService.ReplyMessage(gctx.Request.Context(), replyToken, message)
+	c.lineBotService.ReplyMessage(ctx, replyToken, message)
 }
 
 // sendUnbindInstructions 發送解除綁定說明
-func (c *LineBotController) sendUnbindInstructions(gctx *gin.Context, replyToken string) {
+func (c *LineBotController) sendUnbindInstructions(ctx context.Context, replyToken string) {
 	message := map[string]interface{}{
 		"type": "text",
 		"text": "🔓 解除綁定：\n\n" +
@@ -323,11 +329,11 @@ func (c *LineBotController) sendUnbindInstructions(gctx *gin.Context, replyToken
 			"4. 確認解除綁定\n\n" +
 			"⚠️ 解除綁定後將無法收到即時通知。",
 	}
-	c.lineBotService.ReplyMessage(gctx.Request.Context(), replyToken, message)
+	c.lineBotService.ReplyMessage(ctx, replyToken, message)
 }
 
 // sendMoreInfoMessage 發送更多資訊
-func (c *LineBotController) sendMoreInfoMessage(gctx *gin.Context, replyToken string) {
+func (c *LineBotController) sendMoreInfoMessage(ctx context.Context, replyToken string) {
 	message := map[string]interface{}{
 		"type": "text",
 		"text": "ℹ️ TimeLedger 介紹：\n\n" +
@@ -338,35 +344,33 @@ func (c *LineBotController) sendMoreInfoMessage(gctx *gin.Context, replyToken st
 			"• 透過手機 LINE 隨時掌握動態\n\n" +
 			"如有問題，請聯繫系統管理員。",
 	}
-	c.lineBotService.ReplyMessage(gctx.Request.Context(), replyToken, message)
+	c.lineBotService.ReplyMessage(ctx, replyToken, message)
 }
 
 // sendAckMessage 發送確認訊息
-func (c *LineBotController) sendAckMessage(gctx *gin.Context, replyToken string) {
+func (c *LineBotController) sendAckMessage(ctx context.Context, replyToken string) {
 	message := map[string]interface{}{
 		"type": "text",
 		"text": "ℹ️ 了解！\n\n" +
 			"您可以稍後再進行綁定。\n" +
 			"當您準備好時，輸入「綁定」即可開始流程。",
 	}
-	c.lineBotService.ReplyMessage(gctx.Request.Context(), replyToken, message)
+	c.lineBotService.ReplyMessage(ctx, replyToken, message)
 }
 
 // sendDefaultResponse 發送預設回應
-func (c *LineBotController) sendDefaultResponse(gctx *gin.Context, replyToken string) {
+func (c *LineBotController) sendDefaultResponse(ctx context.Context, replyToken string) {
 	message := map[string]interface{}{
 		"type": "text",
 		"text": "🤔 我不太理解您的意思。\n\n" +
 			"輸入「幫助」查看可用指令。",
 	}
-	c.lineBotService.ReplyMessage(gctx.Request.Context(), replyToken, message)
+	c.lineBotService.ReplyMessage(ctx, replyToken, message)
 }
 
 // sendScheduleMessage 發送課表訊息
 // isTomorrow: true 表示查詢明天課表，false 表示查詢今天課表
-func (c *LineBotController) sendScheduleMessage(gctx *gin.Context, replyToken string, userID string, isTomorrow ...bool) {
-	ctx := gctx.Request.Context()
-
+func (c *LineBotController) sendScheduleMessage(ctx context.Context, replyToken string, userID string, isTomorrow ...bool) {
 	// 計算目標日期
 	targetDate := time.Now()
 	if len(isTomorrow) > 0 && isTomorrow[0] {
