@@ -28,7 +28,7 @@
           active-class="bg-primary-500/20 !text-primary-500"
           @click="sidebarStore.close()"
         >
-          <BaseIcon icon="calendar" size="lg" />
+          <BaseIcon icon="calendar" class="w-5 h-5" />
           <span>我的課表</span>
         </NuxtLink>
 
@@ -38,7 +38,7 @@
           active-class="bg-primary-500/20 !text-primary-500"
           @click="sidebarStore.close()"
         >
-          <BaseIcon icon="user" size="lg" />
+          <BaseIcon icon="user" class="w-5 h-5" />
           <span>個人檔案</span>
         </NuxtLink>
 
@@ -48,7 +48,7 @@
           active-class="bg-primary-500/20 !text-primary-500"
           @click="sidebarStore.close()"
         >
-          <BaseIcon icon="warning" size="lg" />
+          <BaseIcon icon="warning" class="w-5 h-5" />
           <span>例外申請</span>
           <span
             v-if="pendingExceptions > 0"
@@ -64,7 +64,7 @@
           active-class="bg-primary-500/20 !text-primary-500"
           @click="sidebarStore.close()"
         >
-          <BaseIcon icon="download" size="lg" />
+          <BaseIcon icon="download" class="w-5 h-5" />
           <span>匯出課表</span>
         </NuxtLink>
 
@@ -74,7 +74,7 @@
           active-class="bg-primary-500/20 !text-primary-500"
           @click="sidebarStore.close()"
         >
-          <BaseIcon icon="email" size="lg" />
+          <BaseIcon icon="chat" class="w-5 h-5" />
           <span>邀請通知</span>
           <span
             v-if="pendingInvitations > 0"
@@ -88,7 +88,7 @@
           @click="handleLogout"
           class="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-critical-500/10 text-critical-500 transition-colors"
         >
-          <BaseIcon icon="logout" size="lg" />
+          <BaseIcon icon="lock" class="w-5 h-5" />
           <span>登出</span>
         </button>
       </nav>

@@ -10,7 +10,7 @@
       <div class="flex justify-around items-center h-16">
         <NuxtLink
           to="/teacher/dashboard"
-          class="flex flex-col items-center justify-center flex-1 h-full h-full text-slate-400 hover:text-primary-400 transition-colors"
+          class="flex flex-col items-center justify-center flex-1 h-full text-slate-400 hover:text-primary-400 transition-colors"
           active-class="text-primary-500"
         >
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -21,7 +21,7 @@
 
         <NuxtLink
           to="/teacher/profile"
-          class="flex flex-col items-center justify-center flex-1 h-full h-full text-slate-400 hover:text-primary-400 transition-colors"
+          class="flex flex-col items-center justify-center flex-1 h-full text-slate-400 hover:text-primary-400 transition-colors"
           active-class="text-primary-500"
         >
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -31,7 +31,7 @@
         </NuxtLink>
 
         <button
-          class="flex flex-col items-center justify-center flex-1 h-full h-full text-slate-400 hover:text-primary-400 transition-colors"
+          class="flex flex-col items-center justify-center flex-1 h-full text-slate-400 hover:text-primary-400 transition-colors"
           @click="notificationUI.open()"
         >
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -42,7 +42,7 @@
 
         <NuxtLink
           to="/teacher/notifications"
-          class="flex flex-col items-center justify-center flex-1 h-full h-full text-slate-400 hover:text-primary-400 transition-colors"
+          class="flex flex-col items-center justify-center flex-1 h-full text-slate-400 hover:text-primary-400 transition-colors"
           active-class="text-primary-500"
         >
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
