@@ -1686,11 +1686,11 @@ func (s *ScheduleService) calculateDuration(startTime, endTime string) int {
 }
 
 // generateTimeSlots 生成時段列表
-// 總是返回完整的業務時段 (0:00 - 24:00)，確保前端時間軸正確顯示
+// 總是返回完整的業務時段 (0:00 - 23:00)，確保前端時間軸正確顯示
 func (s *ScheduleService) generateTimeSlots(schedules []ExpandedSchedule) []int {
-	// 業務時段固定為 0-24，確保前端時間軸一致性
-	slots := make([]int, 0, 25)
-	for i := 0; i <= 24; i++ {
+	// 業務時段固定為 0-23，確保前端時間軸一致性
+	slots := make([]int, 0, 24)
+	for i := 0; i <= 23; i++ {
 		slots = append(slots, i)
 	}
 	return slots
