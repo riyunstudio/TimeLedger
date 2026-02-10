@@ -1217,3 +1217,9 @@
 {"level":"info","time":"2026-02-10T20:33:23.876+0800","message":"Asynq worker disabled (set ASYNQ_WORKER_ENABLED=true to enable)"}
 {"level":"debug","time":"2026-02-10T20:33:33.794+0800","message":"generating verification QR code","component":"LineBotController","line_id":"@373nmzzt","verification_code":"J4WGTK"}
 {"level":"debug","time":"2026-02-10T20:33:33.795+0800","message":"QR code generated successfully","component":"LineBotController","size":581}
+{"level":"debug","time":"2026-02-10T22:48:49.055+0800","message":"caching room list","component":"CacheService","center_id":1,"count":4}
+{"level":"info","time":"2026-02-10T22:51:43.297+0800","message":"Application shutting down gracefully"}
+{"level":"info","time":"2026-02-10T22:51:43.297+0800","message":"Application exited"}
+{"level":"info","time":"2026-02-10T22:51:49.865+0800","message":"Starting TimeLedger application..."}
+{"level":"info","time":"2026-02-10T22:51:50.600+0800","message":"Notification worker disabled (set NOTIFICATION_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-02-10T22:51:50.600+0800","message":"Asynq worker disabled (set ASYNQ_WORKER_ENABLED=true to enable)"}
