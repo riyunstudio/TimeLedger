@@ -73,18 +73,19 @@ type CreateScheduleRuleRequest struct {
 
 // UpdateScheduleRuleRequest 更新排課規則請求
 type UpdateScheduleRuleRequest struct {
-	Name           string   `json:"name"`
-	OfferingID     uint     `json:"offering_id"`
-	TeacherID      *uint    `json:"teacher_id"`
-	RoomID         uint     `json:"room_id"`
-	StartTime      string   `json:"start_time"`
-	EndTime        string   `json:"end_time"`
-	Duration       int      `json:"duration"`
-	Weekdays       []int    `json:"weekdays"`
-	StartDate      string   `json:"start_date"`
-	EndDate        *string  `json:"end_date"`
-	SuspendedDates []string `json:"suspended_dates"` // 停課日期列表
-	UpdateMode     string   `json:"update_mode"`
+	Name            string     `json:"name"`
+	OfferingID      uint       `json:"offering_id"`
+	TeacherID       *uint      `json:"teacher_id"`
+	RoomID          uint       `json:"room_id"`
+	StartTime       string     `json:"start_time"`
+	EndTime         string     `json:"end_time"`
+	Duration        int        `json:"duration"`
+	Weekdays        []int      `json:"weekdays"`
+	StartDate       string     `json:"start_date"`
+	EndDate         *string    `json:"end_date"`
+	SuspendedDates  []string   `json:"suspended_dates"` // 停課日期列表
+	UpdateMode      string     `json:"update_mode"`
+	ExcludeRuleID   *uint      `json:"exclude_rule_id"` // 更新時排除自己，避免與自己衝突
 }
 
 // CreateExceptionRequest 建立例外請求
@@ -510,6 +511,35 @@ func (s *ScheduleService) UpdateRule(ctx context.Context, centerID, adminID, rul
 		endDate, err = time.Parse("2006-01-02", *req.EndDate)
 		if err != nil {
 			return nil, s.App.Err.New(errInfos.PARAMS_VALIDATE_ERROR), fmt.Errorf("invalid end_date format")
+		}
+	}
+
+	// 衝突檢查（使用 req.ExcludeRuleID 排除自己）
+	if req.StartTime != "" && req.EndTime != "" && req.RoomID != 0 {
+		startTimeParsed, _ := time.Parse("15:04", req.StartTime)
+		endTimeParsed, _ := time.Parse("15:04", req.EndTime)
+
+		// 決定要檢查的星期幾
+		var checkWeekday int
+		if len(req.Weekdays) > 0 {
+			checkWeekday = req.Weekdays[0]
+		} else if !startDate.IsZero() {
+			checkWeekday = int(startDate.Weekday())
+			if checkWeekday == 0 {
+				checkWeekday = 7
+			}
+		} else {
+			checkWeekday = existingRule.Weekday
+		}
+
+		// 使用 ExcludeRuleID 排除自己，避免與自己衝突
+		validationResult, err := s.validationSvc.CheckOverlap(ctx, centerID, req.TeacherID, req.RoomID, startTimeParsed, endTimeParsed, checkWeekday, req.ExcludeRuleID)
+		if err != nil {
+			return nil, s.App.Err.New(errInfos.SQL_ERROR), fmt.Errorf("failed to check overlap: %w", err)
+		}
+
+		if !validationResult.Valid {
+			return nil, s.App.Err.New(errInfos.SCHED_OVERLAP), fmt.Errorf("time slot conflict with existing rules")
 		}
 	}
 

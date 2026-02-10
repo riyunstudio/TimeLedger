@@ -426,18 +426,19 @@ func (ctl *SchedulingController) UpdateRule(ctx *gin.Context) {
 	}
 
 	svcReq := &services.UpdateScheduleRuleRequest{
-		Name:           req.Name,
-		OfferingID:     req.OfferingID,
-		TeacherID:      req.TeacherID,
-		RoomID:         req.RoomID,
-		StartTime:      req.StartTime,
-		EndTime:        req.EndTime,
-		Duration:       req.Duration,
-		Weekdays:       req.Weekdays,
-		StartDate:      req.StartDate,
-		EndDate:        req.EndDate,
-		SuspendedDates: req.SuspendedDates,
-		UpdateMode:     req.UpdateMode,
+		Name:            req.Name,
+		OfferingID:      req.OfferingID,
+		TeacherID:       req.TeacherID,
+		RoomID:          req.RoomID,
+		StartTime:       req.StartTime,
+		EndTime:         req.EndTime,
+		Duration:        req.Duration,
+		Weekdays:        req.Weekdays,
+		StartDate:       req.StartDate,
+		EndDate:         req.EndDate,
+		SuspendedDates:  req.SuspendedDates,
+		UpdateMode:      req.UpdateMode,
+		ExcludeRuleID:   &ruleID, // 排除自己，避免與自己衝突
 	}
 
 	rules, errInfo, err := ctl.scheduleSvc.UpdateRule(ctx.Request.Context(), centerID, adminID, ruleID, svcReq)
