@@ -25,7 +25,7 @@
         <NuxtLink
           to="/teacher/dashboard"
           class="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors relative"
-          :class="{ 'bg-primary-500/20 text-primary-500': route.path === '/teacher/dashboard' }"
+          active-class="bg-primary-500/20 !text-primary-500"
           @click="sidebarStore.close()"
         >
           <BaseIcon icon="calendar" size="lg" />
@@ -35,7 +35,7 @@
         <NuxtLink
           to="/teacher/profile"
           class="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors"
-          :class="{ 'bg-primary-500/20 text-primary-500': route.path === '/teacher/profile' }"
+          active-class="bg-primary-500/20 !text-primary-500"
           @click="sidebarStore.close()"
         >
           <BaseIcon icon="user" size="lg" />
@@ -45,7 +45,7 @@
         <NuxtLink
           to="/teacher/exceptions"
           class="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors relative"
-          :class="{ 'bg-primary-500/20 text-primary-500': route.path === '/teacher/exceptions' }"
+          active-class="bg-primary-500/20 !text-primary-500"
           @click="sidebarStore.close()"
         >
           <BaseIcon icon="warning" size="lg" />
@@ -61,7 +61,7 @@
         <NuxtLink
           to="/teacher/export"
           class="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors"
-          :class="{ 'bg-primary-500/20 text-primary-500': route.path === '/teacher/export' }"
+          active-class="bg-primary-500/20 !text-primary-500"
           @click="sidebarStore.close()"
         >
           <BaseIcon icon="download" size="lg" />
@@ -71,7 +71,7 @@
         <NuxtLink
           to="/teacher/invitations"
           class="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors relative"
-          :class="{ 'bg-primary-500/20 text-primary-500': route.path === '/teacher/invitations' }"
+          active-class="bg-primary-500/20 !text-primary-500"
           @click="sidebarStore.close()"
         >
           <BaseIcon icon="email" size="lg" />

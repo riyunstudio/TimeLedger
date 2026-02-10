@@ -128,17 +128,15 @@ const handleSubmit = async () => {
     let fileUrl: string | undefined
 
     // 如果有選擇檔案，先上傳
+    // api.upload 會自動處理 response，解包 datas 欄位並檢查 code
+    // 如果上傳失敗會拋出錯誤，不需要額外檢查
     if (selectedFile.value) {
-      const uploadResponse = await api.upload<{ code: number; message: string; datas: { file_url: string; file_name: string; file_size: number } }>(
+      const uploadResponse = await api.upload<{ file_url: string; file_name: string; file_size: number }>(
         '/teacher/me/certificates/upload',
         selectedFile.value
       )
 
-      if (uploadResponse.code === 0) {
-        fileUrl = uploadResponse.datas.file_url
-      } else {
-        throw new Error(uploadResponse.message || '上傳失敗')
-      }
+      fileUrl = uploadResponse.file_url
     }
 
     // 建立證照記錄

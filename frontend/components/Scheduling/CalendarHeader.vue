@@ -142,12 +142,12 @@
       </div>
 
       <!-- 右側按鈕區域 -->
-      <div class="flex items-center gap-2 ml-auto">
+      <div class="flex flex-wrap items-center gap-2 justify-end">
         <!-- 新增排課按鈕（管理員） -->
         <template v-if="showCreateButton">
           <button
             @click="$emit('create-schedule')"
-            class="btn-primary px-4 py-2 text-sm font-medium"
+            class="btn-primary px-4 py-2 text-sm font-medium whitespace-nowrap shrink-0"
           >
             + {{ $t('schedule.addScheduleRule') }}
           </button>
@@ -164,7 +164,7 @@
         <template v-if="showPersonalEventButton">
           <button
             @click="$emit('add-personal-event')"
-            class="px-4 py-2 rounded-lg bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 transition-colors flex items-center gap-2 text-sm"
+            class="px-4 py-2 rounded-lg bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 transition-colors flex items-center gap-2 text-sm whitespace-nowrap shrink-0"
           >
             <Icon icon="plus" size="md" />
             {{ $t('schedule.personalEvent') }}
@@ -175,7 +175,7 @@
         <template v-if="showExceptionButton">
           <button
             @click="$emit('add-exception')"
-            class="px-4 py-2 rounded-lg bg-warning-500/20 text-warning-400 hover:bg-warning-500/30 transition-colors flex items-center gap-2 text-sm"
+            class="px-4 py-2 rounded-lg bg-warning-500/20 text-warning-400 hover:bg-warning-500/30 transition-colors flex items-center gap-2 text-sm whitespace-nowrap shrink-0"
           >
             <Icon icon="warning" size="md" />
             {{ $t('schedule.leaveSwap') }}
@@ -186,7 +186,7 @@
         <template v-if="showExportButton">
           <button
             @click="$emit('export')"
-            class="px-4 py-2 rounded-lg bg-secondary-500/20 text-secondary-500 hover:bg-secondary-500/30 transition-colors flex items-center gap-2 text-sm"
+            class="px-4 py-2 rounded-lg bg-secondary-500/20 text-secondary-500 hover:bg-secondary-500/30 transition-colors flex items-center gap-2 text-sm whitespace-nowrap shrink-0"
           >
             <Icon icon="download" size="md" />
             {{ $t('schedule.export') }}

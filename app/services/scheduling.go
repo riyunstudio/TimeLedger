@@ -3,7 +3,6 @@ package services
 import (
 	"context"
 	"fmt"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -74,18 +73,18 @@ type CreateScheduleRuleRequest struct {
 
 // UpdateScheduleRuleRequest 更新排課規則請求
 type UpdateScheduleRuleRequest struct {
-	Name            string     `json:"name"`
-	OfferingID      uint       `json:"offering_id"`
-	TeacherID       *uint      `json:"teacher_id"`
-	RoomID          uint       `json:"room_id"`
-	StartTime       string     `json:"start_time"`
-	EndTime         string     `json:"end_time"`
-	Duration        int        `json:"duration"`
-	Weekdays        []int      `json:"weekdays"`
-	StartDate       string     `json:"start_date"`
-	EndDate         *string    `json:"end_date"`
-	SuspendedDates  []string   `json:"suspended_dates"` // 停課日期列表
-	UpdateMode      string     `json:"update_mode"`
+	Name           string   `json:"name"`
+	OfferingID     uint     `json:"offering_id"`
+	TeacherID      *uint    `json:"teacher_id"`
+	RoomID         uint     `json:"room_id"`
+	StartTime      string   `json:"start_time"`
+	EndTime        string   `json:"end_time"`
+	Duration       int      `json:"duration"`
+	Weekdays       []int    `json:"weekdays"`
+	StartDate      string   `json:"start_date"`
+	EndDate        *string  `json:"end_date"`
+	SuspendedDates []string `json:"suspended_dates"` // 停課日期列表
+	UpdateMode     string   `json:"update_mode"`
 }
 
 // CreateExceptionRequest 建立例外請求
@@ -792,15 +791,15 @@ func (s *ScheduleService) createSingleRule(centerID uint, existingRule models.Sc
 	}
 
 	newRule := &models.ScheduleRule{
-		CenterID:   centerID,
-		OfferingID: existingRule.OfferingID,
-		TeacherID:  existingRule.TeacherID,
-		RoomID:     existingRule.RoomID,
-		Name:       existingRule.Name,
-		Weekday:    weekday,
-		StartTime:  existingRule.StartTime,
-		EndTime:    existingRule.EndTime,
-		Duration:   existingRule.Duration,
+		CenterID:       centerID,
+		OfferingID:     existingRule.OfferingID,
+		TeacherID:      existingRule.TeacherID,
+		RoomID:         existingRule.RoomID,
+		Name:           existingRule.Name,
+		Weekday:        weekday,
+		StartTime:      existingRule.StartTime,
+		EndTime:        existingRule.EndTime,
+		Duration:       existingRule.Duration,
 		SuspendedDates: existingRule.SuspendedDates, // 繼承現有的停課日期
 		EffectiveRange: models.DateRange{
 			StartDate: effectiveStartDate,
@@ -1687,56 +1686,12 @@ func (s *ScheduleService) calculateDuration(startTime, endTime string) int {
 }
 
 // generateTimeSlots 生成時段列表
-// 根據課表資料動態生成業務時段
+// 總是返回完整的業務時段 (0:00 - 24:00)，確保前端時間軸正確顯示
 func (s *ScheduleService) generateTimeSlots(schedules []ExpandedSchedule) []int {
-	if len(schedules) == 0 {
-		// 預設返回常用時段 (9:00 - 22:00)
-		slots := make([]int, 0, 14)
-		for i := 9; i <= 22; i++ {
-			slots = append(slots, i)
-		}
-		return slots
+	// 業務時段固定為 0-24，確保前端時間軸一致性
+	slots := make([]int, 0, 25)
+	for i := 0; i <= 24; i++ {
+		slots = append(slots, i)
 	}
-
-	// 找出所有使用的時段
-	hourSet := make(map[int]bool)
-	for _, schedule := range schedules {
-		startHour, _ := s.parseTimeToHourMinute(schedule.StartTime)
-		endHour, _ := s.parseTimeToHourMinute(schedule.EndTime)
-
-		hourSet[startHour] = true
-		// 包含結束時段的前一個小時
-		if endHour > startHour {
-			hourSet[endHour-1] = true
-		}
-	}
-
-	// 轉換為排序後的列表
-	hours := make([]int, 0, len(hourSet))
-	for hour := range hourSet {
-		hours = append(hours, hour)
-	}
-	sort.Ints(hours)
-
-	// 補全連續時段
-	var result []int
-	for i := 0; i < len(hours); i++ {
-		result = append(result, hours[i])
-		// 如果下一個時段不是連續的，補中間的時段
-		if i < len(hours)-1 && hours[i+1] > hours[i]+1 {
-			for h := hours[i] + 1; h < hours[i+1]; h++ {
-				result = append(result, h)
-			}
-		}
-	}
-
-	// 確保範圍合理（最小 9 點，最大 23 點）
-	if len(result) > 0 && result[0] > 9 {
-		// 不需要在前面補時段
-	}
-	if len(result) > 0 && result[len(result)-1] < 23 {
-		// 不需要在後面補時段
-	}
-
-	return result
+	return slots
 }
