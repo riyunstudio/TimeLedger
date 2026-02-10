@@ -329,8 +329,9 @@ const canSubmit = computed(() => {
 const fetchTeacherCount = async () => {
   try {
     const response = await api.get<any>('/admin/teachers')
-    // API 回應結構：response.datas.data 是老師陣列
-    const teachers = response.datas?.data
+    // API 回應結構：response.data 是老師陣列（useApi 已提取 datas 層）
+    // response = { data: [...], total: 4, page: 1, ... }
+    const teachers = response.data
     if (Array.isArray(teachers)) {
       // 篩選條件：
       // 1. line_user_id 存在（已綁定 LINE 才能收到廣播）
@@ -339,6 +340,7 @@ const fetchTeacherCount = async () => {
         t.line_user_id && t.line_user_id.length > 0 && !t.is_placeholder
       ).length
     } else if (Array.isArray(response)) {
+      // 備用：直接使用 response（如果沒有分頁結構）
       teacherCount.value = response.filter((t: any) =>
         t.line_user_id && t.line_user_id.length > 0 && !t.is_placeholder
       ).length
