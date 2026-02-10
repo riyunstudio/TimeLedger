@@ -1223,3 +1223,5 @@
 {"level":"info","time":"2026-02-10T22:51:49.865+0800","message":"Starting TimeLedger application..."}
 {"level":"info","time":"2026-02-10T22:51:50.600+0800","message":"Notification worker disabled (set NOTIFICATION_WORKER_ENABLED=true to enable)"}
 {"level":"info","time":"2026-02-10T22:51:50.600+0800","message":"Asynq worker disabled (set ASYNQ_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-02-10T23:14:57.173+0800","message":"fetching terms","component":"TermService","center_id":1}
+{"level":"debug","time":"2026-02-10T23:14:57.176+0800","message":"terms fetched successfully","component":"TermService","count":0}

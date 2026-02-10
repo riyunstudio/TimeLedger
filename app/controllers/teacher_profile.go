@@ -389,10 +389,17 @@ func (ctl *TeacherProfileController) CreateCertificate(ctx *gin.Context) {
 		return
 	}
 
+	// 解析 IssuedAt 日期字串
+	issuedAt, err := time.Parse("2006-01-02", req.IssuedAt)
+	if err != nil {
+		helper.BadRequest("無效的日期格式，請使用 YYYY-MM-DD 格式")
+		return
+	}
+
 	certificate, errInfo, err := ctl.profileService.CreateCertificate(ctx, teacherID, &services.CreateCertificateRequest{
 		Name:     req.Name,
 		FileURL:  req.FileURL,
-		IssuedAt: req.IssuedAt,
+		IssuedAt: issuedAt,
 	})
 	if err != nil {
 		helper.ErrorWithInfo(errInfo)
@@ -537,7 +544,7 @@ type CreateHashtagRequest struct {
 }
 
 type CreateCertificateRequest struct {
-	Name     string    `json:"name" binding:"required"`
-	FileURL  string    `json:"file_url" binding:"required"`
-	IssuedAt time.Time `json:"issued_at" binding:"required" time_format:"2006-01-02"`
+	Name      string `json:"name" binding:"required"`
+	FileURL   string `json:"file_url" binding:"required"`
+	IssuedAt  string `json:"issued_at" binding:"required"`
 }

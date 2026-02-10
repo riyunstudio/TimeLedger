@@ -296,31 +296,64 @@ func (s *TeacherMergeService) migrateTimetableCells(tx *gorm.DB, sourceID, targe
 
 // migrateTeacherSkills 遷移教師技能
 func (s *TeacherMergeService) migrateTeacherSkills(tx *gorm.DB, sourceID, targetID uint) error {
-	// 先檢查目標教師是否已有相同技能（Category + SkillName + Level）
-	// 如果有，則跳過遷移，保留目標教師的技能
-	// 如果沒有，則更新 TeacherID
-
-	result := tx.Model(&models.TeacherSkill{}).
-		Where("teacher_id = ?", sourceID).
-		Where("NOT EXISTS (SELECT 1 FROM teacher_skills ts2 WHERE ts2.teacher_id = ? AND ts2.category = teacher_skills.category AND ts2.skill_name = teacher_skills.skill_name AND ts2.level = teacher_skills.level)", targetID).
-		Update("teacher_id", targetID)
-
-	if result.Error != nil {
-		s.Logger.Error("遷移教師技能失敗", "error", result.Error)
-		return fmt.Errorf("遷移教師技能失敗: %w", result.Error)
+	// 先查詢來源教師的所有技能
+	var sourceSkills []models.TeacherSkill
+	if err := tx.Where("teacher_id = ?", sourceID).Find(&sourceSkills).Error; err != nil {
+		s.Logger.Error("查詢來源教師技能失敗", "error", err)
+		return fmt.Errorf("查詢來源教師技能失敗: %w", err)
 	}
 
-	// 清理來源教師剩餘的重複技能（那些因目標教師已有而未被更新 TeacherID 的技能）
+	if len(sourceSkills) == 0 {
+		s.Logger.Info("來源教師無技能需要遷移")
+		return nil
+	}
+
+	// 取得目標教師的現有技能
+	var targetSkills []models.TeacherSkill
+	if err := tx.Where("teacher_id = ?", targetID).Find(&targetSkills).Error; err != nil {
+		s.Logger.Error("查詢目標教師技能失敗", "error", err)
+		return fmt.Errorf("查詢目標教師技能失敗: %w", err)
+	}
+
+	// 建立目標技能的地圖（用於快速查找重複）
+	targetSkillMap := make(map[string]bool) // key: category+skill_name+level
+	for _, ts := range targetSkills {
+		key := ts.Category + "|" + ts.SkillName + "|" + ts.Level
+		targetSkillMap[key] = true
+	}
+
+	// 找出需要遷移的技能（不重複的）
+	var skillsToMigrate []uint
+	for _, skill := range sourceSkills {
+		key := skill.Category + "|" + skill.SkillName + "|" + skill.Level
+		if !targetSkillMap[key] {
+			skillsToMigrate = append(skillsToMigrate, skill.ID)
+		}
+	}
+
+	// 批量更新需要遷移的技能
+	if len(skillsToMigrate) > 0 {
+		result := tx.Model(&models.TeacherSkill{}).
+			Where("id IN ?", skillsToMigrate).
+			Update("teacher_id", targetID)
+
+		if result.Error != nil {
+			s.Logger.Error("遷移教師技能失敗", "error", result.Error)
+			return fmt.Errorf("遷移教師技能失敗: %w", result.Error)
+		}
+
+		if result.RowsAffected > 0 {
+			s.Logger.Info("已遷移教師技能",
+				"count", result.RowsAffected,
+				"source_teacher_id", sourceID,
+				"target_teacher_id", targetID)
+		}
+	}
+
+	// 清理來源教師剩餘的重複技能（那些因目標教師已有而未被更新的技能）
 	if err := tx.Where("teacher_id = ?", sourceID).Delete(&models.TeacherSkill{}).Error; err != nil {
 		s.Logger.Error("清理來源教師重複技能失敗", "error", err)
 		return fmt.Errorf("清理來源教師重複技能失敗: %w", err)
-	}
-
-	if result.RowsAffected > 0 {
-		s.Logger.Info("已遷移教師技能",
-			"count", result.RowsAffected,
-			"source_teacher_id", sourceID,
-			"target_teacher_id", targetID)
 	}
 
 	return nil
@@ -328,25 +361,56 @@ func (s *TeacherMergeService) migrateTeacherSkills(tx *gorm.DB, sourceID, target
 
 // migrateTeacherCertificates 遷移教師證照
 func (s *TeacherMergeService) migrateTeacherCertificates(tx *gorm.DB, sourceID, targetID uint) error {
-	// 先檢查目標教師是否已有相同證照（Name）
-	// 如果有，則跳過遷移
-	// 如果沒有，則更新 TeacherID
-
-	result := tx.Model(&models.TeacherCertificate{}).
-		Where("teacher_id = ?", sourceID).
-		Where("NOT EXISTS (SELECT 1 FROM teacher_certificates tc2 WHERE tc2.teacher_id = ? AND tc2.name = teacher_certificates.name)", targetID).
-		Update("teacher_id", targetID)
-
-	if result.Error != nil {
-		s.Logger.Error("遷移教師證照失敗", "error", result.Error)
-		return fmt.Errorf("遷移教師證照失敗: %w", result.Error)
+	// 先查詢來源教師的所有證照
+	var sourceCerts []models.TeacherCertificate
+	if err := tx.Where("teacher_id = ?", sourceID).Find(&sourceCerts).Error; err != nil {
+		s.Logger.Error("查詢來源教師證照失敗", "error", err)
+		return fmt.Errorf("查詢來源教師證照失敗: %w", err)
 	}
 
-	if result.RowsAffected > 0 {
-		s.Logger.Info("已遷移教師證照",
-			"count", result.RowsAffected,
-			"source_teacher_id", sourceID,
-			"target_teacher_id", targetID)
+	if len(sourceCerts) == 0 {
+		s.Logger.Info("來源教師無證照需要遷移")
+		return nil
+	}
+
+	// 取得目標教師的現有證照
+	var targetCerts []models.TeacherCertificate
+	if err := tx.Where("teacher_id = ?", targetID).Find(&targetCerts).Error; err != nil {
+		s.Logger.Error("查詢目標教師證照失敗", "error", err)
+		return fmt.Errorf("查詢目標教師證照失敗: %w", err)
+	}
+
+	// 建立目標證照的地圖（用於快速查找重複）
+	targetCertMap := make(map[string]bool) // key: name
+	for _, tc := range targetCerts {
+		targetCertMap[tc.Name] = true
+	}
+
+	// 找出需要遷移的證照（不重複的）
+	var certsToMigrate []uint
+	for _, cert := range sourceCerts {
+		if !targetCertMap[cert.Name] {
+			certsToMigrate = append(certsToMigrate, cert.ID)
+		}
+	}
+
+	// 批量更新需要遷移的證照
+	if len(certsToMigrate) > 0 {
+		result := tx.Model(&models.TeacherCertificate{}).
+			Where("id IN ?", certsToMigrate).
+			Update("teacher_id", targetID)
+
+		if result.Error != nil {
+			s.Logger.Error("遷移教師證照失敗", "error", result.Error)
+			return fmt.Errorf("遷移教師證照失敗: %w", result.Error)
+		}
+
+		if result.RowsAffected > 0 {
+			s.Logger.Info("已遷移教師證照",
+				"count", result.RowsAffected,
+				"source_teacher_id", sourceID,
+				"target_teacher_id", targetID)
+		}
 	}
 
 	return nil
@@ -354,23 +418,76 @@ func (s *TeacherMergeService) migrateTeacherCertificates(tx *gorm.DB, sourceID, 
 
 // migrateTeacherPersonalHashtags 遷移教師個人標籤
 func (s *TeacherMergeService) migrateTeacherPersonalHashtags(tx *gorm.DB, sourceID, targetID uint) error {
-	// 先檢查目標教師是否已有相同標籤（HashtagID）
-	// 如果有，則跳過遷移
-	// 如果沒有，則更新 TeacherID
+	// TeacherPersonalHashtag 是複合主鍵表（TeacherID + HashtagID），
+	// 沒有 ID 欄位，需要用「刪除後新增」的模式
 
-	result := tx.Model(&models.TeacherPersonalHashtag{}).
-		Where("teacher_id = ?", sourceID).
-		Where("NOT EXISTS (SELECT 1 FROM teacher_personal_hashtags tph2 WHERE tph2.teacher_id = ? AND tph2.hashtag_id = teacher_personal_hashtags.hashtag_id)", targetID).
-		Update("teacher_id", targetID)
-
-	if result.Error != nil {
-		s.Logger.Error("遷移教師個人標籤失敗", "error", result.Error)
-		return fmt.Errorf("遷移教師個人標籤失敗: %w", result.Error)
+	// 1. 先查詢來源教師的所有標籤
+	var sourceTags []models.TeacherPersonalHashtag
+	if err := tx.Where("teacher_id = ?", sourceID).Find(&sourceTags).Error; err != nil {
+		s.Logger.Error("查詢來源教師標籤失敗", "error", err)
+		return fmt.Errorf("查詢來源教師標籤失敗: %w", err)
 	}
 
-	if result.RowsAffected > 0 {
+	if len(sourceTags) == 0 {
+		s.Logger.Info("來源教師無標籤需要遷移")
+		return nil
+	}
+
+	// 2. 取得目標教師的現有標籤
+	var targetTags []models.TeacherPersonalHashtag
+	if err := tx.Where("teacher_id = ?", targetID).Find(&targetTags).Error; err != nil {
+		s.Logger.Error("查詢目標教師標籤失敗", "error", err)
+		return fmt.Errorf("查詢目標教師標籤失敗: %w", err)
+	}
+
+	// 3. 建立目標標籤的地圖（用於快速查找重複）
+	targetTagMap := make(map[uint]bool) // key: hashtag_id
+	for _, tt := range targetTags {
+		targetTagMap[tt.HashtagID] = true
+	}
+
+	// 4. 找出需要遷移的標籤（不重複的）
+	var tagsToMigrate []models.TeacherPersonalHashtag
+	for _, tag := range sourceTags {
+		if !targetTagMap[tag.HashtagID] {
+			tagsToMigrate = append(tagsToMigrate, tag)
+		}
+	}
+
+	if len(tagsToMigrate) == 0 {
+		s.Logger.Info("來源教師所有標籤都與目標教師重複，無需遷移")
+		// 清理來源教師的標籤
+		if err := tx.Where("teacher_id = ?", sourceID).Delete(&models.TeacherPersonalHashtag{}).Error; err != nil {
+			s.Logger.Error("清理來源教師標籤失敗", "error", err)
+			return fmt.Errorf("清理來源教師標籤失敗: %w", err)
+		}
+		return nil
+	}
+
+	// 5. 刪除來源教師的標籤
+	if err := tx.Where("teacher_id = ?", sourceID).Delete(&models.TeacherPersonalHashtag{}).Error; err != nil {
+		s.Logger.Error("刪除來源教師標籤失敗", "error", err)
+		return fmt.Errorf("刪除來源教師標籤失敗: %w", err)
+	}
+
+	// 6. 新增不重複的標籤到目標教師
+	var newTags []models.TeacherPersonalHashtag
+	for _, tag := range tagsToMigrate {
+		newTags = append(newTags, models.TeacherPersonalHashtag{
+			TeacherID: targetID,
+			HashtagID: tag.HashtagID,
+			SortOrder: tag.SortOrder,
+		})
+	}
+
+	if len(newTags) > 0 {
+		if err := tx.Create(&newTags).Error; err != nil {
+			s.Logger.Error("新增教師標籤失敗", "error", err)
+			return fmt.Errorf("新增教師標籤失敗: %w", err)
+		}
+
 		s.Logger.Info("已遷移教師個人標籤",
-			"count", result.RowsAffected,
+			"count", len(newTags),
 			"source_teacher_id", sourceID,
 			"target_teacher_id", targetID)
 	}
