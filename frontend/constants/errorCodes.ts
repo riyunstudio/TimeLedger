@@ -12,7 +12,7 @@ export const SUCCESS_CODES = {
   '0': '操作成功', // API 成功回應使用 code: "0"
 } as const
 
-// ==================== 系統錯誤 (1xxxx) ====================
+// ==================== 系統錯誤 (11xxxx) ====================
 
 export const SYSTEM_ERROR_CODES = {
   SYSTEM_ERROR: '系統錯誤，請稍後再試',
@@ -36,7 +36,7 @@ export const DATABASE_ERROR_CODES = {
   INVALID_DATA: '無效的資料格式',
 } as const
 
-// ==================== 權限錯誤 (4xxxx) ====================
+// ==================== 權限錯誤 (13xxxx) ====================
 
 export const PERMISSION_ERROR_CODES = {
   UNAUTHORIZED: '請先登入再進行操作',
@@ -49,7 +49,7 @@ export const PERMISSION_ERROR_CODES = {
   CENTER_ACCESS_DENIED: '您沒有存取此中心的權限',
 } as const
 
-// ==================== 驗證錯誤 (4xxxx) ====================
+// ==================== 驗證錯誤 (11xxxx) ====================
 
 export const VALIDATION_ERROR_CODES = {
   VALIDATION_ERROR: '輸入資料驗證失敗，請檢查後重試',
@@ -64,7 +64,7 @@ export const VALIDATION_ERROR_CODES = {
   CUSTOM_VALIDATION_FAILED: '自訂驗證失敗',
 } as const
 
-// ==================== 業務邏輯錯誤 (4xxxx) ====================
+// ==================== 業務邏輯錯誤 (14xxxx) ====================
 
 export const BUSINESS_ERROR_CODES = {
   SCHEDULE_CONFLICT: '排課時間衝突，請選擇其他時段',
@@ -80,7 +80,7 @@ export const BUSINESS_ERROR_CODES = {
   RESOURCE_BUSY: '資源忙碌中，請稍後再試',
 } as const
 
-// ==================== 例外審核錯誤 (4xxxx) ====================
+// ==================== 例外審核錯誤 (16xxxx) ====================
 
 export const EXCEPTION_ERROR_CODES = {
   EXCEPTION_NOT_FOUND: '找不到例外申請',
@@ -95,7 +95,7 @@ export const EXCEPTION_ERROR_CODES = {
   EXCEPTION_CANCEL_DEADLINE_PASSED: '停課截止日已過',
 } as const
 
-// ==================== 教師相關錯誤 (4xxxx) ====================
+// ==================== 教師相關錯誤 (14xxxx) ====================
 
 export const TEACHER_ERROR_CODES = {
   TEACHER_NOT_FOUND: '找不到指定的老師',
@@ -108,7 +108,7 @@ export const TEACHER_ERROR_CODES = {
   CERTIFICATE_NOT_FOUND: '找不到指定的證照',
 } as const
 
-// ==================== 課程相關錯誤 (4xxxx) ====================
+// ==================== 課程相關錯誤 (14xxxx) ====================
 
 export const COURSE_ERROR_CODES = {
   COURSE_NOT_FOUND: '找不到指定的課程',
@@ -119,7 +119,7 @@ export const COURSE_ERROR_CODES = {
   OFFERING_NOT_AVAILABLE: '此開課已停止報名',
 } as const
 
-// ==================== 教室相關錯誤 (4xxxx) ====================
+// ==================== 教室相關錯誤 (14xxxx) ====================
 
 export const ROOM_ERROR_CODES = {
   ROOM_NOT_FOUND: '找不到指定的教室',
@@ -129,7 +129,7 @@ export const ROOM_ERROR_CODES = {
   ROOM_MAINTENANCE: '教室維護中',
 } as const
 
-// ==================== 通知相關錯誤 (4xxxx) ====================
+// ==================== 通知相關錯誤 (19xxxx) ====================
 
 export const NOTIFICATION_ERROR_CODES = {
   NOTIFICATION_NOT_FOUND: '找不到通知',
@@ -145,74 +145,125 @@ export const NOTIFICATION_ERROR_CODES = {
  * 數字錯誤碼到字符串錯誤碼的映射
  * 後端返回數字格式錯誤碼（如 160006），需要映射到前端的字符串格式
  *
- * 錯誤碼定義規則：
- * - 第1位：應用ID前綴 (1 = TimeLedger)
- * - 第2位：功能類型 (6 = 例外審核, 5 = 排課, ...)
- * - 後4位：流水號
+ * 錯誤碼定義規則（後端 global/errInfos/code.go）：
+ * - 第1位：專案前綴 (1 = TimeLedger)
+ * - 第2-3位：功能類型 (10=系統, 20=DB, 30=權限, 50=排課, 60=例外審核, ...)
+ * - 後3-4位：流水號
  *
  * 範例：
+ * - 110001 = SYSTEM_ERROR（系統錯誤）
+ * - 150001 = SCHED_OVERLAP（時段被佔用）
+ * - 150002 = SCHED_BUFFER（緩衝時間不足）
+ * - 160001 = EXCEPTION_NOT_FOUND（例外申請不存在）
  * - 160006 = EXCEPTION_DEADLINE_EXCEEDED（超過例外申請截止日）
  * - 160008 = EXCEPTION_ALREADY_PROCESSED（例外已被處理）
  * - 160009 = EXCEPTION_RESCHEDULE_CONFLICT（調課時間衝突）
  * - 160011 = EXCEPTION_CANCEL_DEADLINE_PASSED（停課截止日已過）
- * - 150001 = SCHED_OVERLAP（時段被佔用）
- * - 150002 = SCHED_BUFFER（緩衝時間不足）
  */
 export const NUMERIC_ERROR_CODE_MAP: Record<number, string> = {
-  // 例外審核類錯誤 (16xxxx)
-  160001: 'EXCEPTION_NOT_FOUND',              // 例外申請不存在
-  160002: 'EXCEPTION_INVALID_ACTION',          // 當前狀態不允許此操作
-  160003: 'EXCEPTION_REVIEWED',               // 例外已審核過
-  160004: 'EXCEPTION_REVOKED',                // 例外已撤回
-  160005: 'EXCEPTION_REJECT_SELF',            // 不能拒絕自己提交的申請
-  160006: 'EXCEPTION_DEADLINE_EXCEEDED',      // 已超過異動截止日（需提前 14 天申請）
-  160007: 'EXCEPTION_SELF_REVIEW_FORBIDDEN',  // 不能審核自己提交的申請
-  160008: 'EXCEPTION_ALREADY_PROCESSED',      // 例外已被處理
-  160009: 'EXCEPTION_RESCHEDULE_CONFLICT',    // 調課時間與現有排程衝突
-  160010: 'EXCEPTION_REPLACE_TEACHER_INVALID', // 代課老師無效
-  160011: 'EXCEPTION_CANCEL_DEADLINE_PASSED', // 停課截止日已過
-  160012: 'EXCEPTION_RESCHEDULE_NO_NEW_TIME', // 調課必須提供新時間
+  // 排課類錯誤 (150xxx)
+  150001: 'SCHED_OVERLAP',
+  150002: 'SCHED_BUFFER',
+  150003: 'SCHED_PAST',
+  150004: 'SCHED_LOCKED',
+  150005: 'SCHED_CLOSED',
+  150006: 'SCHED_INVALID_RANGE',
+  150007: 'SCHED_RULE_CONFLICT',
+  150008: 'SCHED_EXCEPTION_EXISTS',
 
-  // 循環編輯類錯誤 (16xxxx)
-  160013: 'RECURRENCE_EDIT_MODE_INVALID',    // 無效的編輯模式
-  160014: 'RECURRENCE_NO_AFFECTED_SESSIONS', // 沒有受影響的場次
-  160015: 'RECURRENCE_FUTURE_WITH_EDIT_DATE', // FUTURE 模式必須指定編輯日期
-  160016: 'RECURRENCE_EDIT_DATE_REQUIRED',    // 編輯日期為必填
-  160017: 'RECURRENCE_DELETE_CONFIRM',        // 刪除操作需要確認
-  160018: 'RECURRENCE_BATCH_LIMIT_EXCEEDED',  // 批量操作超過限制
+  // 排課業務驗證錯誤 (150xxx)
+  150009: 'SCHED_TEACHER_REQUIRED',
+  150010: 'SCHED_ROOM_REQUIRED',
+  150011: 'SCHED_OFFERING_NOT_FOUND',
+  150012: 'SCHED_COURSE_NOT_FOUND',
+  150013: 'SCHED_INVALID_WEEKDAY',
+  150014: 'SCHED_INVALID_DURATION',
+  150015: 'SCHED_START_AFTER_END',
+  150016: 'SCHED_INVALID_DATE_FORMAT',
+  150017: 'SCHED_END_BEFORE_START',
+  150018: 'SCHED_DURATION_EXCEEDS_LIMIT',
 
-  // 排課類錯誤 (15xxxx)
-  150001: 'SCHED_OVERLAP',                   // 時段被佔用
-  150002: 'SCHED_BUFFER',                    // 緩衝時間不足
-  150003: 'SCHED_PAST',                      // 不能排過去的時間
-  150004: 'SCHED_LOCKED',                    // 時段已被鎖定
-  150005: 'SCHED_CLOSED',                    // 非營業時間
-  150006: 'SCHED_INVALID_RANGE',             // 日期範圍錯誤
-  150007: 'SCHED_RULE_CONFLICT',             // 規則衝突
-  150008: 'SCHED_EXCEPTION_EXISTS',          // 該日期已有例外單
+  // 例外審核類錯誤 (160xxx)
+  160001: 'EXCEPTION_NOT_FOUND',
+  160002: 'EXCEPTION_INVALID_ACTION',
+  160003: 'EXCEPTION_REVIEWED',
+  160004: 'EXCEPTION_REVOKED',
+  160005: 'EXCEPTION_REJECT_SELF',
 
-  // 系統類錯誤 (11xxxx)
-  110001: 'SYSTEM_ERROR',                     // 系統錯誤
-  110002: 'PARAMS_VALIDATE_ERROR',            // 參數格式錯誤
-  110003: 'JSON_ENCODE_ERROR',                // JSON 編碼錯誤
-  110004: 'JSON_DECODE_ERROR',                // JSON 解碼錯誤
-  110009: 'RATE_LIMIT_EXCEEDED',             // 請求頻率過高
+  // 例外審核業務類錯誤 (160xxx)
+  160006: 'EXCEPTION_DEADLINE_EXCEEDED',
+  160007: 'EXCEPTION_SELF_REVIEW_FORBIDDEN',
+  160008: 'EXCEPTION_ALREADY_PROCESSED',
+  160009: 'EXCEPTION_RESCHEDULE_CONFLICT',
+  160010: 'EXCEPTION_REPLACE_TEACHER_INVALID',
+  160011: 'EXCEPTION_CANCEL_DEADLINE_PASSED',
+  160012: 'EXCEPTION_RESCHEDULE_NO_NEW_TIME',
 
-  // 資料庫類錯誤 (12xxxx)
-  120001: 'SQL_ERROR',                       // 資料庫操作失敗
-  120002: 'TX_ERROR',                        // 交易錯誤
+  // 循環編輯類錯誤 (160xxx)
+  160013: 'RECURRENCE_EDIT_MODE_INVALID',
+  160014: 'RECURRENCE_NO_AFFECTED_SESSIONS',
+  160015: 'RECURRENCE_FUTURE_WITH_EDIT_DATE',
+  160016: 'RECURRENCE_EDIT_DATE_REQUIRED',
+  160017: 'RECURRENCE_DELETE_CONFIRM',
+  160018: 'RECURRENCE_BATCH_LIMIT_EXCEEDED',
 
-  // 權限類錯誤 (13xxxx)
-  130001: 'UNAUTHORIZED',                    // 請先登入
-  130002: 'FORBIDDEN',                       // 權限不足
-  130003: 'TOKEN_EXPIRED',                   // Token 已過期
-  130004: 'INVALID_TOKEN',                   // 無效的 Token
+  // 系統類錯誤 (110xxx)
+  110001: 'SYSTEM_ERROR',
+  110002: 'PARAMS_VALIDATE_ERROR',
+  110003: 'JSON_ENCODE_ERROR',
+  110004: 'JSON_DECODE_ERROR',
+  110009: 'RATE_LIMIT_EXCEEDED',
+
+  // 資料庫類錯誤 (120xxx)
+  120001: 'SQL_ERROR',
+  120002: 'TX_ERROR',
+
+  // 權限類錯誤 (130xxx)
+  130001: 'UNAUTHORIZED',
+  130002: 'FORBIDDEN',
+  130003: 'TOKEN_EXPIRED',
+  130004: 'INVALID_TOKEN',
+  130005: 'INVALID_INVITE',
+
+  // 業務資源類錯誤 (140xxx)
+  140001: 'NOT_FOUND',
+  140002: 'DUPLICATE',
+  140003: 'TAG_INVALID',
+  140004: 'LIMIT_EXCEEDED',
+  140005: 'RESOURCE_IN_USE',
+  140006: 'COURSE_IN_USE',
+  140007: 'OFFERING_HAS_RULES',
+  140008: 'ROOM_IN_USE',
+  140009: 'INVALID_STATUS',
+  140010: 'TEACHER_NOT_REGISTERED',
+
+  // 檔案類錯誤 (170xxx)
+  170001: 'FILE_TOO_LARGE',
+  170002: 'FILE_TYPE_INVALID',
+  170003: 'UPLOAD_FAILED',
+  170004: 'CERTIFICATE_NOT_FOUND',
+
+  // 搜尋媒合類錯誤 (180xxx)
+  180001: 'TALENT_NOT_OPEN',
+
+  // LINE Bot 類錯誤 (190xxx)
+  190001: 'LINE_ALREADY_BOUND',
+  190002: 'LINE_NOT_BOUND',
+  190003: 'LINE_BINDING_CODE_INVALID',
+  190004: 'LINE_BINDING_EXPIRED',
+  190005: 'LINE_NOTIFY_FAILED',
+
+  // 管理員類錯誤 (1100xxx)
+  1100001: 'ADMIN_NOT_FOUND',
+  1100002: 'ADMIN_EMAIL_EXISTS',
+  1100003: 'PASSWORD_NOT_MATCH',
+  1100004: 'ADMIN_CANNOT_DISABLE_SELF',
 }
 
 /**
  * 所有錯誤碼的聯合類型
  */
-export type ErrorCode = 
+export type ErrorCode =
   | keyof typeof SUCCESS_CODES
   | keyof typeof SYSTEM_ERROR_CODES
   | keyof typeof DATABASE_ERROR_CODES
@@ -246,7 +297,6 @@ export const ERROR_MESSAGES: Record<string, string> = {
  * 檢查錯誤碼是否為成功
  */
 export const isSuccessCode = (code: string | number): boolean => {
-  // 同時處理字符串 '0'/'SUCCESS' 和數字 0
   return code === 0 || code === '0' || code === 'SUCCESS'
 }
 

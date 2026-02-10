@@ -109,55 +109,99 @@ function getErrorMessage(error: ApiError | NetworkError): string {
 
 /**
  * 取得 HTTP 狀態碼對應的處理方式
+ *
+ * 原則：優先使用後端回傳的 error.message，其次使用本地化訊息，最後才使用硬編碼 fallback
  */
 function getDefaultHandler(statusCode: number) {
   // 預設處理器包裝，將 options 傳入閉包的 options
-  const makeHandler = (handler: (error: ApiError | NetworkError) => void): ErrorHandlerFn => {
-    return (error: ApiError | NetworkError, options: ErrorHandlerOptions) => {
+  const makeHandler =
+    (handler: (error: ApiError | NetworkError) => void): ErrorHandlerFn =>
+    (error: ApiError | NetworkError, options: ErrorHandlerOptions) => {
       handler(error)
     }
-  }
 
   const handlers: Record<number, ErrorHandlerFn> = {
     401: makeHandler((error) => {
       redirectToLogin()
-      showErrorAlert('請先登入再進行操作', '未授權')
+      // 優先使用後端回傳的訊息， fallback 到本地化訊息
+      const message =
+        error.message || ERROR_MESSAGES.UNAUTHORIZED || '請先登入再進行操作'
+      showErrorAlert(message, '未授權')
     }),
     403: makeHandler((error) => {
-      showErrorAlert('您沒有權限執行此操作', '禁止存取')
+      // 優先使用後端回傳的訊息， fallback 到本地化訊息
+      const message = error.message || ERROR_MESSAGES.FORBIDDEN || '您沒有權限執行此操作'
+      showErrorAlert(message, '禁止存取')
     }),
     404: makeHandler((error) => {
-      showErrorAlert('找不到請求的資源', '404')
+      // 優先使用後端回傳的訊息， fallback 到本地化訊息
+      const message = error.message || ERROR_MESSAGES.NOT_FOUND || '找不到請求的資源'
+      showErrorAlert(message, '404')
     }),
     409: makeHandler((error) => {
-      // 衝突錯誤，根據錯誤訊息提供更詳細的描述
-      let message = '操作與現有資料衝突，請檢查後重試'
-      const errorMessage = 'message' in error ? error.message : ''
+      // 衝突錯誤，優先使用後端回傳的訊息
+      const errorMessage = error.message || ''
+      let message =
+        ERROR_MESSAGES.DUPLICATE || errorMessage || '操作與現有資料衝突，請檢查後重試'
 
-      // 檢測是否為課表相關的衝突
-      const scheduleRelatedKeywords = ['時段', '課程', '重疊', 'schedule', 'session', 'room', 'teacher', '教師', '教室']
-      const isScheduleRelated = scheduleRelatedKeywords.some(keyword =>
+      // 檢測是否為課表相關的衝突，根據關鍵字提供更詳細的描述
+      const scheduleRelatedKeywords = [
+        '時段',
+        '課程',
+        '重疊',
+        'schedule',
+        'session',
+        'room',
+        'teacher',
+        '教師',
+        '教室',
+      ]
+      const isScheduleRelated = scheduleRelatedKeywords.some((keyword) =>
         errorMessage.toLowerCase().includes(keyword.toLowerCase())
       )
 
       if (isScheduleRelated) {
-        message = '時段與現有課程重疊，請檢查排行程'
-      } else if (errorMessage.includes('email') || errorMessage.includes('信箱')) {
-        message = '此電子郵件已被註冊，請使用其他信箱'
-      } else if (errorMessage.includes('已存在') || errorMessage.includes('already exists')) {
-        message = '資料已存在，請勿重複建立'
+        message =
+          ERROR_MESSAGES.SCHEDULE_CONFLICT ||
+          errorMessage ||
+          '時段與現有課程重疊，請檢查排行程'
+      } else if (
+        errorMessage.includes('email') ||
+        errorMessage.includes('信箱')
+      ) {
+        message =
+          ERROR_MESSAGES.DUPLICATE ||
+          errorMessage ||
+          '此電子郵件已被註冊，請使用其他信箱'
+      } else if (
+        errorMessage.includes('已存在') ||
+        errorMessage.includes('already exists')
+      ) {
+        message =
+          ERROR_MESSAGES.ALREADY_EXISTS || errorMessage || '資料已存在，請勿重複建立'
       }
 
       showErrorAlert(message, '衝突錯誤')
     }),
     422: makeHandler((error) => {
-      showErrorAlert('輸入資料驗證失敗，請檢查後重試', '驗證錯誤')
+      // 優先使用後端回傳的訊息， fallback 到本地化訊息
+      const message =
+        error.message || ERROR_MESSAGES.VALIDATION_ERROR || '輸入資料驗證失敗，請檢查後重試'
+      showErrorAlert(message, '驗證錯誤')
     }),
     429: makeHandler((error) => {
-      showErrorAlert('請求過於頻繁，請稍後再試', '速率限制')
+      // 優先使用後端回傳的訊息， fallback 到本地化訊息
+      const message =
+        error.message ||
+        ERROR_MESSAGES.RATE_LIMIT_EXCEEDED ||
+        '請求過於頻繁，請稍後再試'
+      showErrorAlert(message, '速率限制')
     }),
     500: makeHandler((error) => {
-      showErrorAlert('系統錯誤，請稍後再試', '伺服器錯誤')
+      // 優先使用後端回傳的訊息， fallback 到本地化訊息
+      const message =
+        error.message || ERROR_MESSAGES.SYSTEM_ERROR || '系統錯誤，請稍後再試'
+      showErrorAlert(message, '伺服器錯誤')
     }),
   }
   return handlers[statusCode] || defaultErrorHandler
@@ -199,7 +243,7 @@ function getErrorTitle(error: ApiError | NetworkError): string {
 function showErrorAlert(message: string, title?: string) {
   // 使用全域 alert 系統
   if (typeof window !== 'undefined' && (window as any).$alert) {
-    ; (window as any).$alert({
+    ;(window as any).$alert({
       message,
       title: title || '操作失敗',
       type: 'error',
@@ -240,8 +284,14 @@ function redirectToLogin() {
 function clearAllAuthData() {
   if (typeof localStorage !== 'undefined') {
     // 清除所有可能的 token storage keys
-    const tokenKeys = ['token', 'auth_token', 'admin_token', 'teacher_token', 'refresh_token']
-    tokenKeys.forEach(key => {
+    const tokenKeys = [
+      'token',
+      'auth_token',
+      'admin_token',
+      'teacher_token',
+      'refresh_token',
+    ]
+    tokenKeys.forEach((key) => {
       localStorage.removeItem(key)
     })
   }
@@ -365,7 +415,8 @@ export class ErrorHandler {
       ...options,
     }
 
-    const errorMessage = error instanceof Error ? error.message : '發生未知錯誤'
+    const errorMessage =
+      error instanceof Error ? error.message : '發生未知錯誤'
 
     if (mergedOptions.logError) {
       console.error('[Unknown Error]', error)
@@ -423,7 +474,8 @@ export class ErrorHandler {
       error !== null &&
       'code' in error &&
       'message' in error &&
-      (typeof (error as ApiError).code === 'string' || typeof (error as ApiError).code === 'number')
+      (typeof (error as ApiError).code === 'string' ||
+        typeof (error as ApiError).code === 'number')
     ) {
       // 排除成功回應
       const code = (error as ApiError).code
