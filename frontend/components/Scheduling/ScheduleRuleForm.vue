@@ -33,7 +33,8 @@
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
       <div>
         <SearchableSelect
-          v-model="values.offering_id"
+          :model-value="values.offering_id"
+          @update:model-value="(val) => setFieldValue('offering_id', val)"
           :options="offeringOptions"
           label="課程"
           placeholder="請選擇課程"
@@ -44,7 +45,8 @@
 
       <div>
         <SearchableSelect
-          v-model="values.teacher_id"
+          :model-value="values.teacher_id"
+          @update:model-value="(val) => setFieldValue('teacher_id', val)"
           :options="teacherOptions"
           label="老師"
           placeholder="請選擇老師"
@@ -56,7 +58,8 @@
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
       <div>
         <SearchableSelect
-          v-model="values.room_id"
+          :model-value="values.room_id"
+          @update:model-value="(val) => setFieldValue('room_id', val)"
           :options="roomOptions"
           label="教室"
           placeholder="請選擇教室"
