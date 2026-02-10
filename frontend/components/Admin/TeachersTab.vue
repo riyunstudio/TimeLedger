@@ -112,11 +112,11 @@
             </span>
           </div>
 
-          <div v-if="teacher.certificates && teacher.certificates.length > 0" class="flex items-center gap-2 text-sm text-slate-400">
+          <div v-if="visibleCertCount(teacher.certificates) > 0" class="flex items-center gap-2 text-sm text-slate-400">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
             </svg>
-            {{ teacher.certificates.length }} 張證照
+            {{ visibleCertCount(teacher.certificates) }} 張證照
           </div>
 
           <!-- 評分顯示 -->
@@ -256,6 +256,35 @@ const { error: alertError, confirm: alertConfirm } = useAlert()
 
 // 資源快取
 const { invalidate } = useResourceCache()
+
+// 證照隱私設定常數
+const CERT_VISIBILITY = {
+  PRIVATE: 0,      // 私密 - 不顯示
+  NAME_ONLY: 1,    // 僅限名稱 - 顯示名稱
+  PUBLIC: 2,       // 公開 - 顯示完整資訊
+}
+
+// 教師證照類型（簡化版）
+interface TeacherCertificate {
+  id: number
+  name: string
+  file_url?: string
+  visibility?: number
+}
+
+// 判斷證照是否為可見狀態
+const isCertVisible = (cert: TeacherCertificate): boolean => {
+  // visibility 為 undefined 時預設為公開
+  const visibility = cert.visibility ?? CERT_VISIBILITY.PUBLIC
+  // 私密(0) 不顯示，其他都顯示
+  return visibility !== CERT_VISIBILITY.PRIVATE
+}
+
+// 取得可見證照數量
+const visibleCertCount = (certificates?: TeacherCertificate[]): number => {
+  if (!certificates || certificates.length === 0) return 0
+  return certificates.filter(isCertVisible).length
+}
 
 import TeacherCreateModal from '~/components/Teacher/TeacherCreateModal.vue'
 import TeacherMergeModal from '~/components/Teacher/TeacherMergeModal.vue'

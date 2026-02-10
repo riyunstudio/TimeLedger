@@ -144,11 +144,36 @@ export interface TeacherCertificate {
   is_verified?: boolean
   /** 證照圖片 URL */
   file_url?: string
+  /** 隱私設定 (2=公開, 1=僅限名稱, 0=私密) */
+  visibility?: number
   /** 建立時間 */
   created_at: Timestamp
   /** 更新時間 */
   updated_at: Timestamp
 }
+
+/**
+ * 證照隱私設定選項
+ */
+export const CERTIFICATE_VISIBILITY = {
+  /** 私密 - 中心端不顯示 */
+  PRIVATE: 0,
+  /** 僅限名稱 - 僅顯示證照名稱 */
+  NAME_ONLY: 1,
+  /** 公開 - 顯示名稱與圖片 */
+  PUBLIC: 2,
+} as const
+
+export type CertificateVisibility = typeof CERTIFICATE_VISIBILITY[keyof typeof CERTIFICATE_VISIBILITY]
+
+/**
+ * 證照隱私設定顯示文字
+ */
+export const CERTIFICATE_VISIBILITY_LABELS = {
+  [CERTIFICATE_VISIBILITY.PRIVATE]: '私密',
+  [CERTIFICATE_VISIBILITY.NAME_ONLY]: '僅限名稱',
+  [CERTIFICATE_VISIBILITY.PUBLIC]: '公開',
+} as const
 
 /**
  * 新增證照請求
@@ -162,6 +187,8 @@ export interface CreateCertificateRequest {
   issued_at?: string
   /** 證照檔案 */
   file?: File
+  /** 隱私設定 (2=公開, 1=僅限名稱, 0=私密) */
+  visibility?: number
 }
 
 // ==================== 標籤相關類型 ====================

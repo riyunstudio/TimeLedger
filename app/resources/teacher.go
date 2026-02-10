@@ -112,6 +112,7 @@ type AdminCertificateResponse struct {
 	FileURL   string    `json:"file_url,omitempty"`
 	IssuedAt  time.Time `json:"issued_at"`
 	CreatedAt time.Time `json:"created_at"`
+	Visibility uint     `json:"visibility"`
 }
 
 // ToAdminTeacherResponse 將老師模型轉換為管理員回應
@@ -133,13 +134,28 @@ func (r *AdminTeacherResource) ToAdminTeacherResponse(
 
 	certResponses := make([]AdminCertificateResponse, 0, len(certificates))
 	for _, cert := range certificates {
-		certResponses = append(certResponses, AdminCertificateResponse{
+		// Visibility == 0 (PRIVATE): 不加入結果列表
+		if cert.Visibility == 0 {
+			continue
+		}
+
+		certResp := AdminCertificateResponse{
 			ID:        cert.ID,
 			Name:      cert.Name,
-			FileURL:   cert.FileURL,
 			IssuedAt:  cert.IssuedAt,
 			CreatedAt: cert.CreatedAt,
-		})
+			Visibility: cert.Visibility,
+		}
+
+		// Visibility == 1 (NAME_ONLY): FileURL 設為空字串
+		// Visibility == 2 (FULL): FileURL 正常顯示
+		if cert.Visibility == 1 {
+			certResp.FileURL = ""
+		} else {
+			certResp.FileURL = cert.FileURL
+		}
+
+		certResponses = append(certResponses, certResp)
 	}
 
 	var noteResponse *AdminTeacherNoteResponse

@@ -115,14 +115,25 @@
               <div
                 v-if="cert.file_url"
                 class="aspect-video rounded-lg bg-slate-800 mb-2 overflow-hidden cursor-pointer hover:ring-2 ring-primary-500 transition-all"
-                @click="openCertificatePreview(cert)"
+                :class="{ 'opacity-75 cursor-not-allowed': !cert.file_url }"
+                @click="cert.file_url ? openCertificatePreview(cert) : null"
               >
                 <img
+                  v-if="cert.file_url"
                   :src="cert.file_url"
                   :alt="cert.name"
                   class="w-full h-full object-cover"
                   @error="($event.target as HTMLImageElement).style.display = 'none'"
                 />
+              </div>
+              <!-- 無圖片時的佔位符 -->
+              <div
+                v-else
+                class="aspect-video rounded-lg bg-slate-800 mb-2 flex items-center justify-center"
+              >
+                <svg class="w-8 h-8 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
               </div>
               <div class="flex items-start justify-between">
                 <div class="min-w-0 flex-1">
@@ -130,6 +141,24 @@
                   <p v-if="cert.issued_at" class="text-xs text-slate-500 mt-1">
                     {{ formatDate(cert.issued_at) }}
                   </p>
+                  <!-- 隱私狀態顯示 -->
+                  <div class="flex items-center gap-1 mt-1">
+                    <span
+                      class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium"
+                      :class="getVisibilityClass(cert.visibility)"
+                    >
+                      <svg v-if="cert.visibility === 2" class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <svg v-else-if="cert.visibility === 1" class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                      <svg v-else class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                      </svg>
+                      {{ getVisibilityLabel(cert.visibility) }}
+                    </span>
+                  </div>
                 </div>
                 <button
                   @click="deleteCertificate(cert.id)"
@@ -198,6 +227,7 @@
 <script setup lang="ts">
 import { alertConfirm, alertError, alertWarning } from '~/composables/useAlert'
 import { SKILL_CATEGORIES } from '~/types'
+import { CERTIFICATE_VISIBILITY_LABELS, type CertificateVisibility } from '~/types/teacher'
 import AddSkillModal from './AddSkillModal.vue'
 import AddCertificateModal from './AddCertificateModal.vue'
 
@@ -224,6 +254,28 @@ const getCategoryIcon = (category: string): string => {
 
 const getCategoryStyle = (category: string): string => {
   return SKILL_CATEGORIES[category as keyof typeof SKILL_CATEGORIES]?.color || 'bg-slate-500/20 text-slate-400 border-slate-500/30'
+}
+
+/**
+ * 取得隱私狀態顯示文字
+ */
+const getVisibilityLabel = (visibility?: number): string => {
+  return CERTIFICATE_VISIBILITY_LABELS[visibility as keyof typeof CERTIFICATE_VISIBILITY_LABELS] || '私密'
+}
+
+/**
+ * 取得隱私狀態樣式
+ */
+const getVisibilityClass = (visibility?: number): string => {
+  switch (visibility) {
+    case 2: // 公開
+      return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+    case 1: // 僅限名稱
+      return 'bg-amber-500/20 text-amber-400 border-amber-500/30'
+    case 0: // 私密
+    default:
+      return 'bg-slate-500/20 text-slate-400 border-slate-500/30'
+  }
 }
 
 const fetchData = async () => {

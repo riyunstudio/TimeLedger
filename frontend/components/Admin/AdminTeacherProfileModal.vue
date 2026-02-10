@@ -69,35 +69,46 @@
         </div>
 
         <!-- 證照列表 -->
-        <div v-if="teacher?.certificates?.length > 0">
-          <h5 class="text-sm font-medium text-slate-400 mb-2">持有證照 ({{ teacher.certificates.length }} 張)</h5>
+        <div v-if="visibleCertificates.length > 0">
+          <h5 class="text-sm font-medium text-slate-400 mb-2">持有證照 ({{ visibleCertificates.length }} 張)</h5>
           <div class="space-y-2">
             <div
-              v-for="cert in teacher.certificates"
+              v-for="cert in visibleCertificates"
               :key="cert.id"
               class="flex items-center gap-3 p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
             >
               <!-- 證照圖示 -->
-              <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-amber-500/20 flex items-center justify-center">
-                <svg v-if="getCertIcon(cert.name) === 'pdf'" class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div
+                class="flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center"
+                :class="isRestrictedCert(cert) ? 'bg-slate-500/20' : 'bg-amber-500/20'"
+              >
+                <svg v-if="getCertIcon(cert.name) === 'pdf'" class="w-5 h-5" :class="isRestrictedCert(cert) ? 'text-slate-400' : 'text-amber-500'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                 </svg>
-                <svg v-else class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg v-else class="w-5 h-5" :class="isRestrictedCert(cert) ? 'text-slate-400' : 'text-amber-500'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
               </div>
-              
+
               <!-- 證照資訊 -->
               <div class="flex-1 min-w-0">
-                <p class="text-sm font-medium text-slate-200 truncate">{{ cert.name }}</p>
+                <div class="flex items-center gap-2">
+                  <p class="text-sm font-medium text-slate-200 truncate">{{ cert.name }}</p>
+                  <span v-if="isRestrictedCert(cert)" class="flex-shrink-0 flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-slate-500/20 text-slate-400">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                    僅限名稱
+                  </span>
+                </div>
                 <p class="text-xs text-slate-500">
                   發照日期：{{ formatDate(cert.issued_at) }}
                 </p>
               </div>
-              
+
               <!-- 查看按鈕 -->
               <a
-                v-if="cert.file_url"
+                v-if="canViewCert(cert)"
                 :href="cert.file_url"
                 target="_blank"
                 class="flex-shrink-0 p-2 rounded-lg bg-primary-500/20 text-primary-500 hover:bg-primary-500/30 transition-colors"
@@ -194,6 +205,12 @@ interface Certificate {
   file_url?: string
   issued_at: string
   created_at: string
+  visibility?: number
+}
+
+// 證照隱私設定常數
+const CERT_VISIBILITY = {
+  NAME_ONLY: 1, // 僅限名稱
 }
 
 interface TeacherNote {
@@ -280,4 +297,19 @@ const ratingLabels: Record<number, string> = {
   4: '優良',
   5: '優秀'
 }
+
+// 判斷證照是否為受限狀態（僅限名稱或無檔案）
+const isRestrictedCert = (cert: Certificate): boolean => {
+  return cert.visibility === CERT_VISIBILITY.NAME_ONLY || !cert.file_url
+}
+
+// 判斷是否可以查看證照圖片
+const canViewCert = (cert: Certificate): boolean => {
+  return !!cert.file_url && cert.visibility !== CERT_VISIBILITY.NAME_ONLY
+}
+
+// 取得所有可見的證照列表（後端已過濾掉完全私密的）
+const visibleCertificates = computed(() => {
+  return props.teacher?.certificates || []
+})
 </script>

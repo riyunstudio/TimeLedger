@@ -397,9 +397,10 @@ func (ctl *TeacherProfileController) CreateCertificate(ctx *gin.Context) {
 	}
 
 	certificate, errInfo, err := ctl.profileService.CreateCertificate(ctx, teacherID, &services.CreateCertificateRequest{
-		Name:     req.Name,
-		FileURL:  req.FileURL,
-		IssuedAt: issuedAt,
+		Name:       req.Name,
+		FileURL:    req.FileURL,
+		IssuedAt:   issuedAt,
+		Visibility: req.Visibility,
 	})
 	if err != nil {
 		helper.ErrorWithInfo(errInfo)
@@ -544,7 +545,8 @@ type CreateHashtagRequest struct {
 }
 
 type CreateCertificateRequest struct {
-	Name      string `json:"name" binding:"required"`
-	FileURL   string `json:"file_url" binding:"required"`
-	IssuedAt  string `json:"issued_at" binding:"required"`
+	Name       string `json:"name" binding:"required"`
+	FileURL    string `json:"file_url" binding:"required"`
+	IssuedAt   string `json:"issued_at" binding:"required"`
+	Visibility uint   `json:"visibility"`
 }

@@ -13,6 +13,7 @@ type TeacherCertificate struct {
 	FileURL    string         `gorm:"type:varchar(512);not null" json:"file_url"`
 	IssuedAt   time.Time      `gorm:"type:date;not null" json:"issued_at"`
 	IsVerified bool           `gorm:"type:boolean;default:false;not null" json:"is_verified"`
+	Visibility uint           `gorm:"type:tinyint unsigned;default:2;not null" json:"visibility"`
 	CreatedAt  time.Time      `gorm:"type:datetime;not null" json:"created_at"`
 	UpdatedAt  time.Time      `gorm:"type:datetime;not null" json:"updated_at"`
 	DeletedAt  gorm.DeletedAt `gorm:"index" json:"-"`

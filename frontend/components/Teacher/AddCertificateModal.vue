@@ -44,6 +44,41 @@
           <p v-else class="text-slate-100 text-sm sm:text-base">{{ fileName }}</p>
         </div>
       </div>
+
+      <div>
+        <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">隱私設定</label>
+        <div class="grid grid-cols-1 gap-2">
+          <label
+            v-for="option in visibilityOptions"
+            :key="option.value"
+            class="flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all"
+            :class="form.visibility === option.value
+              ? 'border-primary-500 bg-primary-500/10'
+              : 'border-slate-700 hover:border-slate-600'"
+          >
+            <input
+              type="radio"
+              :value="option.value"
+              v-model="form.visibility"
+              class="hidden"
+            />
+            <div
+              class="w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors"
+              :class="form.visibility === option.value
+                ? 'border-primary-500 bg-primary-500'
+                : 'border-slate-500'"
+            >
+              <svg v-if="form.visibility === option.value" class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+              </svg>
+            </div>
+            <div class="flex-1">
+              <p class="text-slate-100 font-medium text-sm sm:text-base">{{ option.label }}</p>
+              <p class="text-slate-500 text-xs">{{ option.description }}</p>
+            </div>
+          </label>
+        </div>
+      </div>
     </form>
 
     <template #footer>
@@ -71,6 +106,7 @@
 <script setup lang="ts">
 import { alertError, alertSuccess } from '~/composables/useAlert'
 import { formatDateToString } from '~/composables/useTaiwanTime'
+import { CERTIFICATE_VISIBILITY, CERTIFICATE_VISIBILITY_LABELS, type CertificateVisibility } from '~/types'
 import Icon from '~/components/base/Icon.vue'
 
 const emit = defineEmits<{
@@ -87,9 +123,28 @@ const fileInput = ref<HTMLInputElement>()
 const fileName = ref('')
 const selectedFile = ref<File | null>(null)
 
+const visibilityOptions = [
+  {
+    value: CERTIFICATE_VISIBILITY.PUBLIC,
+    label: '公開',
+    description: '顯示名稱與圖片',
+  },
+  {
+    value: CERTIFICATE_VISIBILITY.NAME_ONLY,
+    label: '僅限名稱',
+    description: '僅顯示證照名稱',
+  },
+  {
+    value: CERTIFICATE_VISIBILITY.PRIVATE,
+    label: '私密',
+    description: '中心端不顯示',
+  },
+]
+
 const form = ref({
   name: '',
   issued_at: '',
+  visibility: CERTIFICATE_VISIBILITY.PUBLIC as CertificateVisibility,
 })
 
 const formatDateTimeForApi = (datetimeLocal: string): string => {
@@ -144,6 +199,7 @@ const handleSubmit = async () => {
       name: form.value.name,
       file_url: fileUrl,
       issued_at: formatDateTimeForApi(form.value.issued_at),
+      visibility: form.value.visibility,
     })
 
     await profileStore.fetchCertificates()

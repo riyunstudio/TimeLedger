@@ -458,20 +458,28 @@ func (s *TeacherProfileService) GetCertificates(ctx context.Context, teacherID u
 
 // CreateCertificateRequest 新增證照請求
 type CreateCertificateRequest struct {
-	Name     string
-	FileURL  string
-	IssuedAt time.Time
+	Name       string
+	FileURL    string
+	IssuedAt   time.Time
+	Visibility uint
 }
 
 // CreateCertificate 新增老師證照
 func (s *TeacherProfileService) CreateCertificate(ctx context.Context, teacherID uint, req *CreateCertificateRequest) (*models.TeacherCertificate, *errInfos.Res, error) {
+	visibility := req.Visibility
+	// 預設為 2 (FULL) 如果沒有提供有效的隱私設定
+	if visibility > 2 {
+		visibility = 2
+	}
+
 	certificate := models.TeacherCertificate{
-		TeacherID: teacherID,
-		Name:      req.Name,
-		FileURL:   req.FileURL,
-		IssuedAt:  req.IssuedAt,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
+		TeacherID:  teacherID,
+		Name:       req.Name,
+		FileURL:    req.FileURL,
+		IssuedAt:   req.IssuedAt,
+		Visibility: visibility,
+		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
 	}
 
 	createdCert, err := s.certificateRepo.Create(ctx, certificate)
