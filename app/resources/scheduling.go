@@ -8,19 +8,20 @@ import (
 
 // ScheduleRuleResponse 排課規則響應
 type ScheduleRuleResponse struct {
-	ID            uint      `json:"id"`
-	CenterID      uint      `json:"center_id"`
-	OfferingID    uint      `json:"offering_id"`
-	TeacherID     *uint     `json:"teacher_id,omitempty"`
-	RoomID        uint      `json:"room_id"`
-	Weekday       int       `json:"weekday"`
-	StartTime     string    `json:"start_time"`
-	EndTime       string    `json:"end_time"`
-	Duration      int       `json:"duration"`
-	EffectiveFrom string    `json:"effective_from"`
-	EffectiveTo   string    `json:"effective_to"`
-	CreatedAt     time.Time `json:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at"`
+	ID             uint      `json:"id"`
+	CenterID       uint      `json:"center_id"`
+	OfferingID     uint      `json:"offering_id"`
+	TeacherID      *uint     `json:"teacher_id,omitempty"`
+	RoomID         uint      `json:"room_id"`
+	Weekday        int       `json:"weekday"`
+	StartTime      string    `json:"start_time"`
+	EndTime        string    `json:"end_time"`
+	Duration       int       `json:"duration"`
+	EffectiveFrom  string    `json:"effective_from"`
+	EffectiveTo    string    `json:"effective_to"`
+	SuspendedDates []string  `json:"suspended_dates"` // 停課日期列表
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
 }
 
 // ExpandedScheduleResponse 展開後的課表響應
@@ -188,20 +189,27 @@ func NewScheduleResource(app *app.App) *ScheduleResource {
 
 // ToRuleResponse 轉換規則為響應格式
 func (r *ScheduleResource) ToRuleResponse(rule models.ScheduleRule) *ScheduleRuleResponse {
+	// 轉換 SuspendedDates 為字串陣列
+	suspendedDatesStr := make([]string, 0, len(rule.SuspendedDates))
+	for _, date := range rule.SuspendedDates {
+		suspendedDatesStr = append(suspendedDatesStr, date.Format("2006-01-02"))
+	}
+
 	return &ScheduleRuleResponse{
-		ID:            rule.ID,
-		CenterID:      rule.CenterID,
-		OfferingID:    rule.OfferingID,
-		TeacherID:     rule.TeacherID,
-		RoomID:        rule.RoomID,
-		Weekday:       rule.Weekday,
-		StartTime:     rule.StartTime,
-		EndTime:       rule.EndTime,
-		Duration:      rule.Duration,
-		EffectiveFrom: rule.EffectiveRange.StartDate.Format("2006-01-02"),
-		EffectiveTo:   rule.EffectiveRange.EndDate.Format("2006-01-02"),
-		CreatedAt:     rule.CreatedAt,
-		UpdatedAt:     rule.UpdatedAt,
+		ID:             rule.ID,
+		CenterID:       rule.CenterID,
+		OfferingID:     rule.OfferingID,
+		TeacherID:      rule.TeacherID,
+		RoomID:         rule.RoomID,
+		Weekday:        rule.Weekday,
+		StartTime:      rule.StartTime,
+		EndTime:        rule.EndTime,
+		Duration:       rule.Duration,
+		EffectiveFrom:  rule.EffectiveRange.StartDate.Format("2006-01-02"),
+		EffectiveTo:    rule.EffectiveRange.EndDate.Format("2006-01-02"),
+		SuspendedDates: suspendedDatesStr,
+		CreatedAt:      rule.CreatedAt,
+		UpdatedAt:      rule.UpdatedAt,
 	}
 }
 

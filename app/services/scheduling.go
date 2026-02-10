@@ -74,17 +74,18 @@ type CreateScheduleRuleRequest struct {
 
 // UpdateScheduleRuleRequest 更新排課規則請求
 type UpdateScheduleRuleRequest struct {
-	Name       string  `json:"name"`
-	OfferingID uint    `json:"offering_id"`
-	TeacherID  *uint   `json:"teacher_id"`
-	RoomID     uint    `json:"room_id"`
-	StartTime  string  `json:"start_time"`
-	EndTime    string  `json:"end_time"`
-	Duration   int     `json:"duration"`
-	Weekdays   []int   `json:"weekdays"`
-	StartDate  string  `json:"start_date"`
-	EndDate    *string `json:"end_date"`
-	UpdateMode string  `json:"update_mode"`
+	Name            string     `json:"name"`
+	OfferingID      uint       `json:"offering_id"`
+	TeacherID       *uint      `json:"teacher_id"`
+	RoomID          uint       `json:"room_id"`
+	StartTime       string     `json:"start_time"`
+	EndTime         string     `json:"end_time"`
+	Duration        int        `json:"duration"`
+	Weekdays        []int      `json:"weekdays"`
+	StartDate       string     `json:"start_date"`
+	EndDate         *string    `json:"end_date"`
+	SuspendedDates  []string   `json:"suspended_dates"` // 停課日期列表
+	UpdateMode      string     `json:"update_mode"`
 }
 
 // CreateExceptionRequest 建立例外請求
@@ -701,8 +702,14 @@ func (s *ScheduleService) handleAllUpdateWithTx(txRepo *repositories.ScheduleRul
 	}
 
 	// 執行硬刪除（使用交易連接）
+	// 先刪除關聯的例外記錄，再刪除規則
 	txDB := txRepo.GetDBWrite()
 	for _, id := range deletedRuleIDs {
+		// 先刪除關聯的例外記錄（避免外鍵約束衝突）
+		if err := txDB.WithContext(ctx).Where("rule_id = ?", id).Delete(&models.ScheduleException{}).Error; err != nil {
+			return nil, fmt.Errorf("failed to delete associated exceptions: %w", err)
+		}
+		// 再刪除規則
 		if err := txDB.WithContext(ctx).Unscoped().Where("id = ?", id).Delete(&models.ScheduleRule{}).Error; err != nil {
 			return nil, err
 		}
@@ -739,6 +746,20 @@ func (s *ScheduleService) applyUpdateToRule(rule models.ScheduleRule, req *Updat
 	}
 	if !endDate.IsZero() {
 		rule.EffectiveRange.EndDate = endDate
+	}
+	// 處理 SuspendedDates（停課日期）
+	if len(req.SuspendedDates) > 0 {
+		loc := libs.GetTaiwanLocation()
+		suspendedDates := make(models.SuspendedDates, 0, len(req.SuspendedDates))
+		for _, dateStr := range req.SuspendedDates {
+			date, err := time.ParseInLocation("2006-01-02", dateStr, loc)
+			if err != nil {
+				s.Logger.Warn("invalid suspended_date format", "date", dateStr, "error", err)
+				continue
+			}
+			suspendedDates = append(suspendedDates, date)
+		}
+		rule.SuspendedDates = suspendedDates
 	}
 	return rule
 }
@@ -780,6 +801,7 @@ func (s *ScheduleService) createSingleRule(centerID uint, existingRule models.Sc
 		StartTime:  existingRule.StartTime,
 		EndTime:    existingRule.EndTime,
 		Duration:   existingRule.Duration,
+		SuspendedDates: existingRule.SuspendedDates, // 繼承現有的停課日期
 		EffectiveRange: models.DateRange{
 			StartDate: effectiveStartDate,
 			EndDate:   effectiveEndDate,
@@ -806,6 +828,20 @@ func (s *ScheduleService) createSingleRule(centerID uint, existingRule models.Sc
 	}
 	if req.Duration != 0 {
 		newRule.Duration = req.Duration
+	}
+	// 處理 SuspendedDates（停課日期）
+	if len(req.SuspendedDates) > 0 {
+		loc := libs.GetTaiwanLocation()
+		suspendedDates := make(models.SuspendedDates, 0, len(req.SuspendedDates))
+		for _, dateStr := range req.SuspendedDates {
+			date, err := time.ParseInLocation("2006-01-02", dateStr, loc)
+			if err != nil {
+				s.Logger.Warn("invalid suspended_date format", "date", dateStr, "error", err)
+				continue
+			}
+			suspendedDates = append(suspendedDates, date)
+		}
+		newRule.SuspendedDates = suspendedDates
 	}
 
 	return newRule

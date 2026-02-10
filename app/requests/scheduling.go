@@ -77,18 +77,19 @@ type CreateRuleRequest struct {
 
 // UpdateRuleRequest 更新排課規則請求
 type UpdateRuleRequest struct {
-	Name       string  `json:"name"`
-	OfferingID uint    `json:"offering_id"`
-	TeacherID  *uint   `json:"teacher_id"`
-	RoomID     uint    `json:"room_id"`
-	StartTime  string  `json:"start_time"`
-	EndTime    string  `json:"end_time"`
-	Duration   int     `json:"duration"`
-	Weekdays   []int   `json:"weekdays"`
-	StartDate  string  `json:"start_date"`
-	EndDate    *string `json:"end_date"`
+	Name            string     `json:"name"`
+	OfferingID      uint       `json:"offering_id"`
+	TeacherID       *uint      `json:"teacher_id"`
+	RoomID          uint       `json:"room_id"`
+	StartTime       string     `json:"start_time"`
+	EndTime         string     `json:"end_time"`
+	Duration        int        `json:"duration"`
+	Weekdays        []int      `json:"weekdays"`
+	StartDate       string     `json:"start_date"`
+	EndDate         *string    `json:"end_date"`
+	SuspendedDates  []string   `json:"suspended_dates"` // 停課日期列表
 	// 更新模式：SINGLE - 只修改這一天，FUTURE - 修改這天及之後，ALL - 修改所有
-	UpdateMode string `json:"update_mode"`
+	UpdateMode      string     `json:"update_mode"`
 }
 
 // DetectPhaseTransitionsRequest 偵測階段轉換請求

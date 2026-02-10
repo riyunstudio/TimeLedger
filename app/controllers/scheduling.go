@@ -8,6 +8,7 @@ import (
 
 	"timeLedger/app"
 	"timeLedger/app/requests"
+	"timeLedger/app/resources"
 	"timeLedger/app/services"
 
 	"github.com/gin-gonic/gin"
@@ -57,15 +58,17 @@ func parseTimeString(timeStr string) (time.Time, error) {
 // SchedulingController 排課管理控制器（Thin Controller）
 type SchedulingController struct {
 	BaseController
-	app         *app.App
-	scheduleSvc services.ScheduleServiceInterface
+	app            *app.App
+	scheduleSvc    services.ScheduleServiceInterface
+	scheduleResource *resources.ScheduleResource
 }
 
 // NewSchedulingController 建立排課控制器
 func NewSchedulingController(app *app.App) *SchedulingController {
 	return &SchedulingController{
-		app:         app,
-		scheduleSvc: services.NewScheduleService(app),
+		app:            app,
+		scheduleSvc:    services.NewScheduleService(app),
+		scheduleResource: resources.NewScheduleResource(app),
 	}
 }
 
@@ -397,7 +400,7 @@ func (ctl *SchedulingController) CreateRule(ctx *gin.Context) {
 // @Security BearerAuth
 // @Param id path uint true "規則ID"
 // @Param request body requests.UpdateRuleRequest true "規則資訊"
-// @Success 200 {object} global.ApiResponse{data=[]models.ScheduleRule}
+// @Success 200 {object} global.ApiResponse{data=[]resources.ScheduleRuleResponse}
 // @Router /api/v1/admin/scheduling/rules/{id} [put]
 func (ctl *SchedulingController) UpdateRule(ctx *gin.Context) {
 	helper := NewContextHelper(ctx)
@@ -423,17 +426,18 @@ func (ctl *SchedulingController) UpdateRule(ctx *gin.Context) {
 	}
 
 	svcReq := &services.UpdateScheduleRuleRequest{
-		Name:       req.Name,
-		OfferingID: req.OfferingID,
-		TeacherID:  req.TeacherID,
-		RoomID:     req.RoomID,
-		StartTime:  req.StartTime,
-		EndTime:    req.EndTime,
-		Duration:   req.Duration,
-		Weekdays:   req.Weekdays,
-		StartDate:  req.StartDate,
-		EndDate:    req.EndDate,
-		UpdateMode: req.UpdateMode,
+		Name:           req.Name,
+		OfferingID:     req.OfferingID,
+		TeacherID:      req.TeacherID,
+		RoomID:         req.RoomID,
+		StartTime:      req.StartTime,
+		EndTime:        req.EndTime,
+		Duration:       req.Duration,
+		Weekdays:       req.Weekdays,
+		StartDate:      req.StartDate,
+		EndDate:        req.EndDate,
+		SuspendedDates: req.SuspendedDates,
+		UpdateMode:     req.UpdateMode,
 	}
 
 	rules, errInfo, err := ctl.scheduleSvc.UpdateRule(ctx.Request.Context(), centerID, adminID, ruleID, svcReq)
@@ -446,7 +450,13 @@ func (ctl *SchedulingController) UpdateRule(ctx *gin.Context) {
 		return
 	}
 
-	helper.Success(rules)
+	// 使用 ScheduleResource 轉換規則響應
+	var ruleResponses []*resources.ScheduleRuleResponse
+	for _, rule := range rules {
+		ruleResponses = append(ruleResponses, ctl.scheduleResource.ToRuleResponse(rule))
+	}
+
+	helper.Success(ruleResponses)
 }
 
 // DeleteRule 刪除排課規則
