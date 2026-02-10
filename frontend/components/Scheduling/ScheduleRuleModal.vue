@@ -321,9 +321,17 @@ const handleFormSubmit = async (formData: Record<string, unknown>, updateMode: s
 
     }
 
-    // 有硬衝突，停止提交
+    // 有硬衝突，停止提交並顯示錯誤通知
     if (hasHardConflict) {
       validationLoading.value = false
+      // 使用 alertConfirm 確保使用者看到衝突訊息
+      await alertConfirm(
+        `排課時間與現有規則衝突：\n${conflictErrors.value.join('\n')}`,
+        '時間衝突',
+        'error'
+      )
+      // 清除衝突狀態，讓使用者可以修改表單
+      clearConflictError()
       return
     }
 
