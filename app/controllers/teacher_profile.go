@@ -539,5 +539,5 @@ type CreateHashtagRequest struct {
 type CreateCertificateRequest struct {
 	Name     string    `json:"name" binding:"required"`
 	FileURL  string    `json:"file_url" binding:"required"`
-	IssuedAt time.Time `json:"issued_at" binding:"required"`
+	IssuedAt time.Time `json:"issued_at" binding:"required,datetime=2006-01-02"`
 }
