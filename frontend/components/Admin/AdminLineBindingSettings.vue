@@ -177,10 +177,15 @@ const fetchStatus = async () => {
   try {
     const response = await api.get<any>('/admin/me/line-binding')
     if (response) {
-      bindingStatus.value = response
+      // API 返回 snake_case，需轉換為前端使用的 camelCase
+      bindingStatus.value = {
+        isBound: response.is_bound ?? false,
+        lineUserID: response.line_user_id ?? '',
+        notifyEnabled: response.notify_enabled ?? true,
+      }
       notifySettings.value = {
-        newException: response.notify_enabled,
-        reviewResult: response.notify_enabled,
+        newException: response.notify_enabled ?? true,
+        reviewResult: response.notify_enabled ?? true,
       }
       emit('status-updated', response)
     }
