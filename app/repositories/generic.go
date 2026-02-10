@@ -259,6 +259,7 @@ func (rp *GenericRepository[T]) CreateBatch(ctx context.Context, data []T) ([]T,
 }
 
 // Update updates an existing record. The record must have an ID set.
+// Uses Model().Updates() to ensure UPDATE instead of INSERT.
 //
 // Parameters:
 //   - data: The record to update (must have ID)
@@ -266,7 +267,8 @@ func (rp *GenericRepository[T]) CreateBatch(ctx context.Context, data []T) ([]T,
 // Returns:
 //   - error: Any error encountered
 func (rp *GenericRepository[T]) Update(ctx context.Context, data T) error {
-	return rp.withContext(ctx).dbWrite.Table(rp.table).Omit("created_at").Save(&data).Error
+	// 使用 Model().Updates() 確保執行 UPDATE 而不是 INSERT
+	return rp.withContext(ctx).dbWrite.Table(rp.table).Model(&data).Updates(data).Error
 }
 
 // UpdateFields updates specific fields of a record identified by ID.

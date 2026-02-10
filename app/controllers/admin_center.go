@@ -29,6 +29,7 @@ func NewAdminCenterController(appInstance *app.App) *AdminCenterController {
 // UpdateSettingsRequest 更新中心設定的請求結構
 type UpdateSettingsRequest struct {
 	DefaultCourseDuration *int64 `json:"default_course_duration"`
+	ExceptionLeadDays     *int64 `json:"exception_lead_days"`
 }
 
 // UpdateSettings 更新中心設定
@@ -65,6 +66,9 @@ func (ctl *AdminCenterController) UpdateSettings(ctx *gin.Context) {
 	// 更新設定
 	if req.DefaultCourseDuration != nil {
 		settings.DefaultCourseDuration = int(*req.DefaultCourseDuration)
+	}
+	if req.ExceptionLeadDays != nil {
+		settings.ExceptionLeadDays = int(*req.ExceptionLeadDays)
 	}
 
 	// 取得管理員 ID

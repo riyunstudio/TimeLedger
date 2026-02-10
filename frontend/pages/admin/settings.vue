@@ -193,7 +193,7 @@
 
               <button
                 type="submit"
-                :disabled="courseSettingsLoading || !!courseDurationError"
+                :disabled="courseSettingsLoading || !!courseDurationError || !!exceptionLeadDaysError"
                 class="px-6 py-2.5 bg-primary-500/30 border border-primary-500 text-primary-400 rounded-xl hover:bg-primary-500/40 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <span v-if="courseSettingsLoading" class="flex items-center gap-2">
@@ -202,6 +202,22 @@
                 </span>
                 <span v-else>儲存設定</span>
               </button>
+            </div>
+
+            <div class="flex items-end gap-4 mt-6">
+              <div class="flex-1 max-w-xs">
+                <label class="block text-sm text-slate-400 mb-2">異動申請截止天數</label>
+                <BaseInput
+                  v-model="courseSettings.exception_lead_days"
+                  type="number"
+                  placeholder="例如：14"
+                  class="w-full"
+                  :min="0"
+                  :max="365"
+                  :error="exceptionLeadDaysError"
+                />
+                <p class="text-slate-500 text-xs mt-1">設定老師申請停課或調課需提前的天數（預設為 14 天，設定為 0 表示不限制）</p>
+              </div>
             </div>
 
             <p v-if="courseSettingsMessage" :class="courseSettingsSuccess ? 'text-green-400' : 'text-red-400'" class="text-sm mt-3">
@@ -269,6 +285,7 @@ const passwordSuccess = ref(false)
 // 課程設定
 const courseSettings = ref({
   default_course_duration: 60,
+  exception_lead_days: 14,
 })
 
 const courseSettingsLoading = ref(false)
@@ -280,6 +297,15 @@ const courseDurationError = computed(() => {
   const duration = courseSettings.value.default_course_duration
   if (duration && (duration < 15 || duration > 480)) {
     return '時長需介於 15 到 480 分鐘之間'
+  }
+  return ''
+})
+
+// 例外申請截止天數驗證錯誤
+const exceptionLeadDaysError = computed(() => {
+  const days = courseSettings.value.exception_lead_days
+  if (days !== undefined && days !== null && (days < 0 || days > 365)) {
+    return '天數需介於 0 到 365 天之間（0 表示不限制）'
   }
   return ''
 })
@@ -326,8 +352,13 @@ const fetchCenterSettings = async () => {
     }
 
     const data = JSON.parse(text)
-    if (data.datas && data.datas.default_course_duration) {
-      courseSettings.value.default_course_duration = data.datas.default_course_duration
+    if (data.datas) {
+      if (data.datas.default_course_duration !== undefined) {
+        courseSettings.value.default_course_duration = data.datas.default_course_duration
+      }
+      if (data.datas.exception_lead_days !== undefined) {
+        courseSettings.value.exception_lead_days = data.datas.exception_lead_days
+      }
     }
   } catch (err) {
     console.error('取得中心設定失敗:', err)
@@ -398,7 +429,7 @@ const changePassword = async () => {
 
 // 儲存課程設定
 const saveCourseSettings = async () => {
-  if (courseDurationError.value) return
+  if (courseDurationError.value || exceptionLeadDaysError.value) return
 
   courseSettingsLoading.value = true
   courseSettingsMessage.value = ''
@@ -415,6 +446,7 @@ const saveCourseSettings = async () => {
       },
       body: JSON.stringify({
         default_course_duration: Number(courseSettings.value.default_course_duration),
+        exception_lead_days: Number(courseSettings.value.exception_lead_days),
       }),
     })
 

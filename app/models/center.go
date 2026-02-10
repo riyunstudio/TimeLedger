@@ -12,7 +12,7 @@ type Center struct {
 	Name      string         `gorm:"type:varchar(255);not null" json:"name"`
 	PlanLevel string         `gorm:"type:varchar(20);default:'FREE';not null" json:"plan_level"`
 	Settings  CenterSettings `gorm:"type:json;not null" json:"settings"`
-	CreatedAt time.Time      `gorm:"type:datetime;not null" json:"created_at"`
+	CreatedAt time.Time      `gorm:"type:datetime;not null;autoCreateTime" json:"created_at"`
 }
 
 type CenterSettings struct {

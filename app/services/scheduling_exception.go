@@ -68,7 +68,14 @@ func (s *ScheduleExceptionServiceImpl) CheckExceptionDeadline(ctx context.Contex
 	}
 
 	leadDays := center.Settings.ExceptionLeadDays
-	if leadDays <= 0 {
+
+	// 0 = Unlimited（不限制截止日）
+	if leadDays == 0 {
+		return true, nil, nil
+	}
+
+	// 如果設定為負數，視為 14 天（向後相容）
+	if leadDays < 0 {
 		leadDays = 14
 	}
 
