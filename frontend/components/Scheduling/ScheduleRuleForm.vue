@@ -281,7 +281,7 @@
         <!-- Modal Content -->
         <div class="p-4 overflow-y-auto max-h-[60vh]">
           <!-- 篩選器 -->
-          <div class="mb-4 flex gap-2">
+          <div class="mb-4 flex flex-wrap gap-2 items-center">
             <button
               @click="filterMode = 'all'"
               class="px-3 py-1.5 text-sm rounded-lg transition-colors"
@@ -303,6 +303,27 @@
             >
               可選日期 ({{ allDates.length - suspendedDates.length }})
             </button>
+
+            <!-- 隱藏例假日開關 -->
+            <label
+              v-if="centerHolidays.length > 0"
+              class="ml-auto flex items-center gap-2 cursor-pointer"
+            >
+              <span class="text-sm text-slate-400">隱藏例假日</span>
+              <div class="relative inline-block w-10 h-6 align-middle select-none transition duration-200 ease-in-out">
+                <input
+                  v-model="hideHolidays"
+                  type="checkbox"
+                  class="toggle-checkbox absolute block w-4 h-4 rounded-full bg-white border-2 appearance-none cursor-pointer transition-all duration-200 ease-in-out"
+                  :class="hideHolidays ? 'left-5 border-primary-500' : 'left-0 border-slate-500'"
+                  style="top: 2px;"
+                />
+                <span
+                  class="toggle-label block overflow-hidden h-5 rounded-full transition-colors duration-200 ease-in-out"
+                  :class="hideHolidays ? 'bg-primary-500/30' : 'bg-slate-700'"
+                ></span>
+              </div>
+            </label>
           </div>
 
           <!-- 群組操作按鈕 -->
@@ -335,21 +356,42 @@
                 <label
                   v-for="date in dates"
                   :key="date.value"
-                  class="flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-all"
+                  class="flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-all relative"
                   :class="isDateSuspended(date.value)
                     ? 'bg-warning-500/20 border border-warning-500/50'
-                    : 'bg-slate-700 hover:bg-slate-600 border border-transparent'"
+                    : date.isHoliday
+                      ? 'bg-blue-500/10 border border-blue-500/30 hover:bg-blue-500/20'
+                      : 'bg-slate-700 hover:bg-slate-600 border border-transparent'"
                 >
                   <input
                     type="checkbox"
                     :checked="isDateSuspended(date.value)"
                     @change="toggleSuspendedDate(date.value)"
-                    class="w-4 h-4 rounded border-slate-500 text-warning-500 focus:ring-warning-500"
+                    class="w-4 h-4 rounded border-slate-500 text-warning-500 focus:ring-warning-500 z-10"
                   />
-                  <div class="flex flex-col">
+                  <div class="flex flex-col min-w-0 z-10">
                     <span class="text-xs text-slate-300">{{ date.weekday }}</span>
                     <span class="text-sm font-medium" :class="isDateSuspended(date.value) ? 'text-warning-500' : 'text-white'">
                       {{ date.day }}
+                    </span>
+                  </div>
+
+                  <!-- 假日標記 -->
+                  <div
+                    v-if="date.isHoliday"
+                    class="absolute top-1 right-1 flex items-center gap-0.5"
+                    :title="date.holidayName || '例假日'"
+                  >
+                    <span class="text-[10px] font-bold text-blue-400">H</span>
+                  </div>
+
+                  <!-- 假日名稱顯示 -->
+                  <div
+                    v-if="date.isHoliday"
+                    class="absolute -bottom-1 left-2 right-2 flex justify-center"
+                  >
+                    <span class="text-[9px] text-blue-400 bg-slate-800/90 px-1 rounded truncate max-w-full" :title="date.holidayName || ''">
+                      {{ date.holidayName || '' }}
                     </span>
                   </div>
                 </label>
@@ -368,6 +410,9 @@
             <p v-else-if="allDates.length === 0">
               在指定的日期範圍內沒有符合的重複星期
             </p>
+            <p v-else-if="hideHolidays && allDates.filter(d => !d.isHoliday).length === 0">
+              所有日期皆為例假日，請取消隱藏例假日
+            </p>
             <p v-else>
               沒有符合篩選條件的日期
             </p>
@@ -377,7 +422,10 @@
         <!-- Modal Footer -->
         <div class="p-4 border-t border-slate-700 flex items-center justify-between">
           <div class="text-sm text-slate-400">
-            已選擇 <span class="text-warning-500 font-medium">{{ suspendedDatesCount }}</span> 個停課日期
+            <span class="text-warning-500 font-medium">{{ suspendedDatesCount }}</span> 個停課日期
+            <span v-if="hideHolidays" class="ml-2 text-blue-400">
+              (已隱藏 {{ allDates.filter(d => d.isHoliday).length }} 個例假日)
+            </span>
           </div>
           <div class="flex gap-2">
             <button
@@ -424,6 +472,8 @@ import { toTypedSchema } from '@vee-validate/zod'
 import { useForm } from 'vee-validate'
 import { formatDateToString } from '~/composables/useTaiwanTime'
 import { alertWarning } from '~/composables/useAlert'
+import { useCenterId } from '~/composables/useCenterId'
+import { useApi } from '~/composables/useApi'
 import RecurrencePicker from './RecurrencePicker.vue'
 import SearchableSelect, { type SelectOption } from '~/components/Common/SearchableSelect.vue'
 
@@ -454,8 +504,44 @@ const showSuspendedDatesModal = ref(false)
 const suspendedDates = ref<string[]>([])
 const filterMode = ref<'all' | 'suspended' | 'available'>('all')
 
+// 假日管理相關
+const centerHolidays = ref<Array<{
+  id: number
+  date: string
+  name: string
+  force_cancel: boolean
+}>>([])
+const hideHolidays = ref(false)
+const holidaysLoading = ref(false)
+
 // 星期對照表
 const weekdayNames = ['日', '一', '二', '三', '四', '五', '六']
+
+// 取得中心假日資料
+async function fetchHolidays() {
+  const { get: apiGet } = useApi()
+  const { getCenterId } = useCenterId()
+  const centerId = getCenterId.value
+
+  if (!centerId) return
+
+  holidaysLoading.value = true
+  try {
+    const response = await apiGet<{ data: Array<{ id: number; date: string; name: string; force_cancel: boolean }> }>(
+      `/admin/centers/${centerId}/holidays`,
+      {
+        start_date: values.start_date,
+        end_date: values.end_date || values.start_date,
+      }
+    )
+    centerHolidays.value = response.data || []
+  } catch (error) {
+    console.error('取得假日資料失敗:', error)
+    centerHolidays.value = []
+  } finally {
+    holidaysLoading.value = false
+  }
+}
 
 // 計算所有可能的上课日期
 const allDates = computed(() => {
@@ -472,6 +558,8 @@ const allDates = computed(() => {
     day: string
     weekday: string
     monthKey: string
+    isHoliday: boolean
+    holidayName: string | null
   }> = []
 
   const start = new Date(startDate)
@@ -482,16 +570,29 @@ const allDates = computed(() => {
   current.setHours(0, 0, 0, 0)
   end.setHours(23, 59, 59, 999)
 
+  // 建立假日快速查找 Map
+  const holidayMap = new Map<string, { name: string; force_cancel: boolean }>()
+  centerHolidays.value.forEach((holiday) => {
+    holidayMap.set(holiday.date, {
+      name: holiday.name,
+      force_cancel: holiday.force_cancel,
+    })
+  })
+
   while (current <= end) {
     const dayOfWeek = current.getDay()
     if (weekdays.includes(dayOfWeek)) {
       const dateStr = formatDateToString(current)
       const monthKey = `${current.getFullYear()}年${current.getMonth() + 1}月`
+      const holidayInfo = holidayMap.get(dateStr)
+
       dates.push({
         value: dateStr,
         day: `${current.getDate()}`,
         weekday: weekdayNames[dayOfWeek],
         monthKey,
+        isHoliday: !!holidayInfo,
+        holidayName: holidayInfo?.name || null,
       })
     }
     current.setDate(current.getDate() + 1)
@@ -502,14 +603,23 @@ const allDates = computed(() => {
 
 // 過濾後的日期
 const filteredDates = computed(() => {
+  // 先根據篩選模式過濾
+  let dates = allDates.value
   switch (filterMode.value) {
     case 'suspended':
-      return allDates.value.filter(d => suspendedDates.value.includes(d.value))
+      dates = dates.filter((d) => suspendedDates.value.includes(d.value))
+      break
     case 'available':
-      return allDates.value.filter(d => !suspendedDates.value.includes(d.value))
-    default:
-      return allDates.value
+      dates = dates.filter((d) => !suspendedDates.value.includes(d.value))
+      break
   }
+
+  // 如果開啟隱藏假日，則排除假日
+  if (hideHolidays.value) {
+    dates = dates.filter((d) => !d.isHoliday)
+  }
+
+  return dates
 })
 
 // 按月份分組
@@ -572,7 +682,7 @@ function clearAllSuspendedDates() {
 }
 
 // 開啟停課日期 Modal
-function openSuspendedDatesModal() {
+async function openSuspendedDatesModal() {
   if (!values.start_date || !values.end_date) {
     alertWarning('請先設定開始日期和結束日期')
     return
@@ -581,6 +691,8 @@ function openSuspendedDatesModal() {
     alertWarning('請先選擇重複星期')
     return
   }
+  // 取得假日資料
+  await fetchHolidays()
   showSuspendedDatesModal.value = true
 }
 

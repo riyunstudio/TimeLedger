@@ -318,6 +318,7 @@ const handleFormSubmit = async (formData: Record<string, unknown>, updateMode: s
         bufferConflictMessages = formatConflictMessages(bufferConflicts)
         conflictType.value = 'buffer'
       }
+
     }
 
     // 有硬衝突，停止提交
@@ -338,6 +339,20 @@ const handleFormSubmit = async (formData: Record<string, unknown>, updateMode: s
       }
     }
 
+    // 驗證全部通過，顯示成功通知並等待確認
+    if (!hasHardConflict && !hasBufferWarning) {
+      const shouldContinue = await alertConfirm(
+        '排課時間驗證通過，沒有發現時間衝突。\n\n是否繼續提交？',
+        '驗證成功',
+        'info'
+      )
+
+      if (!shouldContinue) {
+        validationLoading.value = false
+        return
+      }
+    }
+
     // 驗證通過，繼續提交
     validationLoading.value = false
 
@@ -346,8 +361,12 @@ const handleFormSubmit = async (formData: Record<string, unknown>, updateMode: s
     validationLoading.value = false
 
     // 驗證失敗時，顯示錯誤訊息並停止提交
-    // 不繼續執行 API 建立規則
-    customAlert('驗證失敗，請稍後再試', '操作失敗', 'error')
+    // 使用 alertConfirm 確保使用者看到錯誤訊息
+    await alertConfirm(
+      error.response?.data?.message || error.message || '驗證失敗，請稍後再試',
+      '驗證失敗',
+      'error'
+    )
     return
   }
 
@@ -406,7 +425,12 @@ const handleFormSubmit = async (formData: Record<string, unknown>, updateMode: s
       conflictErrors.value = error.response?.data?.datas?.conflicts || []
       conflictType.value = 'hard'
     } else {
-      customAlert(showEditModal.value ? $t('common.operationFailed') : $t('common.operationFailed'), '操作失敗', 'error')
+      // 使用 alertConfirm 確保使用者看到錯誤訊息
+      await alertConfirm(
+        error.response?.data?.message || error.message || $t('common.operationFailed'),
+        showEditModal.value ? $t('common.operationFailed') : $t('common.operationFailed'),
+        'error'
+      )
     }
   } finally {
     loading.value = false
