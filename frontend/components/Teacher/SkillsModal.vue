@@ -249,7 +249,14 @@ const fetchData = async () => {
         return ''
       }).filter((t: string) => typeof t === 'string' && t.length > 0) // 只保留非空字串
     }))
-    certificates.value = certsRes.datas || []
+    // 轉換證照資料，確保欄位與 API 回應一致
+    certificates.value = (certsRes.datas || []).map((cert: any) => ({
+      ...cert,
+      // 確保使用 API 回應的欄位名稱
+      name: cert.name,
+      issued_at: cert.issued_at,
+      file_url: cert.file_url,
+    }))
   } catch (error) {
     console.error('Failed to fetch skills and certificates:', error)
   }
