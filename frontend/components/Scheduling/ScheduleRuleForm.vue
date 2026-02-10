@@ -736,7 +736,11 @@ const roomOptions = computed<SelectOption[]>(() =>
 const createValidationSchema = () => {
   const baseSchema = {
     name: z.string().optional(),
-    offering_id: z.string().min(1, '請選擇課程'),
+    offering_id: z.union([z.string(), z.number()]).refine((val) => {
+      // 確保值不為空（字串長度 > 0 或數字 > 0）
+      if (typeof val === 'string') return val.length > 0
+      return val > 0
+    }, { message: '請選擇課程' }),
     teacher_id: z.union([z.string(), z.number(), z.null()]).optional(),
     room_id: z.union([z.string(), z.number(), z.null()]).optional(),
     start_time: z.string().min(1, '請選擇開始時間'),
