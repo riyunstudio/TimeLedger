@@ -60,6 +60,11 @@ func (s *QRCodeService) GenerateBindingURLQR(bindingURL string) ([]byte, error) 
 // 這種方式會產生一個 LINE Message API 的 URL，掃描後會開啟 LINE
 // 並自動帶入驗證碼文字，用戶可以直接傳送
 func (s *QRCodeService) GenerateVerificationCodeQR(lineOfficialAccountID, verificationCode string) ([]byte, error) {
+	// 檢查 LINE ID 是否有效
+	if lineOfficialAccountID == "" {
+		return nil, fmt.Errorf("LINE官方帳號ID未設定，請聯繫系統管理員設定環境變數LINE_OFFICIAL_ACCOUNT_ID")
+	}
+
 	// 使用 LINE Message API 的 URL 格式
 	// https://line.me/R/ti/p/{LINE_ID}?text={message}
 	// 這種方式可以開啟 LINE 並自動填入訊息文字

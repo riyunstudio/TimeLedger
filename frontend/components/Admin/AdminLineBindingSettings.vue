@@ -213,20 +213,25 @@ const initBinding = async () => {
 
 const fetchQRCode = async (code: string) => {
   try {
-    // 這裡我們直接使用 API URL，因為 fetch 需要處理 blob
-    const token = localStorage.getItem('admin_token')
-    const response = await fetch(`${config.public.apiBase}/admin/me/line/qrcode-with-code?code=${code}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-    })
+    // 調試：記錄 API URL
+    console.log('Fetching QR Code from:', `/admin/me/line/qrcode-with-code?code=${code}`)
 
-    if (response.ok) {
-      const blob = await response.blob()
-      qrCodeUrl.value = URL.createObjectURL(blob)
+    // 使用 useApi.raw() 獲取二進制資料（QR Code 圖片）
+    const blob = await api.raw<Blob>(`/admin/me/line/qrcode-with-code?code=${code}`)
+
+    console.log('Blob type:', blob.type)
+    console.log('Blob size:', blob.size)
+
+    if (blob.size === 0) {
+      console.error('Received empty blob')
+      error('QR Code 生成失敗：收到的資料為空')
+      return
     }
-  } catch (err) {
+
+    qrCodeUrl.value = URL.createObjectURL(blob)
+  } catch (err: any) {
     console.error('Failed to fetch QR Code:', err)
+    error(err.message || '取得 QR Code 失敗，請稍後再試')
   }
 }
 

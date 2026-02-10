@@ -157,7 +157,8 @@ func (s *AdminUserService) VerifyLINEBinding(ctx context.Context, code string, l
 		First(&admin).Error
 
 	if err != nil {
-		return 0, s.app.Err.New(errInfos.LINE_BINDING_CODE_INVALID), nil
+		// 返回實際的 error，確保 processBindingCode 能正確處理失敗情況
+		return 0, s.app.Err.New(errInfos.LINE_BINDING_CODE_INVALID), err
 	}
 
 	now := time.Now()
