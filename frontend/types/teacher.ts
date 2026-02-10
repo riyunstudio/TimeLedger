@@ -127,18 +127,21 @@ export interface UpdateSkillRequest {
 
 /**
  * 教師證照
+ * 欄位需與 API /teacher/me/certificates 回應一致
  */
 export interface TeacherCertificate {
   /** 證照 ID */
   id: ID
   /** 所屬教師 ID */
   teacher_id: ID
-  /** 證照名稱 */
-  certificate_name: string
+  /** 證照名稱 (API 欄位: name) */
+  name: string
   /** 發證單位 */
   issued_by?: string
-  /** 發證日期 */
-  issued_date?: string
+  /** 發證日期 (API 欄位: issued_at) */
+  issued_at?: string
+  /** 是否已驗證 */
+  is_verified?: boolean
   /** 證照圖片 URL */
   file_url?: string
   /** 建立時間 */

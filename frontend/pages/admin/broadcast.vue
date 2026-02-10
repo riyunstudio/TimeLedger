@@ -188,7 +188,7 @@
               <span class="text-white font-medium">{{ estimatedRecipients }} 位老師</span>
             </div>
             <p class="text-xs text-slate-500 mt-1">
-              {{ form.teacherIds.length > 0 ? '已選擇特定老師' : '將發送給中心所有已綁定 LINE 的老師' }}
+              {{ form.teacherIds.length > 0 ? '已選擇特定老師' : '已綁定 LINE 且非佔位符的老師' }}
             </p>
           </div>
 
@@ -325,14 +325,23 @@ const canSubmit = computed(() => {
     (!form.value.actionLabel || form.value.actionUrl.length > 0)
 })
 
-// 取得老師數量統計
+// 取得老師數量統計（計算可接收 LINE 廣播的老師數量）
 const fetchTeacherCount = async () => {
   try {
     const response = await api.get<any>('/admin/teachers')
-    if (response.datas?.teachers) {
-      teacherCount.value = response.datas.teachers.filter((t: any) => t.is_active).length
+    // API 回應結構：response.datas.data 是老師陣列
+    const teachers = response.datas?.data
+    if (Array.isArray(teachers)) {
+      // 篩選條件：
+      // 1. line_user_id 存在（已綁定 LINE 才能收到廣播）
+      // 2. is_placeholder 為 false（真實老師，不是佔位符）
+      teacherCount.value = teachers.filter((t: any) =>
+        t.line_user_id && t.line_user_id.length > 0 && !t.is_placeholder
+      ).length
     } else if (Array.isArray(response)) {
-      teacherCount.value = response.filter((t: any) => t.is_active).length
+      teacherCount.value = response.filter((t: any) =>
+        t.line_user_id && t.line_user_id.length > 0 && !t.is_placeholder
+      ).length
     }
   } catch (error) {
     console.error('Failed to fetch teacher count:', error)
