@@ -758,9 +758,11 @@ const processSuspend = async (mode: 'SINGLE' | 'FUTURE') => {
 
     if (mode === 'SINGLE') {
       // 單次停課：建立 Exception 取消該場次
+      // 確保 original_date 是 YYYY-MM-DD 格式
+      const originalDate = formatDateToString(new Date(selectedSchedule.value.date))
       await api.post('/admin/scheduling/exceptions', {
         rule_id: selectedSchedule.value.id,
-        original_date: selectedSchedule.value.date,
+        original_date: originalDate,
         type: 'CANCEL',
         reason: '由管理員於首頁停課(單次)',
       })

@@ -364,6 +364,7 @@ const handleFormSubmit = async (formData: Record<string, unknown>, updateMode: s
       weekdays: formData.weekdays,
       start_date: (formData.start_date as string)?.split(/[T ]/)[0],
       end_date: (formData.end_date as string)?.split(/[T ]/)[0] || null,
+      suspended_dates: formData.suspended_dates || [],
     }
 
     // 只有當有選擇老師時才傳送
