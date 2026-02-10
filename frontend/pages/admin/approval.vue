@@ -249,6 +249,7 @@ import NotificationDropdown from '~/components/Navigation/NotificationDropdown.v
 import ReviewModal from '~/components/Admin/ReviewModal.vue'
 import ExceptionDetailModal from '~/components/Scheduling/ExceptionDetailModal.vue'
 import { formatDate, formatDateTime } from '~/composables/useTaiwanTime'
+import { extractApiResponse } from '~/composables/useErrorHandler'
 
 definePageMeta({
   auth: 'ADMIN',
@@ -530,9 +531,11 @@ const handleApproved = async (_id: number, note: string) => {
     // 審核通過後，切換到「已核准」標籤
     activeFilter.value = 'approved'
     toast.success('已成功核准該申請', '核准成功')
-  } catch (error) {
-    console.error('Failed to approve exception:', error)
-    toast.error('核准失敗，請稍後再試', '操作失敗')
+  } catch (err) {
+    console.error('Failed to approve exception:', err)
+    // 解析 API 錯誤回應，取得真實錯誤訊息
+    const apiResponse = extractApiResponse(err)
+    toast.error(apiResponse.message || '核准失敗，請稍後再試', '操作失敗')
     return
   }
   showReviewModal.value = null
@@ -550,9 +553,11 @@ const handleRejected = async (_id: number, note: string) => {
     // 審核拒絕後，切換到「已拒絕」標籤
     activeFilter.value = 'rejected'
     toast.success('已成功拒絕該申請', '拒絕成功')
-  } catch (error) {
-    console.error('Failed to reject exception:', error)
-    toast.error('拒絕失敗，請稍後再試', '操作失敗')
+  } catch (err) {
+    console.error('Failed to reject exception:', err)
+    // 解析 API 錯誤回應，取得真實錯誤訊息
+    const apiResponse = extractApiResponse(err)
+    toast.error(apiResponse.message || '拒絕失敗，請稍後再試', '操作失敗')
     return
   }
   showReviewModal.value = null

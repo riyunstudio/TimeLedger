@@ -33,7 +33,7 @@ type ScheduleServiceInterface interface {
 	DeleteRule(ctx context.Context, centerID, adminID, ruleID uint) error
 
 	// 例外管理
-	CreateException(ctx context.Context, centerID, teacherID, ruleID uint, req *CreateExceptionRequest) (models.ScheduleException, error)
+	CreateException(ctx context.Context, centerID, teacherID, ruleID uint, req *CreateExceptionRequest) (models.ScheduleException, *errInfos.Res, error)
 	ReviewException(ctx context.Context, exceptionID, adminID uint, req *ReviewExceptionRequest) error
 	GetExceptionsByRule(ctx context.Context, ruleID uint) ([]models.ScheduleException, error)
 	GetExceptionsByDateRange(ctx context.Context, centerID uint, startDate, endDate time.Time) ([]models.ScheduleException, error)
@@ -1111,8 +1111,8 @@ func (s *ScheduleService) ValidateFull(ctx context.Context, centerID uint, teach
 }
 
 // 例外管理方法 - 代理到 exceptionService
-func (s *ScheduleService) CreateException(ctx context.Context, centerID, teacherID, ruleID uint, req *CreateExceptionRequest) (models.ScheduleException, error) {
-	return s.exceptionSvc.CreateException(ctx, centerID, teacherID, ruleID, req.OriginalDate, req.Type, req.NewStartAt, req.NewEndAt, req.NewTeacherID, req.NewTeacherName, req.Reason)
+func (s *ScheduleService) CreateException(ctx context.Context, centerID, teacherID, ruleID uint, req *CreateExceptionRequest) (models.ScheduleException, *errInfos.Res, error) {
+	return s.exceptionSvc.CreateException(ctx, centerID, teacherID, ruleID, req)
 }
 
 func (s *ScheduleService) ReviewException(ctx context.Context, exceptionID, adminID uint, req *ReviewExceptionRequest) error {

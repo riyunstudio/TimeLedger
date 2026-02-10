@@ -45,11 +45,15 @@ var messagesMap = map[ErrCode]message{
 	SCHED_EXCEPTION_EXISTS: {EN: "Exception already exists", TW: "該日期已有例外單", CN: "该日期已有例外单"},
 
 	// 例外與審核類
-	EXCEPTION_NOT_FOUND:      {EN: "Exception request not found", TW: "例外申請不存在", CN: "例外申请不存在"},
-	EXCEPTION_INVALID_ACTION: {EN: "Invalid action for current status", TW: "當前狀態不允許此操作", CN: "当前状态不允许此操作"},
-	EXCEPTION_REVIEWED:       {EN: "Exception already reviewed", TW: "例外已審核過", CN: "例外已审核过"},
-	EXCEPTION_REVOKED:        {EN: "Exception was revoked", TW: "例外已撤回", CN: "例外已撤回"},
-	EXCEPTION_REJECT_SELF:    {EN: "Cannot reject own request", TW: "不能拒絕自己提交的申請", CN: "不能拒绝自己提交的申请"},
+	EXCEPTION_NOT_FOUND:           {EN: "Exception request not found", TW: "例外申請不存在", CN: "例外申请不存在"},
+	EXCEPTION_INVALID_ACTION:      {EN: "Invalid action for current status", TW: "當前狀態不允許此操作", CN: "当前状态不允许此操作"},
+	EXCEPTION_REVIEWED:            {EN: "Exception already reviewed", TW: "例外已審核過", CN: "例外已审核过"},
+	EXCEPTION_REVOKED:             {EN: "Exception was revoked", TW: "例外已撤回", CN: "例外已撤回"},
+	EXCEPTION_REJECT_SELF:         {EN: "Cannot reject own request", TW: "不能拒絕自己提交的申請", CN: "不能拒绝自己提交的申请"},
+	EXCEPTION_DEADLINE_EXCEEDED:   {EN: "Deadline exceeded, application must be submitted 14 days in advance", TW: "已超過異動截止日（需提前 14 天申請）", CN: "已超过异动截止日（需提前 14 天申请）"},
+	EXCEPTION_ALREADY_PROCESSED:    {EN: "Exception has already been processed", TW: "例外已被處理", CN: "例外已被处理"},
+	EXCEPTION_RESCHEDULE_CONFLICT:  {EN: "Reschedule time conflicts with existing schedule", TW: "調課時間與現有排程衝突", CN: "调课时间与现有排程冲突"},
+	EXCEPTION_CANCEL_DEADLINE_PASSED: {EN: "Cancellation deadline has passed", TW: "停課截止日已過", CN: "停课截止日已过"},
 
 	// 檔案與媒體類
 	FILE_TOO_LARGE:        {EN: "File size exceeds limit", TW: "檔案超過大小限制", CN: "文件超过大小限制"},

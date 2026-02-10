@@ -8,6 +8,7 @@ import (
 	"timeLedger/app"
 	"timeLedger/app/models"
 	"timeLedger/app/repositories"
+	"timeLedger/global/errInfos"
 
 	"gorm.io/gorm"
 )
@@ -46,21 +47,24 @@ func NewScheduleExceptionService(app *app.App) ScheduleExceptionService {
 	return svc
 }
 
-func (s *ScheduleExceptionServiceImpl) CheckExceptionDeadline(ctx context.Context, centerID uint, ruleID uint, exceptionDate time.Time) (bool, string, error) {
+func (s *ScheduleExceptionServiceImpl) CheckExceptionDeadline(ctx context.Context, centerID uint, ruleID uint, exceptionDate time.Time) (bool, *errInfos.Res, error) {
 	rule, err := s.ruleRepo.GetByID(ctx, ruleID)
 	if err != nil {
-		return false, "", err
+		errInfo := s.App.Err.New(errInfos.SQL_ERROR)
+		return false, errInfo, err
 	}
 
 	now := time.Now()
 
 	if rule.LockAt != nil && now.After(*rule.LockAt) {
-		return false, "已超過異動截止日", nil
+		errInfo := s.App.Err.New(errInfos.EXCEPTION_DEADLINE_EXCEEDED)
+		return false, errInfo, nil
 	}
 
 	center, err := s.centerRepo.GetByID(ctx, centerID)
 	if err != nil {
-		return false, "", err
+		errInfo := s.App.Err.New(errInfos.SQL_ERROR)
+		return false, errInfo, err
 	}
 
 	leadDays := center.Settings.ExceptionLeadDays
@@ -70,35 +74,36 @@ func (s *ScheduleExceptionServiceImpl) CheckExceptionDeadline(ctx context.Contex
 
 	deadline := exceptionDate.AddDate(0, 0, -leadDays)
 	if now.After(deadline) {
-		return false, fmt.Sprintf("已超過異動截止日（需提前 %d 天申請）", leadDays), nil
+		errInfo := s.App.Err.New(errInfos.EXCEPTION_DEADLINE_EXCEEDED)
+		return false, errInfo, nil
 	}
 
-	return true, "", nil
+	return true, nil, nil
 }
 
-func (s *ScheduleExceptionServiceImpl) CreateException(ctx context.Context, centerID uint, teacherID uint, ruleID uint, originalDate time.Time, exceptionType string, newStartAt, newEndAt *time.Time, newTeacherID *uint, newTeacherName string, reason string) (models.ScheduleException, error) {
-	allowed, reasonStr, err := s.CheckExceptionDeadline(ctx, centerID, ruleID, originalDate)
+func (s *ScheduleExceptionServiceImpl) CreateException(ctx context.Context, centerID uint, teacherID uint, ruleID uint, req *CreateExceptionRequest) (models.ScheduleException, *errInfos.Res, error) {
+	allowed, errInfo, err := s.CheckExceptionDeadline(ctx, centerID, ruleID, req.OriginalDate)
 	if err != nil {
-		return models.ScheduleException{}, err
+		return models.ScheduleException{}, nil, err
 	}
 	if !allowed {
-		return models.ScheduleException{}, errors.New(reasonStr)
+		return models.ScheduleException{}, errInfo, nil
 	}
 
 	exception := models.ScheduleException{
 		CenterID:      centerID,
 		RuleID:        ruleID,
-		OriginalDate:  originalDate,
-		ExceptionType: exceptionType,
+		OriginalDate:  req.OriginalDate,
+		ExceptionType: req.Type,
 		Status:        "PENDING",
-		NewStartAt:    newStartAt,
-		NewEndAt:      newEndAt,
-		NewTeacherID:  newTeacherID,
-		Reason:        reason,
+		NewStartAt:    req.NewStartAt,
+		NewEndAt:      req.NewEndAt,
+		NewTeacherID:  req.NewTeacherID,
+		Reason:        req.Reason,
 	}
 
-	if newTeacherName != "" {
-		exception.Reason = fmt.Sprintf("[代課老師：%s] %s", newTeacherName, reason)
+	if req.NewTeacherName != "" {
+		exception.Reason = fmt.Sprintf("[代課老師：%s] %s", req.NewTeacherName, req.Reason)
 	}
 
 	var createdException models.ScheduleException
@@ -128,7 +133,7 @@ func (s *ScheduleExceptionServiceImpl) CreateException(ctx context.Context, cent
 	})
 
 	if txErr != nil {
-		return models.ScheduleException{}, txErr
+		return models.ScheduleException{}, nil, txErr
 	}
 
 	teacher, _ := s.teacherRepo.GetByID(ctx, teacherID)
@@ -140,7 +145,7 @@ func (s *ScheduleExceptionServiceImpl) CreateException(ctx context.Context, cent
 	center, _ := s.centerRepo.GetByID(ctx, centerID)
 	centerName = center.Name
 
-	createdException.ExceptionType = exceptionType
+	createdException.ExceptionType = req.Type
 
 	if s.notificationQueue != nil {
 		_ = s.notificationQueue.NotifyExceptionSubmittedSync(ctx, &createdException, teacherName, centerName)
@@ -148,7 +153,7 @@ func (s *ScheduleExceptionServiceImpl) CreateException(ctx context.Context, cent
 
 	s.invalidateRelatedCaches(ctx, &createdException)
 
-	return createdException, nil
+	return createdException, nil, nil
 }
 
 func (s *ScheduleExceptionServiceImpl) RevokeException(ctx context.Context, exceptionID uint, teacherID uint) error {

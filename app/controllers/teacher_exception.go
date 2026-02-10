@@ -90,21 +90,27 @@ func (ctl *TeacherExceptionController) CreateException(ctx *gin.Context) {
 		newEndAt = &t
 	}
 
-	exception, err := ctl.exceptionService.CreateException(
+	exception, errInfo, err := ctl.exceptionService.CreateException(
 		ctx,
 		req.CenterID,
 		teacherID,
 		req.RuleID,
-		originalDate,
-		req.Type,
-		newStartAt,
-		newEndAt,
-		req.NewTeacherID,
-		req.NewTeacherName,
-		req.Reason,
+		&services.CreateExceptionRequest{
+			OriginalDate:   originalDate,
+			Type:           req.Type,
+			NewStartAt:     newStartAt,
+			NewEndAt:       newEndAt,
+			NewTeacherID:   req.NewTeacherID,
+			NewTeacherName: req.NewTeacherName,
+			Reason:         req.Reason,
+		},
 	)
 	if err != nil {
 		helper.InternalError(err.Error())
+		return
+	}
+	if errInfo != nil {
+		helper.ErrorWithInfo(errInfo)
 		return
 	}
 

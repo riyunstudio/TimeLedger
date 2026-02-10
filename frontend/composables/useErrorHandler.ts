@@ -9,6 +9,7 @@ import { alertError, alertWarning, alertSuccess, alertInfo, alertConfirm, type A
 import { useToast, type ToastType } from './useToast'
 import {
   ERROR_MESSAGES,
+  NUMERIC_ERROR_CODE_MAP,
   type ErrorCode,
   isSuccessCode,
   isPermissionError,
@@ -56,35 +57,65 @@ export function useErrorStatus() {
 /**
  * 取得錯誤碼對應的使用者友善訊息
  */
-export function getErrorMessage(code: string, fallback?: string): string {
-  // 先檢查是否為已知的錯誤碼
-  if (ERROR_MESSAGES[code]) {
-    return ERROR_MESSAGES[code]
+export function getErrorMessage(code: string | number, fallback?: string): string {
+  // 調試日誌（生產環境可移除）
+  console.debug('[ErrorHandler] getErrorMessage called:', { code, fallback })
+
+  // 數字錯誤碼映射
+  let stringCode = code
+  if (typeof code === 'number' && NUMERIC_ERROR_CODE_MAP[code]) {
+    stringCode = NUMERIC_ERROR_CODE_MAP[code]
+    console.debug('[ErrorHandler] Mapped to stringCode:', stringCode)
   }
 
+  // 檢查是否為已知的錯誤碼
+  if (ERROR_MESSAGES[stringCode as string]) {
+    const message = ERROR_MESSAGES[stringCode as string]
+    console.debug('[ErrorHandler] Found message:', message)
+    return message
+  }
+
+  console.debug('[ErrorHandler] Code not found in ERROR_MESSAGES, stringCode:', stringCode)
+
   // 處理 HTTP 狀態碼格式
-  const httpCode = parseInt(code)
-  if (!isNaN(httpCode) && httpCode >= 100 && httpCode < 600) {
+  // 注意：只檢查純數字的 HTTP 狀態碼（100-599），不包括應用錯誤碼（通常 >= 10000）
+  // HTTP 狀態碼例子：400, 401, 403, 404, 500, 502, 503
+  const httpCode = typeof stringCode === 'string' ? parseInt(stringCode) : stringCode
+  if (!isNaN(httpCode) && httpCode >= 100 && httpCode <= 599) {
+    // 這是 HTTP 狀態碼，不是應用錯誤碼
+    console.debug('[ErrorHandler] HTTP status code detected:', httpCode)
     return ERROR_MESSAGES.SYSTEM_ERROR
   }
 
-  // 回退訊息
-  return fallback || '發生錯誤，請稍後再試'
+  // 回退訊息：優先使用傳入的 fallback，其次使用後端原始 message
+  if (fallback) {
+    console.debug('[ErrorHandler] Using fallback:', fallback)
+    return fallback
+  }
+
+  console.debug('[ErrorHandler] Using default error message')
+  return '發生錯誤，請稍後再試'
 }
 
 /**
  * 取得錯誤類型（用於 UI 顯示）
  */
-export function getErrorAlertType(code: string): AlertType {
+export function getErrorAlertType(code: string | number): AlertType {
+  // 先將數字錯誤碼映射到字符串錯誤碼
+  let stringCode = code
+  if (typeof code === 'number' && NUMERIC_ERROR_CODE_MAP[code]) {
+    stringCode = NUMERIC_ERROR_CODE_MAP[code]
+  }
+
   if (isSuccessCode(code)) {
     return 'success'
   }
 
-  if (isUnauthorizedError(code) || isPermissionError(code)) {
+  if (isUnauthorizedError(stringCode as string) || isPermissionError(stringCode as string)) {
     return 'warning'
   }
 
-  if (isValidationError(code)) {
+  if (isValidationError(stringCode as string)) {
     return 'info'
   }
 
@@ -94,16 +125,22 @@ export function getErrorAlertType(code: string): AlertType {
 /**
  * 取得 Toast 類型
  */
-function getErrorToastType(code: string): ToastType {
+function getErrorToastType(code: string | number): ToastType {
+  // 先將數字錯誤碼映射到字符串錯誤碼
+  let stringCode = code
+  if (typeof code === 'number' && NUMERIC_ERROR_CODE_MAP[code]) {
+    stringCode = NUMERIC_ERROR_CODE_MAP[code]
+  }
+
   if (isSuccessCode(code)) {
     return 'success'
   }
 
-  if (isUnauthorizedError(code) || isPermissionError(code)) {
+  if (isUnauthorizedError(stringCode as string) || isPermissionError(stringCode as string)) {
     return 'warning'
   }
 
-  if (isValidationError(code)) {
+  if (isValidationError(stringCode as string)) {
     return 'info'
   }
 
@@ -126,7 +163,8 @@ export async function handleApiResponse<T>(
   }
 
   // 錯誤處理
-  const userMessage = getErrorMessage(code, message)
+  // 優先使用本地化的錯誤碼對應訊息，這樣使用者會看到中文訊息
+  const userMessage = getErrorMessage(code)
   const alertType = getErrorAlertType(code)
 
   // 準備動作按鈕

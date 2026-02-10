@@ -128,6 +128,7 @@
 <script setup lang="ts">
 import type { ScheduleException } from '~/types'
 import { alertError } from '~/composables/useAlert'
+import { extractApiResponse } from '~/composables/useErrorHandler'
 import { getTodayString, formatDateToString, formatDate } from '~/composables/useTaiwanTime'
 import Icon from '~/components/base/Icon.vue'
 
@@ -337,10 +338,10 @@ const handleSubmit = async () => {
     await scheduleStore.createException(submitData)
     emit('submit')
     emit('close')
-  } catch (error: any) {
-    // 顯示錯誤彈窗，從錯誤響應中提取訊息
-    const errorMessage = error?.response?._data?.message || error?.message || '操作失敗，請稍後再試'
-    await alertError(errorMessage)
+  } catch (err: any) {
+    // 解析 API 錯誤回應，取得真實錯誤訊息
+    const apiResponse = extractApiResponse(err)
+    await alertError(apiResponse.message || '操作失敗，請稍後再試')
   } finally {
     loading.value = false
   }

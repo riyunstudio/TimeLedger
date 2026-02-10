@@ -626,9 +626,20 @@ func (ctl *SchedulingController) CreateException(ctx *gin.Context) {
 		Reason:         req.Reason,
 	}
 
-	exception, err := ctl.scheduleSvc.CreateException(ctx.Request.Context(), centerID, teacherID, req.RuleID, svcReq)
+	// 呼叫 Service 層（傳遞正確的參數）
+	exception, errInfo, err := ctl.scheduleSvc.CreateException(
+		ctx.Request.Context(),
+		centerID,
+		teacherID,
+		req.RuleID,
+		svcReq,
+	)
 	if err != nil {
 		helper.InternalError(err.Error())
+		return
+	}
+	if errInfo != nil {
+		helper.ErrorWithInfo(errInfo)
 		return
 	}
 

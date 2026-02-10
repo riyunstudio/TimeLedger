@@ -13,6 +13,7 @@ import {
   isUnauthorizedError,
   isValidationError,
   type ErrorCode,
+  NUMERIC_ERROR_CODE_MAP,
 } from '~/constants/errorCodes'
 import type { ApiResponse } from '~/types/api'
 import type { ErrorHandlerOptions } from '~/types/errorHandler'
@@ -62,10 +63,46 @@ export function registerErrorToast(component: { show: (message: string, duration
 
 /**
  * 根據錯誤碼取得使用者友善訊息
+ * 優先級順序：
+ * 1. ERROR_MESSAGES[映射後的字串錯誤碼]（優先使用本地化中文訊息）
+ * 2. 後端原始 error.message（僅當沒有對應的本地化訊息時使用）
+ * 3. 預設錯誤訊息
+ *
+ * 注意：後端可能返回英文訊息，前端應該始終顯示本地化的中文訊息
+ * 以確保使用者看到一致且在地化的錯誤說明
  */
 function getErrorMessage(error: ApiError | NetworkError): string {
   if ('code' in error && error.code) {
-    return ERROR_MESSAGES[error.code] || error.message || '發生未知錯誤'
+    const code = error.code
+    const originalCode = String(code)
+
+    // 嘗試映射數字錯誤碼到字串錯誤碼
+    let mappedCode: string | undefined
+    if (typeof code === 'number' && NUMERIC_ERROR_CODE_MAP[code]) {
+      mappedCode = NUMERIC_ERROR_CODE_MAP[code]
+    } else if (typeof code === 'string') {
+      mappedCode = NUMERIC_ERROR_CODE_MAP[code] || code
+    } else {
+      mappedCode = originalCode
+    }
+
+    // 優先使用本地化的中文訊息（從 ERROR_MESSAGES）
+    // 這確保使用者始終看到中文的錯誤說明，而非後端的英文訊息
+    if (mappedCode && ERROR_MESSAGES[mappedCode]) {
+      return ERROR_MESSAGES[mappedCode]
+    }
+
+    // 使用原始錯誤碼查找
+    if (ERROR_MESSAGES[originalCode]) {
+      return ERROR_MESSAGES[originalCode]
+    }
+
+    // 沒有對應的本地化訊息時，才使用後端提供的訊息
+    if (error.message) {
+      return error.message
+    }
+
+    return '發生未知錯誤'
   }
   return error.message || '發生未知錯誤'
 }

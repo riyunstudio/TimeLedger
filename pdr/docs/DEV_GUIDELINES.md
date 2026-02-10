@@ -143,12 +143,15 @@ func (s *UserService) Get(ctx context.Context, req *requests.UserGetRequest) (da
     *   `business/`: 業務元件 (ScheduleGrid, MemberList).
 
 ### 3.3 互動與狀態
-- **API Call**: 統一使用 `useFetch` 或封裝過的 `$api` composable。
+- **API Call**: 統一使用 `useApi` composable。
 - **Type Safety (Crucial)**: 
   - 所有 API 請求與回傳必須定義 **TypeScript Interfaces**。
   - **禁止** 在頁面中直接使用 `any` 或未定型的 JSON。
-  - 欄位名稱、類型與 `API.md` 必須 100% 吻合（包含 `snake_case` 轉換）。
-- **Error Handling**: API 錯誤需攔截 `error.value` 並顯示 Toast。
+- **Error Handling (API Error Standard)**:
+  - **禁止** 在 API 解析層攔截非 2xx 狀態碼而拋出通用錯誤；必須嘗試解析 Body 以取得後端詳細訊息。
+  - **優先權**：後端回傳的 `message` > `NUMERIC_ERROR_CODE_MAP` 對應訊息 > `ERROR_MESSAGES` 常量 > 通用系統錯誤。
+  - **映射要求**：所有後端數字錯誤碼（如 160006）必須在 `frontend/constants/errorCodes.ts` 的 `NUMERIC_ERROR_CODE_MAP` 中註冊。
+- **狀態顯示**：組件必須處理 `isLoading` 與 `hasError` 狀態，並將 `error_handler` 處理後的 `errorMessage` 綁定至 UI。
 
 ---
 

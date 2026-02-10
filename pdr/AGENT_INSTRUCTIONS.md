@@ -179,6 +179,15 @@
 
 ---
 
+### 指令 18：API 錯誤處理安全性檢核 (Error Propagation Check)
+> **CONTEXT: @frontend/composables/useApi.ts @frontend/utils/errorHandler.ts @[target_page_or_component]**
+> 
+> 請針對該頁面的 API 調用執行「錯誤傳播標準」檢核：
+> 1. 確保 `useApi` 能在錯誤狀態下正確解析 JSON Body。
+> 2. 檢查 API 丟出的錯誤是否正確通過 `errorHandler.ts` 處理。
+> 3. 確保後端回傳的數字錯誤碼（如 16xxxxx）已在 `NUMERIC_ERROR_CODE_MAP` 中有對應，且 UI 顯示的是 `errorMessage` 而非寫死的「系統錯誤」。
+> 4. 若發現 `useApi` 有「過早過濾非 2xx 狀態碼」的行為，請立即修正。
+
 ### 💡 如何高效協作？
 1. **先 Service 後 Controller**：要求 AI 先產生 Service，再修改 Controller。
 2. **小步快跑**：一次只執行一個「指令」，完成後驗證通過再進行下一個。

@@ -254,11 +254,11 @@ func (ctl *TeacherScheduleController) CheckRuleLockStatus(ctx *gin.Context) {
 		return
 	}
 
-	allowed, reasonStr, _ := ctl.exceptionService.CheckExceptionDeadline(ctx, rule.CenterID, req.RuleID, exceptionDate)
+	allowed, errInfo, _ := ctl.exceptionService.CheckExceptionDeadline(ctx, rule.CenterID, req.RuleID, exceptionDate)
 
 	response := CheckTeacherRuleLockResponse{
 		IsLocked:   !allowed,
-		LockReason: reasonStr,
+		LockReason: errInfo.Msg,
 	}
 
 	if !allowed {

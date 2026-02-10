@@ -204,6 +204,7 @@
 
 <script setup lang="ts">
 import { formatDateToString, formatDate } from '~/composables/useTaiwanTime'
+import { extractApiResponse, handleApiResponse } from '~/composables/useErrorHandler'
 import { nextTick, ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import type {
   MatrixViewResponse,
@@ -779,9 +780,11 @@ const processSuspend = async (mode: 'SINGLE' | 'FUTURE') => {
 
     // 刷新課表
     await fetchSchedules()
-  } catch (err) {
+  } catch (err: any) {
     console.error('Failed to suspend schedule:', err)
-    await alertError('停課失敗，請稍後再試')
+    // 解析 API 錯誤回應，取得真實錯誤訊息
+    const apiResponse = extractApiResponse(err)
+    await alertError(apiResponse.message || '停課失敗，請稍後再試')
     return
   }
 
@@ -801,9 +804,11 @@ const handleRuleUpdated = async (formData: any, updateMode: string) => {
     selectedSchedule.value = null
     editingRule.value = null
     pendingUpdateMode.value = ''
-  } catch (err) {
+  } catch (err: any) {
     console.error('Failed to update rule:', err)
-    await alertError('更新失敗，請稍後再試')
+    // 解析 API 錯誤回應，取得真實錯誤訊息
+    const apiResponse = extractApiResponse(err)
+    await alertError(apiResponse.message || '更新失敗，請稍後再試')
   }
 }
 

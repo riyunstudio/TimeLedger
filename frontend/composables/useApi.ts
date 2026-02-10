@@ -222,15 +222,8 @@ export const useApi = () => {
       throw unauthorizedError
     }
 
-    // Handle other HTTP errors
-    if (!response.ok) {
-      const networkError: NetworkError = {
-        status: response.status,
-        statusText: response.statusText,
-        message: `HTTP ${response.status}`,
-      }
-      throw networkError
-    }
+    // Note: Other HTTP errors are handled in parseResponse
+    // which will parse the response body to extract the actual error message
   }
 
   /**

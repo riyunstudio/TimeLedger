@@ -88,6 +88,11 @@ export const EXCEPTION_ERROR_CODES = {
   EXCEPTION_CANNOT_CANCEL: '無法取消，已超過可取消時間',
   EXCEPTION_REVIEW_CONFLICT: '審核時間與其他排課衝突',
   EXCEPTION_REVIEW_BUFFER_VIOLATION: '審核緩衝時間不足',
+  EXCEPTION_DEADLINE_EXCEEDED: '已超過異動截止日（需提前 14 天申請）',
+  EXCEPTION_SELF_REVIEW_FORBIDDEN: '不能審核自己提交的申請',
+  EXCEPTION_ALREADY_PROCESSED: '例外已被處理',
+  EXCEPTION_RESCHEDULE_CONFLICT: '調課時間與現有排程衝突',
+  EXCEPTION_CANCEL_DEADLINE_PASSED: '停課截止日已過',
 } as const
 
 // ==================== 教師相關錯誤 (4xxxx) ====================
@@ -135,6 +140,74 @@ export const NOTIFICATION_ERROR_CODES = {
 } as const
 
 // ==================== 整合所有錯誤碼 ====================
+
+/**
+ * 數字錯誤碼到字符串錯誤碼的映射
+ * 後端返回數字格式錯誤碼（如 160006），需要映射到前端的字符串格式
+ *
+ * 錯誤碼定義規則：
+ * - 第1位：應用ID前綴 (1 = TimeLedger)
+ * - 第2位：功能類型 (6 = 例外審核, 5 = 排課, ...)
+ * - 後4位：流水號
+ *
+ * 範例：
+ * - 160006 = EXCEPTION_DEADLINE_EXCEEDED（超過例外申請截止日）
+ * - 160008 = EXCEPTION_ALREADY_PROCESSED（例外已被處理）
+ * - 160009 = EXCEPTION_RESCHEDULE_CONFLICT（調課時間衝突）
+ * - 160011 = EXCEPTION_CANCEL_DEADLINE_PASSED（停課截止日已過）
+ * - 150001 = SCHED_OVERLAP（時段被佔用）
+ * - 150002 = SCHED_BUFFER（緩衝時間不足）
+ */
+export const NUMERIC_ERROR_CODE_MAP: Record<number, string> = {
+  // 例外審核類錯誤 (16xxxx)
+  160001: 'EXCEPTION_NOT_FOUND',              // 例外申請不存在
+  160002: 'EXCEPTION_INVALID_ACTION',          // 當前狀態不允許此操作
+  160003: 'EXCEPTION_REVIEWED',               // 例外已審核過
+  160004: 'EXCEPTION_REVOKED',                // 例外已撤回
+  160005: 'EXCEPTION_REJECT_SELF',            // 不能拒絕自己提交的申請
+  160006: 'EXCEPTION_DEADLINE_EXCEEDED',      // 已超過異動截止日（需提前 14 天申請）
+  160007: 'EXCEPTION_SELF_REVIEW_FORBIDDEN',  // 不能審核自己提交的申請
+  160008: 'EXCEPTION_ALREADY_PROCESSED',      // 例外已被處理
+  160009: 'EXCEPTION_RESCHEDULE_CONFLICT',    // 調課時間與現有排程衝突
+  160010: 'EXCEPTION_REPLACE_TEACHER_INVALID', // 代課老師無效
+  160011: 'EXCEPTION_CANCEL_DEADLINE_PASSED', // 停課截止日已過
+  160012: 'EXCEPTION_RESCHEDULE_NO_NEW_TIME', // 調課必須提供新時間
+
+  // 循環編輯類錯誤 (16xxxx)
+  160013: 'RECURRENCE_EDIT_MODE_INVALID',    // 無效的編輯模式
+  160014: 'RECURRENCE_NO_AFFECTED_SESSIONS', // 沒有受影響的場次
+  160015: 'RECURRENCE_FUTURE_WITH_EDIT_DATE', // FUTURE 模式必須指定編輯日期
+  160016: 'RECURRENCE_EDIT_DATE_REQUIRED',    // 編輯日期為必填
+  160017: 'RECURRENCE_DELETE_CONFIRM',        // 刪除操作需要確認
+  160018: 'RECURRENCE_BATCH_LIMIT_EXCEEDED',  // 批量操作超過限制
+
+  // 排課類錯誤 (15xxxx)
+  150001: 'SCHED_OVERLAP',                   // 時段被佔用
+  150002: 'SCHED_BUFFER',                    // 緩衝時間不足
+  150003: 'SCHED_PAST',                      // 不能排過去的時間
+  150004: 'SCHED_LOCKED',                    // 時段已被鎖定
+  150005: 'SCHED_CLOSED',                    // 非營業時間
+  150006: 'SCHED_INVALID_RANGE',             // 日期範圍錯誤
+  150007: 'SCHED_RULE_CONFLICT',             // 規則衝突
+  150008: 'SCHED_EXCEPTION_EXISTS',          // 該日期已有例外單
+
+  // 系統類錯誤 (11xxxx)
+  110001: 'SYSTEM_ERROR',                     // 系統錯誤
+  110002: 'PARAMS_VALIDATE_ERROR',            // 參數格式錯誤
+  110003: 'JSON_ENCODE_ERROR',                // JSON 編碼錯誤
+  110004: 'JSON_DECODE_ERROR',                // JSON 解碼錯誤
+  110009: 'RATE_LIMIT_EXCEEDED',             // 請求頻率過高
+
+  // 資料庫類錯誤 (12xxxx)
+  120001: 'SQL_ERROR',                       // 資料庫操作失敗
+  120002: 'TX_ERROR',                        // 交易錯誤
+
+  // 權限類錯誤 (13xxxx)
+  130001: 'UNAUTHORIZED',                    // 請先登入
+  130002: 'FORBIDDEN',                       // 權限不足
+  130003: 'TOKEN_EXPIRED',                   // Token 已過期
+  130004: 'INVALID_TOKEN',                   // 無效的 Token
+}
 
 /**
  * 所有錯誤碼的聯合類型
