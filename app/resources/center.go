@@ -33,6 +33,8 @@ type CenterSettings struct {
 	DefaultLanguage       string `json:"default_language"`
 	ExceptionLeadDays     int    `json:"exception_lead_days"`
 	DefaultCourseDuration int    `json:"default_course_duration"`
+	OperatingStartTime    string `json:"operating_start_time"`
+	OperatingEndTime      string `json:"operating_end_time"`
 }
 
 // CenterSettingsResponse 僅包含設置的響應
@@ -41,6 +43,8 @@ type CenterSettingsResponse struct {
 	DefaultLanguage       string `json:"default_language"`
 	ExceptionLeadDays     int    `json:"exception_lead_days"`
 	DefaultCourseDuration int    `json:"default_course_duration"`
+	OperatingStartTime    string `json:"operating_start_time"`
+	OperatingEndTime      string `json:"operating_end_time"`
 }
 
 // ToCenterResponse 將中心模型轉換為響應格式
@@ -54,6 +58,8 @@ func (r *CenterResource) ToCenterResponse(center models.Center) *CenterResponse 
 			DefaultLanguage:       center.Settings.DefaultLanguage,
 			ExceptionLeadDays:     center.Settings.ExceptionLeadDays,
 			DefaultCourseDuration: center.Settings.DefaultCourseDuration,
+			OperatingStartTime:    center.Settings.OperatingStartTime,
+			OperatingEndTime:      center.Settings.OperatingEndTime,
 		},
 		CreatedAt: center.CreatedAt,
 	}
@@ -79,5 +85,7 @@ func (r *CenterResource) ToSettingsResponse(settings models.CenterSettings) *Cen
 		DefaultLanguage:       settings.DefaultLanguage,
 		ExceptionLeadDays:     settings.ExceptionLeadDays,
 		DefaultCourseDuration: settings.DefaultCourseDuration,
+		OperatingStartTime:    settings.OperatingStartTime,
+		OperatingEndTime:      settings.OperatingEndTime,
 	}
 }

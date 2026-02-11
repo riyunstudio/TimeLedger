@@ -139,12 +139,13 @@
 
       <!-- 時段網格 -->
       <div class="grid grid-cols-8 gap-2">
-        <!-- 時間標籤 -->
-        <div class="space-y-2">
+        <!-- 時間標籤 - 使用與網格相同的 h-16 高度，移除 space-y-2 改用直接排列 -->
+        <div>
           <div
             v-for="hour in visibleTimeSlots"
             :key="hour"
-            class="h-16 flex items-center justify-center text-xs md:text-sm text-slate-500"
+            class="h-16 flex items-center justify-center text-xs md:text-sm text-slate-500 border-t border-white/5"
+            :class="{ 'border-t-0': hour === visibleTimeSlots[0] }"
           >
             {{ formatTimeLabel(hour) }}
           </div>
@@ -161,6 +162,7 @@
             v-for="hour in visibleTimeSlots"
             :key="`${day.value}-${hour}-grid`"
             class="h-16 border-t border-white/5 w-full"
+            :class="{ 'border-t-0': hour === visibleTimeSlots[0] }"
           />
 
           <!-- 課程卡片 - 根據實際時間絕對定位 -->
@@ -271,8 +273,15 @@ definePageMeta({
 
 const api = useApi()
 const router = useRouter()
+const config = useRuntimeConfig()
 const { success, error: toastError } = useToast()
 const { warning: alertWarning, confirm: alertConfirm } = useAlert()
+
+// API 基礎 URL
+const API_BASE = config.public.apiBase
+
+// Center ID
+const { getCenterId } = useCenterId()
 
 // 學期列表
 const terms = ref<Term[]>([])
@@ -314,6 +323,10 @@ interface GroupedOccupancy {
 
 const occupancyRules = ref<OccupancyRule[]>([])
 
+// 中心營業時間設定
+const operatingStartTime = ref('00:00')
+const operatingEndTime = ref('23:00')
+
 // 複製規則精靈
 const showCopyWizard = ref(false)
 
@@ -335,12 +348,46 @@ const weekDays = [
   { label: '週日', value: 7 },
 ]
 
-// 時間槽 (0:00 - 23:00)
+// 時間槽 (基礎陣列)
 const timeSlots = Array.from({ length: 24 }, (_, i) => i)
 
-// 顯示用的時間槽（固定顯示 00:00 - 23:00）
+// 顯示用的時間槽（根據中心營業時間動態生成）
 const visibleTimeSlots = computed(() => {
-  return timeSlots
+  const startStr = operatingStartTime.value
+  const endStr = operatingEndTime.value
+
+  // 解析開始時間，若無效則使用預設值 0
+  let start = 0
+  if (startStr && startStr.includes(':')) {
+    const parsed = parseInt(startStr.split(':')[0], 10)
+    start = isNaN(parsed) ? 0 : parsed
+  }
+
+  // 解析結束時間，若無效則使用預設值 23
+  let end = 23
+  if (endStr && endStr.includes(':')) {
+    const parsed = parseInt(endStr.split(':')[0], 10)
+    end = isNaN(parsed) ? 23 : parsed
+  }
+
+  // 確保開始時間在有效範圍內 (0-23)
+  start = Math.max(0, Math.min(23, start))
+  end = Math.max(0, Math.min(23, end))
+
+  // 確保結束時間 >= 開始時間
+  const actualEnd = end < start ? 23 : end
+
+  const slots = []
+  for (let i = start; i <= actualEnd; i++) {
+    slots.push(i)
+  }
+
+  // 如果沒有有效的時間段，回退到預設值
+  if (slots.length === 0) {
+    return Array.from({ length: 24 }, (_, i) => i)
+  }
+
+  return slots
 })
 
 // ========== Computed ==========
@@ -378,7 +425,6 @@ const resourceOptions = computed<SelectOption[]>(() => {
 const termsList = computed(() => {
   return Array.isArray(terms.value) ? terms.value : []
 })
-
 
 /**
  * 佔用天數
@@ -453,6 +499,57 @@ const fetchTerms = async () => {
   } catch (err) {
     console.error('Failed to fetch terms:', err)
     toastError('載入學期失敗')
+  }
+}
+
+/**
+ * 取得中心設定（營業時間）
+ */
+const fetchCenterSettings = async () => {
+  try {
+    const centerId = getCenterId()
+    const token = localStorage.getItem('admin_token')
+    const response = await fetch(`${API_BASE}/admin/centers/${centerId}/settings`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    })
+
+    if (!response.ok) {
+      console.error('取得中心設定失敗: HTTP', response.status)
+      return
+    }
+
+    const text = await response.text()
+    if (!text.trim()) {
+      console.error('取得中心設定失敗: 空响应')
+      return
+    }
+
+    const data = JSON.parse(text)
+    if (data.datas) {
+      // 取得營業時間設定，若無效則使用預設值
+      const apiStartTime = data.datas.operating_start_time
+      const apiEndTime = data.datas.operating_end_time
+
+      // 驗證並設置開始時間
+      if (apiStartTime && apiStartTime.includes(':')) {
+        const hour = parseInt(apiStartTime.split(':')[0], 10)
+        if (!isNaN(hour) && hour >= 0 && hour <= 23) {
+          operatingStartTime.value = apiStartTime
+        }
+      }
+
+      // 驗證並設置結束時間
+      if (apiEndTime && apiEndTime.includes(':')) {
+        const hour = parseInt(apiEndTime.split(':')[0], 10)
+        if (!isNaN(hour) && hour >= 0 && hour <= 23) {
+          operatingEndTime.value = apiEndTime
+        }
+      }
+    }
+  } catch (err) {
+    console.error('取得中心設定失敗:', err)
   }
 }
 
@@ -624,23 +721,46 @@ const getRuleStyle = (rule: OccupancyRule) => {
   const startParts = rule.start_time.split(':').map(Number)
   const endParts = rule.end_time.split(':').map(Number)
 
+  // 確保時間部分是有效的數字
+  const startHour = isNaN(startParts[0]) ? 0 : startParts[0]
+  const startMinute = isNaN(startParts[1]) ? 0 : startParts[1]
+  const endHour = isNaN(endParts[0]) ? startHour + 1 : endParts[0]
+  const endMinute = isNaN(endParts[1]) ? 0 : endParts[1]
+
   // 將時間轉換為分鐘
-  const startMinutes = startParts[0] * 60 + startParts[1]
-  const endMinutes = endParts[0] * 60 + endParts[1]
-  const duration = endMinutes - startMinutes
+  const startMinutes = startHour * 60 + startMinute
+  let endMinutes = endHour * 60 + endMinute
+
+  // 處理跨夜課程：如果結束時間早於開始時間，表示跨越午夜
+  let duration = endMinutes - startMinutes
+  if (duration <= 0) {
+    // 跨越午夜：加上一整天（24小時 = 1440分鐘）
+    endMinutes = endMinutes + 24 * 60
+    duration = endMinutes - startMinutes
+  }
 
   // 每小時格子的高度是 64px
   const hourHeight = 64
 
   // 計算相對於 visibleTimeSlots 起始時間的位置
-  const minVisibleHour = visibleTimeSlots.value[0] || 7
-  const startHour = startParts[0]
-  const topOffset = (startHour - minVisibleHour) * hourHeight + startParts[1] * (hourHeight / 60)
+  const minVisibleHour = visibleTimeSlots.value.length > 0 ? visibleTimeSlots.value[0] : 0
+
+  // 確保 minVisibleHour 是有效的數字
+  const safeMinHour = isNaN(minVisibleHour) ? 0 : minVisibleHour
+
+  // 計算卡片頂部位置
+  let topOffset = (startHour - safeMinHour) * hourHeight + startMinute * (hourHeight / 60)
   const cardHeight = duration * (hourHeight / 60)
 
+  // 保護：如果課程開始時間早於營業時間，將其夾緊到 0
+  const clampedTop = Math.max(0, topOffset)
+
+  // 確保高度至少 20px，且不會超出範圍
+  const clampedHeight = Math.max(Math.min(cardHeight, 24 * hourHeight - clampedTop), 20)
+
   return {
-    top: `${topOffset}px`,
-    height: `${cardHeight}px`,
+    top: `${clampedTop}px`,
+    height: `${clampedHeight}px`,
     zIndex: 10
   }
 }
@@ -883,8 +1003,11 @@ const navigateToCreateRule = (day?: number, hour?: number) => {
 
 // ========== Lifecycle ==========
 
-onMounted(() => {
-  fetchTerms()
-  fetchAllResources()
+onMounted(async () => {
+  await Promise.all([
+    fetchTerms(),
+    fetchAllResources(),
+    fetchCenterSettings(),
+  ])
 })
 </script>
