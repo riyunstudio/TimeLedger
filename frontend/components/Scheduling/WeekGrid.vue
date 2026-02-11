@@ -150,11 +150,12 @@ const timeSlots = computed(() => {
 })
 
 // 容器高度樣式
-// 固定使用 24 小時高度，確保與後端計算的百分比偏移一致
+// 根據 timeSlots 動態計算高度
 const containerStyle = computed(() => {
-  // 固定高度：24 小時 * 60px = 1440px
+  const slotCount = timeSlots.value.length
+  const slotHeight = TIME_SLOT_HEIGHT
   return {
-    height: '1440px',
+    height: `${slotCount * slotHeight}px`,
   }
 })
 
@@ -304,6 +305,9 @@ const getScheduleStyle = (schedule: any): Record<string, string> => {
   let height: number
   const slotHeight = TIME_SLOT_HEIGHT
 
+  // 取得第一個時段的小時數
+  const firstSlotHour = timeSlots.value.length > 0 ? timeSlots.value[0] : 0
+
   // 檢查是否使用後端計算的偏移（Phase 2 新功能）
   if (props.useBackendOffsets && schedule._topOffset !== undefined && schedule._heightPercent !== undefined) {
     // 使用後端直接計算的 CSS 百分比偏移
@@ -314,8 +318,9 @@ const getScheduleStyle = (schedule: any): Record<string, string> => {
     top = (schedule._topOffset / 100) * totalDayHeight
     height = (schedule._heightPercent / 100) * totalDayHeight
   } else {
-    // 使用原有的計算方式（後端已拆分跨日課程）
-    const baseTop = start_hour * slotHeight
+    // 使用原有的計算方式，但考慮動態時段的開始時間
+    // 相對於第一個時段的位置
+    const baseTop = (start_hour - firstSlotHour) * slotHeight
     const minuteOffset = (start_minute / 60) * slotHeight
     top = baseTop + minuteOffset
     height = (duration_minutes / 60) * slotHeight

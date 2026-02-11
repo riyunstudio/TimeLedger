@@ -113,6 +113,7 @@
           :week-label="weekLabel"
           :week-start="weekStart"
           :card-info-type="effectiveCardInfoType"
+          :time-slots="dynamicTimeSlots"
           @change-week="changeWeek"
           @select-schedule="selectSchedule"
         />

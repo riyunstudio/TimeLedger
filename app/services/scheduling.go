@@ -1393,6 +1393,13 @@ func (s *ScheduleService) GetMatrixViewData(ctx context.Context, centerID uint, 
 		return nil, fmt.Errorf("invalid end_date format: %w", err)
 	}
 
+	// 取得中心的營業時間設定
+	var centerSettings *models.CenterSettings
+	center, err := s.centerRepo.GetByID(ctx, centerID)
+	if err == nil {
+		centerSettings = &center.Settings
+	}
+
 	// 取得展開後的課表
 	expandReq := &ExpandRulesRequest{
 		StartDate: startDate,
@@ -1493,8 +1500,8 @@ func (s *ScheduleService) GetMatrixViewData(ctx context.Context, centerID uint, 
 		}
 	}
 
-	// 生成 time_slots
-	timeSlots := s.generateTimeSlots(expandedSchedules)
+	// 生成 time_slots（使用動態營業時間）
+	timeSlots := s.generateTimeSlots(expandedSchedules, centerSettings)
 
 	// 構建響應
 	response := &resources.MatrixViewResponse{
@@ -1716,12 +1723,40 @@ func (s *ScheduleService) calculateDuration(startTime, endTime string) int {
 }
 
 // generateTimeSlots 生成時段列表
-// 總是返回完整的業務時段 (0:00 - 23:00)，確保前端時間軸正確顯示
-func (s *ScheduleService) generateTimeSlots(schedules []ExpandedSchedule) []int {
-	// 業務時段固定為 0-23，確保前端時間軸一致性
-	slots := make([]int, 0, 24)
-	for i := 0; i <= 23; i++ {
+// 根據中心的營業時間生成動態時段列表
+// 如果 settings 為空或沒有設定，則使用預設值 (00:00 - 23:00)
+func (s *ScheduleService) generateTimeSlots(schedules []ExpandedSchedule, settings *models.CenterSettings) []int {
+	// 解析營業時間
+	var startHour, endHour int
+
+	if settings != nil && settings.OperatingStartTime != "" {
+		startParts := strings.Split(settings.OperatingStartTime, ":")
+		if len(startParts) >= 1 {
+			fmt.Sscanf(startParts[0], "%d", &startHour)
+		}
+	} else {
+		startHour = 0 // 預設開始時間
+	}
+
+	if settings != nil && settings.OperatingEndTime != "" {
+		endParts := strings.Split(settings.OperatingEndTime, ":")
+		if len(endParts) >= 1 {
+			fmt.Sscanf(endParts[0], "%d", &endHour)
+		}
+	} else {
+		endHour = 23 // 預設結束時間
+	}
+
+	// 確保結束時間大於開始時間
+	if endHour <= startHour {
+		endHour = 23
+	}
+
+	// 生成時段列表
+	slots := make([]int, 0, endHour-startHour+1)
+	for i := startHour; i <= endHour; i++ {
 		slots = append(slots, i)
 	}
+
 	return slots
 }

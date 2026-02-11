@@ -154,6 +154,8 @@ const props = defineProps<{
   weekLabel: string
   weekStart: Date
   cardInfoType: 'teacher' | 'center'
+  // 動態時間段（由矩陣視圖 API 回傳，可選）
+  timeSlots?: number[]
 }>()
 
 // ============================================
@@ -191,6 +193,7 @@ const updateWidth = () => {
     // 計算格子寬度（扣除時間列）
     const timeColumnWidth = 64
     const visibleDaysCount = visibleDays.value.length
+    // 確保格子寬度至少 60px
     cellWidth.value = Math.max(60, (containerWidth.value - timeColumnWidth) / visibleDaysCount)
   }
 }
@@ -311,6 +314,11 @@ const visibleDays = computed(() => {
 
 // 可見的時間段
 const visibleTimeSlots = computed(() => {
+  // 如果父組件提供了動態時間段，使用它
+  if (props.timeSlots && props.timeSlots.length > 0) {
+    return props.timeSlots
+  }
+  // 否則使用預設時間段（9-22點）
   return [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]
 })
 
@@ -388,8 +396,21 @@ const getScheduleCardStyle = (schedule: any, time: number) => {
   const minuteOffset = (schedule.start_minute / 60) * slotHeight
   const durationHeight = (schedule.duration_minutes / 60) * slotHeight
 
-  // 從開始時間計算位置（後端已拆分跨日課程）
-  const top = minuteOffset
+  // 取得第一個時段的小時數
+  const firstSlotHour = visibleTimeSlots.value.length > 0 ? visibleTimeSlots.value[0] : 9
+
+  // 從開始時間計算位置（相對於第一個時段）
+  let relativeStartHour = schedule.start_hour - firstSlotHour
+
+  // 保護：如果課程開始時間早於營業時間，將其夾緊到 0
+  if (relativeStartHour < 0) {
+    relativeStartHour = 0
+  }
+
+  const top = (relativeStartHour * slotHeight) + minuteOffset
+
+  // 確保 top 不會是負值
+  const clampedTop = Math.max(0, top)
 
   // 重疊課程調整寬度和位置
   let left = '0.25rem'
@@ -400,7 +421,7 @@ const getScheduleCardStyle = (schedule: any, time: number) => {
     const colorHex = '#F59E0B' // warning color
     const bgColor = hexToRgba(colorHex, 0.3)
     return {
-      top: `${top}px`,
+      top: `${clampedTop}px`,
       height: `${Math.max(durationHeight - 2, 20)}px`,
       left,
       right,
@@ -414,7 +435,7 @@ const getScheduleCardStyle = (schedule: any, time: number) => {
     const colorHex = schedule.color_hex || '#6366F1'
     const bgColor = hexToRgba(colorHex, 0.4)
     return {
-      top: `${top}px`,
+      top: `${clampedTop}px`,
       height: `${Math.max(durationHeight - 2, 20)}px`,
       left,
       right,
@@ -424,7 +445,7 @@ const getScheduleCardStyle = (schedule: any, time: number) => {
   }
 
   return {
-    top: `${top}px`,
+    top: `${clampedTop}px`,
     height: `${Math.max(durationHeight - 2, 20)}px`,
     left,
     right,

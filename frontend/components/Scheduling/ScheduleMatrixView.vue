@@ -73,7 +73,7 @@
             <span class="text-sm font-medium text-slate-300">資源 / 時段</span>
           </div>
           <div
-            v-for="time in timeSlots"
+            v-for="time in dynamicTimeSlots"
             :key="time"
             class="p-3 border-b border-white/10 text-center bg-slate-800/50 sticky top-0 z-20"
           >
@@ -98,7 +98,7 @@
 
           <!-- 時段網格背景 -->
           <div
-            v-for="time in timeSlots"
+            v-for="time in dynamicTimeSlots"
             :key="`${resource.id}-bg-${time}`"
             class="p-1 min-h-[80px] border-b border-white/5 border-r relative"
             :class="getCellClass(resource.id, time)"
@@ -179,6 +179,8 @@ const { confirm: confirmDialog, error: alertError } = useAlert()
 // Props
 const props = defineProps<{
   resourceType: 'teacher' | 'room'
+  // 動態時間段（由父組件傳入，可選）
+  timeSlots?: number[]
 }>()
 
 const showCreateModal = ref(false)
@@ -221,10 +223,20 @@ const handleRuleUpdated = async () => {
 
 const { getCenterId } = useCenterId()
 
+// 動態時間段計算
+const dynamicTimeSlots = computed(() => {
+  // 如果父組件提供了動態時間段，使用它
+  if (props.timeSlots && props.timeSlots.length > 0) {
+    return props.timeSlots
+  }
+  // 否則使用預設時間段
+  return [0, 1, 2, 3, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
+})
+
 // 擴展時間段：包含 00:00-03:00 和 22:00-23:00
-const timeSlots = [0, 1, 2, 3, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
+// 動態時段數量
+const SLOT_COUNT = computed(() => dynamicTimeSlots.value.length)
 const RESOURCE_COLUMN_WIDTH = 120 // 資源名稱列的寬度 (px)
-const SLOT_COUNT = 19 // 時段數量
 
 const weekDays = [
   { value: 1, name: '週一' },
@@ -292,7 +304,7 @@ const formatTime = (hour: number): string => {
 
 // Grid 樣式
 const gridStyle = computed(() => ({
-  gridTemplateColumns: `${RESOURCE_COLUMN_WIDTH}px repeat(${SLOT_COUNT}, 1fr)`
+  gridTemplateColumns: `${RESOURCE_COLUMN_WIDTH}px repeat(${SLOT_COUNT.value}, 1fr)`
 }))
 
 // 解析時間字串為小時和分鐘
@@ -425,7 +437,7 @@ const getSchedulesForResource = (resourceId: number): ScheduleData[] => {
 
 // 計算課程卡片的樣式
 const getScheduleStyle = (schedule: ScheduleData): Record<string, string> => {
-  const slotIndex = timeSlots.indexOf(schedule.start_hour)
+  const slotIndex = dynamicTimeSlots.value.indexOf(schedule.start_hour)
   if (slotIndex === -1) return { display: 'none' }
 
   const { start_minute, duration, start_hour } = schedule
@@ -571,7 +583,7 @@ const calculateSlotWidth = () => {
   // 找到表格容器的寬度
   const containerWidth = tableContainerRef.value.offsetWidth
   // 減去資源列寬度，再除以時段數量
-  slotWidth.value = Math.max(50, (containerWidth - RESOURCE_COLUMN_WIDTH) / SLOT_COUNT)
+  slotWidth.value = Math.max(50, (containerWidth - RESOURCE_COLUMN_WIDTH) / SLOT_COUNT.value)
 }
 
 onMounted(async () => {
