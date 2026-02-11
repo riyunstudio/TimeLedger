@@ -306,10 +306,10 @@ const filteredOptions = computed(() => {
   })
 })
 
-const displaySelectedName = (id: number | string | null) => {
-  if (id === null || id === undefined) return ''
+const displaySelectedName = (id: unknown) => {
+  if (id === null || id === undefined || id === '') return ''
 
-  const selected = props.options.find((opt) => opt.id === id)
+  const selected = props.options.find((opt) => String(opt.id) === String(id))
   if (selected) return selected.name
 
   // 當選項還沒載入但有選中值時，嘗試從現有選項中查找
@@ -327,16 +327,17 @@ const selectedIds = computed(() => {
 })
 
 const selectedOptions = computed(() => {
-  return props.options.filter(opt => selectedIds.value.includes(opt.id))
+  const ids = selectedIds.value.map(id => String(id))
+  return props.options.filter(opt => ids.includes(String(opt.id)))
 })
 
 const isOptionSelected = (id: number | string) => {
-  return selectedIds.value.includes(id)
+  return selectedIds.value.some(sid => String(sid) === String(id))
 }
 
 const removeOption = (id: number | string) => {
   const currentIds = [...selectedIds.value]
-  const index = currentIds.indexOf(id)
+  const index = currentIds.findIndex(sid => String(sid) === String(id))
   if (index > -1) {
     currentIds.splice(index, 1)
     emit('update:modelValue', currentIds.length > 0 ? currentIds : null)
@@ -346,7 +347,8 @@ const removeOption = (id: number | string) => {
 
 const handleMultiSelect = (id: number | string) => {
   const currentIds = [...selectedIds.value]
-  if (!currentIds.includes(id)) {
+  const isAlreadySelected = currentIds.some(sid => String(sid) === String(id))
+  if (!isAlreadySelected) {
     currentIds.push(id)
     emit('update:modelValue', currentIds)
     emit('change', [...selectedOptions.value, props.options.find(opt => opt.id === id)!])
