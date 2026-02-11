@@ -163,6 +163,10 @@ export interface Offering {
   default_room_id?: ID
   /** 預設教師 ID */
   default_teacher_id?: ID
+  /** 預設開始時間 (HH:MM) */
+  default_start_time?: string
+  /** 預設結束時間 (HH:MM) */
+  default_end_time?: string
   /** 是否允許緩衝覆寫 */
   allow_buffer_override: boolean
   /** 建立時間 */

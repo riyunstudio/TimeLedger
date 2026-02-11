@@ -527,7 +527,7 @@ const weekdayNames = ['日', '一', '二', '三', '四', '五', '六']
 async function fetchHolidays() {
   const { get: apiGet } = useApi()
   const { getCenterId } = useCenterId()
-  const centerId = getCenterId.value
+  const centerId = getCenterId()
 
   if (!centerId) return
 
@@ -739,8 +739,9 @@ const roomOptions = computed<SelectOption[]>(() =>
 const createValidationSchema = () => {
   const baseSchema = {
     name: z.string().optional(),
-    offering_id: z.union([z.string(), z.number()]).refine((val) => {
+    offering_id: z.union([z.string(), z.number(), z.null()]).refine((val) => {
       // 確保值不為空（字串長度 > 0 或數字 > 0）
+      if (val === null) return false
       if (typeof val === 'string') return val.length > 0
       return val > 0
     }, { message: '請選擇課程' }),
@@ -780,13 +781,13 @@ const getInitialValues = () => {
 
     return {
       name: props.editingRule.name || '',
-      offering_id: String(props.editingRule.offering_id || ''),
+      offering_id: props.editingRule.offering_id || null,
       teacher_id: props.editingRule.teacher_id || null,
       room_id: props.editingRule.room_id || null,
       start_time: props.editingRule.start_time || '09:00',
       end_time: props.editingRule.end_time || '10:00',
       duration: props.editingRule.duration || DEFAULT_COURSE_DURATION,
-      weekdays: [props.editingRule.weekday] || [1],
+      weekdays: props.editingRule.weekdays || (props.editingRule.weekday !== undefined ? [props.editingRule.weekday] : [1]),
       start_date: props.editingRule.effective_range?.start_date?.split(/[T ]/)[0] || formatDateToString(new Date()),
       end_date: props.editingRule.effective_range?.end_date?.split(/[T ]/)[0] || '',
       skip_holiday: props.editingRule.skip_holiday ?? true,
@@ -796,7 +797,7 @@ const getInitialValues = () => {
 
   return {
     name: '',
-    offering_id: '',
+    offering_id: null,
     teacher_id: null,
     room_id: null,
     start_time: '09:00',
@@ -811,10 +812,50 @@ const getInitialValues = () => {
 }
 
 // 使用 vee-validate 的 useForm
-const { handleSubmit, isSubmitting, errors, values, setFieldValue } = useForm({
+const { handleSubmit, isSubmitting, errors, values, setFieldValue, setValues } = useForm({
   validationSchema: toTypedSchema(createValidationSchema()),
   initialValues: getInitialValues(),
-})
+}) as any
+
+// 監聽編輯資料變化，使用 setValues 正確更新所有表單值
+watch(
+  () => props.editingRule,
+  (rule) => {
+    if (rule) {
+      // 解析 suspended_dates
+      let suspendedDatesData: string[] = []
+      if (rule.suspended_dates) {
+        if (Array.isArray(rule.suspended_dates)) {
+          suspendedDatesData = rule.suspended_dates
+        } else if (typeof rule.suspended_dates === 'string') {
+          try {
+            suspendedDatesData = JSON.parse(rule.suspended_dates)
+          } catch {
+            suspendedDatesData = []
+          }
+        }
+      }
+      suspendedDates.value = suspendedDatesData
+
+      // 使用 setValues 一次更新所有欄位
+      setValues({
+        name: rule.name || '',
+        offering_id: rule.offering_id || null,
+        teacher_id: rule.teacher_id || null,
+        room_id: rule.room_id || null,
+        start_time: rule.start_time || '09:00',
+        end_time: rule.end_time || '10:00',
+        duration: rule.duration || DEFAULT_COURSE_DURATION,
+        weekdays: rule.weekdays || (rule.weekday !== undefined ? [rule.weekday] : [1]),
+        start_date: rule.effective_range?.start_date?.split(/[T ]/)[0] || formatDateToString(new Date()),
+        end_date: rule.effective_range?.end_date?.split(/[T ]/)[0] || null,
+        skip_holiday: rule.skip_holiday ?? true,
+        suspended_dates: suspendedDatesData,
+      })
+    }
+  },
+  { immediate: true }
+)
 
 // 建立欄位屬性物件（用於 v-bind）
 const fieldAttrs = computed(() => {
@@ -826,7 +867,7 @@ const fieldAttrs = computed(() => {
     },
     offering_id: {
       value: values.offering_id,
-      onChange: (val: string) => setFieldValue('offering_id', val),
+      onChange: (val: any) => setFieldValue('offering_id', val),
       error: errors.offering_id,
     },
     teacher_id: {
@@ -878,34 +919,69 @@ const weekdaysValue = computed({
   set: (val) => setFieldValue('weekdays', val),
 })
 
-// 監聽課程選擇，自動帶入預設老師、教室和時長
+// 追蹤是否為初始載入（用於區分初始化和用戶操作）
+const isInitialLoad = ref(true)
+
+// 監聽課程選擇，自動帶入預設老師、教室、開始結束時間和時長
 watch(
   () => values.offering_id,
-  (newOfferingId) => {
-    // 編輯模式不自動帶入預設值
-    if (isEditMode.value) return
+  (newOfferingId, oldOfferingId) => {
+    // 如果沒有選擇課程，不處理
     if (!newOfferingId) return
 
-    const selectedOffering = offerings.value.find((o) => o.id === parseInt(newOfferingId))
-    if (selectedOffering) {
-      // 自動帶入預設老師（如果還沒有選老師）
-      if (selectedOffering.default_teacher_id && !values.teacher_id) {
-        setFieldValue('teacher_id', selectedOffering.default_teacher_id)
-      }
-      // 自動帶入預設教室（如果還沒有選教室）
-      if (selectedOffering.default_room_id && !values.room_id) {
-        setFieldValue('room_id', selectedOffering.default_room_id)
-      }
-      // 自動帶入課程時長（從關聯課程取得，如果有的話）
-      if (selectedOffering.course_duration && selectedOffering.course_duration > 0) {
-        setFieldValue('duration', selectedOffering.course_duration)
-      }
-      // 自動帶入名稱（如果還沒有填名稱）
-      if (!values.name) {
-        setFieldValue('name', selectedOffering.name)
-      }
+    const selectedOffering = offerings.value.find((o) => String(o.id) === String(newOfferingId))
+    if (!selectedOffering) return
+
+    // 判斷是否為用戶手動更換課程（非初始載入）
+    const isUserChangedCourse = oldOfferingId !== undefined && oldOfferingId !== newOfferingId
+
+    // 編輯模式下：
+    // - 初始載入時跳過（保持原有的編輯資料）
+    // - 用戶手動更換課程時，帶入新課程的預設時間和時長
+    if (isEditMode.value && !isUserChangedCourse) {
+      // 這是初始載入，跳過自動帶入
+      return
+    }
+
+    // 自動帶入預設開始時間
+    if (selectedOffering.default_start_time && selectedOffering.default_start_time !== '') {
+      setFieldValue('start_time', selectedOffering.default_start_time)
+    }
+    // 自動帶入預設結束時間
+    if (selectedOffering.default_end_time && selectedOffering.default_end_time !== '') {
+      setFieldValue('end_time', selectedOffering.default_end_time)
+    }
+    // 自動帶入課程時長（從關聯課程取得，如果有的話）
+    if (selectedOffering.course_duration && selectedOffering.course_duration > 0) {
+      setFieldValue('duration', selectedOffering.course_duration)
+    }
+    // 新增模式：自動帶入預設老師（如果還沒有選老師）
+    if (!isEditMode.value && selectedOffering.default_teacher_id && !values.teacher_id) {
+      setFieldValue('teacher_id', selectedOffering.default_teacher_id)
+    }
+    // 新增模式：自動帶入預設教室（如果還沒有選教室）
+    if (!isEditMode.value && selectedOffering.default_room_id && !values.room_id) {
+      setFieldValue('room_id', selectedOffering.default_room_id)
+    }
+    // 新增模式：自動帶入名稱（如果還沒有填名稱）
+    if (!isEditMode.value && !values.name) {
+      setFieldValue('name', selectedOffering.name)
     }
   }
+)
+
+// 監聽初始載入完成
+watch(
+  () => props.editingRule,
+  () => {
+    // 當 editingRule 載入完成後，標記為非初始狀態
+    if (props.editingRule) {
+      nextTick(() => {
+        isInitialLoad.value = false
+      })
+    }
+  },
+  { immediate: true }
 )
 
 // 提交處理
@@ -949,43 +1025,4 @@ const onFormSubmit = handleSubmit(async (formValues) => {
   }
 })
 
-// 監聽編輯資料變化，更新表單值
-watch(
-  () => props.editingRule,
-  (rule) => {
-    if (rule) {
-      setFieldValue('name', rule.name || '')
-      setFieldValue('offering_id', String(rule.offering_id || ''))
-      setFieldValue('teacher_id', rule.teacher_id || null)
-      setFieldValue('room_id', rule.room_id || null)
-      setFieldValue('start_time', rule.start_time || '09:00')
-      setFieldValue('end_time', rule.end_time || '10:00')
-      setFieldValue('duration', rule.duration || DEFAULT_COURSE_DURATION)
-      setFieldValue('weekdays', [rule.weekday] || [1])
-      setFieldValue(
-        'start_date',
-        rule.effective_range?.start_date?.split(/[T ]/)[0] || formatDateToString(new Date())
-      )
-      setFieldValue('end_date', rule.effective_range?.end_date?.split(/[T ]/)[0] || '')
-      setFieldValue('skip_holiday', rule.skip_holiday ?? true)
-
-      // 解析並同步 suspended_dates
-      let suspendedDatesData: string[] = []
-      if (rule.suspended_dates) {
-        if (Array.isArray(rule.suspended_dates)) {
-          suspendedDatesData = rule.suspended_dates
-        } else if (typeof rule.suspended_dates === 'string') {
-          try {
-            suspendedDatesData = JSON.parse(rule.suspended_dates)
-          } catch {
-            suspendedDatesData = []
-          }
-        }
-      }
-      suspendedDates.value = suspendedDatesData
-      setFieldValue('suspended_dates', suspendedDatesData)
-    }
-  },
-  { immediate: true }
-)
 </script>

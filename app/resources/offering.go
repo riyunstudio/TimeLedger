@@ -18,7 +18,7 @@ func NewOfferingResource(appInstance *app.App) *OfferingResource {
 	}
 }
 
-// OfferingResponse 開課響應結構（含課程時長）
+// OfferingResponse 開課響應結構（含課程時長和預設時間）
 type OfferingResponse struct {
 	ID                   uint           `json:"id"`
 	CenterID             uint           `json:"center_id"`
@@ -28,6 +28,8 @@ type OfferingResponse struct {
 	CourseDuration       int            `json:"course_duration"` // 課程時長（分鐘），優先使用課程設定，若無則使用中心全局設定
 	DefaultRoomID        *uint          `json:"default_room_id,omitempty"`
 	DefaultTeacherID     *uint          `json:"default_teacher_id,omitempty"`
+	DefaultStartTime     string         `json:"default_start_time,omitempty"` // 預設開始時間 (HH:MM)
+	DefaultEndTime       string         `json:"default_end_time,omitempty"`   // 預設結束時間 (HH:MM)
 	AllowBufferOverride  bool           `json:"allow_buffer_override"`
 	IsActive             bool           `json:"is_active"`
 	CreatedAt            time.Time      `json:"created_at"`
@@ -65,6 +67,16 @@ func (r *OfferingResource) ToOfferingResponse(offering models.Offering) *Offerin
 	// 處理預設教師
 	if offering.DefaultTeacherID != nil {
 		response.DefaultTeacherID = offering.DefaultTeacherID
+	}
+
+	// 處理預設開始時間
+	if offering.DefaultStartTime != "" {
+		response.DefaultStartTime = offering.DefaultStartTime
+	}
+
+	// 處理預設結束時間
+	if offering.DefaultEndTime != "" {
+		response.DefaultEndTime = offering.DefaultEndTime
 	}
 
 	return response
