@@ -14,21 +14,21 @@ import (
 
 // TimetableTemplateController 課表模板控制器
 type TimetableTemplateController struct {
-	app            *app.App
-	templateRepo   *repositories.TimetableTemplateRepository
-	cellRepo       *repositories.TimetableCellRepository
-	auditLogRepo   *repositories.AuditLogRepository
+	app             *app.App
+	templateRepo    *repositories.TimetableTemplateRepository
+	cellRepo        *repositories.TimetableCellRepository
+	auditLogRepo    *repositories.AuditLogRepository
 	templateService *services.TimetableTemplateService
 }
 
 // NewTimetableTemplateController 建立 TimetableTemplateController 實例
 func NewTimetableTemplateController(appInstance *app.App) *TimetableTemplateController {
 	return &TimetableTemplateController{
-		app:              appInstance,
-		templateRepo:     repositories.NewTimetableTemplateRepository(appInstance),
-		cellRepo:         repositories.NewTimetableCellRepository(appInstance),
-		auditLogRepo:     repositories.NewAuditLogRepository(appInstance),
-		templateService:  services.NewTimetableTemplateService(appInstance),
+		app:             appInstance,
+		templateRepo:    repositories.NewTimetableTemplateRepository(appInstance),
+		cellRepo:        repositories.NewTimetableCellRepository(appInstance),
+		auditLogRepo:    repositories.NewAuditLogRepository(appInstance),
+		templateService: services.NewTimetableTemplateService(appInstance),
 	}
 }
 
@@ -217,12 +217,12 @@ func (c *TimetableTemplateController) GetCells(ctx *gin.Context) {
 
 // CreateCellRequest 建立格子請求
 type CreateCellRequest struct {
-	RowNo     int     `json:"row_no"`
-	ColNo     int     `json:"col_no"`
-	StartTime string  `json:"start_time"`
-	EndTime   string  `json:"end_time"`
-	RoomID    *uint   `json:"room_id"`
-	TeacherID *uint   `json:"teacher_id"`
+	RowNo     int    `json:"row_no"`
+	ColNo     int    `json:"col_no"`
+	StartTime string `json:"start_time"`
+	EndTime   string `json:"end_time"`
+	RoomID    *uint  `json:"room_id"`
+	TeacherID *uint  `json:"teacher_id"`
 }
 
 // CreateCells 新增模板中的格子
@@ -309,10 +309,9 @@ func (c *TimetableTemplateController) CreateCells(ctx *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param template_id path int true "Template ID"
 // @Param cell_id path int true "Cell ID"
 // @Success 200 {object} global.ApiResponse
-// @Router /api/v1/admin/templates/{template_id}/cells/{cell_id} [delete]
+// @Router /api/v1/admin/templates/cells/{cellId} [delete]
 func (c *TimetableTemplateController) DeleteCell(ctx *gin.Context) {
 	helper := NewContextHelper(ctx)
 
@@ -414,12 +413,12 @@ func (c *TimetableTemplateController) DeleteTemplate(ctx *gin.Context) {
 
 // ApplyTemplateRequest 套用模板請求
 type ApplyTemplateRequest struct {
-	OfferingID     uint     `json:"offering_id" binding:"required"`
-	StartDate      string   `json:"start_date" binding:"required"`
-	EndDate        string   `json:"end_date" binding:"required"`
-	Weekdays       []int    `json:"weekdays" binding:"required"`
-	Duration       int      `json:"duration"`
-	OverrideBuffer bool     `json:"override_buffer"`
+	OfferingID     uint   `json:"offering_id" binding:"required"`
+	StartDate      string `json:"start_date" binding:"required"`
+	EndDate        string `json:"end_date" binding:"required"`
+	Weekdays       []int  `json:"weekdays" binding:"required"`
+	Duration       int    `json:"duration"`
+	OverrideBuffer bool   `json:"override_buffer"`
 }
 
 // ApplyTemplateConflictInfo 套用模板衝突資訊
@@ -524,11 +523,11 @@ func (c *TimetableTemplateController) ApplyTemplate(ctx *gin.Context) {
 
 // ValidateApplyTemplateRequest 驗證套用模板請求
 type ValidateApplyTemplateRequest struct {
-	OfferingID     uint     `json:"offering_id" binding:"required"`
-	StartDate      string   `json:"start_date" binding:"required"`
-	EndDate        string   `json:"end_date" binding:"required"`
-	Weekdays       []int    `json:"weekdays" binding:"required"`
-	OverrideBuffer bool     `json:"override_buffer"`
+	OfferingID     uint   `json:"offering_id" binding:"required"`
+	StartDate      string `json:"start_date" binding:"required"`
+	EndDate        string `json:"end_date" binding:"required"`
+	Weekdays       []int  `json:"weekdays" binding:"required"`
+	OverrideBuffer bool   `json:"override_buffer"`
 }
 
 // ValidateApplyTemplate 驗證套用模板（不實際產生規則）
