@@ -268,11 +268,11 @@ const fetchTeacherNote = async () => {
   loadingNote.value = true
   try {
     const api = useApi()
-    const response = await api.get<{ code: number; datas: TeacherNote }>(
+    const response = await api.get<TeacherNote>(
       `/admin/teachers/${props.teacher.id}/note`
     )
-    if (response.datas) {
-      teacherNote.value = response.datas
+    if (response) {
+      teacherNote.value = response
     }
   } catch (err) {
     console.error('Failed to fetch teacher note:', err)

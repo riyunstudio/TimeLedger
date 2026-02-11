@@ -282,11 +282,11 @@ const fetchData = async () => {
   try {
     const api = useApi()
     const [skillsRes, certsRes] = await Promise.all([
-      api.get<{ code: number; datas: any[] }>('/teacher/me/skills'),
-      api.get<{ code: number; datas: any[] }>('/teacher/me/certificates')
+      api.get<any[]>('/teacher/me/skills'),
+      api.get<any[]>('/teacher/me/certificates')
     ])
     // 轉換技能資料，確保標籤是字串
-    skills.value = (skillsRes.datas || []).map((skill: any) => ({
+    skills.value = (skillsRes || []).map((skill: any) => ({
       ...skill,
       hashtags: (skill.hashtags || []).map((h: any) => {
         // 從各種可能的結構中提取標籤名稱
@@ -302,7 +302,7 @@ const fetchData = async () => {
       }).filter((t: string) => typeof t === 'string' && t.length > 0) // 只保留非空字串
     }))
     // 轉換證照資料，確保欄位與 API 回應一致
-    certificates.value = (certsRes.datas || []).map((cert: any) => ({
+    certificates.value = (certsRes || []).map((cert: any) => ({
       ...cert,
       // 確保使用 API 回應的欄位名稱
       name: cert.name,

@@ -32,8 +32,8 @@ export const useProfileStore = defineStore('profile', () => {
     return withLoading(isFetching, async () => {
       try {
         const api = useApi()
-        const response = await api.get<{ code: number; message: string; datas: TeacherSkill[] }>('/teacher/me/skills')
-        skills.value = response.datas || []
+        const response = await api.get<TeacherSkill[]>('/teacher/me/skills')
+        skills.value = response || []
       } catch (error) {
         console.error('Failed to fetch skills:', error)
         throw error
@@ -44,21 +44,21 @@ export const useProfileStore = defineStore('profile', () => {
   const createSkill = async (data: { category: string; skill_name: string; hashtag_ids?: number[] }) => {
     return withLoading(isCreatingSkill, async () => {
       const api = useApi()
-      const response = await api.post<{ code: number; message: string; datas: TeacherSkill }>('/teacher/me/skills', data)
-      skills.value.push(response.datas)
-      return response.datas
+      const response = await api.post<TeacherSkill>('/teacher/me/skills', data)
+      skills.value.push(response)
+      return response
     })
   }
 
   const updateSkill = async (skillId: number, data: { category: string; skill_name: string; hashtags?: string[] }) => {
     return withLoading(isUpdatingSkill, async () => {
       const api = useApi()
-      const response = await api.put<{ code: number; message: string; datas: TeacherSkill }>(`/teacher/me/skills/${skillId}`, data)
+      const response = await api.put<TeacherSkill>(`/teacher/me/skills/${skillId}`, data)
       const index = skills.value.findIndex(s => s.id === skillId)
       if (index !== -1) {
-        skills.value[index] = response.datas
+        skills.value[index] = response
       }
-      return response.datas
+      return response
     })
   }
 
@@ -75,8 +75,8 @@ export const useProfileStore = defineStore('profile', () => {
     return withLoading(isFetching, async () => {
       try {
         const api = useApi()
-        const response = await api.get<{ code: number; message: string; datas: TeacherCertificate[] }>('/teacher/me/certificates')
-        certificates.value = response.datas || []
+        const response = await api.get<TeacherCertificate[]>('/teacher/me/certificates')
+        certificates.value = response || []
       } catch (error) {
         console.error('Failed to fetch certificates:', error)
         throw error
@@ -91,9 +91,9 @@ export const useProfileStore = defineStore('profile', () => {
   }) => {
     return withLoading(isCreatingCertificate, async () => {
       const api = useApi()
-      const response = await api.post<{ code: number; message: string; datas: TeacherCertificate }>('/teacher/me/certificates', data)
-      certificates.value.push(response.datas)
-      return response.datas
+      const response = await api.post<TeacherCertificate>('/teacher/me/certificates', data)
+      certificates.value.push(response)
+      return response
     })
   }
 
@@ -110,9 +110,9 @@ export const useProfileStore = defineStore('profile', () => {
     return withLoading(isFetching, async () => {
       try {
         const api = useApi()
-        const response = await api.get<{ code: number; message: string; datas: Teacher }>('/teacher/me/profile')
-        profile.value = response.datas || null
-        return response.datas
+        const response = await api.get<Teacher>('/teacher/me/profile')
+        profile.value = response || null
+        return response
       } catch (error) {
         console.error('Failed to fetch profile:', error)
         throw error
@@ -123,9 +123,9 @@ export const useProfileStore = defineStore('profile', () => {
   const updateProfile = async (data: Partial<Teacher>) => {
     return withLoading(isUpdating, async () => {
       const api = useApi()
-      const response = await api.put<{ code: number; message: string; datas: Teacher }>('/teacher/me/profile', data)
-      profile.value = response.datas || null
-      return response.datas
+      const response = await api.put<Teacher>('/teacher/me/profile', data)
+      profile.value = response || null
+      return response
     })
   }
 
@@ -137,8 +137,8 @@ export const useProfileStore = defineStore('profile', () => {
 
     try {
       const api = useApi()
-      const response = await api.get<{ code: number; datas: Hashtag[] }>('/hashtags/search', { q: query })
-      return response.datas || []
+      const response = await api.get<Hashtag[]>('/hashtags/search', { q: query })
+      return response || []
     } catch (error) {
       console.error('Failed to search hashtags:', error)
       return []
@@ -152,8 +152,8 @@ export const useProfileStore = defineStore('profile', () => {
 
     try {
       const api = useApi()
-      const response = await api.post<{ code: number; datas: Hashtag }>('/hashtags', { name: '#' + name })
-      return response.datas || null
+      const response = await api.post<Hashtag>('/hashtags', { name: '#' + name })
+      return response || null
     } catch (error) {
       console.error('Failed to create hashtag:', error)
       return null
