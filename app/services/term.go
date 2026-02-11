@@ -341,11 +341,11 @@ type OccupancyRulesByDayOfWeek struct {
 }
 
 // GetOccupancyRules 取得佔用規則（聚合查詢）
-func (s *TermService) GetOccupancyRules(ctx context.Context, centerID uint, teacherID, roomID *uint, startDate, endDate time.Time) ([]OccupancyRulesByDayOfWeek, *errInfos.Res, error) {
+func (s *TermService) GetOccupancyRules(ctx context.Context, centerID uint, teacherIDs []uint, roomIDs []uint, startDate, endDate time.Time) ([]OccupancyRulesByDayOfWeek, *errInfos.Res, error) {
 	s.Logger.Info("fetching occupancy rules",
 		"center_id", centerID,
-		"teacher_id", teacherID,
-		"room_id", roomID,
+		"teacher_ids", teacherIDs,
+		"room_ids", roomIDs,
 		"start_date", startDate.Format("2006-01-02"),
 		"end_date", endDate.Format("2006-01-02"))
 
@@ -357,12 +357,12 @@ func (s *TermService) GetOccupancyRules(ctx context.Context, centerID uint, teac
 		Preload("Room").
 		Where("center_id = ?", centerID)
 
-	// 根據 teacher_id 或 room_id 過濾
-	if teacherID != nil {
-		query = query.Where("teacher_id = ?", *teacherID)
+	// 根據 teacher_ids 或 room_ids 過濾
+	if len(teacherIDs) > 0 {
+		query = query.Where("teacher_id IN ?", teacherIDs)
 	}
-	if roomID != nil {
-		query = query.Where("room_id = ?", *roomID)
+	if len(roomIDs) > 0 {
+		query = query.Where("room_id IN ?", roomIDs)
 	}
 
 	// 過濾日期範圍重疊的規則

@@ -243,6 +243,7 @@ definePageMeta({
 
  const authStore = useAuthStore()
  const scheduleStore = useScheduleStore()
+ const profileStore = useProfileStore()
  const sidebarStore = useSidebar()
  const notificationUI = useNotification()
 
@@ -256,7 +257,6 @@ definePageMeta({
  const profileCompleteness = computed(() => {
    let score = 0
    const user = authStore.user
-   const teacher = scheduleStore.centers.length > 0 ? scheduleStore.centers[0] : null
 
    // 基本資料（30分）
    if (user?.name) score += 10
@@ -266,14 +266,14 @@ definePageMeta({
    // 簡介（20分）
    if (user?.bio && user.bio.length >= 10) score += 20
 
-   // 技能（30分）
-   if (teacher?.skills && teacher.skills.length > 0) {
-     score += Math.min(teacher.skills.length * 10, 30)
+   // 技能（30分）- 從 profileStore 獨立獲取
+   if (profileStore.skills && profileStore.skills.length > 0) {
+     score += Math.min(profileStore.skills.length * 10, 30)
    }
 
-   // 證照（20分）
-   if (teacher?.certificates && teacher.certificates.length > 0) {
-     score += Math.min(teacher.certificates.length * 5, 20)
+   // 證照（20分）- 從 profileStore 獨立獲取
+   if (profileStore.certificates && profileStore.certificates.length > 0) {
+     score += Math.min(profileStore.certificates.length * 5, 20)
    }
 
    return Math.min(score, 100)
@@ -320,7 +320,12 @@ definePageMeta({
    }
  }
 
-onMounted(() => {
-  scheduleStore.fetchCenters()
+onMounted(async () => {
+  // 並行載入中心、技能、證照資料
+  await Promise.all([
+    scheduleStore.fetchCenters(),
+    profileStore.fetchSkills(),
+    profileStore.fetchCertificates(),
+  ])
 })
 </script>

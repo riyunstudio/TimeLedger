@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"strconv"
+	"strings"
 	"time"
 	"timeLedger/app"
 	"timeLedger/app/resources"
@@ -211,8 +212,9 @@ func (ctl *AdminTermController) DeleteTerm(ctx *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param teacher_id query int false "Teacher ID"
-// @Param room_id query int false "Room ID"
+// @Param teacher_id query int false "Teacher ID (single)"
+// @Param teacher_ids query string false "Teacher IDs (comma-separated, for multi-select)"
+// @Param room_ids query string false "Room IDs (comma-separated, for multi-select)"
 // @Param start_date query string true "開始日期 (YYYY-MM-DD)"
 // @Param end_date query string true "結束日期 (YYYY-MM-DD)"
 // @Success 200 {object} global.ApiResponse{data=[]resources.OccupancyRulesByDayOfWeek}
@@ -226,31 +228,68 @@ func (ctl *AdminTermController) GetOccupancyRules(ctx *gin.Context) {
 	}
 
 	// 解析查詢參數
-	var teacherID, roomID *uint
+	var teacherIDs []uint
+	var roomIDs []uint
 
+	// teacher_ids（用於老師模式，多選）
+	if teacherIDsStr := ctx.Query("teacher_ids"); teacherIDsStr != "" {
+		// 解析逗號分隔的 ID 列表
+		idStrings := strings.Split(teacherIDsStr, ",")
+		for _, idStr := range idStrings {
+			idStr = strings.TrimSpace(idStr)
+			if idStr == "" {
+				continue
+			}
+			id, err := strconv.ParseUint(idStr, 10, 64)
+			if err != nil {
+				helper.BadRequest("Invalid teacher_ids format: " + idStr)
+				return
+			}
+			teacherIDs = append(teacherIDs, uint(id))
+		}
+	}
+
+	// 單一 teacher_id（向後兼容）
 	if teacherIDStr := ctx.Query("teacher_id"); teacherIDStr != "" {
 		id, err := strconv.ParseUint(teacherIDStr, 10, 64)
 		if err != nil {
 			helper.BadRequest("Invalid teacher_id format")
 			return
 		}
-		uid := uint(id)
-		teacherID = &uid
+		teacherIDs = append(teacherIDs, uint(id))
 	}
 
+	// room_ids（用於教室模式，多選）
+	if roomIDsStr := ctx.Query("room_ids"); roomIDsStr != "" {
+		// 解析逗號分隔的 ID 列表
+		idStrings := strings.Split(roomIDsStr, ",")
+		for _, idStr := range idStrings {
+			idStr = strings.TrimSpace(idStr)
+			if idStr == "" {
+				continue
+			}
+			id, err := strconv.ParseUint(idStr, 10, 64)
+			if err != nil {
+				helper.BadRequest("Invalid room_ids format: " + idStr)
+				return
+			}
+			roomIDs = append(roomIDs, uint(id))
+		}
+	}
+
+	// room_id（單一房間，向後兼容）
 	if roomIDStr := ctx.Query("room_id"); roomIDStr != "" {
 		id, err := strconv.ParseUint(roomIDStr, 10, 64)
 		if err != nil {
 			helper.BadRequest("Invalid room_id format")
 			return
 		}
-		uid := uint(id)
-		roomID = &uid
+		roomIDs = append(roomIDs, uint(id))
 	}
 
-	// 必須提供 teacher_id 或 room_id
-	if teacherID == nil && roomID == nil {
-		helper.BadRequest("Either teacher_id or room_id is required")
+	// 必須提供 teacher_id/teacher_ids 或 room_ids/room_id
+	if len(teacherIDs) == 0 && len(roomIDs) == 0 {
+		helper.BadRequest("Either teacher_id/teacher_ids or room_ids is required")
 		return
 	}
 
@@ -288,7 +327,7 @@ func (ctl *AdminTermController) GetOccupancyRules(ctx *gin.Context) {
 		return
 	}
 
-	groups, errInfo, err := ctl.termService.GetOccupancyRules(ctx.Request.Context(), centerID, teacherID, roomID, startDate, endDate)
+	groups, errInfo, err := ctl.termService.GetOccupancyRules(ctx.Request.Context(), centerID, teacherIDs, roomIDs, startDate, endDate)
 	if err != nil {
 		helper.ErrorWithInfo(errInfo)
 		return

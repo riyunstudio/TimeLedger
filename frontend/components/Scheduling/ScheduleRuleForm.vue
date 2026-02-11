@@ -480,6 +480,9 @@ import { useApi } from '~/composables/useApi'
 import RecurrencePicker from './RecurrencePicker.vue'
 import SearchableSelect, { type SelectOption } from '~/components/Common/SearchableSelect.vue'
 
+// 全域預設課程時長（分鐘）
+const DEFAULT_COURSE_DURATION = 60
+
 // Props
 interface Props {
   editingRule?: any | null
@@ -782,7 +785,7 @@ const getInitialValues = () => {
       room_id: props.editingRule.room_id || null,
       start_time: props.editingRule.start_time || '09:00',
       end_time: props.editingRule.end_time || '10:00',
-      duration: props.editingRule.duration || 60,
+      duration: props.editingRule.duration || DEFAULT_COURSE_DURATION,
       weekdays: [props.editingRule.weekday] || [1],
       start_date: props.editingRule.effective_range?.start_date?.split(/[T ]/)[0] || formatDateToString(new Date()),
       end_date: props.editingRule.effective_range?.end_date?.split(/[T ]/)[0] || '',
@@ -798,7 +801,7 @@ const getInitialValues = () => {
     room_id: null,
     start_time: '09:00',
     end_time: '10:00',
-    duration: 60,
+    duration: DEFAULT_COURSE_DURATION,
     weekdays: [1] as number[],
     start_date: formatDateToString(new Date()),
     end_date: '',
@@ -875,7 +878,7 @@ const weekdaysValue = computed({
   set: (val) => setFieldValue('weekdays', val),
 })
 
-// 監聽課程選擇，自動帶入預設老師和教室
+// 監聽課程選擇，自動帶入預設老師、教室和時長
 watch(
   () => values.offering_id,
   (newOfferingId) => {
@@ -892,6 +895,10 @@ watch(
       // 自動帶入預設教室（如果還沒有選教室）
       if (selectedOffering.default_room_id && !values.room_id) {
         setFieldValue('room_id', selectedOffering.default_room_id)
+      }
+      // 自動帶入課程時長（從關聯課程取得，如果有的話）
+      if (selectedOffering.course_duration && selectedOffering.course_duration > 0) {
+        setFieldValue('duration', selectedOffering.course_duration)
       }
       // 自動帶入名稱（如果還沒有填名稱）
       if (!values.name) {
@@ -953,7 +960,7 @@ watch(
       setFieldValue('room_id', rule.room_id || null)
       setFieldValue('start_time', rule.start_time || '09:00')
       setFieldValue('end_time', rule.end_time || '10:00')
-      setFieldValue('duration', rule.duration || 60)
+      setFieldValue('duration', rule.duration || DEFAULT_COURSE_DURATION)
       setFieldValue('weekdays', [rule.weekday] || [1])
       setFieldValue(
         'start_date',

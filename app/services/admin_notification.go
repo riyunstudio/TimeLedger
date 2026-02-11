@@ -26,7 +26,9 @@ type AdminNotificationService struct {
 	app              *app.App
 	teacherRepo      *repositories.TeacherRepository
 	membershipRepo   *repositories.CenterMembershipRepository
+	centerRepo       *repositories.CenterRepository
 	lineBotService   LineBotService
+	templateService   LineBotTemplateService
 	rateLimiter      *BroadcastRateLimiter
 }
 
@@ -120,12 +122,16 @@ func (r *BroadcastRateLimiter) Record(ctx context.Context, adminID uint, centerI
 
 // NewAdminNotificationService 建立管理員通知服務
 func NewAdminNotificationService(app *app.App) *AdminNotificationService {
+	templateService := NewLineBotTemplateService(app.Env.FrontendBaseURL)
+
 	return &AdminNotificationService{
 		BaseService:      *NewBaseService(app, "AdminNotificationService"),
 		app:              app,
 		teacherRepo:      repositories.NewTeacherRepository(app),
 		membershipRepo:   repositories.NewCenterMembershipRepository(app),
+		centerRepo:       repositories.NewCenterRepository(app),
 		lineBotService:   NewLineBotService(app),
+		templateService:  templateService,
 		rateLimiter:      NewBroadcastRateLimiter(app),
 	}
 }
@@ -151,13 +157,23 @@ type RateLimitInfo struct {
 // BroadcastToTeachers 廣播訊息給中心老師
 // centerID: 中心 ID（從 JWT 取得，確保資料隔離）
 // adminID: 管理員 ID（用於記錄）
+// messageType: 訊息類型（GENERAL 或 URGENT）
+// title: 標題
 // message: 訊息內容
+// warning: 警告提示（可選）
+// actionLabel: 按鈕文字（可選）
+// actionURL: 按鈕連結（可選）
 // teacherIDs: 指定老師 ID 清單（空白表示發送給所有老師）
 func (s *AdminNotificationService) BroadcastToTeachers(
 	ctx context.Context,
 	centerID uint,
 	adminID uint,
+	messageType string,
+	title string,
 	message string,
+	warning string,
+	actionLabel string,
+	actionURL string,
 	teacherIDs []uint,
 ) (*BroadcastResult, *errInfos.Res, error) {
 	// 【速率限制檢查】防止管理員連點
@@ -233,10 +249,34 @@ func (s *AdminNotificationService) BroadcastToTeachers(
 		}, nil, nil
 	}
 
-	// 建立訊息結構
+	// 取得中心名稱
+	centerName := ""
+	center, err := s.centerRepo.GetByID(ctx, centerID)
+	if err == nil {
+		centerName = center.Name
+	}
+
+	// 建立 Flex Message 結構
+	flexMessage := s.templateService.GetBroadcastTemplate(
+		centerName,
+		title,
+		message,
+		warning,
+		actionLabel,
+		actionURL,
+	)
+
+	// 設定 altText
+	altTextPrefix := "🔔 廣播通知"
+	if messageType == "URGENT" {
+		altTextPrefix = "🚨 緊急通知"
+	}
+
+	// 包裝為 Flex Message 格式
 	lineMessage := map[string]interface{}{
-		"type": "text",
-		"text": fmt.Sprintf("📢 中心公告\n\n%s", message),
+		"type":     "flex",
+		"altText":  fmt.Sprintf("%s - %s", altTextPrefix, title),
+		"contents": flexMessage,
 	}
 
 	// 【記錄廣播請求】

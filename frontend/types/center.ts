@@ -157,6 +157,8 @@ export interface Offering {
   course_id: ID
   /** 課程名稱 (關聯取得) */
   course_name?: string
+  /** 課程時長（分鐘，從關聯課程取得） */
+  course_duration?: number
   /** 預設教室 ID */
   default_room_id?: ID
   /** 預設教師 ID */

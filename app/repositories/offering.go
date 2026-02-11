@@ -54,7 +54,13 @@ func (rp *OfferingRepository) Transaction(ctx context.Context, fn func(txRepo *O
 }
 
 func (rp *OfferingRepository) ListActiveByCenterID(ctx context.Context, centerID uint) ([]models.Offering, error) {
-	return rp.FindWithCenterScope(ctx, centerID, "is_active = ?", true)
+	var offerings []models.Offering
+	err := rp.dbRead.WithContext(ctx).
+		Preload("Course").
+		Where("center_id = ? AND is_active = ?", centerID, true).
+		Order("created_at DESC").
+		Find(&offerings).Error
+	return offerings, err
 }
 
 func (rp *OfferingRepository) ListByCenterIDPaginated(ctx context.Context, centerID uint, page, limit int) ([]models.Offering, int64, error) {

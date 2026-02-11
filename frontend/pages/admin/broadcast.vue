@@ -2,7 +2,12 @@
   <div class="p-4 md:p-6">
     <!-- 頁面標題 -->
     <div class="mb-6">
-      <h1 class="text-2xl font-bold text-white">廣播管理</h1>
+      <div class="flex items-center gap-2">
+        <h1 class="text-2xl font-bold text-white">廣播管理</h1>
+        <span v-if="centerName" class="px-3 py-1 bg-primary-500/20 text-primary-400 text-sm rounded-full">
+          {{ centerName }}
+        </span>
+      </div>
       <p class="text-slate-400 mt-1">發送 LINE 廣播訊息給中心的老師</p>
     </div>
 
@@ -292,6 +297,7 @@ const previewing = ref(false)
 const conflictWarning = ref('')
 const successMessage = ref('')
 const teacherCount = ref(0)
+const centerName = ref('')
 
 // 計算預估接收人數
 const estimatedRecipients = computed(() => {
@@ -351,6 +357,19 @@ const fetchTeacherCount = async () => {
   }
 }
 
+// 取得中心名稱
+const fetchCenterName = async () => {
+  try {
+    const response = await api.get<any>('/admin/me/profile')
+    if (response.center_name) {
+      centerName.value = response.center_name
+    }
+  } catch (error) {
+    console.error('Failed to fetch center name:', error)
+    centerName.value = ''
+  }
+}
+
 // 處理預覽
 const handlePreview = async () => {
   if (!canPreview.value) return
@@ -389,7 +408,12 @@ const handleBroadcast = async () => {
 
   try {
     const requestBody = {
+      message_type: form.value.type,
+      title: form.value.title,
       message: form.value.message,
+      warning: form.value.warning || undefined,
+      action_label: form.value.actionLabel || undefined,
+      action_url: form.value.actionUrl || undefined,
       teacher_ids: form.value.teacherIds.length > 0 ? form.value.teacherIds : undefined
     }
 
@@ -437,7 +461,10 @@ const handleBroadcast = async () => {
 
 // 初始化
 onMounted(async () => {
-  await fetchTeacherCount()
+  await Promise.all([
+    fetchCenterName(),
+    fetchTeacherCount()
+  ])
 })
 </script>
 

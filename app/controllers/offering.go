@@ -3,6 +3,7 @@ package controllers
 import (
 	"fmt"
 	"timeLedger/app"
+	"timeLedger/app/resources"
 	"timeLedger/app/services"
 
 	"github.com/gin-gonic/gin"
@@ -10,15 +11,17 @@ import (
 
 // OfferingController 班別管理控制器
 type OfferingController struct {
-	app             *app.App
-	offeringService *services.OfferingService
+	app              *app.App
+	offeringService  *services.OfferingService
+	offeringResource *resources.OfferingResource
 }
 
 // NewOfferingController 建立 OfferingController 實例
 func NewOfferingController(appInstance *app.App) *OfferingController {
 	return &OfferingController{
-		app:             appInstance,
-		offeringService: services.NewOfferingService(appInstance),
+		app:              appInstance,
+		offeringService:  services.NewOfferingService(appInstance),
+		offeringResource: resources.NewOfferingResource(appInstance),
 	}
 }
 
@@ -287,7 +290,7 @@ func (c *OfferingController) CopyOffering(ctx *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Success 200 {object} global.ApiResponse{data=[]models.Offering}
+// @Success 200 {object} global.ApiResponse{data=[]resources.OfferingResponse}
 // @Router /api/v1/admin/offerings/active [get]
 func (c *OfferingController) GetActiveOfferings(ctx *gin.Context) {
 	helper := NewContextHelper(ctx)
@@ -305,7 +308,9 @@ func (c *OfferingController) GetActiveOfferings(ctx *gin.Context) {
 		return
 	}
 
-	helper.Success(offerings)
+	// 轉換為含課程時長的響應格式
+	response := c.offeringResource.ToOfferingResponses(offerings)
+	helper.Success(response)
 }
 
 // ToggleActiveRequest 切換狀態請求

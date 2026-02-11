@@ -18,6 +18,9 @@ type Offering struct {
 	CreatedAt           time.Time      `gorm:"type:datetime;not null" json:"created_at"`
 	UpdatedAt           time.Time      `gorm:"type:datetime;not null" json:"updated_at"`
 	DeletedAt           gorm.DeletedAt `gorm:"index" json:"-"`
+
+	// 關聯課程（含課程時長）
+	Course Course `gorm:"foreignKey:CourseID" json:"course,omitempty"`
 }
 
 func (Offering) TableName() string {

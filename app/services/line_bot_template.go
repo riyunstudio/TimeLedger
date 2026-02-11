@@ -22,6 +22,9 @@ type LineBotTemplateService interface {
 
 	// 取得行程聚合範本
 	GenerateAgendaFlex(agendaItems []AgendaItem, targetDate time.Time, userName string) interface{}
+
+	// 取得廣播訊息範本
+	GetBroadcastTemplate(centerName string, title string, message string, warning string, actionLabel string, actionURL string) interface{}
 }
 
 // LineBotTemplateServiceImpl Flex Message 範本服務實現
@@ -735,4 +738,107 @@ func (s *LineBotTemplateServiceImpl) GenerateAgendaFlex(agendaItems []AgendaItem
 			},
 		},
 	}
+}
+
+// GetBroadcastTemplate 廣播訊息 Flex Message 範本
+func (s *LineBotTemplateServiceImpl) GetBroadcastTemplate(centerName string, title string, message string, warning string, actionLabel string, actionURL string) interface{} {
+	// 構建內容列表
+	contents := []interface{}{
+		// 標題
+		map[string]interface{}{
+			"type":   "text",
+			"text":   title,
+			"weight": "bold",
+			"size":   "lg",
+		},
+		// 分隔線
+		map[string]interface{}{
+			"type":  "text",
+			"text":  "━━━━━━━━━━━━━━━━",
+			"size":  "xs",
+			"color": "#CCCCCC",
+		},
+	}
+
+	// 添加中心名稱
+	contents = append(contents, map[string]interface{}{
+		"type":  "text",
+		"text":  fmt.Sprintf("🏢 來自：%s", centerName),
+		"size":  "md",
+		"color": "#666666",
+	})
+
+	// 添加訊息內容
+	contents = append(contents, map[string]interface{}{
+		"type":  "text",
+		"text":  "━━━━━━━━━━━━━━━━",
+		"size":  "xs",
+		"color": "#CCCCCC",
+	})
+	contents = append(contents, map[string]interface{}{
+		"type":  "text",
+		"text":  message,
+		"size":  "md",
+		"wrap":  true,
+		"margin": "md",
+	})
+
+	// 如果有警告訊息，添加警告區塊
+	if warning != "" {
+		contents = append(contents, []interface{}{
+			map[string]interface{}{
+				"type":  "separator",
+				"margin": "md",
+			},
+			map[string]interface{}{
+				"type":   "box",
+				"layout": "vertical",
+				"margin": "md",
+				"paddingAll": "12px",
+				"backgroundColor": "#FFF8E1",
+				"cornerRadius": "8px",
+				"contents": []interface{}{
+					map[string]interface{}{
+						"type":  "text",
+						"text":  fmt.Sprintf("⚠️ %s", warning),
+						"size":  "sm",
+						"color": "#F57C00",
+						"wrap":  true,
+					},
+				},
+			},
+		}...)
+	}
+
+	// 構建 Flex Message
+	flexMessage := map[string]interface{}{
+		"type": "bubble",
+		"body": map[string]interface{}{
+			"type":   "box",
+			"layout": "vertical",
+			"contents": contents,
+		},
+	}
+
+	// 如果有動作按鈕，添加 footer
+	if actionLabel != "" && actionURL != "" {
+		flexMessage["footer"] = map[string]interface{}{
+			"type":   "box",
+			"layout": "vertical",
+			"contents": []interface{}{
+				map[string]interface{}{
+					"type":   "button",
+					"style":  "primary",
+					"height": "sm",
+					"action": map[string]interface{}{
+						"type":  "uri",
+						"label": actionLabel,
+						"uri":   actionURL,
+					},
+				},
+			},
+		}
+	}
+
+	return flexMessage
 }

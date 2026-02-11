@@ -30,8 +30,18 @@ func NewAdminNotificationController(app *app.App) *AdminNotificationController {
 
 // BroadcastRequest 廣播訊息請求結構
 type BroadcastRequest struct {
+	// 訊息類型（必填）
+	MessageType string `json:"message_type" binding:"required,oneof=GENERAL URGENT"`
+	// 標題（必填，最多 50 字）
+	Title string `json:"title" binding:"required,max=50"`
 	// 訊息內容（必填，最多 2000 字）
 	Message string `json:"message" binding:"required,max=2000"`
+	// 警告提示（可選，最多 200 字）
+	Warning string `json:"warning,omitempty" binding:"max=200"`
+	// 按鈕文字（可選，最多 20 字）
+	ActionLabel string `json:"action_label,omitempty" binding:"max=20"`
+	// 按鈕連結（可選）
+	ActionURL string `json:"action_url,omitempty"`
 	// 接收對象過濾條件（可選）
 	// 若為空則發送給中心所有已綁定 LINE 的老師
 	TeacherIDs []uint `json:"teacher_ids,omitempty"`
@@ -97,7 +107,12 @@ func (c *AdminNotificationController) Broadcast(ctx *gin.Context) {
 		ctx.Request.Context(),
 		centerID,
 		adminID,
+		req.MessageType,
+		req.Title,
 		req.Message,
+		req.Warning,
+		req.ActionLabel,
+		req.ActionURL,
 		req.TeacherIDs,
 	)
 
