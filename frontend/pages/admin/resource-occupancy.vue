@@ -23,8 +23,8 @@
       </div>
     </div>
 
-    <!-- 篩選欄 -->
-    <div class="glass-card p-4 mb-6">
+    <!-- 篩選欄 (使用 fixed 定位確保不被週曆表遮擋) -->
+    <div class="glass-card p-4 mb-6 relative z-50">
       <div class="flex flex-col lg:flex-row gap-4">
         <!-- 學期選擇 (可選) -->
         <div class="lg:w-64">
@@ -89,19 +89,40 @@
         </div>
 
         <!-- 資源搜尋 -->
-        <div class="flex-1">
+        <div class="flex-1 relative">
           <SearchableSelect
-            v-model="selectedResourceId"
+            v-model="selectedResourceIds"
             :options="resourceOptions"
             :placeholder="`選擇或搜尋${resourceType === 'teacher' ? '老師' : '教室'}...`"
             :label="`搜尋${resourceType === 'teacher' ? '老師' : '教室'}`"
+            :multiple="true"
           />
         </div>
       </div>
     </div>
 
-    <!-- 每週網格視圖 -->
-    <div v-if="selectedResource && occupancyRules.length > 0" class="glass-card p-4">
+    <!-- 佔用率統計 -->
+    <div v-if="selectedResource.length > 0" class="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="glass-card p-4">
+        <div class="text-sm text-slate-400 mb-1">總課程數</div>
+        <div class="text-2xl font-bold text-slate-100">{{ occupancyRules.length }}</div>
+      </div>
+      <div class="glass-card p-4">
+        <div class="text-sm text-slate-400 mb-1">佔用天數</div>
+        <div class="text-2xl font-bold text-slate-100">{{ occupiedDays }}</div>
+      </div>
+      <div class="glass-card p-4">
+        <div class="text-sm text-slate-400 mb-1">衝突次數</div>
+        <div class="text-2xl font-bold text-red-400">{{ conflictCount }}</div>
+      </div>
+      <div class="glass-card p-4">
+        <div class="text-sm text-slate-400 mb-1">佔用率</div>
+        <div class="text-2xl font-bold text-primary-400">{{ occupancyRate }}%</div>
+      </div>
+    </div>
+
+    <!-- 每週網格視圖 - 借鑑首頁 WeekGrid 風格 -->
+    <div v-if="selectedResource.length > 0 && occupancyRules.length > 0" class="glass-card p-4 mt-6">
       <!-- 週網格標題 -->
       <div class="grid grid-cols-8 gap-2 mb-2">
         <div class="text-center text-sm text-slate-400 font-medium">
@@ -121,7 +142,7 @@
         <!-- 時間標籤 -->
         <div class="space-y-2">
           <div
-            v-for="hour in timeSlots"
+            v-for="hour in visibleTimeSlots"
             :key="hour"
             class="h-16 flex items-center justify-center text-xs md:text-sm text-slate-500"
           >
@@ -129,122 +150,75 @@
           </div>
         </div>
 
-        <!-- 每天的時段 -->
+        <!-- 每天的時段 - 真正的週曆風格 -->
         <div
           v-for="day in weekDays"
           :key="day.value"
-          class="space-y-2"
+          class="relative"
         >
+          <!-- 每小時的網格線 -->
           <div
-            v-for="hour in timeSlots"
-            :key="`${day.value}-${hour}`"
-            class="h-16 rounded-lg border relative overflow-hidden transition-all"
-            :class="getSlotClass(day.value, hour)"
-          >
-            <!-- 已佔用時段 -->
-            <template v-if="getRulesForSlot(day.value, hour).length > 0">
-              <div
-                v-for="rule in getRulesForSlot(day.value, hour)"
-                :key="rule.id"
-                class="absolute left-0 right-0 px-2 py-1 text-xs cursor-move hover:opacity-80 transition-opacity overflow-hidden"
-                :class="getRuleClass(rule)"
-                :style="getRuleStyle(rule, hour)"
-                draggable="true"
-                @click="handleSlotClick(day.value, hour)"
-                @dragstart="handleDragStart($event, rule)"
-                @dragend="handleDragEnd($event)"
-                @dragover.prevent="handleDragOver($event, day.value, hour)"
-                @drop="handleDrop($event, rule)"
-              >
-                <!-- 衝突警示 -->
-                <div
-                  v-if="hasConflict(rule)"
-                  class="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center z-10"
-                >
-                  <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
-                </div>
-                <!-- 拖拽時的視覺提示 -->
-                <div
-                  v-if="isDragging && draggedRule?.id === rule.id"
-                  class="absolute inset-0 bg-primary-500/50 border-2 border-primary-400 border-dashed rounded"
-                >
-                  <svg class="w-4 h-4 mx-auto mt-1 text-primary-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-                  </svg>
-                </div>
-                <!-- 拖拽目標指示器 -->
-                <div
-                  v-if="dragOverSlot && dragOverSlot.ruleId === rule.id"
-                  class="absolute bottom-0 left-0 right-0 h-1 bg-primary-400 animate-pulse"
-                />
-                <div class="font-medium truncate">
-                  {{ rule.offering_name || rule.course_name }}
-                </div>
-                <div class="text-[10px] opacity-75 truncate">
-                  {{ resourceType === 'teacher' ? rule.room_name : rule.teacher_name }}
-                </div>
-                <div class="text-[10px] opacity-75">
-                  {{ rule.start_time }} - {{ rule.end_time }}
-                </div>
-              </div>
-            </template>
+            v-for="hour in visibleTimeSlots"
+            :key="`${day.value}-${hour}-grid`"
+            class="h-16 border-t border-white/5 w-full"
+          />
 
-            <!-- 空閒時段提示 -->
-            <template v-else>
-              <div
-                v-if="isWithinTerm(day.value, hour)"
-                class="w-full h-full flex items-center justify-center transition-colors"
-                :class="isValidDropTarget(day.value, hour)
-                  ? 'text-primary-400 bg-primary-500/10 cursor-pointer'
-                  : 'text-slate-600 hover:text-slate-400 cursor-pointer'"
-                @click="handleSlotClick(day.value, hour)"
-                @dragover.prevent="handleEmptySlotDragOver($event, day.value, hour)"
-                @dragleave="handleDragLeave"
-                @drop="handleDropToEmpty($event, day.value, hour)"
-              >
-                <!-- 拖拽目標指示器 -->
-                <div
-                  v-if="isDragging && isValidDropTarget(day.value, hour)"
-                  class="absolute inset-0 border-2 border-dashed border-primary-400 rounded bg-primary-500/20 flex items-center justify-center"
-                >
-                  <svg class="w-6 h-6 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                  </svg>
-                </div>
-                <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                </svg>
-              </div>
-            </template>
+          <!-- 課程卡片 - 根據實際時間絕對定位 -->
+          <div
+            v-for="rule in getRulesForDay(day.value)"
+            :key="rule.id"
+            class="absolute left-0 right-0 px-2 py-1 text-xs rounded-lg cursor-pointer hover:opacity-80 transition-opacity overflow-hidden"
+            :class="getRuleClass(rule)"
+            :style="getRuleStyle(rule)"
+            draggable="true"
+            @click="handleSlotClick(rule)"
+            @dragstart="handleDragStart($event, rule)"
+            @dragend="handleDragEnd($event)"
+            @dragover.prevent="handleDragOver($event, rule)"
+            @drop="handleDrop($event, rule)"
+          >
+            <!-- 衝突警示 -->
+            <div
+              v-if="hasConflict(rule)"
+              class="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center z-10"
+            >
+              <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <!-- 拖拽時的視覺提示 -->
+            <div
+              v-if="isDragging && draggedRule?.id === rule.id"
+              class="absolute inset-0 bg-primary-500/50 border-2 border-primary-400 border-dashed rounded"
+            >
+              <svg class="w-4 h-4 mx-auto mt-1 text-primary-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+              </svg>
+            </div>
+            <!-- 拖拽目標指示器 -->
+            <div
+              v-if="dragOverSlot && dragOverSlot.ruleId === rule.id"
+              class="absolute bottom-0 left-0 right-0 h-1 bg-primary-400 animate-pulse"
+            />
+            <!-- 課程名稱 -->
+            <div class="font-medium truncate">
+              {{ rule.offering_name || rule.course_name }}
+            </div>
+            <!-- 關聯資源名稱 -->
+            <div class="text-[10px] opacity-75 truncate">
+              {{ resourceType === 'teacher' ? rule.room_name : rule.teacher_name }}
+            </div>
+            <!-- 時間 -->
+            <div class="text-[10px] opacity-75">
+              {{ rule.start_time }} - {{ rule.end_time }}
+            </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- 佔用率統計 -->
-    <div v-if="selectedResource && occupancyRules.length > 0" class="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-      <div class="glass-card p-4">
-        <div class="text-sm text-slate-400 mb-1">總課程數</div>
-        <div class="text-2xl font-bold text-slate-100">{{ occupancyRules.length }}</div>
-      </div>
-      <div class="glass-card p-4">
-        <div class="text-sm text-slate-400 mb-1">佔用天數</div>
-        <div class="text-2xl font-bold text-slate-100">{{ occupiedDays }}</div>
-      </div>
-      <div class="glass-card p-4">
-        <div class="text-sm text-slate-400 mb-1">衝突次數</div>
-        <div class="text-2xl font-bold text-red-400">{{ conflictCount }}</div>
-      </div>
-      <div class="glass-card p-4">
-        <div class="text-sm text-slate-400 mb-1">佔用率</div>
-        <div class="text-2xl font-bold text-primary-400">{{ occupancyRate }}%</div>
-      </div>
-    </div>
-
     <!-- 無數據提示 -->
-    <div v-else-if="selectedResource && !loadingRules" class="glass-card p-12 text-center">
+    <div v-else-if="selectedResource.length > 0 && !loadingRules" class="glass-card p-12 text-center">
       <div class="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4 border border-white/5">
         <svg class="w-8 h-8 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -252,7 +226,7 @@
       </div>
       <h3 class="text-lg font-medium text-slate-300 mb-2">尚無排課記錄</h3>
       <p class="text-slate-500 max-w-sm mx-auto mb-6">
-        目前 {{ resourceType === 'teacher' ? '這位老師' : '這間教室' }} 在此週段內沒有任何排課安排。
+        目前 {{ resourceType === 'teacher' ? '這位老師' : '這些教室' }} 在此週段內沒有任何排課安排。
       </p>
       <button
         @click="navigateToCreateRule()"
@@ -324,9 +298,9 @@ const resourceType = ref<'teacher' | 'room'>('teacher')
 // 資源快取
 const { resourceCache, fetchAllResources } = useResourceCache()
 
-// 選中的資源 ID
-const selectedResourceId = ref<number | null>(null)
-const selectedResource = ref<Resource | null>(null)
+// 選中的資源 ID（單選或多選）
+const selectedResourceIds = ref<(number | string)[]>([])
+const selectedResource = ref<Resource[]>([])
 
 // 佔用規則
 const loadingRules = ref(false)
@@ -361,8 +335,13 @@ const weekDays = [
   { label: '週日', value: 7 },
 ]
 
-// 時間槽 (7:00 - 22:00)
-const timeSlots = Array.from({ length: 16 }, (_, i) => i + 7)
+// 時間槽 (0:00 - 23:00)
+const timeSlots = Array.from({ length: 24 }, (_, i) => i)
+
+// 顯示用的時間槽（固定顯示 00:00 - 23:00）
+const visibleTimeSlots = computed(() => {
+  return timeSlots
+})
 
 // ========== Computed ==========
 
@@ -418,6 +397,7 @@ const conflictCount = computed(() => {
 
   for (let i = 0; i < rules.length; i++) {
     for (let j = i + 1; j < rules.length; j++) {
+      // 只檢查同一天，且時段有重疊
       if (rules[i].weekday === rules[j].weekday) {
         if (checkOverlap(rules[i], rules[j])) {
           count++
@@ -433,17 +413,30 @@ const conflictCount = computed(() => {
  */
 const occupancyRate = computed(() => {
   if (occupancyRules.value.length === 0) return 0
-  // 簡易計算：已佔用小時數 / 總可用小時數 (5天 * 12小時)
-  const totalHours = 5 * 12
-  let occupiedHours = 0
 
+  // 計算實際涵蓋的天數（週一到週日都算）
+  const days = new Set(occupancyRules.value.map(r => r.weekday))
+  const activeDays = days.size > 0 ? days.size : 1
+
+  // 計算這段時間內每個rule佔用的小時數
+  let occupiedMinutes = 0
   occupancyRules.value.forEach(r => {
-    const start = parseInt(r.start_time.split(':')[0])
-    const end = parseInt(r.end_time.split(':')[0])
-    occupiedHours += (end - start)
+    const toMin = (s: string) => {
+      const parts = s.split(':').map(Number)
+      return parts[0] * 60 + parts[1]
+    }
+    const startMin = toMin(r.start_time)
+    const endMin = toMin(r.end_time)
+    if (endMin > startMin) {
+      occupiedMinutes += (endMin - startMin)
+    }
   })
 
-  return Math.min(100, Math.round((occupiedHours / totalHours) * 100))
+  // 總可用分鐘數：涵蓋的天數 * 每小時60分鐘 * 12小時 (7:00-19:00)
+  const totalMinutes = activeDays * 60 * 12
+  const rate = Math.round((occupiedMinutes / totalMinutes) * 100)
+
+  return Math.max(0, Math.min(100, rate))
 })
 
 // ========== Methods ==========
@@ -479,53 +472,77 @@ const handleTermChange = () => {
 /**
  * 監聽資源選擇變化
  */
-watch(selectedResourceId, (newId) => {
-  if (newId !== null) {
-    // 從快取中取得對應的物件
-    if (resourceType.value === 'teacher') {
-      const teacher = resourceCache.value.teachers.get(newId)
-      selectedResource.value = teacher ? {
-        id: teacher.id,
-        name: teacher.name || `老師 ${teacher.id}`,
-        count: teacher.count
-      } : null
-    } else {
-      const room = resourceCache.value.rooms.get(newId)
-      selectedResource.value = room ? {
-        id: room.id,
-        name: room.name || `教室 ${room.id}`,
-        capacity: room.capacity
-      } : null
-    }
-    // 立即取得佔用規則
-    fetchOccupancyRules()
-  } else {
-    selectedResource.value = null
+watch(selectedResourceIds, (newIds) => {
+  if (!newIds || newIds.length === 0) {
+    selectedResource.value = []
     occupancyRules.value = []
+    return
   }
+  const ids = newIds as number[]
+  // 從快取中取得對應的物件
+  if (resourceType.value === 'teacher') {
+    selectedResource.value = ids.map((id: number | string) => {
+      const teacher = resourceCache.value.teachers.get(Number(id))
+      if (!teacher) return null
+      const resource: Resource = {
+        id: teacher.id as number,
+        name: (teacher.name || `老師 ${teacher.id}`) as string,
+      }
+      if (teacher.count !== undefined) {
+        resource.count = teacher.count as number
+      }
+      return resource
+    }).filter((r: Resource | null): r is Resource => r !== null)
+  } else {
+    selectedResource.value = ids.map((id: number | string) => {
+      const room = resourceCache.value.rooms.get(Number(id))
+      if (!room) return null
+      const resource: Resource = {
+        id: room.id as number,
+        name: (room.name || `教室 ${room.id}`) as string,
+      }
+      if (room.capacity !== undefined) {
+        resource.capacity = room.capacity as number
+      }
+      return resource
+    }).filter((r: Resource | null): r is Resource => r !== null)
+  }
+  // 立即取得佔用規則
+  fetchOccupancyRules()
 })
 
 /**
- * 監聽資源類型切換，清除選中的資源
+ * 監聽資源類型切換，清除選中的資源並載入資料
  */
-watch(resourceType, () => {
-  selectedResourceId.value = null
-  selectedResource.value = null
+watch(resourceType, async () => {
+  selectedResourceIds.value = []
+  selectedResource.value = []
   occupancyRules.value = []
+
+  // 確保資源已載入
+  await fetchAllResources()
 })
 
 /**
  * 取得佔用規則
  */
 const fetchOccupancyRules = async () => {
-  if (!selectedResource.value) return
+  if (selectedResource.value.length === 0) return
 
   loadingRules.value = true
   try {
+    const roomIds = resourceType.value === 'room'
+      ? (selectedResource.value.map(r => r.id) as number[])
+      : undefined
+    const teacherIds = resourceType.value === 'teacher'
+      ? (selectedResource.value.map(r => r.id) as number[])
+      : undefined
+
     const response = await api.get<GroupedOccupancy[]>('/admin/occupancy/rules', {
       start_date: queryStartDate.value,
       end_date: queryEndDate.value,
-      [resourceType.value === 'teacher' ? 'teacher_id' : 'room_id']: selectedResource.value.id,
+      ...(teacherIds && { teacher_ids: teacherIds.join(',') }),
+      ...(roomIds && { room_ids: roomIds.join(',') }),
     })
 
     if (response) {
@@ -541,7 +558,7 @@ const fetchOccupancyRules = async () => {
 }
 
 /**
- * 獲取指定時段的規則
+ * 獲取指定時段的規則（按小時格子）- 保留用於向後相容
  */
 const getRulesForSlot = (day: number, hour: number): OccupancyRule[] => {
   return occupancyRules.value.filter(rule => {
@@ -549,6 +566,38 @@ const getRulesForSlot = (day: number, hour: number): OccupancyRule[] => {
     const startHour = parseInt(rule.start_time.split(':')[0])
     return startHour === hour
   })
+}
+
+/**
+ * 獲取指定日期的所有規則（用於連續時間軸）
+ */
+const getRulesForDay = (day: number): OccupancyRule[] => {
+  return occupancyRules.value.filter(rule => rule.weekday === day)
+}
+
+/**
+ * 檢查指定時間格子是否為空（用於連續時間軸）
+ * 只有當整個格子都沒有課程時才視為空
+ */
+const isEmptySlot = (day: number, hour: number): boolean => {
+  const slotStart = hour * 60
+  const slotEnd = (hour + 1) * 60
+
+  // 檢查是否有課程佔用這個時間格子的任何部分
+  return !occupancyRules.value.some(rule => {
+    if (rule.weekday !== day) return false
+    const ruleStart = parseInt(rule.start_time.split(':')[0]) * 60 + parseInt(rule.start_time.split(':')[1])
+    const ruleEnd = parseInt(rule.end_time.split(':')[0]) * 60 + parseInt(rule.end_time.split(':')[1])
+    // 課程與格子有任何重疊就視為不空
+    return ruleStart < slotEnd && ruleEnd > slotStart
+  })
+}
+
+/**
+ * 檢查指定時間是否為有效的放置目標
+ */
+const isValidDropTargetForTime = (day: number, hour: number): boolean => {
+  return true
 }
 
 /**
@@ -569,23 +618,29 @@ const getRuleClass = (rule: OccupancyRule): string => {
 }
 
 /**
- * 獲取規則卡片精確樣式 (處理分鐘位移和高度)
+ * 獲取規則卡片精確樣式 (根據可見時間槽定位)
  */
-const getRuleStyle = (rule: OccupancyRule, hour: number) => {
+const getRuleStyle = (rule: OccupancyRule) => {
   const startParts = rule.start_time.split(':').map(Number)
   const endParts = rule.end_time.split(':').map(Number)
-  
-  const startMinute = startParts[1]
-  const duration = (endParts[0] * 60 + endParts[1]) - (startParts[0] * 60 + startParts[1])
-  
-  // 每一小時高度 64px (h-16), 間距 8px (space-y-2)
-  // 簡化計算：只針對當前小時內的起始進行位移
-  const topOffset = (startMinute / 60) * 64
-  const height = (duration / 60) * 64
-  
+
+  // 將時間轉換為分鐘
+  const startMinutes = startParts[0] * 60 + startParts[1]
+  const endMinutes = endParts[0] * 60 + endParts[1]
+  const duration = endMinutes - startMinutes
+
+  // 每小時格子的高度是 64px
+  const hourHeight = 64
+
+  // 計算相對於 visibleTimeSlots 起始時間的位置
+  const minVisibleHour = visibleTimeSlots.value[0] || 7
+  const startHour = startParts[0]
+  const topOffset = (startHour - minVisibleHour) * hourHeight + startParts[1] * (hourHeight / 60)
+  const cardHeight = duration * (hourHeight / 60)
+
   return {
     top: `${topOffset}px`,
-    height: `${height}px`,
+    height: `${cardHeight}px`,
     zIndex: 10
   }
 }
@@ -641,19 +696,9 @@ const handleDragEnd = (event: DragEvent) => {
 /**
  * 拖拽經過規則上方
  */
-const handleDragOver = (event: DragEvent, weekday: number, hour: number) => {
-  if (!draggedRule.value) return
-
-  const rules = getRulesForSlot(weekday, hour)
-  const targetRule = rules.find(r => r.id !== draggedRule.value?.id)
-
-  if (targetRule) {
-    dragOverSlot.value = {
-      weekday,
-      hour,
-      ruleId: targetRule.id,
-    }
-  }
+const handleDragOver = (event: DragEvent, rule: OccupancyRule) => {
+  if (!draggedRule.value || draggedRule.value.id === rule.id) return
+  dragOverSlot.value = { weekday: rule.weekday, hour: parseInt(rule.start_time.split(':')[0]), ruleId: rule.id }
 }
 
 /**
@@ -661,17 +706,14 @@ const handleDragOver = (event: DragEvent, weekday: number, hour: number) => {
  */
 const handleEmptySlotDragOver = (event: DragEvent, weekday: number, hour: number) => {
   if (!draggedRule.value) return
-
-  if (isValidDropTarget(weekday, hour)) {
-    dragOverSlot.value = { weekday, hour, ruleId: 0 }
-  }
+  dragOverSlot.value = { weekday, hour, ruleId: 0 }
 }
 
 /**
  * 離開拖拽區域
  */
 const handleDragLeave = () => {
-  // 可以在這裡處理清除狀態
+  dragOverSlot.value = null
 }
 
 /**
@@ -683,15 +725,10 @@ const isValidDropTarget = (weekday: number, hour: number): boolean => {
 }
 
 /**
- * 點擊佔用時段（查看/編輯規則）
+ * 點擊佔用時段（查看/編輯規則）- 直接傳入課程物件
  */
-const handleSlotClick = (day: number, hour: number) => {
-  const rules = getRulesForSlot(day, hour)
-  if (rules.length > 0) {
-    navigateToEditRule(rules[0].id)
-  } else {
-    navigateToCreateRule(day, hour)
-  }
+const handleSlotClick = (rule: OccupancyRule) => {
+  navigateToEditRule(rule.id)
 }
 
 /**
@@ -831,9 +868,13 @@ const handleCopyComplete = () => {
  * 導航到新增規則
  */
 const navigateToCreateRule = (day?: number, hour?: number) => {
+  // 多選時使用第一個選中的資源
+  const firstResource = selectedResource.value[0]
+  if (!firstResource) return
+
   const query: any = {
     action: 'create',
-    [resourceType.value === 'teacher' ? 'teacher' : 'room']: selectedResource.value?.id,
+    [resourceType.value === 'teacher' ? 'teacher' : 'room']: firstResource.id,
   }
   if (day) query.weekday = day
   if (hour) query.start_time = `${hour.toString().padStart(2, '0')}:00`
