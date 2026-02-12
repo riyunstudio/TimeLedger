@@ -109,44 +109,44 @@ func (s *ScheduleExpansionServiceImpl) ExpandRules(ctx context.Context, rules []
 						exceptions = ruleExceptions[dateStr]
 					}
 
-				skipSession := false
-				var pendingException *models.ScheduleException
-				var approvedException *models.ScheduleException
+					skipSession := false
+					var pendingException *models.ScheduleException
+					var approvedException *models.ScheduleException
 
-				for i := range exceptions {
-					exc := &exceptions[i]
-					if exc.Status == "CANCELLED" {
-						continue
-					}
+					for i := range exceptions {
+						exc := &exceptions[i]
+						if exc.Status == "CANCELLED" {
+							continue
+						}
 
-					if exc.Status == "PENDING" {
-						// PENDING + CANCEL 也視為停課（待審核中）
-						if exc.ExceptionType == "CANCEL" {
-							skipSession = true
-							pendingException = exc
-							break
+						if exc.Status == "PENDING" {
+							// PENDING + CANCEL 也視為停課（待審核中）
+							if exc.ExceptionType == "CANCEL" {
+								skipSession = true
+								pendingException = exc
+								break
+							}
+							if pendingException == nil {
+								pendingException = exc
+							}
 						}
-						if pendingException == nil {
-							pendingException = exc
-						}
-					}
 
-					if exc.Status == "APPROVED" {
-						if exc.ExceptionType == "CANCEL" {
-							skipSession = true
-							approvedException = exc
-							break
-						}
-						if exc.ExceptionType == "REPLACE_TEACHER" && exc.NewTeacherID != nil {
-							rule.TeacherID = exc.NewTeacherID
-						}
-						if exc.ExceptionType == "RESCHEDULE" {
-							if approvedException == nil {
+						if exc.Status == "APPROVED" {
+							if exc.ExceptionType == "CANCEL" {
+								skipSession = true
 								approvedException = exc
+								break
+							}
+							if exc.ExceptionType == "REPLACE_TEACHER" && exc.NewTeacherID != nil {
+								rule.TeacherID = exc.NewTeacherID
+							}
+							if exc.ExceptionType == "RESCHEDULE" {
+								if approvedException == nil {
+									approvedException = exc
+								}
 							}
 						}
 					}
-				}
 
 					if skipSession {
 						date = date.AddDate(0, 0, 1)
@@ -170,6 +170,7 @@ func (s *ScheduleExpansionServiceImpl) ExpandRules(ctx context.Context, rules []
 							TeacherID:      rule.TeacherID,
 							IsHoliday:      exists,
 							HasException:   pendingException != nil || approvedException != nil,
+							Status:         rule.Status,
 							OfferingName:   rule.Offering.Name,
 							TeacherName:    rule.Teacher.Name,
 							RoomName:       rule.Room.Name,

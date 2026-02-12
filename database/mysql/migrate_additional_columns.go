@@ -42,6 +42,11 @@ func (db *DB) MigrateAdditionalColumns() {
 		log.Printf("Warning: Failed to add force_cancel column to center_holidays: %v", err)
 	}
 
+	// 8. schedule_rules.status - 課程狀態 (PLANNED/CONFIRMED)
+	if err := db.addColumnIfNotExists("schedule_rules", "status", "VARCHAR(20) NOT NULL DEFAULT 'CONFIRMED'"); err != nil {
+		log.Printf("Warning: Failed to add status column to schedule_rules: %v", err)
+	}
+
 	log.Println("Additional columns migration completed")
 }
 

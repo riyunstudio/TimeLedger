@@ -352,6 +352,7 @@ func (ctl *AdminTermController) GetOccupancyRules(ctx *gin.Context) {
 				TeacherName:  rule.TeacherName,
 				RoomID:       rule.RoomID,
 				RoomName:     rule.RoomName,
+				Status:       rule.Status, // 確保 Status 欄位被正確傳遞
 			}
 		}
 

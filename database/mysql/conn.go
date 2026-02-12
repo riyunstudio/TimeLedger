@@ -190,6 +190,12 @@ func (t *GormTraceLogger) Trace(ctx context.Context, begin time.Time, fc func() 
 		return
 	}
 
+	// 忽略 "record not found" 錯誤，這是預期的查詢結果，不是真正的資料庫錯誤
+	// 例如：查詢上一堂課時如果還沒有課程，或檢查衝突時沒有衝突
+	if err == gorm.ErrRecordNotFound {
+		return
+	}
+
 	// 計算執行時間
 	elapsed := time.Since(begin).Seconds()
 

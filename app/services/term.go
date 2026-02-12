@@ -331,6 +331,7 @@ type OccupancyRuleInfo struct {
 	TeacherName  string `json:"teacher_name,omitempty"`
 	RoomID       uint   `json:"room_id"`
 	RoomName     string `json:"room_name,omitempty"`
+	Status       string `json:"status"` // 狀態: PLANNED(預計), CONFIRMED(已開課), SUSPENDED(停課), ARCHIVED(歸檔)
 }
 
 // OccupancyRulesByDayOfWeek 按星期分組的佔用規則
@@ -408,6 +409,14 @@ func (s *TermService) GetOccupancyRules(ctx context.Context, centerID uint, teac
 			roomName = rule.Room.Name
 		}
 
+		// 確保 Status 有正確的值，避免 NULL 或空字串
+		ruleStatus := rule.Status
+		if ruleStatus == "" || !models.IsValidRuleStatus(ruleStatus) {
+			ruleStatus = models.RuleStatusConfirmed // 預設為 CONFIRMED
+			s.Logger.Warn("rule has invalid or empty status, using default",
+				"rule_id", rule.ID, "original_status", rule.Status, "default_status", ruleStatus)
+		}
+
 		ruleInfo := OccupancyRuleInfo{
 			RuleID:       rule.ID,
 			OfferingID:   rule.OfferingID,
@@ -420,6 +429,7 @@ func (s *TermService) GetOccupancyRules(ctx context.Context, centerID uint, teac
 			TeacherName:  teacherName,
 			RoomID:       rule.RoomID,
 			RoomName:     roomName,
+			Status:       ruleStatus,
 		}
 		resultByDay[dayOfWeek].Rules = append(resultByDay[dayOfWeek].Rules, ruleInfo)
 	}

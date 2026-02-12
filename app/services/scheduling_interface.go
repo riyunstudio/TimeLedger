@@ -100,6 +100,7 @@ type ExpandedSchedule struct {
 	TeacherID     *uint              `json:"teacher_id"`
 	IsHoliday     bool               `json:"is_holiday"`
 	HasException  bool               `json:"has_exception"`
+	Status        string             `json:"status"` // 狀態: PLANNED(預計), CONFIRMED(已開課), SUSPENDED(停課), ARCHIVED(歸檔)
 	ExceptionInfo *ExpandedException `json:"exception_info,omitempty"`
 	// 關聯資料
 	OfferingName   string            `json:"offering_name,omitempty"`
@@ -225,7 +226,7 @@ type TeacherScheduleItem struct {
 	TeacherID      *uint  `json:"teacher_id"`
 	CenterID       uint   `json:"center_id"`
 	CenterName     string `json:"center_name"`
-	Status         string `json:"status"`
+	Status         string `json:"status"` // 狀態: PLANNED(預計), CONFIRMED(已開課), SUSPENDED(停課), ARCHIVED(歸檔)
 	RuleID         uint   `json:"rule_id"`
 	IsCrossDayPart bool   `json:"is_cross_day_part,omitempty"`
 }

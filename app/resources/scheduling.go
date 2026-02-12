@@ -20,6 +20,7 @@ type ScheduleRuleResponse struct {
 	EffectiveFrom  string    `json:"effective_from"`
 	EffectiveTo    string    `json:"effective_to"`
 	SuspendedDates []string  `json:"suspended_dates"` // 停課日期列表
+	Status         string    `json:"status"`          // 狀態: PLANNED(預計), CONFIRMED(已開課), SUSPENDED(停課), ARCHIVED(歸檔)
 	CreatedAt      time.Time `json:"created_at"`
 	UpdatedAt      time.Time `json:"updated_at"`
 }
@@ -208,6 +209,7 @@ func (r *ScheduleResource) ToRuleResponse(rule models.ScheduleRule) *ScheduleRul
 		EffectiveFrom:  rule.EffectiveRange.StartDate.Format("2006-01-02"),
 		EffectiveTo:    rule.EffectiveRange.EndDate.Format("2006-01-02"),
 		SuspendedDates: suspendedDatesStr,
+		Status:         rule.Status,
 		CreatedAt:      rule.CreatedAt,
 		UpdatedAt:      rule.UpdatedAt,
 	}
@@ -282,8 +284,9 @@ type MatrixItem struct {
 	IsHoliday     bool    `json:"is_holiday"`
 	HasException  bool    `json:"has_exception"`
 	ExceptionType string  `json:"exception_type,omitempty"`
-	IsSuspended   bool    `json:"is_suspended"`    // 是否為停課
-	Color         string  `json:"color,omitempty"` // 課程顏色
+	IsSuspended   bool    `json:"is_suspended"`        // 是否為停課
+	Color         string  `json:"color,omitempty"`     // 課程顏色
+	Status        string  `json:"status"`              // 課程狀態: PLANNED(預計), CONFIRMED(已開課), SUSPENDED(停課), ARCHIVED(歸檔)
 }
 
 // MatrixViewResource 矩陣視圖資源轉換

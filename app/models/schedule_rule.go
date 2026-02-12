@@ -11,6 +11,26 @@ import (
 	"timeLedger/libs"
 )
 
+const (
+	RuleStatusPlanned   = "PLANNED"   // 預計/未開成 (佔位用)
+	RuleStatusConfirmed = "CONFIRMED" // 已開成/正式課
+	RuleStatusSuspended = "SUSPENDED" // 停課/暫停
+	RuleStatusArchived  = "ARCHIVED"  // 已歸檔
+)
+
+// ValidRuleStatuses 有效的規則狀態列表
+var ValidRuleStatuses = []string{RuleStatusPlanned, RuleStatusConfirmed, RuleStatusSuspended, RuleStatusArchived}
+
+// IsValidRuleStatus 檢查狀態是否為有效的規則狀態
+func IsValidRuleStatus(status string) bool {
+	for _, s := range ValidRuleStatuses {
+		if status == s {
+			return true
+		}
+	}
+	return false
+}
+
 type ScheduleRule struct {
 	ID             uint           `gorm:"primaryKey" json:"id"`
 	CenterID       uint           `gorm:"type:bigint unsigned;not null;index:idx_center_weekday_time" json:"center_id"`
@@ -26,7 +46,8 @@ type ScheduleRule struct {
 	IsCrossDay     bool           `gorm:"type:boolean;default:false;not null" json:"is_cross_day"` // 跨日課程標記（如 23:00-02:00）
 	SkipHoliday    bool           `gorm:"type:boolean;default:true;not null" json:"skip_holiday"`
 	EffectiveRange DateRange      `gorm:"type:json;not null" json:"effective_range"`
-	SuspendedDates SuspendedDates  `gorm:"type:json" json:"suspended_dates"`
+	SuspendedDates SuspendedDates `gorm:"type:json" json:"suspended_dates"`
+	Status         string         `gorm:"type:varchar(20);default:'CONFIRMED';not null" json:"status"`
 	LockAt         *time.Time     `gorm:"type:datetime;index" json:"lock_at"`
 	CreatedAt      time.Time      `gorm:"type:datetime;not null" json:"created_at"`
 	UpdatedAt      time.Time      `gorm:"type:datetime;not null" json:"updated_at"`

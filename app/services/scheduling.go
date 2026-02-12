@@ -68,24 +68,26 @@ type CreateScheduleRuleRequest struct {
 	Weekdays       []int   `json:"weekdays" binding:"required,min=1"`
 	StartDate      string  `json:"start_date" binding:"required,date_format"`
 	EndDate        *string `json:"end_date"`
+	Status         string  `json:"status"`
 	OverrideBuffer bool    `json:"override_buffer"`
 }
 
 // UpdateScheduleRuleRequest 更新排課規則請求
 type UpdateScheduleRuleRequest struct {
-	Name            string     `json:"name"`
-	OfferingID      uint       `json:"offering_id"`
-	TeacherID       *uint      `json:"teacher_id"`
-	RoomID          uint       `json:"room_id"`
-	StartTime       string     `json:"start_time"`
-	EndTime         string     `json:"end_time"`
-	Duration        int        `json:"duration"`
-	Weekdays        []int      `json:"weekdays"`
-	StartDate       string     `json:"start_date"`
-	EndDate         *string    `json:"end_date"`
-	SuspendedDates  []string   `json:"suspended_dates"` // 停課日期列表
-	UpdateMode      string     `json:"update_mode"`
-	ExcludeRuleID   *uint      `json:"exclude_rule_id"` // 更新時排除自己，避免與自己衝突
+	Name           string   `json:"name"`
+	OfferingID     uint     `json:"offering_id"`
+	TeacherID      *uint    `json:"teacher_id"`
+	RoomID         uint     `json:"room_id"`
+	StartTime      string   `json:"start_time"`
+	EndTime        string   `json:"end_time"`
+	Duration       int      `json:"duration"`
+	Weekdays       []int    `json:"weekdays"`
+	StartDate      string   `json:"start_date"`
+	EndDate        *string  `json:"end_date"`
+	SuspendedDates []string `json:"suspended_dates"` // 停課日期列表
+	Status         string   `json:"status"`
+	UpdateMode     string   `json:"update_mode"`
+	ExcludeRuleID  *uint    `json:"exclude_rule_id"` // 更新時排除自己，避免與自己衝突
 }
 
 // CreateExceptionRequest 建立例外請求
@@ -261,6 +263,11 @@ func (s *ScheduleService) CreateRule(ctx context.Context, centerID, adminID uint
 	startTimeParsed, _ := time.Parse("15:04", req.StartTime)
 	endTimeParsed, _ := time.Parse("15:04", req.EndTime)
 
+	// 驗證 Status 欄位
+	if req.Status != "" && !models.IsValidRuleStatus(req.Status) {
+		return nil, s.App.Err.New(errInfos.PARAMS_VALIDATE_ERROR), fmt.Errorf("invalid status: %s", req.Status)
+	}
+
 	// 使用請求中的第一個 weekday 進行重疊檢查
 	var checkWeekday int
 	if len(req.Weekdays) > 0 {
@@ -327,6 +334,14 @@ func (s *ScheduleService) CreateRule(ctx context.Context, centerID, adminID uint
 					StartDate: startDate,
 					EndDate:   endDate,
 				},
+		Status: func() string {
+				// 如果請求中有提供 status，則使用該值（已經過驗證）
+				// 否則使用預設的 CONFIRMED 狀態
+				if req.Status != "" {
+					return req.Status
+				}
+				return models.RuleStatusConfirmed
+			}(),
 			}
 
 			if _, err := txRepo.Create(ctx, rule); err != nil {
@@ -496,6 +511,11 @@ func (s *ScheduleService) UpdateRule(ctx context.Context, centerID, adminID, rul
 	existingRule, err := s.ruleRepo.GetByIDAndCenterID(ctx, ruleID, centerID)
 	if err != nil {
 		return nil, s.App.Err.New(errInfos.NOT_FOUND), fmt.Errorf("rule not found")
+	}
+
+	// 驗證 Status 欄位
+	if req.Status != "" && !models.IsValidRuleStatus(req.Status) {
+		return nil, s.App.Err.New(errInfos.PARAMS_VALIDATE_ERROR), fmt.Errorf("invalid status: %s", req.Status)
 	}
 
 	// 解析日期
@@ -790,6 +810,10 @@ func (s *ScheduleService) applyUpdateToRule(rule models.ScheduleRule, req *Updat
 		}
 		rule.SuspendedDates = suspendedDates
 	}
+	// 處理 Status 更新
+	if req.Status != "" {
+		rule.Status = req.Status
+	}
 	return rule
 }
 
@@ -871,6 +895,11 @@ func (s *ScheduleService) createSingleRule(centerID uint, existingRule models.Sc
 			suspendedDates = append(suspendedDates, date)
 		}
 		newRule.SuspendedDates = suspendedDates
+	}
+	if req.Status != "" {
+		newRule.Status = req.Status
+	} else {
+		newRule.Status = existingRule.Status
 	}
 
 	return newRule
@@ -1372,6 +1401,7 @@ func (r *ScheduleResource) ToRuleResponse(rule models.ScheduleRule) *resources.S
 		Duration:      rule.Duration,
 		EffectiveFrom: rule.EffectiveRange.StartDate.Format("2006-01-02"),
 		EffectiveTo:   rule.EffectiveRange.EndDate.Format("2006-01-02"),
+		Status:        rule.Status,
 	}
 }
 
@@ -1678,6 +1708,7 @@ func (s *ScheduleService) buildMatrixItems(
 			IsHoliday:     schedule.IsHoliday,
 			HasException:  schedule.HasException,
 			IsSuspended:   isSuspended,
+			Status:        schedule.Status,
 		}
 
 		items = append(items, item)

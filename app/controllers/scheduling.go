@@ -437,6 +437,7 @@ func (ctl *SchedulingController) UpdateRule(ctx *gin.Context) {
 		StartDate:       req.StartDate,
 		EndDate:         req.EndDate,
 		SuspendedDates:  req.SuspendedDates,
+		Status:          req.Status,
 		UpdateMode:      req.UpdateMode,
 		ExcludeRuleID:   &ruleID, // 排除自己，避免與自己衝突
 	}

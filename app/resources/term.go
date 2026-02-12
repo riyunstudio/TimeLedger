@@ -68,6 +68,7 @@ type OccupancyRuleInfo struct {
 	TeacherName  string `json:"teacher_name,omitempty"`
 	RoomID       uint   `json:"room_id"`
 	RoomName     string `json:"room_name,omitempty"`
+	Status       string `json:"status"` // 狀態: PLANNED(預計), CONFIRMED(已開課), SUSPENDED(停課), ARCHIVED(歸檔)
 }
 
 // OccupancyRulesByDayOfWeek 按星期分組的佔用規則

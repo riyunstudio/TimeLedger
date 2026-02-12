@@ -630,8 +630,12 @@ export interface OccupancyRule {
   start_time: string
   /** 結束時間 (HH:mm) */
   end_time: string
+  /** 持續分鐘數 */
+  duration?: number
   /** 有效範圍 */
-  effective_range: DateRange
+  effective_range?: DateRange
+  /** 狀態: PLANNED(預計), CONFIRMED(已開課), SUSPENDED(停課), ARCHIVED(歸檔) */
+  status?: string
 }
 
 /**
