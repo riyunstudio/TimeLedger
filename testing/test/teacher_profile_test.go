@@ -194,12 +194,13 @@ func TestTeacherProfileService_UpdateProfile(t *testing.T) {
 		svc := services.NewTeacherProfileService(appInstance)
 
 		// 更新資料
+		isOpenToHiring := true
 		req := &services.UpdateProfileRequest{
 			Bio:               "Updated bio",
 			City:              "新北市",
 			District:          "板橋區",
 			PublicContactInfo: "0922222222",
-			IsOpenToHiring:    true,
+			IsOpenToHiring:    &isOpenToHiring,
 		}
 		profile, eInfo, err := svc.UpdateProfile(ctx, teacher.ID, req)
 
@@ -224,8 +225,8 @@ func TestTeacherProfileService_UpdateProfile(t *testing.T) {
 		if profile.District != req.District {
 			t.Errorf("District 不匹配: 預期 %s, 實際 %s", req.District, profile.District)
 		}
-		if profile.IsOpenToHiring != req.IsOpenToHiring {
-			t.Errorf("IsOpenToHiring 不匹配: 預期 %v, 實際 %v", req.IsOpenToHiring, profile.IsOpenToHiring)
+		if profile.IsOpenToHiring != *req.IsOpenToHiring {
+			t.Errorf("IsOpenToHiring 不匹配: 預期 %v, 實際 %v", *req.IsOpenToHiring, profile.IsOpenToHiring)
 		}
 
 		// 驗證資料庫中的實際資料
@@ -268,11 +269,12 @@ func TestTeacherProfileService_UpdateProfile(t *testing.T) {
 		svc := services.NewTeacherProfileService(appInstance)
 
 		// 只更新 Bio，其他欄位保留
+		isOpenToHiring := false
 		req := &services.UpdateProfileRequest{
 			Bio:            "Only update bio",
 			City:           "", // 空的應該跳過更新
 			District:       "",
-			IsOpenToHiring: false,
+			IsOpenToHiring: &isOpenToHiring,
 		}
 		profile, _, err := svc.UpdateProfile(ctx, teacher.ID, req)
 

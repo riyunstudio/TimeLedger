@@ -745,8 +745,8 @@ func TestSmartMatchingService_SearchTalent(t *testing.T) {
 		// 關鍵字搜尋應該找到測試老師
 		found := false
 		for _, talent := range results.Talents {
-			t.Logf("  找到: ID=%d, Name=%s, Bio=%s", talent.TeacherID, talent.Name, talent.Bio)
-			if talent.TeacherID == teacher.ID {
+			t.Logf("  找到: ID=%d, Name=%s, Bio=%s", talent.ID, talent.Name, talent.Bio)
+			if talent.ID == teacher.ID {
 				found = true
 				break
 			}
@@ -756,7 +756,7 @@ func TestSmartMatchingService_SearchTalent(t *testing.T) {
 			// 如果找不到，檢查 bio 中是否包含關鍵字
 			for _, talent := range results.Talents {
 				if talent.Bio != "" && strings.Contains(talent.Bio, "XYZ123") {
-					t.Logf("警告: 找到包含 XYZ123 的老師，但 ID 不同: %d", talent.TeacherID)
+					t.Logf("警告: 找到包含 XYZ123 的老師，但 ID 不同: %d", talent.ID)
 				}
 			}
 			t.Errorf("結果中未找到測試老師 (ID: %d, Email: %s)", teacher.ID, teacher.Email)
