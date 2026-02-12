@@ -30,6 +30,7 @@ type CenterInvitation struct {
 	ID          uint             `gorm:"primaryKey" json:"id"`
 	CenterID    uint             `gorm:"type:bigint unsigned;not null;index" json:"center_id"`
 	TeacherID   uint             `gorm:"type:bigint unsigned;index" json:"teacher_id"`    // 被邀請的老師ID
+	TeacherName string           `gorm:"type:varchar(255)" json:"teacher_name"`           // 預設的老師姓名（用於外部邀請）
 	InvitedBy   uint             `gorm:"type:bigint unsigned;not null" json:"invited_by"` // 邀請人（管理員）
 	Email       string           `gorm:"type:varchar(255)" json:"email"`
 	Token       string           `gorm:"type:varchar(255);uniqueIndex;not null" json:"token"`

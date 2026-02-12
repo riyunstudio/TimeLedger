@@ -186,11 +186,12 @@ func (s *TeacherService) RespondToInvitation(ctx context.Context, req *RespondTo
 
 // InviteTeacherRequest 邀請老師請求
 type InviteTeacherRequest struct {
-	CenterID uint
-	AdminID  uint
-	Email    string
-	Role     string
-	Message  string
+	CenterID    uint
+	AdminID     uint
+	Email       string
+	TeacherName string
+	Role        string
+	Message     string
 }
 
 // InviteTeacherResult 邀請老師結果
@@ -205,15 +206,16 @@ func (s *TeacherService) InviteTeacher(ctx context.Context, req *InviteTeacherRe
 	expiresAtPtr := &expiresAt
 
 	invitation := models.CenterInvitation{
-		CenterID:   req.CenterID,
-		Email:      req.Email,
-		Token:      token,
-		InviteType: models.InvitationTypeTeacher,
-		Role:       req.Role,
-		Status:     models.InvitationStatusPending,
-		Message:    req.Message,
-		CreatedAt:  time.Now(),
-		ExpiresAt:  expiresAtPtr,
+		CenterID:    req.CenterID,
+		Email:       req.Email,
+		TeacherName: req.TeacherName, // 存入邀請函預設姓名
+		Token:       token,
+		InviteType:  models.InvitationTypeTeacher,
+		Role:        req.Role,
+		Status:      models.InvitationStatusPending,
+		Message:     req.Message,
+		CreatedAt:   time.Now(),
+		ExpiresAt:   expiresAtPtr,
 	}
 
 	result, err := s.invitationRepo.Create(ctx, invitation)
@@ -232,9 +234,10 @@ func (s *TeacherService) InviteTeacher(ctx context.Context, req *InviteTeacherRe
 		TargetID:   invitation.ID,
 		Payload: models.AuditPayload{
 			After: map[string]interface{}{
-				"email":      req.Email,
-				"status":     "PENDING",
-				"expires_at": expiresAt,
+				"email":        req.Email,
+				"teacher_name": req.TeacherName,
+				"status":       "PENDING",
+				"expires_at":   expiresAt,
 			},
 		},
 	})
@@ -244,11 +247,12 @@ func (s *TeacherService) InviteTeacher(ctx context.Context, req *InviteTeacherRe
 
 // GenerateInvitationLinkRequest 產生邀請連結請求
 type GenerateInvitationLinkRequest struct {
-	CenterID uint
-	AdminID  uint
-	Email    string
-	Role     string
-	Message  string
+	CenterID    uint
+	AdminID     uint
+	Email       string
+	TeacherName string
+	Role        string
+	Message     string
 }
 
 // GenerateInvitationLinkResult 產生邀請連結結果
@@ -263,15 +267,16 @@ func (s *TeacherService) GenerateInvitationLink(ctx context.Context, req *Genera
 	expiresAtPtr := &expiresAt
 
 	invitation := models.CenterInvitation{
-		CenterID:   req.CenterID,
-		Email:      req.Email,
-		Token:      token,
-		InviteType: models.InvitationTypeTeacher,
-		Role:       req.Role,
-		Status:     models.InvitationStatusPending,
-		Message:    req.Message,
-		CreatedAt:  time.Now(),
-		ExpiresAt:  expiresAtPtr,
+		CenterID:    req.CenterID,
+		Email:       req.Email,
+		TeacherName: req.TeacherName, // 存入邀請函預設姓名
+		Token:       token,
+		InviteType:  models.InvitationTypeTeacher,
+		Role:        req.Role,
+		Status:      models.InvitationStatusPending,
+		Message:     req.Message,
+		CreatedAt:   time.Now(),
+		ExpiresAt:   expiresAtPtr,
 	}
 
 	if _, err := s.invitationRepo.Create(ctx, invitation); err != nil {
@@ -302,28 +307,30 @@ func (s *TeacherService) GenerateInvitationLink(ctx context.Context, req *Genera
 		TargetID:   invitation.ID,
 		Payload: models.AuditPayload{
 			After: map[string]interface{}{
-				"email":       req.Email,
-				"role":        req.Role,
-				"status":      "PENDING",
-				"expires_at":  expiresAt,
-				"invite_link": inviteLink,
+				"email":        req.Email,
+				"teacher_name": req.TeacherName,
+				"role":         req.Role,
+				"status":       "PENDING",
+				"expires_at":   expiresAt,
+				"invite_link":  inviteLink,
 			},
 		},
 	})
 
 	result := GenerateInvitationLinkResult{
 		InvitationLinkResponse: InvitationLinkResponse{
-			ID:         invitation.ID,
-			CenterID:   req.CenterID,
-			CenterName: centerName,
-			Email:      req.Email,
-			Role:       req.Role,
-			Token:      token,
-			InviteLink: inviteLink,
-			Status:     string(invitation.Status),
-			Message:    req.Message,
-			CreatedAt:  invitation.CreatedAt,
-			ExpiresAt:  invitation.ExpiresAt,
+			ID:          invitation.ID,
+			CenterID:    req.CenterID,
+			CenterName:  centerName,
+			Email:       req.Email,
+			TeacherName: req.TeacherName,
+			Role:        req.Role,
+			Token:       token,
+			InviteLink:  inviteLink,
+			Status:      string(invitation.Status),
+			Message:     req.Message,
+			CreatedAt:   invitation.CreatedAt,
+			ExpiresAt:   invitation.ExpiresAt,
 		},
 	}
 
@@ -515,17 +522,18 @@ func (s *TeacherService) generateNewGeneralLink(ctx context.Context, centerID, a
 
 // InvitationLinkResponse 邀請連結回應結構
 type InvitationLinkResponse struct {
-	ID         uint       `json:"id"`
-	CenterID   uint       `json:"center_id"`
-	CenterName string     `json:"center_name"`
-	Email      string     `json:"email"`
-	Role       string     `json:"role"`
-	Token      string     `json:"token"`
-	InviteLink string     `json:"invite_link"`
-	Status     string     `json:"status"`
-	Message    string     `json:"message,omitempty"`
-	CreatedAt  time.Time  `json:"created_at"`
-	ExpiresAt  *time.Time `json:"expires_at"`
+	ID          uint       `json:"id"`
+	CenterID    uint       `json:"center_id"`
+	CenterName  string     `json:"center_name"`
+	Email       string     `json:"email"`
+	TeacherName string     `json:"teacher_name"`
+	Role        string     `json:"role"`
+	Token       string     `json:"token"`
+	InviteLink  string     `json:"invite_link"`
+	Status      string     `json:"status"`
+	Message     string     `json:"message,omitempty"`
+	CreatedAt   time.Time  `json:"created_at"`
+	ExpiresAt   *time.Time `json:"expires_at"`
 }
 
 // RevokeInvitationLink 撤回邀請連結
@@ -646,11 +654,17 @@ func (s *TeacherService) AcceptInvitationByLink(ctx context.Context, req *Accept
 				teacherEmail = "teacher@timeledger.tw"
 			}
 
+			// 姓名優先級：邀請指定 > LINE 顯示名稱
+			teacherName := lineProfile.DisplayName
+			if invitation.TeacherName != "" {
+				teacherName = invitation.TeacherName
+			}
+
 			newTeacher := models.Teacher{
 				LineUserID: req.LineUserID,
 				Email:      teacherEmail,
-				Name:       lineProfile.DisplayName, // 使用 LINE 的顯示名稱
-				AvatarURL:  lineProfile.PictureURL,  // 使用 LINE 的頭像
+				Name:       teacherName,
+				AvatarURL:  lineProfile.PictureURL, // 使用 LINE 的頭像
 			}
 
 			createdTeacher, err := s.teacherRepo.Create(ctx, newTeacher)

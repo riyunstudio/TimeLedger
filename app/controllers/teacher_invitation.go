@@ -189,17 +189,18 @@ func (ctl *TeacherInvitationController) buildInvitationLinks(ctx context.Context
 
 	for _, inv := range invitations {
 		response = append(response, services.InvitationLinkResponse{
-			ID:         inv.ID,
-			CenterID:   centerID,
-			CenterName: centerName,
-			Email:      inv.Email,
-			Role:       inv.Role,
-			Token:      inv.Token,
-			InviteLink: baseURL + "/invite/" + inv.Token,
-			Status:     string(inv.Status),
-			Message:    inv.Message,
-			CreatedAt:  inv.CreatedAt,
-			ExpiresAt:  inv.ExpiresAt,
+			ID:          inv.ID,
+			CenterID:    centerID,
+			CenterName:  centerName,
+			Email:       inv.Email,
+			TeacherName: inv.TeacherName,
+			Role:        inv.Role,
+			Token:       inv.Token,
+			InviteLink:  baseURL + "/invite/" + inv.Token,
+			Status:      string(inv.Status),
+			Message:     inv.Message,
+			CreatedAt:   inv.CreatedAt,
+			ExpiresAt:   inv.ExpiresAt,
 		})
 	}
 
@@ -337,7 +338,7 @@ func (ctl *TeacherInvitationController) GetPendingInvitationsCount(ctx *gin.Cont
 // @Produce json
 // @Security BearerAuth
 // @Param id path int true "Center ID"
-// @Param request body services.InviteTeacherRequest true "邀請資訊"
+// @Param request body services.InviteTeacherRequest true "邀請資訊(email, teacher_name, role, message)"
 // @Success 200 {object} global.ApiResponse{data=models.CenterInvitation}
 // @Router /api/v1/admin/centers/{id}/invitations [post]
 func (ctl *TeacherInvitationController) InviteTeacher(ctx *gin.Context) {
@@ -372,7 +373,7 @@ func (ctl *TeacherInvitationController) InviteTeacher(ctx *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param id path int true "Center ID"
-// @Param request body services.GenerateInvitationLinkRequest true "邀請資訊"
+// @Param request body services.GenerateInvitationLinkRequest true "邀請資訊(email, teacher_name, role, message)"
 // @Success 200 {object} global.ApiResponse{data=services.InvitationLinkResponse}
 // @Router /api/v1/admin/centers/{id}/invitations/generate-link [post]
 func (ctl *TeacherInvitationController) GenerateInvitationLink(ctx *gin.Context) {

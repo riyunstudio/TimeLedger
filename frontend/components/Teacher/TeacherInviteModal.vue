@@ -2,7 +2,7 @@
   <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" @click.self="emit('close')">
     <div class="glass-card w-full max-w-md animate-spring" @click.stop>
       <div class="flex items-center justify-between p-4 border-b border-white/10">
-        <h3 class="text-lg font-semibold text-slate-100">邀請老師</h3>
+        <h3 class="text-lg font-semibold text-slate-100">外部邀請</h3>
         <button @click="emit('close')" class="p-2 rounded-lg hover:bg-white/10 transition-colors">
           <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -12,13 +12,23 @@
 
       <form @submit.prevent="handleSubmit" class="p-4 space-y-4">
         <div>
-          <label class="block text-slate-300 mb-2 font-medium">老師 Email</label>
+          <label class="block text-slate-300 mb-2 font-medium">老師姓名</label>
+          <input
+            v-model="form.teacher_name"
+            type="text"
+            placeholder="輸入老師姓名"
+            class="input-field"
+            required
+          />
+        </div>
+
+        <div>
+          <label class="block text-slate-300 mb-2 font-medium">老師 Email <span class="text-slate-500 text-sm">(選填)</span></label>
           <input
             v-model="form.email"
             type="email"
             placeholder="teacher@example.com"
             class="input-field"
-            required
           />
         </div>
 
@@ -86,6 +96,7 @@ const loading = ref(false)
 const inviteLink = ref('')
 const { getCenterId } = useCenterId()
 const form = ref({
+  teacher_name: '',
   email: '',
   message: '',
 })
@@ -97,6 +108,7 @@ const handleSubmit = async () => {
     const api = useApi()
     const centerId = getCenterId()
     const response = await api.post<any>(`/admin/centers/${centerId}/invitations`, {
+      teacher_name: form.value.teacher_name,
       email: form.value.email,
       role: 'TEACHER',
       message: form.value.message,

@@ -18,6 +18,8 @@ type InvitationResponse struct {
 	ID          uint       `json:"id"`
 	CenterID    uint       `json:"center_id"`
 	CenterName  string     `json:"center_name"`
+	Email       string     `json:"email"`
+	TeacherName string     `json:"teacher_name"`
 	InviteType  string     `json:"invite_type"`
 	Status      string     `json:"status"`
 	Message     string     `json:"message,omitempty"`
@@ -32,6 +34,8 @@ func (r *InvitationResource) ToInvitationResponse(inv *models.CenterInvitation, 
 		ID:          inv.ID,
 		CenterID:    inv.CenterID,
 		CenterName:  centerName,
+		Email:       inv.Email,
+		TeacherName: inv.TeacherName,
 		InviteType:  string(inv.InviteType),
 		Status:      string(inv.Status),
 		Message:     inv.Message,
@@ -61,26 +65,28 @@ func (r *InvitationResource) ToInvitationResponseList(invitations []models.Cente
 
 // PublicInvitationInfo 公開邀請資訊
 type PublicInvitationInfo struct {
-	ID         uint       `json:"id"`
-	CenterID   uint       `json:"center_id"`
-	CenterName string     `json:"center_name"`
-	Role       string     `json:"role"`
-	Status     string     `json:"status"`
-	Message    string     `json:"message,omitempty"`
-	ExpiresAt  *time.Time `json:"expires_at"`
-	InvitedBy  uint       `json:"-"`
+	ID          uint       `json:"id"`
+	CenterID    uint       `json:"center_id"`
+	CenterName  string     `json:"center_name"`
+	TeacherName string     `json:"teacher_name"`
+	Role        string     `json:"role"`
+	Status      string     `json:"status"`
+	Message     string     `json:"message,omitempty"`
+	ExpiresAt   *time.Time `json:"expires_at"`
+	InvitedBy   uint       `json:"-"`
 }
 
 // ToPublicInvitationInfo 將模型轉換為公開邀請資訊
 func (r *InvitationResource) ToPublicInvitationInfo(inv models.CenterInvitation, centerName string) *PublicInvitationInfo {
 	return &PublicInvitationInfo{
-		ID:         inv.ID,
-		CenterID:   inv.CenterID,
-		CenterName: centerName,
-		Role:       inv.Role,
-		Status:     string(inv.Status),
-		Message:    inv.Message,
-		ExpiresAt:  inv.ExpiresAt,
-		InvitedBy:  inv.InvitedBy,
+		ID:          inv.ID,
+		CenterID:    inv.CenterID,
+		CenterName:  centerName,
+		TeacherName: inv.TeacherName,
+		Role:        inv.Role,
+		Status:      string(inv.Status),
+		Message:     inv.Message,
+		ExpiresAt:   inv.ExpiresAt,
+		InvitedBy:   inv.InvitedBy,
 	}
 }
