@@ -99,7 +99,7 @@
           取消
         </button>
         <button
-          type="submit"
+          type="button"
           :disabled="loading || isDuplicate || !form.category || !form.skill_name"
           class="flex-1 btn-primary py-2.5 sm:py-3 rounded-xl font-medium text-sm sm:text-base"
           @click="handleSubmit"

@@ -43,10 +43,12 @@
             <label class="block text-slate-300 mb-2">城市</label>
             <select
               v-model="filters.city"
-              class="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:border-indigo-500"
+              :disabled="loadingGeoData"
+              class="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:border-indigo-500 disabled:opacity-50"
             >
               <option value="">全部城市</option>
-              <option v-for="city in cities" :key="city" :value="city">{{ city }}</option>
+              <option v-if="loadingGeoData" disabled>載入中...</option>
+              <option v-for="city in cities" :key="city.id" :value="city.name">{{ city.name }}</option>
             </select>
           </div>
 
@@ -55,11 +57,11 @@
             <label class="block text-slate-300 mb-2">區域</label>
             <select
               v-model="filters.district"
-              :disabled="!filters.city"
+              :disabled="!selectedCityDistricts.length"
               class="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:border-indigo-500 disabled:opacity-50"
             >
               <option value="">全部區域</option>
-              <option v-for="district in districts" :key="district" :value="district">{{ district }}</option>
+              <option v-for="district in selectedCityDistricts" :key="district.id" :value="district.name">{{ district.name }}</option>
             </select>
           </div>
 
@@ -72,7 +74,7 @@
             >
               <option value="">全部類別</option>
               <option v-for="cat in skillCategories" :key="cat.key" :value="cat.key">
-                {{ cat.icon }} {{ cat.name }}
+                {{ cat.icon }} {{ cat.label }}
               </option>
             </select>
           </div>
@@ -327,14 +329,32 @@ const filters = ref<FilterState>({
   membership: ''
 })
 
-// 選項資料
-const cities = ref(['台北市', '新北市', '桃園市', '台中市', '台南市', '高雄市'])
-const districts = ref(['中山區', '大安區', '信義區', '松山區', '萬華區', '中正區'])
+// 選項資料（從 API 動態載入）
+interface CityOption {
+  id: number
+  name: string
+  districts: Array<{ id: number; name: string }>
+}
+
+interface DistrictOption {
+  id: number
+  name: string
+}
+
+const cities = ref<CityOption[]>([])
+const loadingGeoData = ref(false)
+
+// 取得選中城市的區域列表
+const selectedCityDistricts = computed(() => {
+  if (!filters.value.city) return []
+  const city = cities.value.find(c => c.name === filters.value.city)
+  return city?.districts || []
+})
 
 const skillCategories = computed(() => {
   return Object.entries(SKILL_CATEGORIES).map(([key, cat]) => ({
     key,
-    name: cat.name || key,
+    label: cat.label || key,
     icon: cat.icon || '✨'
   }))
 })
@@ -370,7 +390,7 @@ const activeFilters = computed(() => {
   }
   if (filters.value.skillCategory) {
     const cat = skillCategories.value.find(c => c.key === filters.value.skillCategory)
-    labels.push({ key: 'skillCategory', value: filters.value.skillCategory, label: `類別: ${cat?.icon} ${cat?.name}` })
+    labels.push({ key: 'skillCategory', value: filters.value.skillCategory, label: `類別: ${cat?.icon} ${cat?.label}` })
   }
   if (filters.value.hiringStatus) {
     const status = hiringStatuses.value.find(s => s.value === filters.value.hiringStatus)
@@ -485,6 +505,34 @@ const deletePreset = (id: string) => {
 
 // 初始化
 loadPresets()
+
+// 從 API 載入縣市資料（含區域）
+const loadGeoData = async () => {
+  loadingGeoData.value = true
+  try {
+    const config = useRuntimeConfig()
+    const response = await fetch(`${config.public.apiBase}/geo/cities`)
+    if (response.ok) {
+      const data = await response.json()
+      if (data.datas && Array.isArray(data.datas)) {
+        cities.value = data.datas
+      }
+    }
+  } catch (error) {
+    console.error('載入縣市資料失敗:', error)
+  } finally {
+    loadingGeoData.value = false
+  }
+}
+
+// 監聽城市變化，連動更新區域
+watch(() => filters.value.city, () => {
+  filters.value.district = '' // 清空已選取的區域
+})
+
+onMounted(() => {
+  loadGeoData()
+})
 
 // 暴露方法
 defineExpose({

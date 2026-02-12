@@ -401,27 +401,21 @@ export const useSmartMatchingStore = defineStore('smartMatching', () => {
         queryParams.append('page', page.toString())
         queryParams.append('limit', (params.limit || 20).toString())
 
-        const response = await api.get<TalentSearchResponse>(
+        // useApi 的 parseResponse 已自動提取內層資料，所以 response 直接是 TalentSearchResponseData
+        const data = await api.get<TalentSearchResponseData>(
           `/admin/smart-matching/talent/search?${queryParams.toString()}`
         )
 
-        if (response.code === 0 && response.datas) {
-          const data = response.datas
-          talentResults.value = data.data || []
-          talentTotalItems.value = data.pagination?.total || 0
-          talentTotalPages.value = data.pagination?.total_pages || 0
-          talentCurrentPage.value = page
+        // API 直接返回符合 TalentCard 類型的資料
+        talentResults.value = data.talents || []
+        talentTotalItems.value = data.pagination?.total || 0
+        talentTotalPages.value = data.pagination?.total_pages || 0
+        talentCurrentPage.value = page
 
-          return {
-            results: talentResults.value,
-            totalItems: talentTotalItems.value,
-            totalPages: talentTotalPages.value,
-          }
-        } else {
-          talentResults.value = []
-          talentTotalItems.value = 0
-          talentTotalPages.value = 0
-          return { results: [], totalItems: 0, totalPages: 0 }
+        return {
+          results: talentResults.value,
+          totalItems: talentTotalItems.value,
+          totalPages: talentTotalPages.value,
         }
       } catch (error) {
         console.error('人才庫搜尋失敗:', error)

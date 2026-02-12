@@ -80,7 +80,7 @@ type UpdateProfileRequest struct {
 	City              string
 	District          string
 	PublicContactInfo string
-	IsOpenToHiring    bool
+	IsOpenToHiring    *bool
 	PersonalHashtags  []string
 }
 
@@ -109,7 +109,10 @@ func (s *TeacherProfileService) UpdateProfile(ctx context.Context, teacherID uin
 		teacher.PublicContactInfo = req.PublicContactInfo
 	}
 
-	teacher.IsOpenToHiring = req.IsOpenToHiring
+	// 只有在 IsOpenToHiring 有提供时才更新
+	if req.IsOpenToHiring != nil {
+		teacher.IsOpenToHiring = *req.IsOpenToHiring
+	}
 
 	// 使用交易更新資料和標籤
 	var result *resources.TeacherProfileResource

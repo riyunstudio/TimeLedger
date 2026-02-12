@@ -7,7 +7,7 @@ import (
 
 type SmartMatchingService interface {
 	FindMatches(ctx context.Context, centerID uint, teacherID *uint, roomID uint, startTime, endTime time.Time, requiredSkills []string, excludeTeacherIDs []uint) ([]MatchScore, error)
-	SearchTalent(ctx context.Context, searchParams TalentSearchParams) (*TalentSearchResult, error)
+	SearchTalent(ctx context.Context, searchParams TalentSearchParams) (*TalentSearchResultResponse, error)
 	GetTalentStats(ctx context.Context, centerID uint) (*TalentStats, error)
 	InviteTalent(ctx context.Context, centerID uint, adminID uint, teacherIDs []uint, message string) (*InviteResult, error)
 	GetSearchSuggestions(ctx context.Context, query string) (*SearchSuggestions, error)
@@ -37,6 +37,46 @@ type TalentSearchParams struct {
 type TalentSearchResult struct {
 	Talents    []TalentResult `json:"talents"`
 	Pagination Pagination     `json:"pagination"`
+}
+
+// TalentSkillResponse - 人才技能回應結構（符合前端格式）
+type TalentSkillResponse struct {
+	Category  string `json:"category"`  // 技能分類
+	SkillName string `json:"skill_name"` // 技能名稱
+}
+
+// TalentCardResponse - 人才卡片回應結構（符合前端 TalentCard 類型）
+type TalentCardResponse struct {
+	ID               uint                  `json:"id"`                // 教師 ID
+	Name             string                `json:"name"`             // 名稱
+	AvatarURL        string                `json:"avatar_url,omitempty"` // 頭像 URL
+	Bio              string                `json:"bio,omitempty"`    // 簡介
+	City             string                `json:"city,omitempty"`   // 縣市
+	District         string                `json:"district,omitempty"`   // 區域
+	Skills           []TalentSkillResponse `json:"skills"`          // 技能列表
+	CertificateCount int                   `json:"certificate_count"` // 證照數量
+	Certificates     []CertificateResponse `json:"certificates,omitempty"` // 證照列表
+	Rating           int                   `json:"rating"`          // 評分
+	ReviewCount      int                   `json:"review_count"`    // 評價數量
+	IsOpenToHiring  bool                  `json:"is_open_to_hiring"` // 是否開放應徵
+	IsMember        bool                  `json:"is_member"`       // 是否已加入中心
+	PersonalHashtags []string              `json:"personal_hashtags,omitempty"` // 個人標籤
+	PublicContactInfo string                `json:"public_contact_info,omitempty"` // 聯絡資訊
+}
+
+// CertificateResponse - 證照回應結構
+type CertificateResponse struct {
+	ID         uint   `json:"id"`
+	Name       string `json:"name"`
+	Issuer     string `json:"issuer,omitempty"`
+	IssuedAt   string `json:"issued_at,omitempty"`
+	ExpiryDate string `json:"expiry_date,omitempty"`
+}
+
+// TalentSearchResultResponse - 人才搜尋回應結構（符合前端格式）
+type TalentSearchResultResponse struct {
+	Talents    []TalentCardResponse `json:"talents"`
+	Pagination Pagination           `json:"pagination"`
 }
 
 // Pagination - 分頁資訊

@@ -22,7 +22,6 @@ export default defineNuxtRouteMiddleware((to, from) => {
 
   if (hasCode && hasState && to.path !== '/teacher/login') {
     // 這是 LINE OAuth 回調，強制重導向到老師登入頁處理
-    console.log('[Auth Middleware] 檢測到 LINE OAuth 回參數，重導向到登入頁處理')
     return navigateTo({
       path: '/teacher/login',
       query: {

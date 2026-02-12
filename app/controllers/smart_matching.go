@@ -22,8 +22,8 @@ type SmartMatchingController struct {
 type FindMatchesRequest struct {
 	TeacherID         *uint     `json:"teacher_id"`
 	RoomID            uint      `json:"room_id" binding:"required"`
-	StartTime         time.Time `json:"start_time" binding:"required"`
-	EndTime           time.Time `json:"end_time" binding:"required"`
+	StartTime         string    `json:"start_time" binding:"required"`
+	EndTime           string    `json:"end_time" binding:"required"`
 	RequiredSkills    []string  `json:"required_skills"`
 	ExcludeTeacherIDs []uint    `json:"exclude_teacher_ids"`
 }
@@ -75,8 +75,25 @@ func (ctl *SmartMatchingController) FindMatches(ctx *gin.Context) {
 		return
 	}
 
+	// 解析日期字串為 time.Time
+	loc, _ := time.LoadLocation("Asia/Taipei")
+	startTime, err := time.ParseInLocation("2006-01-02", req.StartTime, loc)
+	if err != nil {
+		helper.BadRequest("無效的開始時間格式，請使用 YYYY-MM-DD")
+		return
+	}
+	endTime, err := time.ParseInLocation("2006-01-02", req.EndTime, loc)
+	if err != nil {
+		helper.BadRequest("無效的結束時間格式，請使用 YYYY-MM-DD")
+		return
+	}
+
+	// 轉換為整天時間範圍
+	startTime = time.Date(startTime.Year(), startTime.Month(), startTime.Day(), 0, 0, 0, 0, loc)
+	endTime = time.Date(endTime.Year(), endTime.Month(), endTime.Day(), 23, 59, 59, 999999999, loc)
+
 	// 直接同步處理（Go 處理速度很快，不需要 WebSocket）
-	matches, err := ctl.smartMatchingSvc.FindMatches(ctx.Request.Context(), centerID, req.TeacherID, req.RoomID, req.StartTime, req.EndTime, req.RequiredSkills, req.ExcludeTeacherIDs)
+	matches, err := ctl.smartMatchingSvc.FindMatches(ctx.Request.Context(), centerID, req.TeacherID, req.RoomID, startTime, endTime, req.RequiredSkills, req.ExcludeTeacherIDs)
 	if err != nil {
 		helper.InternalError(err.Error())
 		return

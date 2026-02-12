@@ -229,12 +229,31 @@ export interface TalentCard {
   is_member: boolean
   /** 簡介 */
   bio?: string
+  /** 個人標籤 */
+  personal_hashtags?: string[]
+  /** 公開聯絡資訊 */
+  public_contact_info?: string
+  /** 證照詳細列表 */
+  certificates?: Array<{
+    id: ID
+    name: string
+    issuer?: string
+    obtained_at?: string
+    expiry_date?: string
+  }>
 }
 
 /**
  * 人才搜尋結果
  */
-export type TalentSearchResponse = PaginatedResponse<TalentCard>
+export interface TalentSearchResponseData {
+  /** 人才清單 */
+  talents: TalentCard[]
+  /** 分頁資訊 */
+  pagination: PaginationResult
+}
+
+export type TalentSearchResponse = ApiResponse<TalentSearchResponseData>
 
 /**
  * 人才搜尋篩選器

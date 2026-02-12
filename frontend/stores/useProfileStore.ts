@@ -22,6 +22,7 @@ export const useProfileStore = defineStore('profile', () => {
   const isUpdatingSkill = ref(false)
   const isDeletingSkill = ref(false)
   const isCreatingCertificate = ref(false)
+  const isUpdatingCertificate = ref(false)
   const isDeletingCertificate = ref(false)
   const isFetchingBackgrounds = ref(false)
   const isUploadingBackground = ref(false)
@@ -88,11 +89,29 @@ export const useProfileStore = defineStore('profile', () => {
     name: string
     file_url?: string
     issued_at?: string
+    visibility?: number
   }) => {
     return withLoading(isCreatingCertificate, async () => {
       const api = useApi()
       const response = await api.post<TeacherCertificate>('/teacher/me/certificates', data)
       certificates.value.push(response)
+      return response
+    })
+  }
+
+  const updateCertificate = async (certId: number, data: {
+    name: string
+    file_url?: string
+    issued_at?: string
+    visibility?: number
+  }) => {
+    return withLoading(isUpdatingCertificate, async () => {
+      const api = useApi()
+      const response = await api.put<TeacherCertificate>(`/teacher/me/certificates/${certId}`, data)
+      const index = certificates.value.findIndex(c => c.id === certId)
+      if (index !== -1) {
+        certificates.value[index] = response
+      }
       return response
     })
   }
@@ -239,6 +258,7 @@ export const useProfileStore = defineStore('profile', () => {
     isUpdatingSkill,
     isDeletingSkill,
     isCreatingCertificate,
+    isUpdatingCertificate,
     isDeletingCertificate,
     isFetchingBackgrounds,
     isUploadingBackground,
@@ -253,6 +273,7 @@ export const useProfileStore = defineStore('profile', () => {
     // 證照方法
     fetchCertificates,
     createCertificate,
+    updateCertificate,
     deleteCertificate,
 
     // 個人檔案方法

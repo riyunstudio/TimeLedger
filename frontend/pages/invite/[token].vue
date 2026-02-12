@@ -346,6 +346,9 @@ const acceptInvitationWithToken = async (lineUserId: string, accessToken: string
   // 嘗試獲取已儲存的 email
   const savedEmail = localStorage.getItem('invitation_email') || ''
 
+  // 取得 is_open_to_hiring 狀態
+  const isOpenToHiring = authStore.user?.is_open_to_hiring ?? false
+
   const response = await fetch(`${config.public.apiBase}/invitations/${token.value}/accept`, {
     method: 'POST',
     headers: {
@@ -355,6 +358,7 @@ const acceptInvitationWithToken = async (lineUserId: string, accessToken: string
       line_user_id: lineUserId,
       access_token: accessToken,
       email: savedEmail, // 傳遞 LINE ID Token 中的 email
+      is_open_to_hiring: isOpenToHiring, // 主動傳送人才庫開放狀態
     }),
   })
 
@@ -407,10 +411,17 @@ const acceptInvitation = async () => {
 
   accepting.value = true
   try {
+    // 取得 is_open_to_hiring 狀態
+    const isOpenToHiring = authStore.user?.is_open_to_hiring ?? false
+
     const response = await fetch(`${config.public.apiBase}/invitations/${token.value}/accept`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ line_user_id: authStore.user.line_user_id, access_token: accessToken }),
+      body: JSON.stringify({
+        line_user_id: authStore.user.line_user_id,
+        access_token: accessToken,
+        is_open_to_hiring: isOpenToHiring, // 主動傳送人才庫開放狀態
+      }),
     })
 
     const data = await response.json()

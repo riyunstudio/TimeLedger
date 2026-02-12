@@ -1,0 +1,272 @@
+<template>
+  <BaseModal
+    v-model="isOpen"
+    :title="isEditing ? '編輯證照' : '新增證照'"
+    size="md"
+    @close="handleClose"
+  >
+    <form @submit.prevent="handleSubmit" class="space-y-4">
+      <div>
+        <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">證照名稱</label>
+        <input
+          v-model="form.name"
+          type="text"
+          placeholder="例：ABRSM Grade 8"
+          class="input-field text-sm sm:text-base"
+          required
+        />
+      </div>
+
+      <div>
+        <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">發證日期</label>
+        <input
+          v-model="form.issued_at"
+          type="datetime-local"
+          class="input-field text-sm sm:text-base"
+        />
+      </div>
+
+      <div v-if="!isEditing">
+        <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">上傳證照檔案</label>
+        <div
+          class="border-2 border-dashed border-slate-700 rounded-xl p-6 sm:p-8 text-center hover:border-primary-500 transition-colors cursor-pointer"
+          @click="triggerFileInput"
+        >
+          <input
+            ref="fileInput"
+            type="file"
+            accept=".pdf,.jpg,.jpeg,.png"
+            class="hidden"
+            @change="handleFileChange"
+          />
+          <Icon v-if="!fileName" icon="upload" size="3xl" class="mx-auto mb-3 text-slate-400" />
+          <p v-if="!fileName" class="text-slate-400 text-sm sm:text-base">點擊或拖曳檔案至此</p>
+          <p v-else class="text-slate-100 text-sm sm:text-base">{{ fileName }}</p>
+        </div>
+      </div>
+
+      <div v-else>
+        <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">更換證照檔案（選填）</label>
+        <div
+          class="border-2 border-dashed border-slate-700 rounded-xl p-4 text-center hover:border-primary-500 transition-colors cursor-pointer"
+          @click="triggerFileInput"
+        >
+          <input
+            ref="fileInput"
+            type="file"
+            accept=".pdf,.jpg,.jpeg,.png"
+            class="hidden"
+            @change="handleFileChange"
+          />
+          <Icon v-if="!fileName && !existingFileUrl" icon="upload" size="lg" class="mx-auto mb-2 text-slate-400" />
+          <p v-if="!fileName && !existingFileUrl" class="text-slate-400 text-sm">點擊或拖曳檔案至此</p>
+          <p v-else class="text-slate-100 text-sm">{{ fileName || '已存在檔案，點擊可更換' }}</p>
+        </div>
+        <p v-if="existingFileUrl" class="text-xs text-slate-500 mt-1">目前已有檔案，不更換將保留原檔案</p>
+      </div>
+
+      <div>
+        <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">隱私設定</label>
+        <div class="grid grid-cols-1 gap-2">
+          <label
+            v-for="option in visibilityOptions"
+            :key="option.value"
+            class="flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all"
+            :class="form.visibility === option.value
+              ? 'border-primary-500 bg-primary-500/10'
+              : 'border-slate-700 hover:border-slate-600'"
+          >
+            <input
+              type="radio"
+              :value="option.value"
+              v-model="form.visibility"
+              class="hidden"
+            />
+            <div
+              class="w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors"
+              :class="form.visibility === option.value
+                ? 'border-primary-500 bg-primary-500'
+                : 'border-slate-500'"
+            >
+              <svg v-if="form.visibility === option.value" class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+              </svg>
+            </div>
+            <div class="flex-1">
+              <p class="text-slate-100 font-medium text-sm sm:text-base">{{ option.label }}</p>
+              <p class="text-slate-500 text-xs">{{ option.description }}</p>
+            </div>
+          </label>
+        </div>
+      </div>
+    </form>
+
+    <template #footer>
+      <div class="flex gap-3 pt-2">
+        <button
+          type="button"
+          @click="handleClose"
+          class="flex-1 glass-btn py-2.5 sm:py-3 rounded-xl font-medium text-sm sm:text-base"
+        >
+          取消
+        </button>
+        <button
+          type="button"
+          :disabled="loading || uploading || !form.name"
+          class="flex-1 btn-primary py-2.5 sm:py-3 rounded-xl font-medium text-sm sm:text-base"
+          @click="handleSubmit"
+        >
+          {{ uploading ? '上傳中...' : loading ? '儲存中...' : '儲存' }}
+        </button>
+      </div>
+    </template>
+  </BaseModal>
+</template>
+
+<script setup lang="ts">
+import { alertError, alertSuccess } from '~/composables/useAlert'
+import { formatDateToString } from '~/composables/useTaiwanTime'
+import { CERTIFICATE_VISIBILITY, CERTIFICATE_VISIBILITY_LABELS, type CertificateVisibility } from '~/types/teacher'
+import Icon from '~/components/base/Icon.vue'
+
+const props = defineProps<{
+  certificate?: any
+}>()
+
+const emit = defineEmits<{
+  close: []
+  added: []
+  updated: []
+}>()
+
+const isOpen = ref(true)
+const profileStore = useProfileStore()
+const api = useApi()
+const loading = ref(false)
+const uploading = ref(false)
+const fileInput = ref<HTMLInputElement>()
+const fileName = ref('')
+const selectedFile = ref<File | null>(null)
+const existingFileUrl = ref('')
+
+const isEditing = computed(() => !!props.certificate)
+
+const visibilityOptions = [
+  {
+    value: CERTIFICATE_VISIBILITY.PUBLIC,
+    label: '公開',
+    description: '顯示名稱與圖片',
+  },
+  {
+    value: CERTIFICATE_VISIBILITY.NAME_ONLY,
+    label: '僅限名稱',
+    description: '僅顯示證照名稱',
+  },
+  {
+    value: CERTIFICATE_VISIBILITY.PRIVATE,
+    label: '私密',
+    description: '中心端不顯示',
+  },
+]
+
+const form = ref({
+  name: props.certificate?.name || '',
+  issued_at: props.certificate?.issued_at ? formatDateTimeLocal(props.certificate.issued_at) : '',
+  visibility: (props.certificate?.visibility ?? CERTIFICATE_VISIBILITY.PUBLIC) as CertificateVisibility,
+})
+
+// 格式化日期為 datetime-local 格式
+function formatDateTimeLocal(dateStr: string): string {
+  if (!dateStr) return ''
+  const date = new Date(dateStr)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  return `${year}-${month}-${day}T${hours}:${minutes}`
+}
+
+const formatDateTimeForApi = (datetimeLocal: string): string => {
+  if (!datetimeLocal) return ''
+  // 使用台灣時區格式化
+  const date = new Date(datetimeLocal)
+  return formatDateToString(date)
+}
+
+// 設定現有檔案資訊
+if (props.certificate?.file_url) {
+  existingFileUrl.value = props.certificate.file_url
+}
+
+const triggerFileInput = () => {
+  fileInput.value?.click()
+}
+
+const handleFileChange = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  if (target.files && target.files.length > 0) {
+    selectedFile.value = target.files[0]
+    fileName.value = target.files[0].name
+  }
+}
+
+const handleClose = () => {
+  emit('close')
+}
+
+const handleSubmit = async () => {
+  if (!form.value.name) {
+    await alertError('請輸入證照名稱')
+    return
+  }
+
+  loading.value = true
+  uploading.value = true
+
+  try {
+    let fileUrl: string | undefined
+
+    // 如果有選擇檔案，先上傳
+    if (selectedFile.value) {
+      const uploadResponse = await api.upload<{ file_url: string; file_name: string; file_size: number }>(
+        '/teacher/me/certificates/upload',
+        selectedFile.value
+      )
+
+      fileUrl = uploadResponse.file_url
+    }
+
+    if (isEditing.value) {
+      // 更新證照記錄
+      await profileStore.updateCertificate(props.certificate.id, {
+        name: form.value.name,
+        file_url: fileUrl,
+        issued_at: formatDateTimeForApi(form.value.issued_at),
+        visibility: form.value.visibility,
+      })
+      await alertSuccess('證照更新成功')
+      emit('updated')
+    } else {
+      // 建立證照記錄
+      await profileStore.createCertificate({
+        name: form.value.name,
+        file_url: fileUrl,
+        issued_at: formatDateTimeForApi(form.value.issued_at),
+        visibility: form.value.visibility,
+      })
+
+      await profileStore.fetchCertificates()
+      await alertSuccess('證照新增成功')
+      emit('added')
+    }
+    handleClose()
+  } catch (error: any) {
+    console.error('Failed to save certificate:', error)
+    await alertError(error.message || (isEditing.value ? '更新失敗' : '新增失敗') + '，請稍後再試')
+  } finally {
+    loading.value = false
+    uploading.value = false
+  }
+}
+</script>

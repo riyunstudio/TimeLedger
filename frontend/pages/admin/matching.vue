@@ -1,5 +1,27 @@
 <template>
   <div class="p-4 md:p-6" role="main" aria-label="智慧媒合系統">
+    <!-- 狀態訊息顯示 -->
+    <Transition name="fade">
+      <div v-if="statusMessage" :class="[
+        'fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg flex items-center gap-2',
+        statusType === 'success' ? 'bg-green-500/90 text-white' :
+        statusType === 'warning' ? 'bg-yellow-500/90 text-white' :
+        statusType === 'error' ? 'bg-red-500/90 text-white' :
+        'bg-blue-500/90 text-white'
+      ]">
+        <svg v-if="statusType === 'success'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <svg v-else-if="statusType === 'warning'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+        <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <span>{{ statusMessage }}</span>
+      </div>
+    </Transition>
+
     <h1 class="text-2xl font-bold text-white mb-6">智慧媒合</h1>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -321,7 +343,7 @@
         leave-from-class="opacity-100 translate-y-0"
         leave-to-class="opacity-0 -translate-y-2"
       >
-        <div v-if="showStats && smartMatchingStore.talentResults.length > 0" class="mb-6">
+        <div v-if="showStats && filteredTalentResults.length > 0" class="mb-6">
           <!-- 統計卡片 -->
           <AdminTalentStatsPanel
             v-if="smartMatchingStore.talentStats"
@@ -379,21 +401,25 @@
 
       <!-- 快速篩選標籤 -->
       <AdminQuickFilterTags
-        v-if="smartMatchingStore.talentResults.length > 0"
+        v-if="filteredTalentResults.length > 0"
         :popular-skills="popularSearchSkills"
         :popular-tags="['古典', '兒童', '成人', '入門', '進階']"
         :active-skills="activeSkillFilters"
         :active-tags="activeTagFilters"
+        :active-rating="activeRating"
         @filter-by-skill="onSkillFilter"
         @filter-by-tag="onTagFilter"
+        @filter-by-rating="onRatingFilter"
         @clear-all="clearQuickFilters"
       />
 
       <!-- 搜尋結果數量與分頁 -->
-      <div v-if="smartMatchingStore.talentResults.length > 0" class="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div v-if="filteredTalentResults.length > 0" class="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <span class="text-sm text-slate-400">
-          找到 <span class="text-white font-medium">{{ smartMatchingStore.talentTotalItems }}</span> 位人才
-          <span class="text-slate-500 ml-2">(第 {{ smartMatchingStore.talentCurrentPage }}/{{ smartMatchingStore.talentTotalPages }} 頁)</span>
+          找到 <span class="text-white font-medium">{{ filteredTalentResults.length }}</span> 位人才
+          <span v-if="smartMatchingStore.talentResults.length !== filteredTalentResults.length" class="text-slate-500 ml-2">
+            (共 {{ smartMatchingStore.talentResults.length }} 位，符合篩選條件)
+          </span>
         </span>
 
         <div class="flex items-center gap-2">
@@ -472,13 +498,24 @@
 
       <!-- 搜尋結果 -->
       <div v-if="smartMatchingStore.talentResults.length > 0" class="mt-4">
+        <!-- 比較模式（人才庫） -->
+        <div v-if="talentCompareMode" class="mb-6">
+          <AdminCompareMode
+            :selected-teachers="talentCompareTeachers"
+            @remove="removeFromTalentCompare"
+            @select="selectTalentTeacher"
+            @exit="exitTalentCompareMode"
+          />
+        </div>
+
         <!-- 批量操作工具列 -->
         <AdminBulkActions
+          v-if="!talentCompareMode"
           :selected-count="selectedTalents.size"
           :bulk-loading="smartMatchingStore.bulkLoading"
           :bulk-progress="smartMatchingStore.bulkProgress"
           @clear="clearTalentSelection"
-          @compare="smartMatchingStore.viewMode = 'compare'"
+          @compare="enterTalentCompareMode"
           @export="exportContactInfo"
           @bulk-invite="bulkInviteTalents"
         />
@@ -486,7 +523,7 @@
         <!-- 人才卡片網格 -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-20">
           <AdminTalentCard
-            v-for="teacher in smartMatchingStore.talentResults"
+            v-for="teacher in filteredTalentResults"
             :key="teacher.id"
             :teacher="teacher"
             :selected="selectedTalents.has(teacher.id)"
@@ -506,7 +543,8 @@
         <svg class="w-16 h-16 mx-auto mb-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
-        <p>沒有找到符合條件的人才</p>
+        <p v-if="smartMatchingStore.talentResults.length === 0">沒有找到符合條件的人才</p>
+        <p v-else>沒有符合篩選條件的人才</p>
         <button
           @click="clearTalentSearch"
           class="mt-4 px-4 py-2 rounded-lg bg-white/5 text-slate-400 hover:bg-white/10 transition-colors"
@@ -520,6 +558,14 @@
   <NotificationDropdown
     v-if="notificationUI.show.value"
     @close="notificationUI.close()"
+  />
+
+  <!-- 人才詳情彈窗 -->
+  <AdminTalentDetailModal
+    :teacher="selectedTeacherForDetail"
+    :visible="showTalentDetailModal"
+    @close="showTalentDetailModal = false"
+    @invite="inviteSingleTalent"
   />
 </template>
 
@@ -544,6 +590,7 @@ import AdminSearchSuggestions from '~/components/Admin/SearchSuggestions.vue'
 import AdminTalentStatsPanel from '~/components/Admin/TalentStatsPanel.vue'
 import AdminSkillsDistributionChart from '~/components/Admin/SkillsDistributionChart.vue'
 import ScoreBreakdownTooltip from '~/components/Scheduling/ScoreBreakdownTooltip.vue'
+import AdminTalentDetailModal from '~/components/Admin/TalentDetailModal.vue'
 import type { SmartMatchingResult, TalentCard } from '~/types/matching'
 
 interface SelectedSkill {
@@ -604,9 +651,87 @@ definePageMeta({
  const showStats = ref(false)
  const showCustomTime = ref(false)
 
- // 篩選狀態
- const activeSkillFilters = ref<string[]>([])
- const activeTagFilters = ref<string[]>([])
+// 篩選狀態
+const activeSkillFilters = ref<string[]>([])
+const activeTagFilters = ref<string[]>([])
+const activeRating = ref(0)
+
+// 人才詳情彈窗狀態
+interface TeacherDetail {
+  id: number
+  name: string
+  bio?: string
+  city?: string
+  district?: string
+  rating?: number
+  skills?: Array<{ name: string; category: string }>
+  personal_hashtags?: Array<{ name: string } | string>
+  is_open_to_hiring: boolean
+  is_member: boolean
+  public_contact_info?: string
+  // 證照資訊
+  certificates?: Array<{
+    id: number
+    name: string
+    issuer?: string
+    obtained_at?: string
+    expiry_date?: string
+  }>
+}
+
+const selectedTeacherForDetail = ref<TeacherDetail | null>(null)
+const showTalentDetailModal = ref(false)
+
+// 人才庫比較模式狀態
+const talentCompareMode = ref(false)
+
+// 取得人才庫中用於比較的教師資料（轉換為 AdminCompareMode 所需格式）
+const talentCompareTeachers = computed(() => {
+  return smartMatchingStore.talentResults
+    .filter(t => smartMatchingStore.selectedForCompare.has(t.id))
+    .map(t => ({
+      teacher_id: t.id,
+      teacher_name: t.name,
+      match_score: Math.round((t.rating || 0) * 20), // 將評分轉換為匹配度 (5分制轉100分制)
+      rating: t.rating || 0,
+      city: t.city || '',
+      district: t.district || '',
+      skills: t.skills || [],
+      certificates_count: (t as any).certificates?.length || 0,
+      bio: (t as any).bio || '',
+      is_member: t.is_member,
+      is_open_to_hiring: t.is_open_to_hiring,
+      personal_hashtags: t.personal_hashtags || [],
+      availability: 'AVAILABLE', // 人才庫預設為可用
+      score_detail: {
+        match_score: Math.round((t.rating || 0) * 20),
+        availability_score: 100,
+        rating_score: Math.round((t.rating || 0) * 20),
+        skill_score: 0
+      }
+    }))
+})
+
+// 狀態訊息
+const statusMessage = ref('')
+const statusType = ref<'success' | 'warning' | 'error' | 'info'>('info')
+let statusTimeout: ReturnType<typeof setTimeout> | null = null
+
+// 顯示狀態訊息
+const showStatus = (message: string, type: 'success' | 'warning' | 'error' | 'info' = 'info', duration: number = 3000) => {
+  statusMessage.value = message
+  statusType.value = type
+  
+  // 清除之前的計時器
+  if (statusTimeout) {
+    clearTimeout(statusTimeout)
+  }
+  
+  // 自動隱藏
+  statusTimeout = setTimeout(() => {
+    statusMessage.value = ''
+  }, duration)
+}
 
  // 人才篩選面板引用
  const talentFilterRef = ref<InstanceType<typeof AdminTalentFilterPanel> | null>(null)
@@ -646,10 +771,46 @@ definePageMeta({
      }
    }
 
-   return pages
- })
+  return pages
+})
 
- // ==================== 搜尋相關方法 ====================
+// 過濾後的人才結果
+const filteredTalentResults = computed(() => {
+  let results = [...smartMatchingStore.talentResults]
+
+  // 按技能過濾
+  if (activeSkillFilters.value.length > 0) {
+    results = results.filter(teacher =>
+      activeSkillFilters.value.some(skill =>
+        teacher.skills?.some((s: any) =>
+          typeof s === 'string' ? s === skill : s.name === skill
+        )
+      )
+    )
+  }
+
+  // 按標籤過濾
+  if (activeTagFilters.value.length > 0) {
+    results = results.filter(teacher =>
+      activeTagFilters.value.some(tag =>
+        teacher.hashtags?.some((t: any) =>
+          typeof t === 'string' ? t === tag : t.name === tag
+        )
+      )
+    )
+  }
+
+  // 按評分過濾
+  if (activeRating.value > 0) {
+    results = results.filter(teacher =>
+      (teacher.rating || 0) >= activeRating.value
+    )
+  }
+
+  return results
+})
+
+// ==================== 搜尋相關方法 ====================
 
  /**
   * 智慧媒合搜尋
@@ -844,31 +1005,44 @@ definePageMeta({
  /**
   * 標籤篩選
   */
- const onTagFilter = (tag: string) => {
-   if (activeTagFilters.value.includes(tag)) {
-     activeTagFilters.value = activeTagFilters.value.filter(t => t !== tag)
-   } else {
-     activeTagFilters.value = [...activeTagFilters.value, tag]
-   }
- }
+const onTagFilter = (tag: string) => {
+  if (activeTagFilters.value.includes(tag)) {
+    activeTagFilters.value = activeTagFilters.value.filter(t => t !== tag)
+  } else {
+    activeTagFilters.value = [...activeTagFilters.value, tag]
+  }
+}
 
- /**
-  * 清除快速篩選
-  */
- const clearQuickFilters = () => {
-   activeSkillFilters.value = []
-   activeTagFilters.value = []
- }
+/**
+ * 評分篩選
+ */
+const onRatingFilter = (rating: number) => {
+  // 如果點擊已選中的評分，則取消篩選；否則套用該評分篩選
+  if (activeRating.value === rating) {
+    activeRating.value = 0
+  } else {
+    activeRating.value = rating
+  }
+}
 
- /**
-  * 人才篩選面板 - 套用篩選
-  */
- const applyTalentFilters = (filters: any) => {
-   if (filters.city) talentSearch.value.city = filters.city
-   if (filters.skills) talentSearch.value.skills = filters.skills
-   if (filters.hashtags) talentSearch.value.hashtags = filters.hashtags
-   searchTalent()
- }
+/**
+ * 清除快速篩選
+ */
+const clearQuickFilters = () => {
+  activeSkillFilters.value = []
+  activeTagFilters.value = []
+  activeRating.value = 0
+}
+
+  /**
+   * 人才篩選面板 - 套用篩選
+   */
+  const applyTalentFilters = (filters: any) => {
+    if (filters.city !== undefined) talentSearch.value.city = filters.city
+    if (filters.skills !== undefined) talentSearch.value.skills = filters.skills
+    if (filters.hashtags !== undefined) talentSearch.value.hashtags = filters.hashtags
+    searchTalent()
+  }
 
  /**
   * 人才篩選面板 - 清除篩選
@@ -987,26 +1161,92 @@ definePageMeta({
    alertSuccess(`已匯出 ${selectedData.length} 位人才的聯絡資訊`)
  }
 
- /**
-  * 查看人才詳細資訊
-  */
- const viewTalentDetail = (teacher: TalentCard) => {
-   alertSuccess(`正在查看 ${teacher.name} 的詳細資訊`)
- }
+/**
+ * 查看人才詳細資訊
+ */
+const viewTalentDetail = (teacher: TalentCard) => {
+  console.log('查看人才詳細資訊:', teacher.name)
+  
+  // 設置選中的人才並開啟彈窗
+  selectedTeacherForDetail.value = {
+    id: teacher.id,
+    name: teacher.name,
+    bio: (teacher as any).bio,
+    city: teacher.city,
+    district: teacher.district,
+    rating: teacher.rating,
+    skills: teacher.skills?.map((s: any) => ({
+      name: s.skill_name || s.name,
+      category: s.category
+    })),
+    personal_hashtags: teacher.personal_hashtags,
+    is_open_to_hiring: teacher.is_open_to_hiring,
+    is_member: teacher.is_member,
+    public_contact_info: (teacher as any).public_contact_info,
+    // 證照資訊（如果有的話）
+    certificates: (teacher as any).certificates || []
+  }
+  showTalentDetailModal.value = true
+}
 
- /**
-  * 加入比較
-  */
- const addTalentToCompare = (teacher: TalentCard) => {
-   if (smartMatchingStore.selectedForCompare.size >= 3) {
-     alertWarning('最多只能選取 3 位老師進行比較')
-     return
-   }
-   smartMatchingStore.selectedForCompare.add(teacher.id)
-   alertSuccess(`已將 ${teacher.name} 加入比較`)
- }
+/**
+ * 加入比較
+ */
+const addTalentToCompare = (teacher: TalentCard) => {
+  console.log('加入比較:', teacher.name)
 
- // ==================== 取得房間列表 ====================
+  if (smartMatchingStore.selectedForCompare.size >= 3) {
+    showStatus('最多只能選取 3 位老師進行比較', 'warning')
+    alertWarning('最多只能選取 3 位老師進行比較')
+    return
+  }
+
+  smartMatchingStore.selectedForCompare.add(teacher.id)
+  showStatus(`已將 ${teacher.name} 加入比較`, 'success')
+
+  // 切換到人才庫比較模式
+  talentCompareMode.value = true
+}
+
+/**
+ * 進入人才庫比較模式
+ */
+const enterTalentCompareMode = () => {
+  if (smartMatchingStore.selectedForCompare.size < 2) {
+    showStatus('請至少選取 2 位老師進行比較', 'warning')
+    alertWarning('請至少選取 2 位老師進行比較')
+    return
+  }
+  talentCompareMode.value = true
+}
+
+/**
+ * 離開人才庫比較模式
+ */
+const exitTalentCompareMode = () => {
+  talentCompareMode.value = false
+}
+
+/**
+ * 從比較中移除
+ */
+const removeFromTalentCompare = (teacherId: number) => {
+  smartMatchingStore.selectedForCompare.delete(teacherId)
+
+  // 如果沒有選中的人才，退出比較模式
+  if (smartMatchingStore.selectedForCompare.size === 0) {
+    talentCompareMode.value = false
+  }
+}
+
+/**
+ * 選擇人才庫中的教師
+ */
+const selectTalentTeacher = async (teacher: any) => {
+  await alertSuccess(`已選擇 ${teacher.teacher_name}`)
+}
+
+// ==================== 取得房間列表 ====================
 
  const fetchRooms = async () => {
    try {
@@ -1027,7 +1267,21 @@ definePageMeta({
      recentSearchesRef.value.loadFromStorage()
    }
 
-   // 載入人才庫統計
-   await smartMatchingStore.fetchTalentStats()
- })
+  // 載入人才庫統計
+  await smartMatchingStore.fetchTalentStats()
+})
 </script>
+
+<style scoped>
+/* 狀態訊息動畫 */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+</style>

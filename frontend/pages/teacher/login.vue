@@ -145,7 +145,6 @@ const waitForLiffInit = (maxWait = 5000): Promise<boolean> => {
       }
 
       if (Date.now() - startTime > maxWait) {
-        console.warn('LIFF SDK 初始化超時')
         resolve(false)
         return
       }
@@ -162,26 +161,18 @@ const handleOAuthCallback = async () => {
   const code = route.query.code as string
   const state = route.query.state as string
 
-  console.log('[OAuth] 處理 callback，code:', !!code, 'state:', !!state)
-
   // 【優化】首先等待 LIFF SDK 初始化完成
   // 這是關鍵步驟，確保 SDK 就緒後才能進行後續操作
   const initialized = await waitForLiffInit()
 
   if (!initialized) {
-    console.error('[OAuth] LIFF SDK 初始化超時')
     throw new Error('LIFF SDK 初始化超時，請重新整理頁面')
   }
 
-  console.log('[OAuth] SDK 初始化完成')
-
   // 【優化】檢查是否有 OAuth 回調參數 (code 和 state)
   if (code && state) {
-    console.log('[OAuth] 檢測到 OAuth 回調參數，嘗試獲取登入狀態...')
-
     // 嘗試獲取登入狀態
     const isLoggedIn = $liff.isLoggedIn()
-    console.log('[OAuth] LINE 登入狀態:', isLoggedIn)
 
     if (isLoggedIn) {
       // 登入成功，取得用戶資訊
@@ -189,10 +180,8 @@ const handleOAuthCallback = async () => {
         const profile = await $liff.getProfile()
         lineUserId.value = profile.userId
         hasLineUserId.value = true
-        console.log('[OAuth] 已登入，userId:', profile.userId)
         await performLogin()
       } catch (err) {
-        console.error('[OAuth] 獲取用戶資訊失敗:', err)
         throw new Error('無法獲取 LINE 用戶資訊，請重新登入')
       }
     } else {
@@ -201,24 +190,19 @@ const handleOAuthCallback = async () => {
       try {
         const accessToken = $liff.getAccessToken()
         if (accessToken) {
-          console.log('[OAuth] 找到 Access Token，嘗試獲取用戶資訊...')
           const profile = await $liff.getProfile()
           lineUserId.value = profile.userId
           hasLineUserId.value = true
-          console.log('[OAuth] 已登入 (透過 token)，userId:', profile.userId)
           await performLogin()
         } else {
-          console.warn('[OAuth] SDK 未自動完成登入，無 Access Token')
           hasLineUserId.value = false
         }
       } catch (err) {
-        console.error('[OAuth] 處理 OAuth 回調時發生錯誤:', err)
         hasLineUserId.value = false
       }
     }
   } else {
     // 無 OAuth 回調參數，清除狀態
-    console.log('[OAuth] 無 OAuth 回調參數，清除 URL 參數')
     hasLineUserId.value = false
 
     // 【優化】清除 URL 中的殘留參數（避免用戶刷新頁面時重複處理）
@@ -233,47 +217,35 @@ const initLiff = async () => {
   loading.value = true
   error.value = ''
 
-  console.log('[Login] 開始初始化，URL:', window.location.href)
-  console.log('[Login] Route query:', route.query)
-
   try {
     // 檢查 LIFF 是否已初始化
     if (!$liff) {
       throw new Error('LIFF 尚未初始化，請重新整理頁面')
     }
 
-    console.log('[Login] LIFF 已初始化')
-
     // 檢查 URL 中是否有 OAuth callback 參數
     if (route.query.code) {
-      console.log('[Login] 檢測到 OAuth callback，開始處理...')
       await handleOAuthCallback()
       return
     }
 
-    console.log('[Login] 無 OAuth callback，檢查登入狀態...')
-
     // 檢查是否已登入 LINE
     const isLoggedIn = $liff.isLoggedIn()
-    console.log('[Login] LINE 登入狀態:', isLoggedIn)
 
     if (isLoggedIn) {
       // 已登入 LINE，取得用戶資訊
       const profile = await $liff.getProfile()
       lineUserId.value = profile.userId
       hasLineUserId.value = true
-      console.log('[Login] 已登入，userId:', profile.userId)
 
       // 執行登入
       await performLogin()
     } else {
       // 未登入 LINE，需要先登入
       hasLineUserId.value = false
-      console.log('[Login] 未登入，等待用戶點擊登入按鈕')
     }
   } catch (err: any) {
     error.value = err.message || '初始化失敗，請重新整理頁面'
-    console.error('[Login] 初始化錯誤:', err)
   } finally {
     loading.value = false
   }

@@ -523,7 +523,7 @@ type UpdateTeacherProfileRequest struct {
 	City              string   `json:"city"`
 	District          string   `json:"district"`
 	PublicContactInfo string   `json:"public_contact_info"`
-	IsOpenToHiring    bool     `json:"is_open_to_hiring"`
+	IsOpenToHiring    *bool    `json:"is_open_to_hiring"`
 	PersonalHashtags  []string `json:"personal_hashtags"`
 }
 

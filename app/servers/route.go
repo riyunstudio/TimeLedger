@@ -65,8 +65,8 @@ func (s *Server) LoadRoutes() {
 		{http.MethodPost, "/api/v1/auth/refresh", s.action.auth.RefreshToken, []gin.HandlerFunc{}},
 		{http.MethodPost, "/api/v1/auth/logout", s.action.auth.Logout, []gin.HandlerFunc{authMiddleware.Authenticate()}},
 
-		// Geo - Cities & Districts
-		{http.MethodGet, "/api/v1/geo/cities", s.action.geo.ListCities, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+		// Geo - Cities & Districts (公開 API，不需要授權)
+		{http.MethodGet, "/api/v1/geo/cities", s.action.geo.ListCities, nil},
 
 		// Teacher - Profile
 		{http.MethodGet, "/api/v1/teacher/me/profile", s.action.teacherProfile.GetProfile, []gin.HandlerFunc{authMiddleware.Authenticate()}},

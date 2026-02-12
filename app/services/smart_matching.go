@@ -11,6 +11,60 @@ import (
 	"timeLedger/app/repositories"
 )
 
+// 繁簡轉換對照表（常見地名用字）
+var traditionalToSimplified = map[string]string{
+	"臺": "台",
+	"縣": "县",
+	"市": "市", // 相同
+}
+
+// normalizeCityName 將城市名稱正規化為資料庫格式（繁體中文）
+func normalizeCityName(name string) string {
+	if name == "" {
+		return name
+	}
+
+	// 嘗試將簡體轉換為繁體（因為資料庫使用繁體）
+	result := name
+	for traditional, simplified := range traditionalToSimplified {
+		// 檢查是否包含簡體版本
+		if strings.Contains(result, simplified) && !strings.Contains(result, traditional) {
+			// 簡體版本存在但繁體不存在，進行替換
+			result = strings.ReplaceAll(result, simplified, traditional)
+		}
+	}
+
+	// 特殊地名對照
+	specialMappings := map[string]string{
+		"台北市": "臺北市",
+		"台中市": "臺中市",
+		"台南市": "臺南市",
+		"台東縣": "臺東縣",
+		"台西鄉": "臺西鄉",
+	}
+	if mapped, ok := specialMappings[result]; ok {
+		return mapped
+	}
+
+	return result
+}
+
+// normalizeDistrictName 將區域名稱正規化
+func normalizeDistrictName(name string) string {
+	if name == "" {
+		return name
+	}
+
+	// 應用相同的繁簡轉換
+	result := name
+	for traditional, simplified := range traditionalToSimplified {
+		if strings.Contains(result, simplified) && !strings.Contains(result, traditional) {
+			result = strings.ReplaceAll(result, simplified, traditional)
+		}
+	}
+	return result
+}
+
 type MatchAvailability string
 
 const (
@@ -200,7 +254,7 @@ func NewPagination(page, limit, total int) Pagination {
 }
 
 // SearchTalent searches for teachers based on criteria with pagination and sorting
-func (s *SmartMatchingServiceImpl) SearchTalent(ctx context.Context, searchParams TalentSearchParams) (*TalentSearchResult, error) {
+func (s *SmartMatchingServiceImpl) SearchTalent(ctx context.Context, searchParams TalentSearchParams) (*TalentSearchResultResponse, error) {
 	var allResults []TalentResult
 
 	teachers, err := s.teacherRepository.List(ctx)
@@ -218,12 +272,22 @@ func (s *SmartMatchingServiceImpl) SearchTalent(ctx context.Context, searchParam
 			// This is a simplified check - in production you'd query membership
 		}
 
-		if searchParams.City != "" && teacher.City != searchParams.City {
-			continue
+		if searchParams.City != "" {
+			// 將搜尋參數正規化為資料庫格式
+			normalizedSearchCity := normalizeCityName(searchParams.City)
+			normalizedTeacherCity := normalizeCityName(teacher.City)
+			if normalizedTeacherCity != normalizedSearchCity {
+				continue
+			}
 		}
 
-		if searchParams.District != "" && teacher.District != searchParams.District {
-			continue
+		if searchParams.District != "" {
+			// 將搜尋參數正規化為資料庫格式
+			normalizedSearchDistrict := normalizeDistrictName(searchParams.District)
+			normalizedTeacherDistrict := normalizeDistrictName(teacher.District)
+			if normalizedTeacherDistrict != normalizedSearchDistrict {
+				continue
+			}
 		}
 
 		if searchParams.Keyword != "" {
@@ -363,8 +427,55 @@ func (s *SmartMatchingServiceImpl) SearchTalent(ctx context.Context, searchParam
 
 	pagination := NewPagination(searchParams.Page, searchParams.Limit, total)
 
-	return &TalentSearchResult{
-		Talents:    paginatedResults,
+	// 轉換為符合前端格式的結果
+	talentCards := make([]TalentCardResponse, 0, len(paginatedResults))
+	for _, result := range paginatedResults {
+		// 轉換技能格式：將 Skill 改為 TalentSkillResponse（使用 skill_name）
+		skills := make([]TalentSkillResponse, 0, len(result.Skills))
+		for _, skill := range result.Skills {
+			skills = append(skills, TalentSkillResponse{
+				Category:  skill.Category,
+				SkillName: skill.Name,
+			})
+		}
+
+		// 轉換證照格式
+		certificates := make([]CertificateResponse, 0, len(result.Certificates))
+		for _, cert := range result.Certificates {
+			issuedAt := ""
+			if !cert.IssuedAt.IsZero() {
+				issuedAt = cert.IssuedAt.Format("2006-01-02")
+			}
+			certificates = append(certificates, CertificateResponse{
+				ID:         0, // 簡化結構，ID 非必要不返回
+				Name:       cert.Name,
+				Issuer:     "", // Certificate 結構沒有 issuer
+				IssuedAt:   issuedAt,
+				ExpiryDate: "", // Certificate 結構沒有 expiry_date
+			})
+		}
+
+		talentCard := TalentCardResponse{
+			ID:               result.TeacherID,
+			Name:             result.Name,
+			Bio:              result.Bio,
+			City:             result.City,
+			District:         result.District,
+			Skills:           skills,
+			CertificateCount:  len(result.Certificates),
+			Certificates:     certificates,
+			Rating:           result.InternalRating,
+			ReviewCount:      0, // 暫無評價數量，設為 0
+			IsOpenToHiring:   result.IsOpenToHiring,
+			IsMember:         result.IsMember,
+			PersonalHashtags: result.PersonalHashtags,
+			PublicContactInfo: result.PublicContactInfo,
+		}
+		talentCards = append(talentCards, talentCard)
+	}
+
+	return &TalentSearchResultResponse{
+		Talents:    talentCards,
 		Pagination: pagination,
 	}, nil
 }
@@ -1029,7 +1140,7 @@ type Certificate struct {
 
 type MatchService interface {
 	FindMatches(ctx context.Context, centerID uint, teacherID *uint, roomID uint, startTime, endTime time.Time, requiredSkills []string, excludeTeacherIDs []uint) ([]MatchScore, error)
-	SearchTalent(ctx context.Context, searchParams TalentSearchParams) (*TalentSearchResult, error)
+	SearchTalent(ctx context.Context, searchParams TalentSearchParams) (*TalentSearchResultResponse, error)
 }
 
 var _ MatchService = (*SmartMatchingServiceImpl)(nil)

@@ -9,7 +9,7 @@
   >
     <!-- 選取核取方塊 -->
     <div
-      v-if="showCheckbox && teacher.is_open_to_hiring"
+      v-if="showCheckbox && teacher.is_open_to_hiring && !teacher.is_member"
       class="absolute top-3 right-3 z-10"
     >
       <input
@@ -60,22 +60,22 @@
 
     <!-- 技能標籤 -->
     <div v-if="teacher.skills?.length" class="mb-3">
-      <p class="text-xs text-slate-500 mb-2">專長技能</p>
-      <div class="flex flex-wrap gap-1">
+      <p class="text-xs text-slate-500 mb-2">專業技能</p>
+      <div class="flex flex-wrap gap-1.5">
         <span
           v-for="(skill, index) in teacher.skills.slice(0, 4)"
           :key="index"
-          class="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs"
+          class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium"
           :class="getSkillCategoryStyle(skill.category)"
         >
           <span>{{ getSkillCategoryIcon(skill.category) }}</span>
-          <span>{{ skill.name }}</span>
+          <span>{{ skill.skill_name || skill.name }}</span>
         </span>
         <span
           v-if="teacher.skills.length > 4"
-          class="px-2 py-1 rounded-md text-xs bg-slate-500/20 text-slate-400"
+          class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-500/20 text-slate-400"
         >
-          +{{ teacher.skills.length - 4 }}
+          +{{ teacher.skills.length - 4 }}項
         </span>
       </div>
     </div>
@@ -91,6 +91,28 @@
       </span>
     </div>
 
+    <!-- 證照數量 -->
+    <div v-if="teacher.certificate_count > 0" class="mb-3">
+      <p class="text-xs text-slate-500 mb-2">專業證照</p>
+      <div class="flex items-center gap-2 text-sm text-slate-400">
+        <svg class="w-4 h-4 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+        </svg>
+        <span>擁有 {{ teacher.certificate_count }} 張專業證照</span>
+      </div>
+    </div>
+
+    <!-- 評分顯示 -->
+    <div class="flex items-center gap-2 mb-3">
+      <div class="flex items-center">
+        <svg v-for="star in 5" :key="star" class="w-4 h-4" :class="star <= Math.round(teacher.rating) ? 'text-yellow-400' : 'text-slate-600'" fill="currentColor" viewBox="0 0 20 20">
+          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.176 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+        </svg>
+      </div>
+      <span class="text-sm text-slate-400">{{ teacher.rating?.toFixed(1) || '0.0' }}</span>
+      <span class="text-xs text-slate-500">({{ teacher.review_count || 0 }}則評價)</span>
+    </div>
+
     <!-- 邀請狀態 -->
     <div v-if="invitationStatus" class="mb-3">
       <BaseBadge :variant="invitationStatus.variant" size="sm">
@@ -100,8 +122,9 @@
 
     <!-- 操作按鈕 -->
     <div class="flex gap-2">
+      <!-- 邀請合作按鈕：開放應徵 且 尚未加入中心 -->
       <button
-        v-if="teacher.is_open_to_hiring"
+        v-if="teacher.is_open_to_hiring && !teacher.is_member"
         @click="$emit('invite', teacher)"
         :disabled="inviteLoading || invitationStatus?.sent"
         class="flex-1 px-3 py-2 rounded-lg bg-primary-500 text-white hover:bg-primary-600 transition-colors text-sm flex items-center justify-center gap-1 disabled:opacity-50"
@@ -115,6 +138,19 @@
         </svg>
         {{ invitationStatus?.sent ? '已邀請' : '邀請合作' }}
       </button>
+      <!-- 已加入中心：顯示為禁用狀態 -->
+      <button
+        v-else-if="teacher.is_member"
+        disabled
+        class="flex-1 px-3 py-2 rounded-lg bg-green-500/20 text-green-400 text-sm flex items-center justify-center gap-1 cursor-not-allowed"
+        title="已是中心成員，無法邀請"
+      >
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        中心成員
+      </button>
+      <!-- 未開放應徵 -->
       <button
         v-else
         disabled
@@ -125,6 +161,7 @@
         </svg>
         已關閉徵才
       </button>
+      <!-- 查看詳情按鈕 -->
       <button
         @click="$emit('view', teacher)"
         class="px-3 py-2 rounded-lg bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white transition-colors"
@@ -135,6 +172,7 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
         </svg>
       </button>
+      <!-- 加入比較按鈕 -->
       <button
         @click="$emit('compare', teacher)"
         class="px-3 py-2 rounded-lg bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white transition-colors"
@@ -162,6 +200,14 @@
 <script setup lang="ts">
 import { SKILL_CATEGORIES } from '~/types'
 
+interface TeacherCertificate {
+  id: number
+  name: string
+  issuer?: string
+  obtained_at?: string
+  expiry_date?: string
+}
+
 interface Teacher {
   id: number
   name: string
@@ -170,6 +216,10 @@ interface Teacher {
   district?: string
   skills?: Array<{ name: string; category: string }>
   personal_hashtags?: string[]
+  certificate_count: number
+  certificates?: TeacherCertificate[]
+  rating: number
+  review_count: number
   is_open_to_hiring: boolean
   is_member: boolean
   public_contact_info?: string
