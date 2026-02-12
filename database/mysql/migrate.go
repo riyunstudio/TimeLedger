@@ -33,6 +33,7 @@ func (db *DB) AutoMigrate() {
 		&models.TeacherSkillHashtag{},
 		&models.TeacherPersonalHashtag{},
 		&models.TeacherCertificate{},
+		&models.TeacherBackground{},
 		&models.CenterTeacherNote{},
 		&models.CenterHoliday{},
 		&models.SessionNote{},

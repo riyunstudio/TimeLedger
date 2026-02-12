@@ -17,28 +17,40 @@ import (
 	"strings"
 	"time"
 	"timeLedger/app"
+	"timeLedger/app/models"
 	"timeLedger/app/repositories"
 	"timeLedger/global/errInfos"
-
-	"github.com/google/uuid"
+	"timeLedger/libs"
 )
 
 // ImageService 處理課表圖片生成
 type ImageService struct {
 	BaseService
-	app              *app.App
-	scheduleRuleRepo *repositories.ScheduleRuleRepository
-	teacherRepo      *repositories.TeacherRepository
-	centerRepo       *repositories.CenterRepository
+	app               *app.App
+	scheduleRuleRepo  *repositories.ScheduleRuleRepository
+	teacherRepo       *repositories.TeacherRepository
+	centerRepo        *repositories.CenterRepository
+	backgroundRepo    *repositories.TeacherBackgroundRepository
+	r2Storage         *libs.R2StorageService
+	localStorage      *libs.LocalStorageService
 }
 
 // NewImageService 建立 ImageService 實例
 func NewImageService(app *app.App) *ImageService {
+	// 初始化 R2 存儲服務
+	r2Storage, _ := libs.NewR2StorageService(app.Env)
+
+	// 初始化本地存儲服務（用於背景圖）
+	localStorage := libs.NewLocalStorageService("./uploads/backgrounds")
+
 	return &ImageService{
-		app:              app,
-		scheduleRuleRepo: repositories.NewScheduleRuleRepository(app),
-		teacherRepo:      repositories.NewTeacherRepository(app),
-		centerRepo:       repositories.NewCenterRepository(app),
+		app:               app,
+		scheduleRuleRepo:  repositories.NewScheduleRuleRepository(app),
+		teacherRepo:       repositories.NewTeacherRepository(app),
+		centerRepo:        repositories.NewCenterRepository(app),
+		backgroundRepo:    repositories.NewTeacherBackgroundRepository(app),
+		r2Storage:         r2Storage,
+		localStorage:      localStorage,
 	}
 }
 
@@ -431,62 +443,89 @@ func (s *ImageService) imageToPNG(img image.Image) ([]byte, error) {
 }
 
 // UploadBackgroundImage 上傳自訂背景圖
-func (s *ImageService) UploadBackgroundImage(ctx context.Context, teacherID uint, file io.Reader, filename string) (string, *errInfos.Res, error) {
-	// 產生唯一檔案名稱
+func (s *ImageService) UploadBackgroundImage(ctx context.Context, teacherID uint, file io.Reader, filename string) (*models.TeacherBackground, *errInfos.Res, error) {
+	// 產生唯一檔案名稱（格式：{teacherID}/background_{timestamp}.ext）
 	ext := filepath.Ext(filename)
 	if ext == "" {
 		ext = ".jpg"
 	}
-	newFilename := fmt.Sprintf("backgrounds/%d/%s%s", teacherID, uuid.New().String(), ext)
+	uniqueFilename := fmt.Sprintf("%d/background_%s%s", teacherID, time.Now().Format("20060102_150405"), ext)
 
-	// 儲存到本地或雲端儲存
-	// 這裡使用本地儲存作為範例
-	uploadDir := filepath.Join("uploads", "backgrounds", fmt.Sprintf("%d", teacherID))
-	if err := os.MkdirAll(uploadDir, 0755); err != nil {
-		return "", s.app.Err.New(errInfos.SQL_ERROR), err
+	// 取得 content type
+	contentType := libs.GetContentType(filename)
+
+	// 嘗試使用 R2 儲存，若失敗則使用本地存儲
+	var fileURL string
+	var uploadErr error
+
+	if s.r2Storage != nil && s.r2Storage.IsEnabled() {
+		// 使用 R2 儲存
+		fileURL, uploadErr = s.r2Storage.UploadFile(ctx, file, uniqueFilename, contentType)
+		if uploadErr != nil {
+			s.Logger.Warn("R2 upload failed, falling back to local storage", "error", uploadErr.Error())
+		}
 	}
 
-	filePath := filepath.Join(uploadDir, fmt.Sprintf("%s%s", uuid.New().String(), ext))
-	dst, err := os.Create(filePath)
+	// 如果 R2 不可用或上傳失敗，使用本地存儲
+	if fileURL == "" || uploadErr != nil {
+		fileURL, uploadErr = s.localStorage.UploadFile(ctx, file, uniqueFilename, contentType)
+		if uploadErr != nil {
+			return nil, s.app.Err.New(errInfos.SQL_ERROR), uploadErr
+		}
+	}
+
+	// 儲存到資料庫
+	background := models.TeacherBackground{
+		TeacherID: teacherID,
+		FileURL:   fileURL,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	created, err := s.backgroundRepo.Create(ctx, background)
 	if err != nil {
-		return "", s.app.Err.New(errInfos.SQL_ERROR), err
-	}
-	defer dst.Close()
-
-	if _, err := io.Copy(dst, file); err != nil {
-		return "", s.app.Err.New(errInfos.SQL_ERROR), err
+		return nil, s.app.Err.New(errInfos.SQL_ERROR), err
 	}
 
-	// 回傳相對路徑
-	return newFilename, nil, nil
+	return &created, nil, nil
 }
 
 // DeleteBackgroundImage 刪除自訂背景圖
-func (s *ImageService) DeleteBackgroundImage(ctx context.Context, teacherID uint, imagePath string) error {
-	filePath := filepath.Join("uploads", imagePath)
-	if err := os.Remove(filePath); err != nil {
-		return fmt.Errorf("failed to delete background image: %w", err)
+func (s *ImageService) DeleteBackgroundImage(ctx context.Context, teacherID, backgroundID uint) error {
+	// 從資料庫取得記錄
+	background, err := s.backgroundRepo.GetByID(ctx, backgroundID)
+	if err != nil {
+		return err
 	}
-	return nil
+
+	// 驗證權限
+	if background.TeacherID != teacherID {
+		return fmt.Errorf("forbidden: background does not belong to teacher")
+	}
+
+	// 刪除檔案
+	if strings.HasPrefix(background.FileURL, "/uploads/backgrounds/") {
+		// 本地存儲
+		filePath := "." + background.FileURL
+		if err := os.Remove(filePath); err != nil {
+			s.Logger.Warn("Failed to delete local file", "error", err.Error(), "path", filePath)
+		}
+	} else if s.r2Storage != nil && s.r2Storage.IsEnabled() {
+		// R2 存儲
+		publicURL := s.r2Storage.GetPublicURL("")
+		key := strings.TrimPrefix(background.FileURL, publicURL+"/")
+		if err := s.r2Storage.DeleteFile(ctx, key); err != nil {
+			s.Logger.Warn("Failed to delete R2 file", "error", err.Error(), "key", key)
+		}
+	}
+
+	// 從資料庫刪除記錄
+	return s.backgroundRepo.Delete(ctx, backgroundID)
 }
 
 // GetTeacherBackgroundImages 取得老師的所有自訂背景圖
-func (s *ImageService) GetTeacherBackgroundImages(ctx context.Context, teacherID uint) ([]string, error) {
-	uploadDir := filepath.Join("uploads", "backgrounds", fmt.Sprintf("%d", teacherID))
-
-	var images []string
-	filepath.Walk(uploadDir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if !info.IsDir() {
-			relPath, _ := filepath.Rel("uploads", path)
-			images = append(images, relPath)
-		}
-		return nil
-	})
-
-	return images, nil
+func (s *ImageService) GetTeacherBackgroundImages(ctx context.Context, teacherID uint) ([]models.TeacherBackground, error) {
+	return s.backgroundRepo.GetByTeacherID(ctx, teacherID)
 }
 
 // ExportTeacherScheduleToImage 匯出老師課表為圖片

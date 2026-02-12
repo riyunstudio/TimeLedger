@@ -493,6 +493,58 @@ func (s *TeacherProfileService) CreateCertificate(ctx context.Context, teacherID
 	return &createdCert, nil, nil
 }
 
+// UpdateCertificateRequest 更新證照請求
+type UpdateCertificateRequest struct {
+	Name       string
+	FileURL    string
+	IssuedAt   *time.Time
+	Visibility *uint
+}
+
+// UpdateCertificate 更新老師證照
+func (s *TeacherProfileService) UpdateCertificate(ctx context.Context, certificateID, teacherID uint, req *UpdateCertificateRequest) (*models.TeacherCertificate, *errInfos.Res, error) {
+	// 取得現有證照
+	certificate, err := s.certificateRepo.GetByID(ctx, certificateID)
+	if err != nil {
+		return nil, s.app.Err.New(errInfos.NOT_FOUND), err
+	}
+
+	// 驗證權限：確保證照歸屬於該老師
+	if certificate.TeacherID != teacherID {
+		return nil, s.app.Err.New(errInfos.FORBIDDEN), nil
+	}
+
+	// 更新欄位（只更新有提供的欄位）
+	if req.Name != "" {
+		certificate.Name = req.Name
+	}
+	if req.FileURL != "" {
+		certificate.FileURL = req.FileURL
+	}
+	if req.IssuedAt != nil {
+		certificate.IssuedAt = *req.IssuedAt
+	}
+	// 使用指標類型，這樣 Visibility = 0 (PRIVATE) 也是有效的
+	if req.Visibility != nil {
+		visibility := *req.Visibility
+		// 確保值在有效範圍內 (0-2)
+		if visibility > 2 {
+			visibility = 2
+		}
+		certificate.Visibility = visibility
+	}
+
+	certificate.UpdatedAt = time.Now()
+
+	// 更新到資料庫
+	if err := s.certificateRepo.Update(ctx, certificate); err != nil {
+		return nil, s.app.Err.New(errInfos.SQL_ERROR), err
+	}
+
+	// 返回指標類型
+	return &certificate, nil, nil
+}
+
 // DeleteCertificate 刪除老師證照
 func (s *TeacherProfileService) DeleteCertificate(ctx context.Context, certificateID, teacherID uint) *errInfos.Res {
 	certificate, err := s.certificateRepo.GetByID(ctx, certificateID)

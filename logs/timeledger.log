@@ -1768,3 +1768,4 @@
 {"level":"info","time":"2026-02-12T15:27:17.594+0800","message":"Starting TimeLedger application..."}
 {"level":"info","time":"2026-02-12T15:27:18.101+0800","message":"Notification worker disabled (set NOTIFICATION_WORKER_ENABLED=true to enable)"}
 {"level":"info","time":"2026-02-12T15:27:18.101+0800","message":"Asynq worker disabled (set ASYNQ_WORKER_ENABLED=true to enable)"}
+{"level":"debug","time":"2026-02-12T17:28:27.200+0800","message":"caching room list","component":"CacheService","center_id":1,"count":4}

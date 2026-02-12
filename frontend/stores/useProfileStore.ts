@@ -3,9 +3,13 @@ import type { TeacherSkill, TeacherCertificate, Teacher, Hashtag } from '~/types
 import { withLoading } from '~/utils/loadingHelper'
 
 export interface BackgroundImage {
-  path: string
-  filename: string
+  id: number
+  teacher_id: number
+  path?: string  // 舊版相容性欄位
+  filename?: string  // 舊版相容性欄位
+  file_url: string
   url: string
+  created_at: string
 }
 
 export const useProfileStore = defineStore('profile', () => {
@@ -201,17 +205,25 @@ export const useProfileStore = defineStore('profile', () => {
   }
 
   // 背景圖片操作
+  interface TeacherBackgroundResponse {
+    id: number
+    teacher_id: number
+    file_url: string
+    created_at: string
+  }
+
   const fetchBackgrounds = async () => {
     return withLoading(isFetchingBackgrounds, async () => {
       try {
         const api = useApi()
-        const config = useRuntimeConfig()
-        const response = await api.get<string[]>('/teacher/me/backgrounds')
-        // 轉換為完整的 URL 陣列
-        backgrounds.value = (response || []).map((path: string) => ({
-          path,
-          filename: path.split('/').pop() || path,
-          url: `${config.public.apiBase}/${path}`,
+        const response = await api.get<TeacherBackgroundResponse[]>('/teacher/me/backgrounds')
+        // 轉換為 BackgroundImage 格式
+        backgrounds.value = (response || []).map((bg: TeacherBackgroundResponse) => ({
+          id: bg.id,
+          teacher_id: bg.teacher_id,
+          file_url: bg.file_url,
+          url: bg.file_url, // API 已回傳完整 URL
+          created_at: bg.created_at,
         }))
       } catch (error) {
         console.error('Failed to fetch backgrounds:', error)
@@ -223,24 +235,25 @@ export const useProfileStore = defineStore('profile', () => {
   const uploadBackground = async (file: File): Promise<BackgroundImage> => {
     return withLoading(isUploadingBackground, async () => {
       const api = useApi()
-      const config = useRuntimeConfig()
-      const response = await api.upload<{ image_path: string }>('/teacher/me/backgrounds', file)
+      const response = await api.upload<TeacherBackgroundResponse>('/teacher/me/backgrounds', file)
 
       const newImage: BackgroundImage = {
-        path: response.image_path,
-        filename: response.image_path.split('/').pop() || response.image_path,
-        url: `${config.public.apiBase}/${response.image_path}`,
+        id: response.id,
+        teacher_id: response.teacher_id,
+        file_url: response.file_url,
+        url: response.file_url,
+        created_at: response.created_at,
       }
       backgrounds.value.push(newImage)
       return newImage
     })
   }
 
-  const deleteBackground = async (path: string) => {
+  const deleteBackground = async (id: number) => {
     return withLoading(isDeletingBackground, async () => {
       const api = useApi()
-      await api.delete(`/teacher/me/backgrounds?path=${encodeURIComponent(path)}`)
-      backgrounds.value = backgrounds.value.filter(b => b.path !== path)
+      await api.delete(`/teacher/me/backgrounds/${id}`)
+      backgrounds.value = backgrounds.value.filter(b => b.id !== id)
     })
   }
 

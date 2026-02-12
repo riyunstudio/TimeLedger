@@ -441,6 +441,59 @@ func (ctl *TeacherProfileController) DeleteCertificate(ctx *gin.Context) {
 	helper.Success(nil)
 }
 
+// UpdateCertificate 更新老師證照
+// @Summary 更新老師證照
+// @Tags Teacher
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path uint true "證照ID"
+// @Param request body UpdateCertificateRequest true "證照資訊"
+// @Success 200 {object} global.ApiResponse{data=models.TeacherCertificate}
+// @Router /api/v1/teacher/me/certificates/{id} [put]
+func (ctl *TeacherProfileController) UpdateCertificate(ctx *gin.Context) {
+	helper := NewContextHelper(ctx)
+
+	teacherID := helper.MustUserID()
+	if teacherID == 0 {
+		return
+	}
+
+	certificateID := helper.MustParamUint("id")
+	if certificateID == 0 {
+		return
+	}
+
+	var req UpdateCertificateRequest
+	if !helper.MustBindJSON(&req) {
+		return
+	}
+
+	// 解析 IssuedAt 日期字串（如果提供了）
+	var issuedAt *time.Time
+	if req.IssuedAt != "" {
+		parsed, err := time.Parse("2006-01-02", req.IssuedAt)
+		if err != nil {
+			helper.BadRequest("無效的日期格式，請使用 YYYY-MM-DD 格式")
+			return
+		}
+		issuedAt = &parsed
+	}
+
+	certificate, errInfo, err := ctl.profileService.UpdateCertificate(ctx, certificateID, teacherID, &services.UpdateCertificateRequest{
+		Name:       req.Name,
+		FileURL:    req.FileURL,
+		IssuedAt:   issuedAt,
+		Visibility: req.Visibility,
+	})
+	if err != nil {
+		helper.ErrorWithInfo(errInfo)
+		return
+	}
+
+	helper.Success(certificate)
+}
+
 // UploadCertificateFile 上傳證照檔案
 // @Summary 上傳證照檔案
 // @Tags Teacher
@@ -549,4 +602,11 @@ type CreateCertificateRequest struct {
 	FileURL    string `json:"file_url" binding:"required"`
 	IssuedAt   string `json:"issued_at" binding:"required"`
 	Visibility uint   `json:"visibility"`
+}
+
+type UpdateCertificateRequest struct {
+	Name       string `json:"name"`
+	FileURL    string `json:"file_url"`
+	IssuedAt   string `json:"issued_at"`
+	Visibility *uint  `json:"visibility"`
 }

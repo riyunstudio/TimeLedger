@@ -56,16 +56,16 @@
           <div class="grid grid-cols-3 gap-4">
             <div
               v-for="bg in backgrounds"
-              :key="bg.path"
+              :key="bg.id"
               class="group relative aspect-video rounded-lg overflow-hidden bg-white/5 cursor-pointer ring-2 transition-all"
               :class="[
-                selectedPath === bg.path ? 'ring-primary-500' : 'ring-transparent hover:ring-white/20'
+                selectedPath === bg.url ? 'ring-primary-500' : 'ring-transparent hover:ring-white/20'
               ]"
-              @click="$emit('select', bg.path)"
+              @click="$emit('select', bg.url)"
             >
               <img
                 :src="bg.url"
-                :alt="bg.filename"
+                :alt="bg.file_url"
                 class="w-full h-full object-cover"
               >
 
@@ -74,7 +74,7 @@
                 <button
                   v-if="selectable"
                   class="px-3 py-1 bg-primary-500 text-white text-sm rounded-lg hover:bg-primary-600 transition-colors"
-                  @click.stop="$emit('select', bg.path)"
+                  @click.stop="$emit('select', bg.url)"
                 >
                   選擇
                 </button>
@@ -90,7 +90,7 @@
 
               <!-- 已選擇標記 -->
               <div
-                v-if="selectedPath === bg.path"
+                v-if="selectedPath === bg.url"
                 class="absolute top-2 right-2 w-6 h-6 bg-primary-500 rounded-full flex items-center justify-center"
               >
                 <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -137,7 +137,7 @@
     :is-open="showDeleteConfirm"
     type="warning"
     title="刪除背景圖片"
-    :message="`確定要刪除「${deletingBg?.filename}」嗎？此操作無法復原。`"
+    :message="`確定要刪除「${deletingBg?.file_url}」嗎？此操作無法復原。`"
     confirm-text="刪除"
     confirm-class="bg-red-500 hover:bg-red-600"
     @confirm="handleDelete"
@@ -251,7 +251,7 @@ const handleDelete = async () => {
   if (!deletingBg.value) return
 
   try {
-    await profileStore.deleteBackground(deletingBg.value.path)
+    await profileStore.deleteBackground(deletingBg.value.id)
     showDeleteConfirm.value = false
     deletingBg.value = null
     await alertSuccess('刪除成功')

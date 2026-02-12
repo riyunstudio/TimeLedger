@@ -546,7 +546,7 @@ func (ctl *ExportController) ExportScheduleToImage(ctx *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param file formData file true "背景圖片"
-// @Success 200 {object} global.ApiResponse{data=UploadBackgroundResponse}
+// @Success 200 {object} global.ApiResponse{data=TeacherBackgroundResponse}
 // @Router /api/v1/teacher/me/backgrounds [post]
 func (ctl *ExportController) UploadBackgroundImage(ctx *gin.Context) {
 	teacherID := ctx.GetUint(global.UserIDKey)
@@ -589,7 +589,7 @@ func (ctl *ExportController) UploadBackgroundImage(ctx *gin.Context) {
 	defer src.Close()
 
 	// 上傳背景圖
-	imagePath, errInfo, err := ctl.imageSvc.UploadBackgroundImage(ctx, teacherID, src, file.Filename)
+	background, errInfo, err := ctl.imageSvc.UploadBackgroundImage(ctx, teacherID, src, file.Filename)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
 			Code:    errInfo.Code,
@@ -601,9 +601,11 @@ func (ctl *ExportController) UploadBackgroundImage(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, global.ApiResponse{
 		Code:    0,
 		Message: "Background image uploaded",
-		Datas: UploadBackgroundResponse{
-			ImagePath: imagePath,
-			FileName:  file.Filename,
+		Datas: TeacherBackgroundResponse{
+			ID:        background.ID,
+			TeacherID: background.TeacherID,
+			FileURL:   background.FileURL,
+			CreatedAt: background.CreatedAt,
 		},
 	})
 }
@@ -614,7 +616,7 @@ func (ctl *ExportController) UploadBackgroundImage(ctx *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Success 200 {object} global.ApiResponse{data=[]string}
+// @Success 200 {object} global.ApiResponse{data=[]TeacherBackgroundResponse}
 // @Router /api/v1/teacher/me/backgrounds [get]
 func (ctl *ExportController) GetBackgroundImages(ctx *gin.Context) {
 	teacherID := ctx.GetUint(global.UserIDKey)
@@ -626,7 +628,7 @@ func (ctl *ExportController) GetBackgroundImages(ctx *gin.Context) {
 		return
 	}
 
-	images, err := ctl.imageSvc.GetTeacherBackgroundImages(ctx, teacherID)
+	backgrounds, err := ctl.imageSvc.GetTeacherBackgroundImages(ctx, teacherID)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
 			Code:    500,
@@ -635,10 +637,21 @@ func (ctl *ExportController) GetBackgroundImages(ctx *gin.Context) {
 		return
 	}
 
+	// 轉換為 response 格式
+	responses := make([]TeacherBackgroundResponse, len(backgrounds))
+	for i, bg := range backgrounds {
+		responses[i] = TeacherBackgroundResponse{
+			ID:        bg.ID,
+			TeacherID: bg.TeacherID,
+			FileURL:   bg.FileURL,
+			CreatedAt: bg.CreatedAt,
+		}
+	}
+
 	ctx.JSON(http.StatusOK, global.ApiResponse{
 		Code:    0,
 		Message: "Success",
-		Datas:   images,
+		Datas:   responses,
 	})
 }
 
@@ -648,9 +661,9 @@ func (ctl *ExportController) GetBackgroundImages(ctx *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param path query string true "圖片路徑"
+// @Param id path int true "背景圖 ID"
 // @Success 200 {object} global.ApiResponse
-// @Router /api/v1/teacher/me/backgrounds [delete]
+// @Router /api/v1/teacher/me/backgrounds/{id} [delete]
 func (ctl *ExportController) DeleteBackgroundImage(ctx *gin.Context) {
 	teacherID := ctx.GetUint(global.UserIDKey)
 	if teacherID == 0 {
@@ -661,16 +674,17 @@ func (ctl *ExportController) DeleteBackgroundImage(ctx *gin.Context) {
 		return
 	}
 
-	imagePath := ctx.Query("path")
-	if imagePath == "" {
+	// 解析背景圖 ID
+	var backgroundID uint
+	if _, err := fmt.Sscanf(ctx.Param("id"), "%d", &backgroundID); err != nil || backgroundID == 0 {
 		ctx.JSON(http.StatusBadRequest, global.ApiResponse{
 			Code:    global.BAD_REQUEST,
-			Message: "Image path required",
+			Message: "Invalid background ID",
 		})
 		return
 	}
 
-	if err := ctl.imageSvc.DeleteBackgroundImage(ctx, teacherID, imagePath); err != nil {
+	if err := ctl.imageSvc.DeleteBackgroundImage(ctx, teacherID, backgroundID); err != nil {
 		ctx.JSON(http.StatusInternalServerError, global.ApiResponse{
 			Code:    500,
 			Message: err.Error(),
@@ -684,7 +698,15 @@ func (ctl *ExportController) DeleteBackgroundImage(ctx *gin.Context) {
 	})
 }
 
-// UploadBackgroundResponse 上傳背景圖回應
+// TeacherBackgroundResponse 背景圖回應結構
+type TeacherBackgroundResponse struct {
+	ID        uint      `json:"id"`
+	TeacherID uint      `json:"teacher_id"`
+	FileURL   string    `json:"file_url"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// UploadBackgroundResponse 上傳背景圖回應（已廢用，請使用 TeacherBackgroundResponse）
 type UploadBackgroundResponse struct {
 	ImagePath string `json:"image_path"`
 	FileName  string `json:"file_name"`

@@ -81,6 +81,7 @@ func (s *Server) LoadRoutes() {
 		// Teacher - Certificates
 		{http.MethodGet, "/api/v1/teacher/me/certificates", s.action.teacherProfile.GetCertificates, []gin.HandlerFunc{authMiddleware.Authenticate()}},
 		{http.MethodPost, "/api/v1/teacher/me/certificates", s.action.teacherProfile.CreateCertificate, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+		{http.MethodPut, "/api/v1/teacher/me/certificates/:id", s.action.teacherProfile.UpdateCertificate, []gin.HandlerFunc{authMiddleware.Authenticate()}},
 		{http.MethodPost, "/api/v1/teacher/me/certificates/upload", s.action.teacherProfile.UploadCertificateFile, []gin.HandlerFunc{authMiddleware.Authenticate()}},
 		{http.MethodDelete, "/api/v1/teacher/me/certificates/:id", s.action.teacherProfile.DeleteCertificate, []gin.HandlerFunc{authMiddleware.Authenticate()}},
 		// Hashtags
@@ -288,7 +289,7 @@ func (s *Server) LoadRoutes() {
 		{http.MethodGet, "/api/v1/teacher/me/schedule/image", s.action.export.ExportScheduleToImage, []gin.HandlerFunc{authMiddleware.Authenticate()}},
 		{http.MethodPost, "/api/v1/teacher/me/backgrounds", s.action.export.UploadBackgroundImage, []gin.HandlerFunc{authMiddleware.Authenticate()}},
 		{http.MethodGet, "/api/v1/teacher/me/backgrounds", s.action.export.GetBackgroundImages, []gin.HandlerFunc{authMiddleware.Authenticate()}},
-		{http.MethodDelete, "/api/v1/teacher/me/backgrounds", s.action.export.DeleteBackgroundImage, []gin.HandlerFunc{authMiddleware.Authenticate()}},
+		{http.MethodDelete, "/api/v1/teacher/me/backgrounds/:id", s.action.export.DeleteBackgroundImage, []gin.HandlerFunc{authMiddleware.Authenticate()}},
 
 		// Public - Calendar Subscription (no auth required)
 		{http.MethodGet, "/api/v1/calendar/subscribe/:token.ics", s.action.export.SubscribeToCalendar, []gin.HandlerFunc{}},

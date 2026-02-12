@@ -1,7 +1,0 @@
-feat(talent-pool): enhance talent card display and certificates support
-
-- Fix skill name display on talent list cards (skill_name format)
-- Add certificates to TalentCardResponse in backend API
-- Add TalentDetailModal component for viewing teacher details
-- Enhance compare mode for talent pool search results
-- Add CertificateResponse struct for API response
