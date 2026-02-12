@@ -102,7 +102,7 @@
         <input
           v-model="filters.search"
           type="text"
-          placeholder="搜尋 Email..."
+          placeholder="搜尋姓名..."
           class="px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-slate-300 focus:outline-none focus:border-primary-500 flex-1 min-w-[200px]"
         />
 
@@ -129,7 +129,7 @@
           <thead class="bg-white/5">
             <tr>
               <th class="px-4 py-3 text-left text-sm font-medium text-slate-400">邀請類型</th>
-              <th class="px-4 py-3 text-left text-sm font-medium text-slate-400">Email</th>
+              <th class="px-4 py-3 text-left text-sm font-medium text-slate-400">老師姓名</th>
               <th class="px-4 py-3 text-left text-sm font-medium text-slate-400">狀態</th>
               <th class="px-4 py-3 text-left text-sm font-medium text-slate-400">邀請時間</th>
               <th class="px-4 py-3 text-left text-sm font-medium text-slate-400">回應時間</th>
@@ -149,7 +149,7 @@
                   {{ inviteTypeText(invitation.invite_type) }}
                 </span>
               </td>
-              <td class="px-4 py-3 text-slate-300">{{ invitation.email || '-' }}</td>
+              <td class="px-4 py-3 text-slate-300">{{ invitation.teacher_name || invitation.email || '-' }}</td>
               <td class="px-4 py-3">
                 <span
                   class="px-2 py-1 rounded-full text-xs font-medium"
@@ -216,20 +216,14 @@
         <table v-else class="w-full">
           <thead class="bg-white/5">
             <tr>
-              <th class="px-4 py-3 text-left text-sm font-medium text-slate-400">Email</th>
-              <th class="px-4 py-3 text-left text-sm font-medium text-slate-400">職位</th>
+              <th class="px-4 py-3 text-left text-sm font-medium text-slate-400">老師姓名</th>
               <th class="px-4 py-3 text-left text-sm font-medium text-slate-400">有效期限</th>
               <th class="px-4 py-3 text-left text-sm font-medium text-slate-400">操作</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-white/5">
             <tr v-for="link in links" :key="link.id" class="hover:bg-white/5">
-              <td class="px-4 py-3 text-slate-300">{{ link.email }}</td>
-              <td class="px-4 py-3">
-                <span class="px-2 py-1 rounded-full text-xs font-medium bg-primary-500/20 text-primary-400">
-                  {{ roleText(link.role) }}
-                </span>
-              </td>
+              <td class="px-4 py-3 text-slate-300">{{ link.teacher_name || link.email || '-' }}</td>
               <td class="px-4 py-3 text-slate-400 text-sm">
                 {{ link.expires_at ? formatDate(link.expires_at) : '無期限' }}
               </td>
@@ -378,11 +372,21 @@
 
         <form @submit.prevent="generateLink">
           <div class="mb-4">
-            <label class="block text-slate-400 text-sm mb-2">Email 地址</label>
+            <label class="block text-slate-400 text-sm mb-2">老師姓名</label>
+            <input
+              v-model="generateForm.teacher_name"
+              type="text"
+              required
+              placeholder="輸入老師姓名"
+              class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-primary-500"
+            />
+          </div>
+
+          <div class="mb-4">
+            <label class="block text-slate-400 text-sm mb-2">Email 地址 <span class="text-slate-500">(選填)</span></label>
             <input
               v-model="generateForm.email"
               type="email"
-              required
               placeholder="輸入要邀請的 Email"
               class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-primary-500"
             />
@@ -524,6 +528,7 @@ const activeTab = ref('invitations')
 // 介面
 interface Invitation {
   id: number
+  teacher_name: string
   email: string
   status: string
   invite_type: string
@@ -534,6 +539,7 @@ interface Invitation {
 
 interface InvitationLink {
   id: number
+  teacher_name: string
   email: string
   role: string
   invite_link: string
@@ -571,6 +577,7 @@ const showGenerateModal = ref(false)
 const generating = ref(false)
 const generatedLink = ref<InvitationLink | null>(null)
 const generateForm = ref({
+  teacher_name: '',
   email: '',
   role: 'TEACHER',
   message: '',
@@ -742,10 +749,11 @@ const filteredInvitations = computed(() => {
     result = result.filter(inv => inv.invite_type === filters.value.inviteType)
   }
 
-  // 搜尋 Email
+  // 搜尋姓名
   if (filters.value.search) {
     const search = filters.value.search.toLowerCase()
     result = result.filter(inv =>
+      (inv.teacher_name && inv.teacher_name.toLowerCase().includes(search)) ||
       (inv.email && inv.email.toLowerCase().includes(search))
     )
   }
@@ -755,7 +763,7 @@ const filteredInvitations = computed(() => {
 
 // 產生邀請連結
 const generateLink = async () => {
-  if (!generateForm.value.email || !generateForm.value.role) return
+  if (!generateForm.value.teacher_name || !generateForm.value.role) return
 
   generating.value = true
   try {
@@ -766,7 +774,12 @@ const generateLink = async () => {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(generateForm.value),
+      body: JSON.stringify({
+        teacher_name: generateForm.value.teacher_name,
+        email: generateForm.value.email,
+        role: generateForm.value.role,
+        message: generateForm.value.message,
+      }),
     })
 
     const data = await response.json()
@@ -808,7 +821,8 @@ const copyGeneratedLink = async () => {
 
 // 撤回連結
 const revokeLink = async (link: InvitationLink) => {
-  if (!confirm(`確定要撤回「${link.email}」的邀請連結嗎？`)) return
+  const displayName = link.teacher_name || link.email || '此邀請'
+  if (!confirm(`確定要撤回「${displayName}」的邀請連結嗎？`)) return
 
   try {
     const token = localStorage.getItem('admin_token')
@@ -837,6 +851,7 @@ const closeGenerateModal = () => {
   showGenerateModal.value = false
   generatedLink.value = null
   generateForm.value = {
+    teacher_name: '',
     email: '',
     role: 'TEACHER',
     message: '',
