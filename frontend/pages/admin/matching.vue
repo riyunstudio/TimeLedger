@@ -1165,8 +1165,6 @@ const clearQuickFilters = () => {
  * 查看人才詳細資訊
  */
 const viewTalentDetail = (teacher: TalentCard) => {
-  console.log('查看人才詳細資訊:', teacher.name)
-  
   // 設置選中的人才並開啟彈窗
   selectedTeacherForDetail.value = {
     id: teacher.id,
@@ -1193,8 +1191,6 @@ const viewTalentDetail = (teacher: TalentCard) => {
  * 加入比較
  */
 const addTalentToCompare = (teacher: TalentCard) => {
-  console.log('加入比較:', teacher.name)
-
   if (smartMatchingStore.selectedForCompare.size >= 3) {
     showStatus('最多只能選取 3 位老師進行比較', 'warning')
     alertWarning('最多只能選取 3 位老師進行比較')

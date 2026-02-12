@@ -22,8 +22,6 @@ export default defineNuxtPlugin(async () => {
       liffId: config.public.liffId,
     })
 
-    console.log('[LIFF] 初始化成功，LIFF ID:', config.public.liffId)
-
     // 注入 liff 實例到 Nuxt App
     return {
       provide: {
