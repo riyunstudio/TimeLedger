@@ -89,7 +89,8 @@
             <tr class="text-left text-slate-400 text-sm border-b border-white/10">
               <th class="pb-3 pl-4" scope="col">課程</th>
               <th class="pb-3" scope="col">星期</th>
-              <th class="pb-3" scope="col">時間</th>
+              <th class="pb-3" scope="col">課程期間</th>
+              <th class="pb-3" scope="col">課程時間</th>
               <th class="pb-3" scope="col">教室</th>
               <th class="pb-3" scope="col">老師</th>
               <th class="pb-3" scope="col">狀態</th>
@@ -104,6 +105,7 @@
             >
               <td class="py-3 pl-4 text-white">{{ rule.offering?.name || '-' }}</td>
               <td class="py-3 text-slate-300">{{ getWeekdayText(rule.weekday) }}</td>
+              <td class="py-3 text-slate-300">{{ formatDateRange(rule.effective_range) }}</td>
               <td class="py-3 text-slate-300">{{ rule.start_time }} - {{ rule.end_time }}</td>
               <td class="py-3 text-slate-300">{{ rule.room?.name || '-' }}</td>
               <td class="py-3 text-slate-300">{{ rule.teacher?.name || '-' }}</td>
@@ -370,6 +372,30 @@ const getStatusText = (rule: any): string => {
   if (endDate && now > endDate) return '已結束'
   if (now < startDate) return '尚未開始'
   return '進行中'
+}
+
+const formatDateRange = (effectiveRange: any): string => {
+  if (!effectiveRange?.start_date) return '-'
+
+  const startDate = new Date(effectiveRange.start_date)
+  const startStr = startDate.toLocaleDateString('zh-TW', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  })
+
+  if (!effectiveRange?.end_date) {
+    return `${startStr} 起`
+  }
+
+  const endDate = new Date(effectiveRange.end_date)
+  const endStr = endDate.toLocaleDateString('zh-TW', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  })
+
+  return `${startStr} ~ ${endStr}`
 }
 
 onMounted(() => {
