@@ -6,6 +6,12 @@
     @click="$emit('click')"
   >
     <div class="font-medium truncate" :class="titleClass">
+      <!-- PLANNED 狀態標籤 -->
+      <span v-if="schedule.status === 'PLANNED'" class="text-[10px] bg-amber-500/30 px-1.5 py-0.5 rounded mr-1 text-amber-300">預計</span>
+      <!-- SUSPENDED 狀態標籤 -->
+      <span v-else-if="schedule.status === 'SUSPENDED'" class="text-[10px] bg-slate-500/30 px-1.5 py-0.5 rounded mr-1 text-slate-300">停課</span>
+      <!-- ARCHIVED 狀態標籤 -->
+      <span v-else-if="schedule.status === 'ARCHIVED'" class="text-[10px] bg-slate-600/30 px-1.5 py-0.5 rounded mr-1 text-slate-400">歸檔</span>
       {{ schedule.offering_name }}
     </div>
     <div v-if="cardInfoType === 'teacher'" class="text-slate-400 truncate">
@@ -74,7 +80,25 @@ const cardClass = computed(() => {
     }
   }
 
-  return 'bg-slate-700/80 border border-white/10'
+  // 根據狀態返回對應樣式
+  const status = schedule.status || ''
+  switch (status) {
+    case 'PLANNED':
+      // 預計課程：虛線邊框 + 斜紋背景
+      return 'schedule-card-planned border border-dashed border-amber-500/50 text-amber-300'
+    case 'CONFIRMED':
+      // 已開課：實線邊框（預設樣式）
+      return 'bg-primary-500/30 border border-primary-500/50 text-white'
+    case 'SUSPENDED':
+      // 停課：灰色樣式
+      return 'bg-slate-500/30 border border-slate-500/50 text-slate-300'
+    case 'ARCHIVED':
+      // 已歸檔：淡化樣式
+      return 'bg-slate-600/30 border border-slate-600/30 text-slate-400 opacity-60'
+    default:
+      // 預設樣式（包含空字串情況）
+      return 'bg-slate-700/80 border border-white/10 text-white'
+  }
 })
 
 // 輔助函數：將 hex 顏色轉換為 RGBA
@@ -142,3 +166,16 @@ const cardStyle = computed(() => {
   return style
 })
 </script>
+
+<style scoped>
+.schedule-card-planned {
+  background-color: rgba(51, 65, 85, 0.6); /* slate-700 with opacity */
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 10px,
+    rgba(255, 255, 255, 0.05) 10px,
+    rgba(255, 255, 255, 0.05) 20px
+  );
+}
+</style>

@@ -389,6 +389,7 @@ const handleFormSubmit = async (formData: Record<string, unknown>, updateMode: s
       end_time: formData.end_time,
       duration: formData.duration,
       weekdays: formData.weekdays,
+      status: formData.status, // 新增：課程狀態
       start_date: (formData.start_date as string)?.split(/[T ]/)[0],
       end_date: (formData.end_date as string)?.split(/[T ]/)[0] || null,
       suspended_dates: formData.suspended_dates || [],

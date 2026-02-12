@@ -78,6 +78,27 @@
                   調課
                 </span>
               </div>
+              <!-- 規則狀態標籤 -->
+              <div v-else-if="schedule.status && schedule.status !== 'CONFIRMED'" class="flex-shrink-0">
+                <span
+                  v-if="schedule.status === 'PLANNED'"
+                  class="text-xs px-2 py-1 bg-amber-500/20 text-amber-400 rounded"
+                >
+                  預計
+                </span>
+                <span
+                  v-else-if="schedule.status === 'SUSPENDED'"
+                  class="text-xs px-2 py-1 bg-slate-500/20 text-slate-400 rounded"
+                >
+                  停課
+                </span>
+                <span
+                  v-else-if="schedule.status === 'ARCHIVED'"
+                  class="text-xs px-2 py-1 bg-slate-600/20 text-slate-500 rounded"
+                >
+                  歸檔
+                </span>
+              </div>
             </div>
           </div>
         </div>

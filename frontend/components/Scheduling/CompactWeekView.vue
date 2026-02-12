@@ -84,6 +84,12 @@
                       @click="$emit('select-schedule', schedule)"
                     >
                       <div class="text-xs font-medium truncate" :class="getScheduleTitleClass(schedule)">
+                        <!-- PLANNED 狀態標籤 -->
+                        <span v-if="schedule.status === 'PLANNED'" class="text-[10px] bg-amber-500/30 px-1 rounded mr-1 text-amber-300">預計</span>
+                        <!-- SUSPENDED 狀態標籤 -->
+                        <span v-else-if="schedule.status === 'SUSPENDED'" class="text-[10px] bg-slate-500/30 px-1 rounded mr-1 text-slate-300">停課</span>
+                        <!-- ARCHIVED 狀態標籤 -->
+                        <span v-else-if="schedule.status === 'ARCHIVED'" class="text-[10px] bg-slate-600/30 px-1 rounded mr-1 text-slate-400">歸檔</span>
                         {{ schedule.offering_name }}
                       </div>
                       <div class="text-xs truncate" :class="getScheduleTimeClass(schedule)">
@@ -487,7 +493,26 @@ const getScheduleCardClass = (schedule: any): string => {
     const borderColor = hexToRgba(colorHex, 0.8)
     return `border ${borderColor}`
   }
-  return 'bg-primary-500/20 border border-primary-500/30'
+
+  // 根據狀態返回對應樣式
+  const status = schedule.status || ''
+  switch (status) {
+    case 'PLANNED':
+      // 預計課程：虛線邊框 + 斜紋背景
+      return 'bg-amber-500/20 border border-dashed border-amber-500/50 text-amber-300'
+    case 'CONFIRMED':
+      // 已開課：實線邊框
+      return 'bg-primary-500/20 border border-primary-500/30'
+    case 'SUSPENDED':
+      // 停課：灰色樣式
+      return 'bg-slate-500/20 border border-slate-500/50 text-slate-300'
+    case 'ARCHIVED':
+      // 已歸檔：淡化樣式
+      return 'bg-slate-600/20 border border-slate-600/30 text-slate-400 opacity-60'
+    default:
+      // 預設樣式（包含空字串）
+      return 'bg-primary-500/20 border border-primary-500/30'
+  }
 }
 
 // 取得標題樣式類別
@@ -498,7 +523,21 @@ const getScheduleTitleClass = (schedule: any): string => {
   if (schedule.is_personal_event) {
     return 'text-white'
   }
-  return 'text-primary-400'
+
+  // 根據狀態返回對應文字顏色
+  const status = schedule.status || ''
+  switch (status) {
+    case 'PLANNED':
+      return 'text-amber-300'
+    case 'CONFIRMED':
+      return 'text-primary-400'
+    case 'SUSPENDED':
+      return 'text-slate-300'
+    case 'ARCHIVED':
+      return 'text-slate-400'
+    default:
+      return 'text-primary-400'
+  }
 }
 
 // 取得時間樣式類別

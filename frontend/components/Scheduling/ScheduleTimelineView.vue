@@ -147,7 +147,7 @@
 
           <!-- 課程卡片容器 -->
           <div class="absolute inset-0" :style="{ top: '0' }">
-            <!-- 課程卡片 -->
+              <!-- 課程卡片 -->
             <div
               v-for="session in filteredSessions"
               :key="`${session.id}-${session.date}`"
@@ -155,7 +155,8 @@
               :style="getSessionStyle(session)"
               @click="selectSession(session)"
             >
-              <div class="font-medium truncate text-white">
+              <div class="font-medium truncate text-white flex items-center gap-1">
+                <span v-if="session.status === 'PLANNED'" class="text-[10px] bg-white/20 px-1 rounded">預計</span>
                 {{ session.offering_name }}
               </div>
               <div class="text-slate-400 truncate">
@@ -424,13 +425,24 @@ const getSessionStyle = (session: any) => {
     ? `calc(60px + ${weekdayIndex} * ${dayWidth} + ${session.conflictIndex} * (${dayWidth} - 8px) / ${session.conflictCount} + 4px)`
     : `calc(60px + ${weekdayIndex} * ${dayWidth} + 4px)`
 
+  // 根據狀態和課程名稱決定顏色
+  const backgroundColor = session.status === 'PLANNED'
+    ? getPlannedCourseColor()
+    : getCourseColor(session.offering_name)
+
   return {
     left: conflictLeft,
     width: conflictWidth,
     top: `${startOffset}px`,
     height: `${duration}px`,
-    backgroundColor: getCourseColor(session.offering_name)
+    backgroundColor,
+    border: session.status === 'PLANNED' ? '2px dashed rgba(255,255,255,0.3)' : 'none',
   }
+}
+
+// PLANNED 課程的顏色（虛線邊框樣式）
+const getPlannedCourseColor = (): string => {
+  return 'rgba(245, 158, 11, 0.4)' // amber-500/40
 }
 
 const getCourseColor = (courseName: string): string => {

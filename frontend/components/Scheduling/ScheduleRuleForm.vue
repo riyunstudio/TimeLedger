@@ -29,6 +29,32 @@
       </span>
     </div>
 
+    <!-- 課程狀態 (PLANNED/CONFIRMED) -->
+    <div>
+      <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">
+        課程狀態
+      </label>
+      <div class="relative">
+        <select
+          :value="values.status"
+          @change="(e) => setFieldValue('status', (e.target as HTMLSelectElement).value)"
+          class="input-field text-sm sm:text-base appearance-none cursor-pointer pr-10"
+        >
+          <option value="CONFIRMED">正式課 (已開成)</option>
+          <option value="PLANNED">預計課 (佔位用)</option>
+        </select>
+        <!-- 自定義下拉箭頭 -->
+        <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-400" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+          </svg>
+        </div>
+      </div>
+      <p class="mt-2 text-xs text-slate-400">
+        正式課：顯示實色背景。預計課：顯示斜紋虛線背景，標題加上「預計」字樣。兩者都會佔用時段進行衝突檢查。
+      </p>
+    </div>
+
     <!-- 課程和老師 -->
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
       <div>
@@ -753,6 +779,7 @@ const createValidationSchema = () => {
     weekdays: z.array(z.number()).min(1, '請至少選擇一個星期'),
     start_date: z.string().min(1, '請選擇開始日期'),
     end_date: z.string().optional(),
+    status: z.enum(['PLANNED', 'CONFIRMED']).default('CONFIRMED'),
     skip_holiday: z.boolean().default(true),
     suspended_dates: z.array(z.string()).default([]),
   }
@@ -790,6 +817,7 @@ const getInitialValues = () => {
       weekdays: props.editingRule.weekdays || (props.editingRule.weekday !== undefined ? [props.editingRule.weekday] : [1]),
       start_date: props.editingRule.effective_range?.start_date?.split(/[T ]/)[0] || formatDateToString(new Date()),
       end_date: props.editingRule.effective_range?.end_date?.split(/[T ]/)[0] || '',
+      status: props.editingRule.status || 'CONFIRMED',
       skip_holiday: props.editingRule.skip_holiday ?? true,
       suspended_dates: suspendedDatesData,
     }
@@ -806,6 +834,7 @@ const getInitialValues = () => {
     weekdays: [1] as number[],
     start_date: formatDateToString(new Date()),
     end_date: '',
+    status: 'CONFIRMED',
     skip_holiday: true,
     suspended_dates: [] as string[],
   }
@@ -849,6 +878,7 @@ watch(
         weekdays: rule.weekdays || (rule.weekday !== undefined ? [rule.weekday] : [1]),
         start_date: rule.effective_range?.start_date?.split(/[T ]/)[0] || formatDateToString(new Date()),
         end_date: rule.effective_range?.end_date?.split(/[T ]/)[0] || null,
+        status: rule.status || 'CONFIRMED',
         skip_holiday: rule.skip_holiday ?? true,
         suspended_dates: suspendedDatesData,
       })
@@ -995,6 +1025,7 @@ const onFormSubmit = handleSubmit(async (formValues) => {
     weekdays: formValues.weekdays,
     start_date: formValues.start_date,
     end_date: formValues.end_date || null,
+    status: formValues.status,
     skip_holiday: formValues.skip_holiday,
     suspended_dates: formValues.suspended_dates || [],
   }

@@ -571,6 +571,7 @@ const fetchMatrixView = async () => {
           is_holiday: item.is_holiday,
           is_suspended: item.is_suspended,
           color: item.color,
+          status: item.status, // 課程狀態: PLANNED(預計), CONFIRMED(已開課), SUSPENDED(停課), ARCHIVED(歸檔)
         }
 
         transformedSchedules.push(scheduleItem)

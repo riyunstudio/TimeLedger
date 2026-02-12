@@ -203,7 +203,13 @@
               class="absolute bottom-0 left-0 right-0 h-1 bg-primary-400 animate-pulse"
             />
             <!-- 課程名稱 -->
-            <div class="font-medium truncate">
+            <div class="font-medium truncate flex items-center gap-1">
+              <!-- PLANNED 狀態標籤 -->
+              <span v-if="rule.status === 'PLANNED'" class="text-[10px] bg-amber-500/30 px-1.5 py-0.5 rounded text-amber-300">預計</span>
+              <!-- SUSPENDED 狀態標籤 -->
+              <span v-else-if="rule.status === 'SUSPENDED'" class="text-[10px] bg-slate-500/30 px-1.5 py-0.5 rounded text-slate-300">停課</span>
+              <!-- ARCHIVED 狀態標籤 -->
+              <span v-else-if="rule.status === 'ARCHIVED'" class="text-[10px] bg-slate-600/30 px-1.5 py-0.5 rounded text-slate-400">歸檔</span>
               {{ rule.offering_name || rule.course_name }}
             </div>
             <!-- 關聯資源名稱 -->
@@ -644,7 +650,13 @@ const fetchOccupancyRules = async () => {
 
     if (response) {
       // 將分組數據平舖
-      occupancyRules.value = response.flatMap(group => group.rules)
+      const allRules = response.flatMap(group => group.rules)
+      // 調試：檢查第一個規則的 status
+      if (allRules.length > 0) {
+        console.log('[Occupancy] First rule:', allRules[0])
+        console.log('[Occupancy] Status value:', allRules[0].status)
+      }
+      occupancyRules.value = allRules
     }
   } catch (err) {
     console.error('Failed to fetch occupancy rules:', err)
@@ -708,10 +720,32 @@ const getSlotClass = (day: number, hour: number): string => {
 
 /**
  * 獲取規則卡片樣式
+ * 根據狀態渲染不同的視覺效果，與首頁一致
  */
 const getRuleClass = (rule: OccupancyRule): string => {
-  if (hasConflict(rule)) return 'bg-red-500/20 text-red-100 border-red-500/50'
-  return 'bg-primary-500/20 text-primary-100 border-primary-500/50'
+  // 衝突檢查
+  if (hasConflict(rule)) {
+    return 'bg-red-500/20 text-red-100 border-red-500/50'
+  }
+
+  // 根據狀態返回對應樣式
+  switch (rule.status) {
+    case 'PLANNED':
+      // 預計課程：虛線邊框 + 斜紋背景
+      return 'planned-rule-card'
+    case 'CONFIRMED':
+      // 已開課：實線邊框（預設樣式）
+      return 'bg-primary-500/20 text-primary-100 border-primary-500/50'
+    case 'SUSPENDED':
+      // 停課：灰色樣式
+      return 'bg-slate-500/20 text-slate-300 border-slate-500/50'
+    case 'ARCHIVED':
+      // 已歸檔：淡化樣式
+      return 'bg-slate-700/20 text-slate-400 border-slate-600/30 opacity-60'
+    default:
+      // 預設樣式
+      return 'bg-primary-500/20 text-primary-100 border-primary-500/50'
+  }
 }
 
 /**
@@ -1011,3 +1045,38 @@ onMounted(async () => {
   ])
 })
 </script>
+
+<style scoped>
+/* PLANNED 狀態的規則卡片樣式 - 虛線邊框 + 斜紋背景 */
+.planned-rule-card {
+  background-color: rgba(245, 158, 11, 0.15);
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 8px,
+    rgba(251, 191, 36, 0.08) 8px,
+    rgba(251, 191, 36, 0.08) 16px
+  );
+  border: 2px dashed rgba(251, 191, 36, 0.6);
+  color: #fbbf24;
+}
+
+/* SUSPENDED 狀態 - 灰色樣式 */
+.planned-rule-card:has(.text-slate-300) {
+  background-color: rgba(100, 116, 139, 0.15);
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 8px,
+    rgba(148, 163, 184, 0.08) 8px,
+    rgba(148, 163, 184, 0.08) 16px
+  );
+  border: 2px dashed rgba(148, 163, 184, 0.6);
+  color: #cbd5e1;
+}
+
+/* ARCHIVED 狀態 - 淡化樣式 */
+:deep(.opacity-60) {
+  opacity: 0.6;
+}
+</style>
