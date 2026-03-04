@@ -159,7 +159,7 @@ const fetchData = async () => {
 
     // API 回傳格式為 { code, data/datas, message }，需要取出實際資料
     const coursesRes = await api.get<any[]>(`/admin/courses`)
-    const teachersRes = await api.get<any[]>('/teachers')
+    const teachersRes = await api.get<any[]>('/admin/teachers?limit=1000')
     const roomsRes = await api.get<any[]>(`/admin/rooms`)
 
     // 取出 datas 或 data 欄位，若無則回退為空陣列

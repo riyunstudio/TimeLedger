@@ -26,27 +26,28 @@
           />
         </div>
         <!-- 星期篩選 -->
-        <div class="relative">
+        <div>
           <label for="weekday-filter" class="sr-only">篩選星期</label>
           <select
             id="weekday-filter"
             v-model="filterWeekday"
             aria-label="篩選星期"
-            class="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-primary-500/50 appearance-none"
+            class="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-primary-500/50 appearance-none w-full md:w-auto"
           >
           <option value="">全部星期</option>
           <option v-for="(day, index) in ['週日', '週一', '週二', '週三', '週四', '週五', '週六']" :key="index" :value="index === 0 ? 7 : index">
             {{ day }}
           </option>
         </select>
+        </div>
         <!-- 狀態篩選 -->
-        <div class="relative">
+        <div>
           <label for="status-filter" class="sr-only">篩選狀態</label>
           <select
             id="status-filter"
             v-model="filterStatus"
             aria-label="篩選課程狀態"
-            class="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-primary-500/50 appearance-none"
+            class="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-primary-500/50 appearance-none w-full md:w-auto"
           >
             <option value="">全部狀態</option>
             <option value="upcoming">尚未開始</option>
@@ -64,10 +65,11 @@
           清除篩選
         </button>
       </div>
-      <!-- 篩選結果計數 -->
-      <div v-if="rules.length > 0" class="mt-2 text-sm text-slate-500" role="status" aria-live="polite">
-        顯示 {{ filteredRules.length }} / {{ rules.length }} 筆資料
-      </div>
+    </div>
+
+    <!-- 篩選結果計數 -->
+    <div v-if="rules.length > 0" class="mb-4 text-sm text-slate-500 text-right" role="status" aria-live="polite">
+      顯示 {{ rules.length }} / {{ totalCount }} 筆資料 (第 {{ currentPage }} / {{ totalPages }} 頁)
     </div>
 
     <div class="glass-card p-6" role="region" aria-label="課程時段列表">
@@ -83,18 +85,18 @@
         沒有符合搜尋條件的課程時段
       </div>
 
-      <div v-else class="overflow-x-auto -mx-6">
-        <table class="w-full min-w-[600px]" role="table" aria-label="課程時段列表">
-          <thead class="sticky top-0 bg-slate-900/95 backdrop-blur-sm z-10">
-            <tr class="text-left text-slate-400 text-sm border-b border-white/10">
-              <th class="pb-3 pl-4" scope="col">課程</th>
-              <th class="pb-3" scope="col">星期</th>
-              <th class="pb-3" scope="col">課程期間</th>
-              <th class="pb-3" scope="col">課程時間</th>
-              <th class="pb-3" scope="col">教室</th>
-              <th class="pb-3" scope="col">老師</th>
-              <th class="pb-3" scope="col">狀態</th>
-              <th class="pb-3 pr-4 text-right" scope="col">操作</th>
+      <div v-else class="overflow-x-auto -mx-4 sm:-mx-6 px-4 sm:px-6">
+        <table class="w-full min-w-[800px]" role="table" aria-label="課程時段列表">
+          <thead class="bg-white/5">
+            <tr class="text-slate-400 text-sm border-b border-white/10">
+              <th class="p-3 text-center w-28" scope="col">課程</th>
+              <th class="p-3 text-center w-16" scope="col">星期</th>
+              <th class="p-3 text-center w-36" scope="col">課程期間</th>
+              <th class="p-3 text-center w-28" scope="col">課程時間</th>
+              <th class="p-3 text-center w-24" scope="col">教室</th>
+              <th class="p-3 text-center w-24" scope="col">老師</th>
+              <th class="p-3 text-center w-20" scope="col">狀態</th>
+              <th class="p-3 text-center w-20" scope="col">操作</th>
             </tr>
           </thead>
           <tbody>
@@ -103,13 +105,13 @@
               :key="rule.id"
               class="border-b border-white/5 hover:bg-white/5 transition-colors"
             >
-              <td class="py-3 pl-4 text-white">{{ rule.offering?.name || '-' }}</td>
-              <td class="py-3 text-slate-300">{{ getWeekdayText(rule.weekday) }}</td>
-              <td class="py-3 text-slate-300">{{ formatDateRange(rule.effective_range) }}</td>
-              <td class="py-3 text-slate-300">{{ rule.start_time }} - {{ rule.end_time }}</td>
-              <td class="py-3 text-slate-300">{{ rule.room?.name || '-' }}</td>
-              <td class="py-3 text-slate-300">{{ rule.teacher?.name || '-' }}</td>
-              <td class="py-3">
+              <td class="p-3 text-center text-slate-200">{{ rule.offering?.name || '-' }}</td>
+              <td class="p-3 text-center text-slate-300">{{ getWeekdayText(rule.weekday) }}</td>
+              <td class="p-3 text-center text-slate-300">{{ formatDateRange(rule.effective_range) }}</td>
+              <td class="p-3 text-center text-slate-300">{{ rule.start_time }} - {{ rule.end_time }}</td>
+              <td class="p-3 text-center text-slate-300">{{ rule.room?.name || '-' }}</td>
+              <td class="p-3 text-center text-slate-300">{{ rule.teacher?.name || '-' }}</td>
+              <td class="p-3 text-center">
                 <span
                   class="px-2 py-1 rounded-full text-xs"
                   :class="getStatusClass(rule)"
@@ -117,25 +119,53 @@
                   {{ getStatusText(rule) }}
                 </span>
               </td>
-              <td class="py-3 pr-4 text-right">
-                <button
-                  @click="editRule(rule)"
-                  aria-label="編輯課程時段"
-                  class="text-primary-500 hover:text-primary-400 mr-3"
-                >
-                  編輯
-                </button>
-                <button
-                  @click="deleteRule(rule.id)"
-                  :aria-label="'刪除課程時段 ' + (rule.offering?.name || '')"
-                  class="text-critical-500 hover:text-critical-400"
-                >
-                  刪除
-                </button>
+              <td class="p-3">
+                <div class="flex items-center justify-center gap-3">
+                  <button
+                    @click="editRule(rule)"
+                    aria-label="編輯課程時段"
+                    class="text-primary-500 hover:text-primary-400"
+                  >
+                    編輯
+                  </button>
+                  <button
+                    @click="deleteRule(rule.id)"
+                    :aria-label="'刪除課程時段 ' + (rule.offering?.name || '')"
+                    class="text-critical-500 hover:text-critical-400"
+                  >
+                    刪除
+                  </button>
+                </div>
               </td>
             </tr>
           </tbody>
         </table>
+
+        <!-- 分頁控制 -->
+        <div v-if="totalPages > 1" class="flex items-center justify-between mt-4 pt-4 border-t border-white/10">
+          <div class="text-sm text-slate-400">
+            每頁 {{ pageSize }} 筆
+          </div>
+          <div class="flex items-center gap-2">
+            <button
+              @click="changePage(currentPage - 1)"
+              :disabled="currentPage === 1"
+              class="px-3 py-1.5 rounded-lg text-sm bg-white/5 text-slate-300 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              上一頁
+            </button>
+            <span class="text-sm text-slate-300">
+              第 {{ currentPage }} / {{ totalPages }} 頁
+            </span>
+            <button
+              @click="changePage(currentPage + 1)"
+              :disabled="currentPage === totalPages"
+              class="px-3 py-1.5 rounded-lg text-sm bg-white/5 text-slate-300 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              下一頁
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -160,7 +190,6 @@
     v-if="notificationUI.show.value"
     @close="notificationUI.close()"
   />
-  </div>
 </template>
 
 <script setup lang="ts">
@@ -168,6 +197,7 @@
 import ScheduleRuleModal from '~/components/Scheduling/ScheduleRuleModal.vue'
 import UpdateModeModal from '~/components/Scheduling/UpdateModeModal.vue'
 import NotificationDropdown from '~/components/Navigation/NotificationDropdown.vue'
+import { watch } from 'vue'
 
 definePageMeta({
   auth: 'ADMIN',
@@ -187,6 +217,26 @@ const { getCenterId } = useCenterId()
 const searchQuery = ref('')
 const filterWeekday = ref('')
 const filterStatus = ref('')
+
+// 分頁狀態
+const currentPage = ref(1)
+const totalPages = ref(0)
+const totalCount = ref(0)
+const pageSize = ref(20)
+
+// 改變頁碼
+const changePage = (page: number) => {
+  if (page >= 1 && page <= totalPages.value) {
+    currentPage.value = page
+    fetchRules()
+  }
+}
+
+// 監聽篩選變化，重置到第一頁
+watch([searchQuery, filterWeekday, filterStatus], () => {
+  currentPage.value = 1
+  fetchRules()
+})
 
 // Alert composable
 const { error: alertError, confirm: alertConfirm } = useAlert()
@@ -245,11 +295,27 @@ const fetchRules = async () => {
   loading.value = true
   try {
     const api = useApi()
-    // API 響應已經被 useApi 解析，直接返回 datas 欄位的資料
-    const response = await api.get<any[]>('/admin/rules')
-    rules.value = response || []
+    const params = new URLSearchParams()
+    params.append('page', currentPage.value.toString())
+    params.append('limit', pageSize.value.toString())
+
+    const response = await api.get<any>(`/admin/rules?${params.toString()}`)
+
+    // 分頁格式：{ data: [...], total: X, page: X, total_pages: X }
+    if (response && response.data) {
+      rules.value = response.data
+      totalCount.value = response.total || 0
+      totalPages.value = response.total_pages || 1
+    } else {
+      rules.value = []
+      totalCount.value = 0
+      totalPages.value = 0
+    }
   } catch (error) {
     console.error('Failed to fetch rules:', error)
+    rules.value = []
+    totalCount.value = 0
+    totalPages.value = 0
   } finally {
     loading.value = false
   }

@@ -440,19 +440,13 @@
 
         <!-- 老師選擇（老師視角） -->
         <div v-else class="mb-3">
-          <label class="block text-slate-400 text-xs mb-1">
-            選擇老師
-            <span class="text-red-400 ml-1">*必選</span>
-          </label>
-          <select
+          <SearchableSelect
             v-model="newCell.teacher_id"
-            class="w-full px-3 py-2 rounded-lg bg-slate-800 border border-white/10 text-white text-sm cursor-pointer appearance-none"
-          >
-            <option value="">請選擇老師</option>
-            <option v-for="teacher in teachers" :key="teacher.id" :value="teacher.id">
-              {{ teacher.name }}
-            </option>
-          </select>
+            :options="teacherOptions"
+            label="選擇老師"
+            placeholder="請選擇老師"
+            required
+          />
           <p v-if="teachers.length === 0" class="text-xs text-yellow-500 mt-1">尚無老師資料，請先邀請老師加入中心</p>
         </div>
 
@@ -711,6 +705,7 @@
 
 <script setup lang="ts">
 import NotificationDropdown from '~/components/Navigation/NotificationDropdown.vue'
+import SearchableSelect, { type SelectOption } from '~/components/Common/SearchableSelect.vue'
 definePageMeta({
   auth: 'ADMIN',
   layout: 'admin',
@@ -991,7 +986,7 @@ const fetchRooms = async () => {
 const fetchTeachers = async () => {
   try {
     const api = useApi()
-    const response = await api.get<any>('/admin/teachers')
+    const response = await api.get<any>('/admin/teachers?limit=1000')
     if (response.datas?.teachers) {
       teachers.value = response.datas.teachers
     } else if (response.datas) {
@@ -1004,6 +999,14 @@ const fetchTeachers = async () => {
     teachers.value = []
   }
 }
+
+// 將老師轉換為 SearchableSelect 選項格式
+const teacherOptions = computed<SelectOption[]>(() =>
+  teachers.value.map(t => ({
+    id: t.id,
+    name: t.name
+  }))
+)
 
 const fetchTemplates = async () => {
   try {

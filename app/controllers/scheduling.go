@@ -313,29 +313,54 @@ func (ctl *SchedulingController) ValidateFull(ctx *gin.Context) {
 	helper.Success(result)
 }
 
-// GetRules 取得排課規則列表
+// GetRules 取得排課規則列表（分頁）
 // @Summary 取得中心的所有排課規則
 // @Tags Admin - Scheduling
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Success 200 {object} global.ApiResponse{data=[]models.ScheduleRule}
+// @Param page query int false "頁碼，預設 1"
+// @Param limit query int false "每頁筆數，預設 20"
+// @Success 200 {object} global.ApiResponse{data=resources.PaginationResponse}
 // @Router /api/v1/admin/scheduling/rules [get]
 func (ctl *SchedulingController) GetRules(ctx *gin.Context) {
 	helper := NewContextHelper(ctx)
+
+	// 防止瀏覽器快取
+	ctx.Header("Cache-Control", "no-cache, no-store, must-revalidate")
+	ctx.Header("Pragma", "no-cache")
+	ctx.Header("Expires", "0")
 
 	centerID := ctl.requireCenterID(helper)
 	if centerID == 0 {
 		return
 	}
 
-	rules, err := ctl.scheduleSvc.GetRules(ctx.Request.Context(), centerID)
+	// 取得分頁參數
+	page := helper.QueryIntOrDefault("page", 1)
+	limit := helper.QueryIntOrDefault("limit", 20)
+
+	// 驗證分頁參數
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 {
+		limit = 20
+	}
+	if limit > 100 {
+		limit = 100
+	}
+
+	rules, total, err := ctl.scheduleSvc.GetRulesPaginated(ctx.Request.Context(), centerID, page, limit)
 	if err != nil {
 		helper.InternalError(err.Error())
 		return
 	}
 
-	helper.Success(rules)
+	// 建立分頁回應
+	paginationResp := resources.NewPaginationResponse(rules, total, page, limit)
+
+	helper.Success(paginationResp)
 }
 
 // CreateRule 建立排課規則

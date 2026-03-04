@@ -342,7 +342,7 @@ const fetchData = async () => {
 
     const [rulesRes, teachersRes, roomsRes] = await Promise.all([
       api.get<{ code: number; datas: any[] }>('/admin/rules'),
-      api.get<{ code: number; datas: any[] }>('/teachers'),
+      api.get<{ code: number; datas: any[] }>('/admin/teachers?limit=1000'),
       api.get<{ code: number; datas: any[] }>(`/admin/rooms`)
     ])
 

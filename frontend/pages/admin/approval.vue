@@ -408,7 +408,7 @@ const fetchFilters = async () => {
   try {
     const api = useApi()
     const [teachersRes, roomsRes] = await Promise.all([
-      api.get<{ code: number; datas: any[] }>('/teachers'),
+      api.get<{ code: number; datas: any[] }>('/admin/teachers?limit=1000'),
       api.get<{ code: number; datas: any[] }>(`/admin/rooms`)
     ])
     teachers.value = teachersRes.datas || []

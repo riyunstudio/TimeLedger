@@ -74,7 +74,7 @@
           leave-to="opacity-0"
         >
           <ComboboxOptions
-            class="absolute z-[1000] mt-2 w-full rounded-xl border backdrop-blur-glass bg-glass-dark border-white/10 shadow-xl overflow-hidden focus:outline-none max-h-60 scroll-py-1"
+            class="absolute z-[1000] mt-2 w-full rounded-xl border backdrop-blur-glass bg-glass-dark border-white/10 shadow-xl overflow-y-auto focus:outline-none max-h-60 scroll-py-1"
           >
             <div
               v-if="filteredOptions.length === 0 && query !== ''"
@@ -177,7 +177,7 @@
         >
           <ComboboxOptions
             v-if="filteredOptions.length > 0"
-            class="absolute z-[1000] mt-2 w-full rounded-xl border backdrop-blur-glass bg-glass-dark border-white/10 shadow-xl overflow-hidden focus:outline-none max-h-60 scroll-py-1"
+            class="absolute z-[1000] mt-2 w-full rounded-xl border backdrop-blur-glass bg-glass-dark border-white/10 shadow-xl overflow-y-auto focus:outline-none max-h-60 scroll-py-1"
           >
             <ComboboxOption
               v-for="option in filteredOptions"

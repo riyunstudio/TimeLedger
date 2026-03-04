@@ -27,6 +27,7 @@ type ScheduleServiceInterface interface {
 
 	// 規則管理
 	GetRules(ctx context.Context, centerID uint) ([]models.ScheduleRule, error)
+	GetRulesPaginated(ctx context.Context, centerID uint, page, limit int) ([]models.ScheduleRule, int64, error)
 	CreateRule(ctx context.Context, centerID, adminID uint, req *CreateScheduleRuleRequest) ([]models.ScheduleRule, *errInfos.Res, error)
 	UpdateRule(ctx context.Context, centerID, adminID, ruleID uint, req *UpdateScheduleRuleRequest) ([]models.ScheduleRule, *errInfos.Res, error)
 	DeleteRule(ctx context.Context, centerID, adminID, ruleID uint) error
@@ -238,6 +239,15 @@ func (s *ScheduleService) GetRules(ctx context.Context, centerID uint) ([]models
 		return nil, err
 	}
 	return rules, nil
+}
+
+// GetRulesPaginated 分頁取得排課規則列表
+func (s *ScheduleService) GetRulesPaginated(ctx context.Context, centerID uint, page, limit int) ([]models.ScheduleRule, int64, error) {
+	rules, total, err := s.ruleRepo.ListByCenterIDPaginated(ctx, centerID, page, limit)
+	if err != nil {
+		return nil, 0, err
+	}
+	return rules, total, nil
 }
 
 // CreateRule 建立排課規則（使用交易確保原子性）

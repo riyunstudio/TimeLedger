@@ -154,6 +154,36 @@ func (rp *ScheduleRuleRepository) ListByCenterID(ctx context.Context, centerID u
 	return data, err
 }
 
+// ListByCenterIDPaginated 分頁取得排課規則
+func (rp *ScheduleRuleRepository) ListByCenterIDPaginated(ctx context.Context, centerID uint, page, limit int) ([]models.ScheduleRule, int64, error) {
+	var data []models.ScheduleRule
+	var total int64
+
+	// 取得總數
+	if err := rp.app.MySQL.RDB.WithContext(ctx).
+		Model(&models.ScheduleRule{}).
+		Where("center_id = ?", centerID).
+		Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// 計算偏移量
+	offset := (page - 1) * limit
+
+	// 取得分頁資料
+	err := rp.app.MySQL.RDB.WithContext(ctx).
+		Preload("Offering").
+		Preload("Room").
+		Preload("Teacher").
+		Where("center_id = ?", centerID).
+		Order("weekday ASC, start_time ASC").
+		Offset(offset).
+		Limit(limit).
+		Find(&data).Error
+
+	return data, total, err
+}
+
 // CheckPersonalEventConflict 檢查個人行程是否與排課規則衝突
 func (rp *ScheduleRuleRepository) CheckPersonalEventConflict(ctx context.Context, teacherID, centerID uint, startAt, endAt time.Time) ([]models.ScheduleRule, error) {
 	// 取得教師在該中心的所有規則
