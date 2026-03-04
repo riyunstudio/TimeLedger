@@ -48,7 +48,7 @@ export function useResourceCache() {
           // offerings 使用 active endpoint 獲取所有可用的班別
           api.get<any>(`/admin/offerings/active`),
           // teachers 使用 /admin/teachers 端點（useApi 會自動添加 /api/v1 前綴）
-          api.get<any[]>(`/admin/teachers`),
+          api.get<any[]>(`/admin/teachers?limit=1000`),
           // rooms 使用 /admin/rooms/active 端點
           api.get<any[]>(`/admin/rooms/active`)
         ])
