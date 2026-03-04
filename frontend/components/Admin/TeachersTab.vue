@@ -398,7 +398,7 @@ watch(searchQuery, () => {
 
 onMounted(() => {
   fetchTeachers()
-  fetchAllTeachers()
+  // fetchAllTeachers 在需要時才載入（如開啟合併 Modal）
 })
 
 const viewProfile = (teacher: any) => {
@@ -413,6 +413,10 @@ const openMergeModal = (teacher: any) => {
   mergingTeacher.value = teacher
   showMergeModal.value = true
   showMenu.value[teacher.id] = false
+  // 延遲載入全部老師（僅在開啟合併 Modal 時）
+  if (allTeachers.value.length === 0) {
+    fetchAllTeachers()
+  }
 }
 
 const closeMergeModal = () => {
