@@ -17,7 +17,7 @@ type AdminResourceController struct {
 	holidayRepository    *repositories.CenterHolidayRepository
 	auditLogRepo         *repositories.AuditLogRepository
 	membershipRepo       *repositories.CenterMembershipRepository
-	teacherRepository     *repositories.TeacherRepository
+	teacherRepository    *repositories.TeacherRepository
 	skillRepository      *repositories.TeacherSkillRepository
 	certificateRepo      *repositories.TeacherCertificateRepository
 	noteRepo             *repositories.CenterTeacherNoteRepository
@@ -28,13 +28,13 @@ func NewAdminResourceController(app *app.App) *AdminResourceController {
 	return &AdminResourceController{
 		app:                  app,
 		offeringRepository:   repositories.NewOfferingRepository(app),
-		holidayRepository:   repositories.NewCenterHolidayRepository(app),
-		auditLogRepo:        repositories.NewAuditLogRepository(app),
-		membershipRepo:      repositories.NewCenterMembershipRepository(app),
-		teacherRepository:   repositories.NewTeacherRepository(app),
-		skillRepository:     repositories.NewTeacherSkillRepository(app),
+		holidayRepository:    repositories.NewCenterHolidayRepository(app),
+		auditLogRepo:         repositories.NewAuditLogRepository(app),
+		membershipRepo:       repositories.NewCenterMembershipRepository(app),
+		teacherRepository:    repositories.NewTeacherRepository(app),
+		skillRepository:      repositories.NewTeacherSkillRepository(app),
 		certificateRepo:      repositories.NewTeacherCertificateRepository(app),
-		noteRepo:            repositories.NewCenterTeacherNoteRepository(app),
+		noteRepo:             repositories.NewCenterTeacherNoteRepository(app),
 		adminTeacherResource: resources.NewAdminTeacherResource(),
 	}
 }
@@ -59,8 +59,8 @@ func (ctl *AdminResourceController) GetTeachers(ctx *gin.Context) {
 		return
 	}
 
-	// 取得查詢參數
-	query := helper.QueryStringOrDefault("query", "")
+	// 取得查詢參數（支援 q 或 query）
+	query := helper.QueryStringOrDefault("q", helper.QueryStringOrDefault("query", ""))
 	page := helper.QueryIntOrDefault("page", 1)
 	limit := helper.QueryIntOrDefault("limit", 20)
 

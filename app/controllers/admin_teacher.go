@@ -64,8 +64,6 @@ func (ctl *AdminTeacherController) ListTeachers(ctx *gin.Context) {
 	page := helper.QueryIntOrDefault("page", 1)
 	limit := helper.QueryIntOrDefault("limit", 20)
 
-	logger.GetLogger().Debugw("Teacher list request", "center_id", centerID, "search_query", searchQuery, "page", page, "limit", limit)
-
 	// 驗證分頁參數
 	if page < 1 {
 		page = 1
