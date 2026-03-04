@@ -528,6 +528,14 @@ const fetchMatrixView = async () => {
       return
     }
 
+    // 處理空資料的情況
+    if (!matrixData.resources || !Array.isArray(matrixData.resources) || matrixData.resources.length === 0) {
+      schedules.value = []
+      // 設定預設時間段
+      dynamicTimeSlots.value = Array.from({ length: 13 }, (_, i) => i + 9) // 9-21點
+      return
+    }
+
     // 將矩陣視圖資料轉換為週曆可用的格式
     const transformedSchedules: any[] = []
 
