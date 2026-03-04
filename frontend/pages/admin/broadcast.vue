@@ -335,20 +335,15 @@ const canSubmit = computed(() => {
 // 取得老師數量統計（計算可接收 LINE 廣播的老師數量）
 const fetchTeacherCount = async () => {
   try {
-    const response = await api.get<any>('/admin/teachers')
-    // API 回應結構：response.data 是老師陣列（useApi 已提取 datas 層）
-    // response = { data: [...], total: 4, page: 1, ... }
-    const teachers = response.data
+    // 使用較大的 limit 確保取得所有老師
+    const response = await api.get<any>('/admin/teachers?limit=1000')
+    // useApi 已提取 datas/data，response 就是老師陣列
+    const teachers = response
     if (Array.isArray(teachers)) {
       // 篩選條件：
       // 1. line_user_id 存在（已綁定 LINE 才能收到廣播）
       // 2. is_placeholder 為 false（真實老師，不是佔位符）
       teacherCount.value = teachers.filter((t: any) =>
-        t.line_user_id && t.line_user_id.length > 0 && !t.is_placeholder
-      ).length
-    } else if (Array.isArray(response)) {
-      // 備用：直接使用 response（如果沒有分頁結構）
-      teacherCount.value = response.filter((t: any) =>
         t.line_user_id && t.line_user_id.length > 0 && !t.is_placeholder
       ).length
     }
