@@ -118,13 +118,10 @@
           >
             <!-- 簡短資訊 -->
             <div class="font-medium truncate text-slate-100">
-              {{ schedule.offering_name }}
+              {{ schedule.offering_name }} ({{ schedule.start_time }} - {{ schedule.end_time }})
             </div>
             <div class="text-slate-400 truncate">
-              {{ schedule.teacher_name || schedule.room_name }}
-            </div>
-            <div class="text-slate-500 text-[10px] mt-0.5">
-              {{ schedule.start_time }} - {{ schedule.end_time }}
+              {{ schedule.teacher_name }}
             </div>
           </div>
         </div>

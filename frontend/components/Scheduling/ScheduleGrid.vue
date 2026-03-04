@@ -74,21 +74,8 @@
         </div>
       </div>
 
-      <!-- 空狀態 -->
-      <div v-else-if="filteredSchedules.length === 0" class="flex items-center justify-center h-64">
-        <div class="flex flex-col items-center gap-3">
-          <div class="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center">
-            <svg class="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-          </div>
-          <p class="text-white font-medium">暫無課表資料</p>
-          <p class="text-sm text-slate-400">請確認日期範圍內是否有排課規則</p>
-        </div>
-      </div>
-
       <!-- 正常課表視圖 -->
-      <template v-else>
+      <template v-if="!isLoading && !hasError">
         <!-- 桌面版週曆視圖 (lg 以上) -->
         <WeekGrid
           v-if="isDesktop && weekStart"
