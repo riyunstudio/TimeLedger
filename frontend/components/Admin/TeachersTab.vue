@@ -340,15 +340,22 @@ const fetchTeachers = async () => {
 
     const response = await api.get<any>(`/admin/teachers?${params.toString()}`)
 
-    // API 現在直接回傳分頁格式
-    if (response && response.data) {
-      teachers.value = response.data
-    }
-
-    // 更新分頁資訊
+    // useApi 已自動提取 data.data，可能是分頁物件或陣列
     if (response) {
-      totalCount.value = response.total || 0
-      totalPages.value = response.total_pages || 1
+      if (Array.isArray(response)) {
+        teachers.value = response
+        totalCount.value = response.length
+        totalPages.value = 1
+      } else {
+        // 分頁格式：{ data: [...], total: X, page: X, total_pages: X }
+        teachers.value = response.data || []
+        totalCount.value = response.total || 0
+        totalPages.value = response.total_pages || 1
+      }
+    } else {
+      teachers.value = []
+      totalCount.value = 0
+      totalPages.value = 0
     }
   } catch (error) {
     console.error('Failed to fetch teachers:', error)
