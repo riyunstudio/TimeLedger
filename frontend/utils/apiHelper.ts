@@ -4,18 +4,11 @@ import { ref } from 'vue'
 // Loading 狀態管理
 // ============================================
 
-/**
- * 通用 loading 包裝器
- *
- * @deprecated 請使用 loadingHelper.ts 中的 withLoading
- */
-export { withLoading } from './loadingHelper'
-
-/**
+// ============================================/**
  * 建立 Loading 狀態管理
- *
+  *
  * @example
- * ```typescript
+  * ```typescript
  * const loadingState = createLoadingState({
  *   fetching: false,
  *   creating: false,
@@ -33,7 +26,7 @@ export { withLoading } from './loadingHelper'
  *   }
  * }
  * ```
- */
+  */
 export function createLoadingState<T extends Record<string, boolean>>(
   initialState: T
 ) {

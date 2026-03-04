@@ -270,6 +270,7 @@
 
 <script setup lang="ts">
 import LineFlexPreview from '~/components/Notification/LineFlexPreview.vue'
+import NotificationDropdown from '~/components/Navigation/NotificationDropdown.vue'
 
 definePageMeta({
   auth: 'ADMIN',
