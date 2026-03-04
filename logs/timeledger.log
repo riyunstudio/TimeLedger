@@ -1769,3 +1769,80 @@
 {"level":"info","time":"2026-02-12T15:27:18.101+0800","message":"Notification worker disabled (set NOTIFICATION_WORKER_ENABLED=true to enable)"}
 {"level":"info","time":"2026-02-12T15:27:18.101+0800","message":"Asynq worker disabled (set ASYNQ_WORKER_ENABLED=true to enable)"}
 {"level":"debug","time":"2026-02-12T17:28:27.200+0800","message":"caching room list","component":"CacheService","center_id":1,"count":4}
+{"level":"debug","time":"2026-02-12T22:29:55.924+0800","message":"caching room list","component":"CacheService","center_id":1,"count":4}
+{"level":"info","time":"2026-02-12T22:30:02.372+0800","message":"Application shutting down gracefully"}
+{"level":"info","time":"2026-02-12T22:30:02.372+0800","message":"Application exited"}
+{"level":"info","time":"2026-02-12T22:30:05.364+0800","message":"Starting TimeLedger application..."}
+{"level":"info","time":"2026-02-12T22:30:06.127+0800","message":"Notification worker disabled (set NOTIFICATION_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-02-12T22:30:06.127+0800","message":"Asynq worker disabled (set ASYNQ_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-02-12T22:30:23.902+0800","message":"fetching terms","component":"TermService","center_id":1}
+{"level":"debug","time":"2026-02-12T22:30:23.904+0800","message":"terms fetched successfully","component":"TermService","count":0}
+{"level":"info","time":"2026-02-12T22:30:25.954+0800","message":"fetching occupancy rules","component":"TermService","center_id":1,"teacher_ids":[1],"room_ids":[],"start_date":"2026-02-09","end_date":"2026-02-15"}
+{"level":"debug","time":"2026-02-12T22:30:25.963+0800","message":"occupancy rules fetched successfully","component":"TermService","total_days":3,"total_rules":6}
+{"level":"info","time":"2026-02-12T22:30:45.149+0800","message":"fetching occupancy rules","component":"TermService","center_id":1,"teacher_ids":[],"room_ids":[1],"start_date":"2026-02-09","end_date":"2026-02-15"}
+{"level":"debug","time":"2026-02-12T22:30:45.156+0800","message":"occupancy rules fetched successfully","component":"TermService","total_days":2,"total_rules":5}
+{"level":"info","time":"2026-02-12T22:30:58.134+0800","message":"fetching terms","component":"TermService","center_id":1}
+{"level":"debug","time":"2026-02-12T22:30:58.136+0800","message":"terms fetched successfully","component":"TermService","count":0}
+{"level":"info","time":"2026-02-12T22:31:00.653+0800","message":"fetching occupancy rules","component":"TermService","center_id":1,"teacher_ids":[2],"room_ids":[],"start_date":"2026-02-09","end_date":"2026-02-15"}
+{"level":"debug","time":"2026-02-12T22:31:00.660+0800","message":"occupancy rules fetched successfully","component":"TermService","total_days":2,"total_rules":3}
+{"level":"info","time":"2026-02-12T22:31:02.055+0800","message":"fetching occupancy rules","component":"TermService","center_id":1,"teacher_ids":[2,1],"room_ids":[],"start_date":"2026-02-09","end_date":"2026-02-15"}
+{"level":"debug","time":"2026-02-12T22:31:02.061+0800","message":"occupancy rules fetched successfully","component":"TermService","total_days":4,"total_rules":9}
+{"level":"info","time":"2026-02-12T22:31:06.808+0800","message":"fetching occupancy rules","component":"TermService","center_id":1,"teacher_ids":[1],"room_ids":[],"start_date":"2026-02-09","end_date":"2026-02-15"}
+{"level":"debug","time":"2026-02-12T22:31:06.816+0800","message":"occupancy rules fetched successfully","component":"TermService","total_days":3,"total_rules":6}
+{"level":"info","time":"2026-02-12T22:31:10.377+0800","message":"fetching occupancy rules","component":"TermService","center_id":1,"teacher_ids":[],"room_ids":[1],"start_date":"2026-02-09","end_date":"2026-02-15"}
+{"level":"debug","time":"2026-02-12T22:31:10.382+0800","message":"occupancy rules fetched successfully","component":"TermService","total_days":2,"total_rules":5}
+{"level":"info","time":"2026-02-12T22:31:11.272+0800","message":"fetching occupancy rules","component":"TermService","center_id":1,"teacher_ids":[],"room_ids":[1,2],"start_date":"2026-02-09","end_date":"2026-02-15"}
+{"level":"debug","time":"2026-02-12T22:31:11.278+0800","message":"occupancy rules fetched successfully","component":"TermService","total_days":3,"total_rules":7}
+{"level":"info","time":"2026-02-12T22:31:16.398+0800","message":"fetching occupancy rules","component":"TermService","center_id":1,"teacher_ids":[],"room_ids":[1],"start_date":"2026-02-09","end_date":"2026-02-15"}
+{"level":"debug","time":"2026-02-12T22:31:16.403+0800","message":"occupancy rules fetched successfully","component":"TermService","total_days":2,"total_rules":5}
+{"level":"debug","time":"2026-02-12T22:32:11.213+0800","message":"course cache miss or parse error","component":"CacheService","center_id":1,"error":"cache miss"}
+{"level":"debug","time":"2026-02-12T22:32:11.214+0800","message":"course cache miss or error, fetching from database","component":"CourseService","center_id":1,"cache_error":null}
+{"level":"debug","time":"2026-02-12T22:32:11.216+0800","message":"caching course list","component":"CacheService","center_id":1,"count":4}
+{"level":"info","time":"2026-02-15T01:18:16.662+0800","message":"Application shutting down gracefully"}
+{"level":"info","time":"2026-02-15T01:18:16.662+0800","message":"Application exited"}
+{"level":"info","time":"2026-03-04T22:50:27.934+0800","message":"Starting TimeLedger application..."}
+{"level":"info","time":"2026-03-04T22:50:28.695+0800","message":"Notification worker disabled (set NOTIFICATION_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-03-04T22:50:28.695+0800","message":"Asynq worker disabled (set ASYNQ_WORKER_ENABLED=true to enable)"}
+{"level":"debug","time":"2026-03-04T22:57:19.161+0800","message":"caching room list","component":"CacheService","center_id":1,"count":4}
+{"level":"info","time":"2026-03-04T23:12:01.976+0800","message":"fetching terms","component":"TermService","center_id":1}
+{"level":"debug","time":"2026-03-04T23:12:01.978+0800","message":"terms fetched successfully","component":"TermService","count":0}
+{"level":"info","time":"2026-03-04T23:15:49.053+0800","message":"fetching terms","component":"TermService","center_id":1}
+{"level":"debug","time":"2026-03-04T23:15:49.054+0800","message":"terms fetched successfully","component":"TermService","count":0}
+{"level":"info","time":"2026-03-04T23:24:25.391+0800","message":"fetching terms","component":"TermService","center_id":1}
+{"level":"debug","time":"2026-03-04T23:24:25.393+0800","message":"terms fetched successfully","component":"TermService","count":0}
+{"level":"info","time":"2026-03-04T23:30:15.245+0800","message":"fetching terms","component":"TermService","center_id":1}
+{"level":"debug","time":"2026-03-04T23:30:15.246+0800","message":"terms fetched successfully","component":"TermService","count":0}
+{"level":"debug","time":"2026-03-04T23:30:18.793+0800","message":"caching room list","component":"CacheService","center_id":1,"count":4}
+{"level":"info","time":"2026-03-04T23:38:29.760+0800","message":"fetching terms","component":"TermService","center_id":1}
+{"level":"debug","time":"2026-03-04T23:38:29.762+0800","message":"terms fetched successfully","component":"TermService","count":0}
+{"level":"info","time":"2026-03-04T23:38:33.812+0800","message":"fetching terms","component":"TermService","center_id":1}
+{"level":"debug","time":"2026-03-04T23:38:33.813+0800","message":"terms fetched successfully","component":"TermService","count":0}
+{"level":"info","time":"2026-03-04T23:38:38.523+0800","message":"Application shutting down gracefully"}
+{"level":"info","time":"2026-03-04T23:38:38.523+0800","message":"Application exited"}
+{"level":"info","time":"2026-03-04T23:38:44.934+0800","message":"Starting TimeLedger application..."}
+{"level":"info","time":"2026-03-04T23:38:45.480+0800","message":"Notification worker disabled (set NOTIFICATION_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-03-04T23:38:45.480+0800","message":"Asynq worker disabled (set ASYNQ_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-03-04T23:38:58.125+0800","message":"fetching terms","component":"TermService","center_id":1}
+{"level":"debug","time":"2026-03-04T23:38:58.127+0800","message":"terms fetched successfully","component":"TermService","count":0}
+{"level":"info","time":"2026-03-04T23:43:49.477+0800","message":"fetching terms","component":"TermService","center_id":1}
+{"level":"debug","time":"2026-03-04T23:43:49.479+0800","message":"terms fetched successfully","component":"TermService","count":0}
+{"level":"info","time":"2026-03-04T23:43:50.729+0800","message":"fetching terms","component":"TermService","center_id":1}
+{"level":"debug","time":"2026-03-04T23:43:50.731+0800","message":"terms fetched successfully","component":"TermService","count":0}
+{"level":"info","time":"2026-03-05T00:43:39.655+0800","message":"Application shutting down gracefully"}
+{"level":"info","time":"2026-03-05T00:43:39.655+0800","message":"Application exited"}
+{"level":"info","time":"2026-03-05T00:43:41.147+0800","message":"Starting TimeLedger application..."}
+{"level":"info","time":"2026-03-05T00:43:41.738+0800","message":"Notification worker disabled (set NOTIFICATION_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-03-05T00:43:41.738+0800","message":"Asynq worker disabled (set ASYNQ_WORKER_ENABLED=true to enable)"}
+{"level":"debug","time":"2026-03-05T00:43:51.492+0800","message":"caching room list","component":"CacheService","center_id":1,"count":4}
+{"level":"info","time":"2026-03-05T00:49:21.805+0800","message":"Application shutting down gracefully"}
+{"level":"info","time":"2026-03-05T00:49:21.805+0800","message":"Application exited"}
+{"level":"info","time":"2026-03-05T00:49:23.142+0800","message":"Starting TimeLedger application..."}
+{"level":"info","time":"2026-03-05T00:49:23.685+0800","message":"Notification worker disabled (set NOTIFICATION_WORKER_ENABLED=true to enable)"}
+{"level":"info","time":"2026-03-05T00:49:23.685+0800","message":"Asynq worker disabled (set ASYNQ_WORKER_ENABLED=true to enable)"}
+{"level":"debug","time":"2026-03-05T00:50:29.522+0800","message":"course cache miss or parse error","component":"CacheService","center_id":1,"error":"cache miss"}
+{"level":"debug","time":"2026-03-05T00:50:29.522+0800","message":"course cache miss or error, fetching from database","component":"CourseService","center_id":1,"cache_error":null}
+{"level":"debug","time":"2026-03-05T00:50:29.523+0800","message":"caching course list","component":"CacheService","center_id":1,"count":4}
+{"level":"info","time":"2026-03-05T00:50:39.761+0800","message":"fetching terms","component":"TermService","center_id":1}
+{"level":"debug","time":"2026-03-05T00:50:39.762+0800","message":"terms fetched successfully","component":"TermService","count":0}
+{"level":"info","time":"2026-03-05T00:54:40.057+0800","message":"Application shutting down gracefully"}
+{"level":"info","time":"2026-03-05T00:54:40.057+0800","message":"Application exited"}

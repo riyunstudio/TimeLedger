@@ -295,11 +295,12 @@ const fetchRules = async () => {
   loading.value = true
   try {
     const api = useApi()
-    const params = new URLSearchParams()
-    params.append('page', currentPage.value.toString())
-    params.append('limit', pageSize.value.toString())
+    const params = {
+      page: currentPage.value,
+      limit: pageSize.value
+    }
 
-    const response = await api.get<any>(`/admin/rules?${params.toString()}`)
+    const response = await api.get<any>('/admin/rules', params)
 
     // 分頁格式：{ data: [...], total: X, page: X, total_pages: X }
     if (response && response.data) {

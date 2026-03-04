@@ -327,18 +327,19 @@ const fetchTeachers = async () => {
   loading.value = true
   try {
     const api = useApi()
-    const params = new URLSearchParams()
+
+    // 建立參數物件
+    const params: Record<string, any> = {
+      page: currentPage.value,
+      limit: PAGE_LIMIT
+    }
 
     // 伺服器端搜尋
     if (searchQuery.value.trim()) {
-      params.append('q', searchQuery.value.trim())
+      params.q = searchQuery.value.trim()
     }
 
-    // 分頁參數
-    params.append('page', currentPage.value.toString())
-    params.append('limit', PAGE_LIMIT.toString())
-
-    const response = await api.get<any>(`/admin/teachers?${params.toString()}`)
+    const response = await api.get<any>('/admin/teachers', params)
 
     // useApi 已自動提取 data.data，可能是分頁物件或陣列
     if (response) {

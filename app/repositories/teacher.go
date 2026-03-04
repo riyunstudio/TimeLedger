@@ -5,6 +5,7 @@ import (
 	"timeLedger/app"
 	"timeLedger/app/models"
 	"timeLedger/app/resources"
+	"timeLedger/global/logger"
 
 	"gorm.io/gorm"
 )
@@ -180,6 +181,8 @@ func (rp *TeacherRepository) FilterBySearch(ctx context.Context, teacherIDs []ui
 		return teacherIDs, nil
 	}
 
+	logger.GetLogger().Debugw("Filtering teachers by search", "query", query, "teacher_count", len(teacherIDs))
+
 	var filteredIDs []uint
 	// Use a large limit to get all matching teachers
 	err := rp.dbRead.WithContext(ctx).
@@ -191,6 +194,8 @@ func (rp *TeacherRepository) FilterBySearch(ctx context.Context, teacherIDs []ui
 	if err != nil {
 		return nil, err
 	}
+
+	logger.GetLogger().Debugw("Filtered teachers result", "query", query, "filtered_count", len(filteredIDs), "filtered_ids", filteredIDs)
 
 	return filteredIDs, nil
 }
