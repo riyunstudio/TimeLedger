@@ -108,10 +108,9 @@
               class="flex items-center justify-between p-2 rounded-lg bg-white/5"
             >
               <div class="flex items-center gap-3">
-                <span class="text-primary-500 font-mono text-sm">{{ session.time }}</span>
                 <div>
-                  <p class="text-white text-sm">{{ session.courseName }}</p>
-                  <p class="text-slate-500 text-xs">{{ session.teacherName }} · {{ session.roomName }}</p>
+                  <p class="text-white text-sm">{{ session.courseName }} ({{ session.time }})</p>
+                  <p class="text-slate-500 text-xs">{{ session.teacherName }}</p>
                 </div>
               </div>
               <span class="text-xs text-slate-400">{{ session.minutesUntil }} 分鐘後</span>
