@@ -28,7 +28,8 @@ type ValidationConflict struct {
 type ScheduleValidationService interface {
 	// CheckOverlap 檢查時段重疊
 	// 檢查指定時段是否與現有排課衝突
-	CheckOverlap(ctx context.Context, centerID uint, teacherID *uint, roomID uint, startTime, endTime time.Time, weekday int, excludeRuleID *uint) (ValidationResult, error)
+	// skipRuleStatus: 若不為空，則跳過具有該狀態的規則（如 "PLANNED"）
+	CheckOverlap(ctx context.Context, centerID uint, teacherID *uint, roomID uint, startTime, endTime time.Time, weekday int, excludeRuleID *uint, skipRuleStatus string) (ValidationResult, error)
 
 	// CheckTeacherBuffer 檢查老師轉場緩衝
 	// 檢查老師連續課程是否滿足課程的轉場緩衝時間
@@ -41,7 +42,8 @@ type ScheduleValidationService interface {
 	// ValidateFull 完整驗證
 	// 執行所有檢查（重疊 + 緩衝）
 	// 如果 prevEndTime 和 nextStartTime 為 nil，系統會自動計算上一堂課的結束時間
-	ValidateFull(ctx context.Context, centerID uint, teacherID *uint, roomID uint, courseID uint, startTime, endTime time.Time, excludeRuleID *uint, allowBufferOverride bool, prevEndTime, nextStartTime *time.Time) (ValidationResult, error)
+	// skipRuleStatus: 若不為空，則跳過具有該狀態的規則（如 "PLANNED"）
+	ValidateFull(ctx context.Context, centerID uint, teacherID *uint, roomID uint, courseID uint, startTime, endTime time.Time, excludeRuleID *uint, allowBufferOverride bool, prevEndTime, nextStartTime *time.Time, skipRuleStatus string) (ValidationResult, error)
 }
 
 type ScheduleExpansionService interface {

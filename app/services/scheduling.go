@@ -18,16 +18,18 @@ import (
 // ScheduleServiceInterface 排課服務接口
 type ScheduleServiceInterface interface {
 	// 衝突檢查
-	CheckOverlap(ctx context.Context, centerID uint, teacherID *uint, roomID uint, startTime, endTime time.Time, weekday int, excludeRuleID *uint) (*OverlapCheckResult, error)
+	// skipRuleStatus: 若不為空，則跳過具有該狀態的規則（如 "PLANNED"）
+	CheckOverlap(ctx context.Context, centerID uint, teacherID *uint, roomID uint, startTime, endTime time.Time, weekday int, excludeRuleID *uint, skipRuleStatus string) (*OverlapCheckResult, error)
 	CheckTeacherBuffer(ctx context.Context, centerID, teacherID uint, prevEndTime, nextStartTime time.Time, courseID uint) (*BufferCheckResult, error)
 	CheckRoomBuffer(ctx context.Context, centerID, roomID uint, prevEndTime, nextStartTime time.Time, courseID uint) (*BufferCheckResult, error)
 	// ValidateFull 完整驗證
 	// 如果 prevEndTime 和 nextStartTime 為 nil，系統會自動計算上一堂課的結束時間
-	ValidateFull(ctx context.Context, centerID uint, teacherID *uint, roomID, courseID uint, startTime, endTime time.Time, excludeRuleID *uint, allowBufferOverride bool, prevEndTime, nextStartTime *time.Time) (*FullValidationResult, error)
+	// skipRuleStatus: 若不為空，則跳過具有該狀態的規則（如 "PLANNED"）
+	ValidateFull(ctx context.Context, centerID uint, teacherID *uint, roomID, courseID uint, startTime, endTime time.Time, excludeRuleID *uint, allowBufferOverride bool, prevEndTime, nextStartTime *time.Time, skipRuleStatus string) (*FullValidationResult, error)
 
 	// 規則管理
 	GetRules(ctx context.Context, centerID uint) ([]models.ScheduleRule, error)
-	GetRulesPaginated(ctx context.Context, centerID uint, page, limit int) ([]models.ScheduleRule, int64, error)
+	GetRulesPaginated(ctx context.Context, centerID uint, page, limit int, category string) ([]models.ScheduleRule, int64, error)
 	CreateRule(ctx context.Context, centerID, adminID uint, req *CreateScheduleRuleRequest) ([]models.ScheduleRule, *errInfos.Res, error)
 	UpdateRule(ctx context.Context, centerID, adminID, ruleID uint, req *UpdateScheduleRuleRequest) ([]models.ScheduleRule, *errInfos.Res, error)
 	DeleteRule(ctx context.Context, centerID, adminID, ruleID uint) error
@@ -59,36 +61,38 @@ type ScheduleServiceInterface interface {
 
 // CreateScheduleRuleRequest 建立排課規則請求
 type CreateScheduleRuleRequest struct {
-	Name           string  `json:"name" binding:"required"`
-	OfferingID     uint    `json:"offering_id" binding:"required"`
-	TeacherID      *uint   `json:"teacher_id"`
-	RoomID         uint    `json:"room_id" binding:"required"`
-	StartTime      string  `json:"start_time" binding:"required,time_format"`
-	EndTime        string  `json:"end_time" binding:"required,time_format"`
-	Duration       int     `json:"duration" binding:"required"`
-	Weekdays       []int   `json:"weekdays" binding:"required,min=1"`
-	StartDate      string  `json:"start_date" binding:"required,date_format"`
-	EndDate        *string `json:"end_date"`
-	Status         string  `json:"status"`
-	OverrideBuffer bool    `json:"override_buffer"`
+	Name               string  `json:"name" binding:"required"`
+	OfferingID         uint    `json:"offering_id" binding:"required"`
+	TeacherID          *uint   `json:"teacher_id"`
+	RoomID             uint    `json:"room_id" binding:"required"`
+	StartTime          string  `json:"start_time" binding:"required,time_format"`
+	EndTime            string  `json:"end_time" binding:"required,time_format"`
+	Duration           int     `json:"duration" binding:"required"`
+	Weekdays           []int   `json:"weekdays" binding:"required,min=1"`
+	StartDate          string  `json:"start_date" binding:"required,date_format"`
+	EndDate            *string `json:"end_date"`
+	Status             string  `json:"status"`
+	OverrideBuffer     bool    `json:"override_buffer"`
+	SkipConflictCheck  bool    `json:"skip_conflict_check"` // 允許與預計課重疊（Soft Booking）
 }
 
 // UpdateScheduleRuleRequest 更新排課規則請求
 type UpdateScheduleRuleRequest struct {
-	Name           string   `json:"name"`
-	OfferingID     uint     `json:"offering_id"`
-	TeacherID      *uint    `json:"teacher_id"`
-	RoomID         uint     `json:"room_id"`
-	StartTime      string   `json:"start_time"`
-	EndTime        string   `json:"end_time"`
-	Duration       int      `json:"duration"`
-	Weekdays       []int    `json:"weekdays"`
-	StartDate      string   `json:"start_date"`
-	EndDate        *string  `json:"end_date"`
-	SuspendedDates []string `json:"suspended_dates"` // 停課日期列表
-	Status         string   `json:"status"`
-	UpdateMode     string   `json:"update_mode"`
-	ExcludeRuleID  *uint    `json:"exclude_rule_id"` // 更新時排除自己，避免與自己衝突
+	Name               string   `json:"name"`
+	OfferingID        uint     `json:"offering_id"`
+	TeacherID         *uint    `json:"teacher_id"`
+	RoomID            uint     `json:"room_id"`
+	StartTime         string   `json:"start_time"`
+	EndTime           string   `json:"end_time"`
+	Duration          int      `json:"duration"`
+	Weekdays          []int    `json:"weekdays"`
+	StartDate         string   `json:"start_date"`
+	EndDate           *string  `json:"end_date"`
+	SuspendedDates    []string `json:"suspended_dates"` // 停課日期列表
+	Status            string   `json:"status"`
+	UpdateMode        string   `json:"update_mode"`
+	ExcludeRuleID     *uint    `json:"exclude_rule_id"` // 更新時排除自己，避免與自己衝突
+	SkipConflictCheck bool     `json:"skip_conflict_check"` // 允許與預計課重疊（Soft Booking）
 }
 
 // CreateExceptionRequest 建立例外請求
@@ -242,8 +246,9 @@ func (s *ScheduleService) GetRules(ctx context.Context, centerID uint) ([]models
 }
 
 // GetRulesPaginated 分頁取得排課規則列表
-func (s *ScheduleService) GetRulesPaginated(ctx context.Context, centerID uint, page, limit int) ([]models.ScheduleRule, int64, error) {
-	rules, total, err := s.ruleRepo.ListByCenterIDPaginated(ctx, centerID, page, limit)
+// category 參數：用於過濾特定課程類別（如不提供則不過濾）
+func (s *ScheduleService) GetRulesPaginated(ctx context.Context, centerID uint, page, limit int, category string) ([]models.ScheduleRule, int64, error) {
+	rules, total, err := s.ruleRepo.ListByCenterIDPaginated(ctx, centerID, page, limit, category)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -289,7 +294,14 @@ func (s *ScheduleService) CreateRule(ctx context.Context, centerID, adminID uint
 		}
 	}
 
-	validationResult, err := s.validationSvc.CheckOverlap(ctx, centerID, req.TeacherID, req.RoomID, startTimeParsed, endTimeParsed, checkWeekday, nil)
+	// 判斷是否需要跳過 PLANNED 狀態的規則（Soft Booking）
+	// 當 req.SkipConflictCheck 為 true 時，跳過 PLANNED 規則
+	var skipRuleStatus string
+	if req.SkipConflictCheck {
+		skipRuleStatus = models.RuleStatusPlanned
+	}
+
+	validationResult, err := s.validationSvc.CheckOverlap(ctx, centerID, req.TeacherID, req.RoomID, startTimeParsed, endTimeParsed, checkWeekday, nil, skipRuleStatus)
 	if err != nil {
 		return nil, s.App.Err.New(errInfos.SQL_ERROR), fmt.Errorf("failed to check overlap: %w", err)
 	}
@@ -345,8 +357,16 @@ func (s *ScheduleService) CreateRule(ctx context.Context, centerID, adminID uint
 					EndDate:   endDate,
 				},
 		Status: func() string {
-				// 如果請求中有提供 status，則使用該值（已經過驗證）
-				// 否則使用預設的 CONFIRMED 狀態
+				// 自動狀態轉換邏輯
+				// 1. 如果有設定老師且狀態為空或 PLANNED → 升級為 CONFIRMED（有老師自動升級正式課）
+				if req.TeacherID != nil && (req.Status == "" || req.Status == models.RuleStatusPlanned) {
+					return models.RuleStatusConfirmed
+				}
+				// 2. 如果沒有設定老師且狀態為空 → 預設為 PLANNED（沒老師預設為預計課）
+				if req.TeacherID == nil && req.Status == "" {
+					return models.RuleStatusPlanned
+				}
+				// 3. 其他情況使用請求中指定的狀態
 				if req.Status != "" {
 					return req.Status
 				}
@@ -562,8 +582,14 @@ func (s *ScheduleService) UpdateRule(ctx context.Context, centerID, adminID, rul
 			checkWeekday = existingRule.Weekday
 		}
 
+		// 判斷是否需要跳過 PLANNED 狀態的規則（Soft Booking）
+		var skipRuleStatus string
+		if req.SkipConflictCheck {
+			skipRuleStatus = models.RuleStatusPlanned
+		}
+
 		// 使用 ExcludeRuleID 排除自己，避免與自己衝突
-		validationResult, err := s.validationSvc.CheckOverlap(ctx, centerID, req.TeacherID, req.RoomID, startTimeParsed, endTimeParsed, checkWeekday, req.ExcludeRuleID)
+		validationResult, err := s.validationSvc.CheckOverlap(ctx, centerID, req.TeacherID, req.RoomID, startTimeParsed, endTimeParsed, checkWeekday, req.ExcludeRuleID, skipRuleStatus)
 		if err != nil {
 			return nil, s.App.Err.New(errInfos.SQL_ERROR), fmt.Errorf("failed to check overlap: %w", err)
 		}
@@ -1182,8 +1208,9 @@ func parseInt(s string) int {
 }
 
 // 衝突檢查方法 - 代理到 validationService
-func (s *ScheduleService) CheckOverlap(ctx context.Context, centerID uint, teacherID *uint, roomID uint, startTime, endTime time.Time, weekday int, excludeRuleID *uint) (*OverlapCheckResult, error) {
-	result, err := s.validationSvc.CheckOverlap(ctx, centerID, teacherID, roomID, startTime, endTime, weekday, excludeRuleID)
+// skipRuleStatus: 若不為空，則跳過具有該狀態的規則（如 "PLANNED"）
+func (s *ScheduleService) CheckOverlap(ctx context.Context, centerID uint, teacherID *uint, roomID uint, startTime, endTime time.Time, weekday int, excludeRuleID *uint, skipRuleStatus string) (*OverlapCheckResult, error) {
+	result, err := s.validationSvc.CheckOverlap(ctx, centerID, teacherID, roomID, startTime, endTime, weekday, excludeRuleID, skipRuleStatus)
 	if err != nil {
 		return nil, err
 	}
@@ -1206,8 +1233,9 @@ func (s *ScheduleService) CheckRoomBuffer(ctx context.Context, centerID, roomID 
 	return &result, nil
 }
 
-func (s *ScheduleService) ValidateFull(ctx context.Context, centerID uint, teacherID *uint, roomID, courseID uint, startTime, endTime time.Time, excludeRuleID *uint, allowBufferOverride bool, prevEndTime, nextStartTime *time.Time) (*FullValidationResult, error) {
-	result, err := s.validationSvc.ValidateFull(ctx, centerID, teacherID, roomID, courseID, startTime, endTime, excludeRuleID, allowBufferOverride, prevEndTime, nextStartTime)
+// skipRuleStatus: 若不為空，則跳過具有該狀態的規則（如 "PLANNED"）
+func (s *ScheduleService) ValidateFull(ctx context.Context, centerID uint, teacherID *uint, roomID, courseID uint, startTime, endTime time.Time, excludeRuleID *uint, allowBufferOverride bool, prevEndTime, nextStartTime *time.Time, skipRuleStatus string) (*FullValidationResult, error) {
+	result, err := s.validationSvc.ValidateFull(ctx, centerID, teacherID, roomID, courseID, startTime, endTime, excludeRuleID, allowBufferOverride, prevEndTime, nextStartTime, skipRuleStatus)
 	if err != nil {
 		return nil, err
 	}

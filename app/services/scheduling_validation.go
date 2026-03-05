@@ -33,7 +33,7 @@ func NewScheduleValidationService(app *app.App) ScheduleValidationService {
 	return svc
 }
 
-func (s *ScheduleValidationServiceImpl) CheckOverlap(ctx context.Context, centerID uint, teacherID *uint, roomID uint, startTime, endTime time.Time, weekday int, excludeRuleID *uint) (ValidationResult, error) {
+func (s *ScheduleValidationServiceImpl) CheckOverlap(ctx context.Context, centerID uint, teacherID *uint, roomID uint, startTime, endTime time.Time, weekday int, excludeRuleID *uint, skipRuleStatus string) (ValidationResult, error) {
 	result := ValidationResult{Valid: true}
 
 	// 確保 weekday 正確轉換（Go 的 Weekday: Sunday=0, Monday=1, ..., Saturday=6）
@@ -58,6 +58,11 @@ func (s *ScheduleValidationServiceImpl) CheckOverlap(ctx context.Context, center
 		Where("end_time > ?", startTimeStr).
 		Where("COALESCE(NULLIF(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(effective_range, '$.start_date')), ''), 'null'), '0001-01-01') <= ?", startDateStr).
 		Where("COALESCE(NULLIF(NULLIF(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(effective_range, '$.end_date')), ''), 'null'), '0001-01-01 00:00:00'), '9999-12-31') >= ?", startDateStr)
+
+	// 如果指定了 skipRuleStatus，則跳過具有該狀態的規則
+	if skipRuleStatus != "" {
+		query = query.Where("status != ?", skipRuleStatus)
+	}
 
 	if teacherID != nil {
 		query = query.Where("teacher_id = ?", *teacherID)
@@ -167,7 +172,7 @@ func (s *ScheduleValidationServiceImpl) CheckRoomBuffer(ctx context.Context, cen
 	return result, nil
 }
 
-func (s *ScheduleValidationServiceImpl) ValidateFull(ctx context.Context, centerID uint, teacherID *uint, roomID uint, courseID uint, startTime, endTime time.Time, excludeRuleID *uint, allowBufferOverride bool, prevEndTime, nextStartTime *time.Time) (ValidationResult, error) {
+func (s *ScheduleValidationServiceImpl) ValidateFull(ctx context.Context, centerID uint, teacherID *uint, roomID uint, courseID uint, startTime, endTime time.Time, excludeRuleID *uint, allowBufferOverride bool, prevEndTime, nextStartTime *time.Time, skipRuleStatus string) (ValidationResult, error) {
 	result := ValidationResult{Valid: true}
 
 	// 計算 weekday
@@ -176,7 +181,7 @@ func (s *ScheduleValidationServiceImpl) ValidateFull(ctx context.Context, center
 		weekday = 7
 	}
 
-	overlapResult, err := s.CheckOverlap(ctx, centerID, teacherID, roomID, startTime, endTime, weekday, excludeRuleID)
+	overlapResult, err := s.CheckOverlap(ctx, centerID, teacherID, roomID, startTime, endTime, weekday, excludeRuleID, skipRuleStatus)
 	if err != nil {
 		return ValidationResult{}, err
 	}

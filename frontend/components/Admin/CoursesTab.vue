@@ -128,6 +128,12 @@
           <div>
             <div class="flex items-center gap-2 mb-1">
               <span
+                v-if="course.category"
+                class="px-2 py-0.5 text-xs rounded bg-blue-500/20 text-blue-400 font-medium"
+              >
+                {{ course.category }}
+              </span>
+              <span
                 v-if="course.code"
                 class="px-2 py-0.5 text-xs rounded bg-primary-500/20 text-primary-400 font-mono"
               >
@@ -260,6 +266,21 @@
               />
             </div>
           </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-slate-300 mb-2">
+              課程類別
+            </label>
+            <select
+              v-model="form.category"
+              class="input-field"
+            >
+              <option value="">無（不指定類別）</option>
+              <option v-for="cat in categories" :key="cat" :value="cat">
+                {{ cat }}
+              </option>
+            </select>
+          </div>
 
           <div>
             <label class="block text-sm font-medium text-slate-300 mb-2">
@@ -315,6 +336,7 @@ interface Course {
   id: number
   code: string
   name: string
+  category?: string
   default_duration: number
   is_active: boolean
 }
@@ -353,9 +375,29 @@ const debounceTimer = ref<NodeJS.Timeout | null>(null)
 const form = reactive({
   code: '',
   name: '',
+  category: '',
   default_duration: 60,
   is_active: true,
 })
+
+const categories = ref<string[]>([])
+
+async function fetchCategories() {
+  try {
+    const token = localStorage.getItem('admin_token')
+    const response = await fetch(`${window.location.origin}/api/v1/admin/course-categories`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    })
+    if (response.ok) {
+      const data = await response.json()
+      categories.value = (data.data || data.datas || []).map((c: any) => c.name)
+    }
+  } catch (err) {
+    console.error('取得課程類別失敗:', err)
+  }
+}
 
 // 取得中心設定
 async function fetchCenterSettings() {
@@ -439,6 +481,7 @@ function editCourse(course: Course) {
   editingCourse.value = course
   form.code = course.code || ''
   form.name = course.name
+  form.category = course.category || ''
   form.default_duration = course.default_duration || 60
   form.is_active = course.is_active
 }
@@ -487,6 +530,7 @@ function closeModal() {
 function resetForm() {
   form.code = ''
   form.name = ''
+  form.category = ''
   form.default_duration = centerSettings.value?.default_course_duration || 60
   form.is_active = true
 }
@@ -502,6 +546,7 @@ async function saveCourse() {
     const data = {
       code: form.code.trim() || null,
       name: form.name,
+      category: form.category || null,
       duration: form.default_duration,
       is_active: form.is_active,
       color_hex: '#3b82f6',
@@ -527,6 +572,7 @@ async function saveCourse() {
 }
 
 onMounted(() => {
+  fetchCategories()
   fetchCourses()
 })
 

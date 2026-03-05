@@ -246,6 +246,7 @@ func (s *ScheduleExceptionServiceImpl) ReviewException(ctx context.Context, exce
 				overrideBuffer,
 				nil,
 				nil,
+				"", // 例外審核時不跳過任何狀態
 			)
 			if err != nil {
 				return fmt.Errorf("validation failed: %w", err)

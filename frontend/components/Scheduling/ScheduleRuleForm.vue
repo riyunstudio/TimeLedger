@@ -55,6 +55,20 @@
       </p>
     </div>
 
+    <!-- 允許與預計課重疊 (Soft Booking) -->
+    <div v-if="values.status === 'CONFIRMED'" class="flex items-center gap-2">
+      <input
+        type="checkbox"
+        :checked="values.skip_conflict_check"
+        @change="(e) => setFieldValue('skip_conflict_check', (e.target as HTMLInputElement).checked)"
+        id="skip_conflict_check"
+        class="w-4 h-4 rounded border-slate-600 bg-slate-700 text-primary-500 focus:ring-primary-500 focus:ring-offset-slate-800"
+      />
+      <label for="skip_conflict_check" class="text-sm text-slate-300">
+        允許與預計課重疊（不視為衝突）
+      </label>
+    </div>
+
     <!-- 課程和老師 -->
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
       <div>
@@ -780,6 +794,7 @@ const createValidationSchema = () => {
     start_date: z.string().min(1, '請選擇開始日期'),
     end_date: z.string().optional(),
     status: z.enum(['PLANNED', 'CONFIRMED']).default('CONFIRMED'),
+    skip_conflict_check: z.boolean().default(false),
     skip_holiday: z.boolean().default(true),
     suspended_dates: z.array(z.string()).default([]),
   }
@@ -818,6 +833,7 @@ const getInitialValues = () => {
       start_date: props.editingRule.effective_range?.start_date?.split(/[T ]/)[0] || formatDateToString(new Date()),
       end_date: props.editingRule.effective_range?.end_date?.split(/[T ]/)[0] || '',
       status: props.editingRule.status || 'CONFIRMED',
+      skip_conflict_check: props.editingRule.skip_conflict_check ?? false,
       skip_holiday: props.editingRule.skip_holiday ?? true,
       suspended_dates: suspendedDatesData,
     }
@@ -835,6 +851,7 @@ const getInitialValues = () => {
     start_date: formatDateToString(new Date()),
     end_date: '',
     status: 'CONFIRMED',
+    skip_conflict_check: false,
     skip_holiday: true,
     suspended_dates: [] as string[],
   }

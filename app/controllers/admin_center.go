@@ -28,10 +28,10 @@ func NewAdminCenterController(appInstance *app.App) *AdminCenterController {
 
 // UpdateSettingsRequest 更新中心設定的請求結構
 type UpdateSettingsRequest struct {
-	DefaultCourseDuration *int64 `json:"default_course_duration"`
-	ExceptionLeadDays     *int64 `json:"exception_lead_days"`
-	OperatingStartTime    string `json:"operating_start_time"`
-	OperatingEndTime      string `json:"operating_end_time"`
+	DefaultCourseDuration *int64  `json:"default_course_duration"`
+	ExceptionLeadDays     *int64  `json:"exception_lead_days"`
+	OperatingStartTime   string  `json:"operating_start_time"`
+	OperatingEndTime     string  `json:"operating_end_time"`
 }
 
 // UpdateSettings 更新中心設定

@@ -155,31 +155,50 @@ func (rp *ScheduleRuleRepository) ListByCenterID(ctx context.Context, centerID u
 }
 
 // ListByCenterIDPaginated 分頁取得排課規則
-func (rp *ScheduleRuleRepository) ListByCenterIDPaginated(ctx context.Context, centerID uint, page, limit int) ([]models.ScheduleRule, int64, error) {
+// category 參數：用於過濾特定課程類別（如不提供則不過濾）
+func (rp *ScheduleRuleRepository) ListByCenterIDPaginated(ctx context.Context, centerID uint, page, limit int, category string) ([]models.ScheduleRule, int64, error) {
 	var data []models.ScheduleRule
 	var total int64
 
+	baseQuery := rp.app.MySQL.RDB.WithContext(ctx).Model(&models.ScheduleRule{}).Where("schedule_rules.center_id = ?", centerID)
+
+	// 如果有 category 參數，JOIN courses 表進行過濾
+	if category != "" {
+		baseQuery = baseQuery.
+			Joins("JOIN offerings ON schedule_rules.offering_id = offerings.id").
+			Joins("JOIN courses ON offerings.course_id = courses.id").
+			Where("courses.category = ?", category)
+	}
+
 	// 取得總數
-	if err := rp.app.MySQL.RDB.WithContext(ctx).
-		Model(&models.ScheduleRule{}).
-		Where("center_id = ?", centerID).
-		Count(&total).Error; err != nil {
+	if err := baseQuery.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
 	// 計算偏移量
 	offset := (page - 1) * limit
 
-	// 取得分頁資料
-	err := rp.app.MySQL.RDB.WithContext(ctx).
+	// 建立查詢
+	query := rp.app.MySQL.RDB.WithContext(ctx).
 		Preload("Offering").
+		Preload("Offering.Course").
 		Preload("Room").
 		Preload("Teacher").
-		Where("center_id = ?", centerID).
+		Where("schedule_rules.center_id = ?", centerID).
 		Order("weekday ASC, start_time ASC").
 		Offset(offset).
-		Limit(limit).
-		Find(&data).Error
+		Limit(limit)
+
+	// 如果有 category 參數，JOIN courses 表進行過濾
+	if category != "" {
+		query = query.
+			Joins("JOIN offerings ON schedule_rules.offering_id = offerings.id").
+			Joins("JOIN courses ON offerings.course_id = courses.id").
+			Where("courses.category = ?", category)
+	}
+
+	// 取得分頁資料
+	err := query.Find(&data).Error
 
 	return data, total, err
 }

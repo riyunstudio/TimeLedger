@@ -35,6 +35,20 @@
           </div>
         </div>
 
+        <!-- 課程類別 -->
+        <div>
+          <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">課程類別</label>
+          <select
+            v-model="form.category"
+            class="input-field text-sm sm:text-base"
+          >
+            <option value="">無（不指定類別）</option>
+            <option v-for="cat in categories" :key="cat" :value="cat">
+              {{ cat }}
+            </option>
+          </select>
+        </div>
+
         <div class="grid grid-cols-2 gap-4">
           <div>
             <label class="block text-slate-300 mb-2 font-medium text-sm sm:text-base">課程時長</label>
@@ -149,10 +163,35 @@ const { getCenterId } = useCenterId()
 const form = ref({
   code: props.course?.code || '',
   name: props.course?.name || '',
+  category: props.course?.category || '',
   duration: props.course?.default_duration || props.defaultDuration || 60,
   color_hex: props.course?.color_hex || '#3B82F6',
   teacher_buffer_min: props.course?.teacher_buffer_min || 10,
   room_buffer_min: props.course?.room_buffer_min || 5,
+})
+
+// 從設定取得課程類別
+const categories = ref<string[]>([])
+const fetchCategories = async () => {
+  try {
+    const token = localStorage.getItem('admin_token')
+    const response = await fetch(`${window.location.origin}/api/v1/admin/course-categories`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    })
+    if (response.ok) {
+      const data = await response.json()
+      // 轉換為名稱陣列
+      categories.value = (data.datas || []).map((c: any) => c.name)
+    }
+  } catch (err) {
+    console.error('取得課程類別失敗:', err)
+  }
+}
+
+onMounted(() => {
+  fetchCategories()
 })
 
 watch(() => props.course, (newCourse) => {
@@ -160,6 +199,7 @@ watch(() => props.course, (newCourse) => {
     form.value = {
       code: newCourse.code || '',
       name: newCourse.name,
+      category: newCourse.category || '',
       duration: newCourse.default_duration || props.defaultDuration || 60,
       color_hex: newCourse.color_hex || '#3B82F6',
       teacher_buffer_min: newCourse.teacher_buffer_min,
@@ -169,6 +209,7 @@ watch(() => props.course, (newCourse) => {
     form.value = {
       code: '',
       name: '',
+      category: '',
       duration: props.defaultDuration || 60,
       color_hex: '#3B82F6',
       teacher_buffer_min: 10,
@@ -191,6 +232,7 @@ const handleSubmit = async () => {
     const courseData = {
       code: form.value.code.trim() || null,
       name: form.value.name,
+      category: form.value.category || null,
       duration: form.value.duration,
       color_hex: form.value.color_hex,
       teacher_buffer_min: form.value.teacher_buffer_min,

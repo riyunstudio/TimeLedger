@@ -151,7 +151,7 @@ func (ctl *SchedulingController) CheckOverlap(ctx *gin.Context) {
 		}
 	}
 
-	result, err := ctl.scheduleSvc.CheckOverlap(ctx.Request.Context(), centerID, req.TeacherID, req.RoomID, startTime, endTime, checkWeekday, req.ExcludeRuleID)
+	result, err := ctl.scheduleSvc.CheckOverlap(ctx.Request.Context(), centerID, req.TeacherID, req.RoomID, startTime, endTime, checkWeekday, req.ExcludeRuleID, "")
 	if err != nil {
 		helper.InternalError(err.Error())
 		return
@@ -304,7 +304,7 @@ func (ctl *SchedulingController) ValidateFull(ctx *gin.Context) {
 		nextStartTime = &nt
 	}
 
-	result, err := ctl.scheduleSvc.ValidateFull(ctx.Request.Context(), centerID, req.TeacherID, req.RoomID, req.CourseID, startTime, endTime, req.ExcludeRuleID, req.AllowBufferOverride, prevEndTime, nextStartTime)
+	result, err := ctl.scheduleSvc.ValidateFull(ctx.Request.Context(), centerID, req.TeacherID, req.RoomID, req.CourseID, startTime, endTime, req.ExcludeRuleID, req.AllowBufferOverride, prevEndTime, nextStartTime, "")
 	if err != nil {
 		helper.InternalError(err.Error())
 		return
@@ -321,6 +321,7 @@ func (ctl *SchedulingController) ValidateFull(ctx *gin.Context) {
 // @Security BearerAuth
 // @Param page query int false "頁碼，預設 1"
 // @Param limit query int false "每頁筆數，預設 20"
+// @Param category query string false "課程類別篩選"
 // @Success 200 {object} global.ApiResponse{data=resources.PaginationResponse}
 // @Router /api/v1/admin/scheduling/rules [get]
 func (ctl *SchedulingController) GetRules(ctx *gin.Context) {
@@ -340,6 +341,9 @@ func (ctl *SchedulingController) GetRules(ctx *gin.Context) {
 	page := helper.QueryIntOrDefault("page", 1)
 	limit := helper.QueryIntOrDefault("limit", 20)
 
+	// 取得 category 參數（用於過濾）
+	category := ctx.Query("category")
+
 	// 驗證分頁參數
 	if page < 1 {
 		page = 1
@@ -351,7 +355,7 @@ func (ctl *SchedulingController) GetRules(ctx *gin.Context) {
 		limit = 100
 	}
 
-	rules, total, err := ctl.scheduleSvc.GetRulesPaginated(ctx.Request.Context(), centerID, page, limit)
+	rules, total, err := ctl.scheduleSvc.GetRulesPaginated(ctx.Request.Context(), centerID, page, limit, category)
 	if err != nil {
 		helper.InternalError(err.Error())
 		return
