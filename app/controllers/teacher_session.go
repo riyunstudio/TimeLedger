@@ -42,6 +42,11 @@ func (ctl *TeacherSessionController) GetSessionNote(ctx *gin.Context) {
 		return
 	}
 
+	centerID := helper.MustCenterID()
+	if centerID == 0 {
+		return
+	}
+
 	ruleID := helper.MustQueryUint("rule_id")
 	if ruleID == 0 {
 		return
@@ -59,7 +64,7 @@ func (ctl *TeacherSessionController) GetSessionNote(ctx *gin.Context) {
 		return
 	}
 
-	note, isNew, dbErr := ctl.sessionNote.GetOrCreate(ctx, teacherID, ruleID, sessionDate)
+	note, isNew, dbErr := ctl.sessionNote.GetOrCreate(ctx, centerID, teacherID, ruleID, sessionDate)
 	if dbErr != nil {
 		helper.InternalError(dbErr.Error())
 		return
@@ -97,6 +102,11 @@ func (ctl *TeacherSessionController) UpsertSessionNote(ctx *gin.Context) {
 		return
 	}
 
+	centerID := helper.MustCenterID()
+	if centerID == 0 {
+		return
+	}
+
 	var req requests.UpsertSessionNoteRequest
 	if !helper.MustBindJSON(&req) {
 		return
@@ -108,7 +118,7 @@ func (ctl *TeacherSessionController) UpsertSessionNote(ctx *gin.Context) {
 		return
 	}
 
-	note, _, err := ctl.sessionNote.GetOrCreate(ctx, teacherID, req.RuleID, sessionDate)
+	note, _, err := ctl.sessionNote.GetOrCreate(ctx, centerID, teacherID, req.RuleID, sessionDate)
 	if err != nil {
 		helper.InternalError(err.Error())
 		return

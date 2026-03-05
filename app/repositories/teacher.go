@@ -122,20 +122,32 @@ func (rp *TeacherRepository) ListByCenter(ctx context.Context, centerID uint) ([
 	return teachers, err
 }
 
-// SearchByName searches for teachers by name (partial match, case-insensitive).
-func (rp *TeacherRepository) SearchByName(ctx context.Context, name string, limit int) ([]models.Teacher, error) {
+// SearchByName searches for teachers by name (partial match, case-insensitive) within a specific center.
+func (rp *TeacherRepository) SearchByName(ctx context.Context, centerID uint, name string, limit int) ([]models.Teacher, error) {
 	if limit <= 0 {
 		limit = 20
 	}
 	var teachers []models.Teacher
 	err := rp.dbRead.WithContext(ctx).
-		Where("name LIKE ?", "%"+name+"%").
+		Table("teachers").
+		Joins("INNER JOIN center_memberships ON center_memberships.teacher_id = teachers.id AND center_memberships.center_id = ? AND center_memberships.status = ?", centerID, "ACTIVE").
+		Where("teachers.name LIKE ?", "%"+name+"%").
 		Limit(limit).
 		Find(&teachers).Error
 	return teachers, err
 }
 
-// List retrieves all teachers (use with caution, prefer ListByCenter for specific use cases).
+// ListByCenterID retrieves all teachers belonging to a specific center (preferred over List).
+func (rp *TeacherRepository) ListByCenterID(ctx context.Context, centerID uint) ([]models.Teacher, error) {
+	var teachers []models.Teacher
+	err := rp.dbRead.WithContext(ctx).
+		Table("teachers").
+		Joins("INNER JOIN center_memberships ON center_memberships.teacher_id = teachers.id AND center_memberships.center_id = ? AND center_memberships.status = ?", centerID, "ACTIVE").
+		Find(&teachers).Error
+	return teachers, err
+}
+
+// List retrieves all teachers (deprecated: use ListByCenterID instead for security).
 func (rp *TeacherRepository) List(ctx context.Context) ([]models.Teacher, error) {
 	return rp.FindAll(ctx)
 }

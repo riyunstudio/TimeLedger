@@ -115,7 +115,7 @@ func (s *ExportServiceImpl) ExportScheduleToPDF(ctx context.Context, centerID ui
 }
 
 func (s *ExportServiceImpl) ExportTeachersToCSV(ctx context.Context, centerID uint) ([]byte, error) {
-	teachers, err := s.teacherRepo.List(ctx)
+	teachers, err := s.teacherRepo.ListByCenterID(ctx, centerID)
 	if err != nil {
 		return nil, err
 	}
@@ -231,7 +231,7 @@ func (s *ExportServiceImpl) GenerateScheduleCSV(ctx context.Context, centerID ui
 
 // GenerateTeacherCSV generates teacher CSV data as 2D slice for export
 func (s *ExportServiceImpl) GenerateTeacherCSV(ctx context.Context, centerID uint) ([][]string, error) {
-	teachers, err := s.teacherRepo.List(ctx)
+	teachers, err := s.teacherRepo.ListByCenterID(ctx, centerID)
 	if err != nil {
 		return nil, err
 	}

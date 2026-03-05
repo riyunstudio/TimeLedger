@@ -180,6 +180,9 @@ const autoAccepting = ref(false) // 自動接受邀請中的狀態
 const accepted = ref(false)
 const isAlreadyMember = ref(false)
 
+// 計時器引用，用於清理
+const timers = ref<ReturnType<typeof setTimeout>[]>([])
+
 // 檢查是否已登入
 const isLoggedIn = computed(() => authStore.isAuthenticated && authStore.isTeacher)
 
@@ -496,9 +499,10 @@ const checkInvitationLogin = async () => {
 
   // 如果已經有完整的登入資訊，直接執行登入
   if (savedLineUserId && savedAccessToken) {
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       performLoginAndAccept(savedLineUserId, savedAccessToken)
     }, 200)
+    timers.value.push(timer)
     return
   }
 
@@ -517,9 +521,10 @@ const checkInvitationLogin = async () => {
       }
 
       // 執行登入並接受邀請
-      setTimeout(() => {
+      const timer2 = setTimeout(() => {
         performLoginAndAccept(userInfo.userId, userInfo.accessToken)
       }, 200)
+      timers.value.push(timer2)
     } catch (err: any) {
       console.error('Failed to get LINE user info:', err)
     }
@@ -533,13 +538,20 @@ onMounted(async () => {
   // 條件：已登入、是受邀請者、尚未接受邀請
   if (isLoggedIn.value && isInvitedUser.value && !accepted.value) {
     // 延遲一下確保 UI 更新後再執行
-    setTimeout(async () => {
+    const timer3 = setTimeout(async () => {
       autoAccepting.value = true
       await acceptInvitation()
       autoAccepting.value = false
     }, 300)
+    timers.value.push(timer3)
   }
 
   await checkInvitationLogin()
+})
+
+// 清理計時器，避免記憶體洩漏
+onUnmounted(() => {
+  timers.value.forEach(timer => clearTimeout(timer))
+  timers.value = []
 })
 </script>

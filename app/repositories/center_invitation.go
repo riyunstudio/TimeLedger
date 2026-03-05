@@ -23,6 +23,11 @@ func (rp *CenterInvitationRepository) GetByToken(ctx context.Context, token stri
 	return rp.First(ctx, "token = ?", token)
 }
 
+// GetByTokenAndCenter retrieves an invitation by token and validates it belongs to the specified center
+func (rp *CenterInvitationRepository) GetByTokenAndCenter(ctx context.Context, token string, centerID uint) (models.CenterInvitation, error) {
+	return rp.First(ctx, "token = ? AND center_id = ?", token, centerID)
+}
+
 func (rp *CenterInvitationRepository) GetByTeacherAndCenter(ctx context.Context, teacherID, centerID uint) ([]models.CenterInvitation, error) {
 	return rp.Find(ctx, "teacher_id = ? AND center_id = ?", teacherID, centerID)
 }

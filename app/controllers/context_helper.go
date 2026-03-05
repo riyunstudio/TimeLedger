@@ -227,6 +227,41 @@ func (h *ContextHelper) MustQueryDateRange(fromKey, toKey string) (from, to time
 	return from, to
 }
 
+// ParseDateString 解析日期字串，支援多種格式
+// 支援格式：YYYY-MM-DD, YYYY-MM-DDTHH:MM:SS, YYYY-MM-DDTHH:MM:SSZ
+// 回傳 (time.Time, error)
+func ParseDateString(dateStr string) (time.Time, error) {
+	if dateStr == "" {
+		return time.Time{}, fmt.Errorf("date string is empty")
+	}
+
+	// 嘗試多種格式
+	formats := []string{
+		"2006-01-02T15:04:05Z07:00", // ISO 8601 with timezone
+		"2006-01-02T15:04:05",       // ISO 8601 without timezone
+		"2006-01-02 15:04:05",       // MySQL datetime
+		"2006-01-02",                // Date only
+	}
+
+	for _, format := range formats {
+		if t, err := time.Parse(format, dateStr); err == nil {
+			return t, nil
+		}
+	}
+
+	return time.Time{}, fmt.Errorf("invalid date format: %s", dateStr)
+}
+
+// MustParseDateString 解析日期字串
+// 如果失敗，回傳 false
+func MustParseDateString(dateStr string) (time.Time, bool) {
+	date, err := ParseDateString(dateStr)
+	if err != nil {
+		return time.Time{}, false
+	}
+	return date, true
+}
+
 // BindJSON 綁定 JSON 請求體
 func (h *ContextHelper) BindJSON(ptr any) error {
 	if err := h.ctx.ShouldBindJSON(ptr); err != nil {
