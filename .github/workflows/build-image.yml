@@ -5,13 +5,22 @@ on:
     branches: [main, master]
   workflow_dispatch:
 
+# ✅ 防止排隊堆積
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    # ✅ 避開 ubuntu-latest 池
+    runs-on: ubuntu-24.04
+    # ✅ 避免永久卡住
+    timeout-minutes: 30
+
     permissions:
       contents: read
       packages: write
