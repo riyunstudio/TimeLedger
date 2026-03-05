@@ -220,7 +220,7 @@
     <TeacherCreateModal
       :show="showCreateModal"
       @close="showCreateModal = false"
-      @created="fetchTeachers"
+      @created="onTeacherCreated"
     />
 
     <AdminTeacherProfileModal
@@ -444,6 +444,11 @@ const closeRatingModal = () => {
 
 const onRatingSaved = async () => {
   await fetchTeachers()
+}
+
+const onTeacherCreated = async () => {
+  await fetchTeachers()
+  invalidate('teachers')
 }
 
 const removeTeacher = async (teacher: any) => {

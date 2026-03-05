@@ -218,3 +218,38 @@ func (ctl *AdminRoomController) ToggleRoomActive(ctx *gin.Context) {
 
 	helper.Success(nil)
 }
+
+// DeleteRoom 刪除教室
+// @Summary 刪除教室
+// @Tags Admin - Room
+// @Produce json
+// @Security BearerAuth
+// @Param room_id path int true "教室 ID"
+// @Success 200 {object} global.ApiResponse
+// @Router /api/v1/admin/rooms/{room_id} [delete]
+func (ctl *AdminRoomController) DeleteRoom(ctx *gin.Context) {
+	helper := NewContextHelper(ctx)
+
+	centerID := helper.MustCenterID()
+	if centerID == 0 {
+		return
+	}
+
+	roomID := helper.MustParamUint("room_id")
+	if roomID == 0 {
+		return
+	}
+
+	adminID := helper.MustUserID()
+	if adminID == 0 {
+		return
+	}
+
+	errInfo, err := ctl.roomService.DeleteRoom(ctx.Request.Context(), centerID, adminID, roomID)
+	if err != nil {
+		helper.ErrorWithInfo(errInfo)
+		return
+	}
+
+	helper.Success(nil)
+}

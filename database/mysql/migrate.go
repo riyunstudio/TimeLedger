@@ -21,6 +21,7 @@ func (db *DB) AutoMigrate() {
 		&models.GeoCity{},
 		&models.GeoDistrict{},
 		&models.Course{},
+		&models.CourseCategory{},
 		&models.Offering{},
 		&models.Room{},
 		&models.TimetableTemplate{},
@@ -56,6 +57,9 @@ func (db *DB) AutoMigrate() {
 
 	// 遷移 schedule_rules status 欄位
 	db.MigrateScheduleRulesStatus()
+
+	// 遷移 course_categories 表
+	db.MigrateCourseCategories()
 }
 
 // dropTablesForReschema 刪除需要重建的資料表

@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"fmt"
 	"time"
 	"timeLedger/app"
 	"timeLedger/app/models"
@@ -14,6 +15,7 @@ type RoomService struct {
 	BaseService
 	app            *app.App
 	roomRepository *repositories.RoomRepository
+	ruleRepo       *repositories.ScheduleRuleRepository
 	auditLogRepo   *repositories.AuditLogRepository
 	cacheService   *CacheService
 }
@@ -23,6 +25,7 @@ func NewRoomService(app *app.App) *RoomService {
 	return &RoomService{
 		app:            app,
 		roomRepository: repositories.NewRoomRepository(app),
+		ruleRepo:       repositories.NewScheduleRuleRepository(app),
 		auditLogRepo:   repositories.NewAuditLogRepository(app),
 		cacheService:   NewCacheService(app),
 	}
@@ -198,6 +201,43 @@ func (s *RoomService) ToggleRoomActive(ctx context.Context, centerID, adminID, r
 		Payload: models.AuditPayload{
 			After: map[string]interface{}{
 				"is_active": isActive,
+			},
+		},
+	})
+
+	return nil, nil
+}
+
+// DeleteRoom 刪除教室
+func (s *RoomService) DeleteRoom(ctx context.Context, centerID, adminID, roomID uint) (*errInfos.Res, error) {
+	// 檢查是否有排程使用此教室
+	rules, err := s.ruleRepo.ListByRoomID(ctx, roomID, centerID)
+	if err != nil {
+		return s.app.Err.New(errInfos.SQL_ERROR), err
+	}
+	if len(rules) > 0 {
+		return s.app.Err.New(errInfos.ROOM_IN_USE), fmt.Errorf("room is in use by schedule rules")
+	}
+
+	// 刪除教室
+	if err := s.roomRepository.DeleteByIDWithCenterScope(ctx, roomID, centerID); err != nil {
+		return s.app.Err.New(errInfos.SQL_ERROR), err
+	}
+
+	// 清除教室列表快取
+	_ = s.cacheService.InvalidateRoomList(ctx, centerID)
+
+	// 記錄審核日誌
+	s.auditLogRepo.Create(ctx, models.AuditLog{
+		CenterID:   centerID,
+		ActorType:  "ADMIN",
+		ActorID:    adminID,
+		Action:     "DELETE_ROOM",
+		TargetType: "Room",
+		TargetID:   roomID,
+		Payload: models.AuditPayload{
+			After: map[string]interface{}{
+				"status": "DELETED",
 			},
 		},
 	})

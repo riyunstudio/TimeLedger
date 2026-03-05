@@ -83,3 +83,10 @@ func (rp *RoomRepository) ToggleActive(ctx context.Context, id uint, centerID ui
 		"is_active": isActive,
 	})
 }
+
+// DeleteByIDWithCenterScope 刪除教室
+func (rp *RoomRepository) DeleteByIDWithCenterScope(ctx context.Context, id, centerID uint) error {
+	return rp.dbWrite.WithContext(ctx).
+		Where("id = ? AND center_id = ?", id, centerID).
+		Delete(&models.Room{}).Error
+}

@@ -45,6 +45,13 @@
       >
         學期期間
       </button>
+      <button
+        @click="activeTab = 'categories'"
+        class="px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-colors"
+        :class="activeTab === 'categories' ? 'bg-primary-500/30 border border-primary-500 text-primary-400' : 'bg-white/5 text-slate-300 hover:bg-white/10'"
+      >
+        課程類別
+      </button>
     </div>
 
     <!-- Tab Content -->
@@ -53,6 +60,7 @@
     <OfferingsTab v-else-if="activeTab === 'offerings'" />
     <TeachersTab v-else-if="activeTab === 'teachers'" />
     <TermsTab v-else-if="activeTab === 'terms'" />
+    <CategoriesTab v-else-if="activeTab === 'categories'" />
   </div>
 </template>
 
@@ -62,6 +70,7 @@ import CoursesTab from '~/components/Admin/CoursesTab.vue'
 import OfferingsTab from '~/components/Admin/OfferingsTab.vue'
 import TeachersTab from '~/components/Admin/TeachersTab.vue'
 import TermsTab from '~/components/Admin/TermsTab.vue'
+import CategoriesTab from '~/components/Admin/CategoriesTab.vue'
 
 definePageMeta({
   auth: 'ADMIN',

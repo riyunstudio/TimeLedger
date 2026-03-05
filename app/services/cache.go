@@ -412,7 +412,10 @@ func (s *CacheService) InvalidateCourseList(ctx context.Context, centerID uint) 
 // CourseCacheItem 課程快取項目
 type CourseCacheItem struct {
 	ID               uint   `json:"id"`
+	CenterID         uint   `json:"center_id"`
+	Code             string `json:"code"`
 	Name             string `json:"name"`
+	Category         string `json:"category"`
 	DefaultDuration  int    `json:"default_duration"`
 	ColorHex         string `json:"color_hex"`
 	RoomBufferMin    int    `json:"room_buffer_min"`

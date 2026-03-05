@@ -22,7 +22,9 @@ func NewCourseResource(appInstance *app.App) *CourseResource {
 type CourseResponse struct {
 	ID               uint      `json:"id"`
 	CenterID         uint      `json:"center_id"`
+	Code             string    `json:"code"`
 	Name             string    `json:"name"`
+	Category         string    `json:"category"`
 	DefaultDuration  int       `json:"default_duration"`
 	ColorHex         string    `json:"color_hex"`
 	RoomBufferMin    int       `json:"room_buffer_min"`
@@ -36,7 +38,9 @@ func (r *CourseResource) ToCourseResponse(course models.Course) *CourseResponse 
 	return &CourseResponse{
 		ID:               course.ID,
 		CenterID:         course.CenterID,
+		Code:             course.Code,
 		Name:             course.Name,
+		Category:         course.Category,
 		DefaultDuration:  course.DefaultDuration,
 		ColorHex:         course.ColorHex,
 		RoomBufferMin:    course.RoomBufferMin,

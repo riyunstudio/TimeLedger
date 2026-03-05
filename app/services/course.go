@@ -32,6 +32,7 @@ func NewCourseService(app *app.App) *CourseService {
 type CreateCourseRequest struct {
 	Code             string `json:"code" binding:"required"`
 	Name             string `json:"name" binding:"required"`
+	Category         string `json:"category"`
 	Duration         int    `json:"duration" binding:"required"`
 	ColorHex         string `json:"color_hex" binding:"required"`
 	RoomBufferMin    int    `json:"room_buffer_min" binding:"gte=0"`
@@ -39,10 +40,11 @@ type CreateCourseRequest struct {
 }
 
 type UpdateCourseRequest struct {
-	Code             string `json:"code" binding:"required"`
-	Name             string `json:"name" binding:"required"`
-	Duration         int    `json:"duration" binding:"required"`
-	ColorHex         string `json:"color_hex" binding:"required"`
+	Code             string `json:"code"`
+	Name             string `json:"name"`
+	Category         string `json:"category"`
+	Duration         int    `json:"duration"`
+	ColorHex         string `json:"color_hex"`
 	RoomBufferMin    *int   `json:"room_buffer_min"`    // 可選指標，如果為 nil 不更新
 	TeacherBufferMin *int   `json:"teacher_buffer_min"` // 可選指標，如果為 nil 不更新
 	IsActive         *bool  `json:"is_active"`          // 可選，如果提供則更新啟用狀態
@@ -75,8 +77,10 @@ func (s *CourseService) GetCourses(ctx context.Context, centerID uint, query str
 		for _, item := range cached {
 			courses = append(courses, models.Course{
 				ID:               item.ID,
-				CenterID:         centerID,
+				CenterID:         item.CenterID,
+				Code:             item.Code,
 				Name:             item.Name,
+				Category:         item.Category,
 				DefaultDuration:  item.DefaultDuration,
 				ColorHex:         item.ColorHex,
 				RoomBufferMin:    item.RoomBufferMin,
@@ -108,7 +112,10 @@ func (s *CourseService) GetCourses(ctx context.Context, centerID uint, query str
 	for _, c := range courses {
 		cacheItems = append(cacheItems, CourseCacheItem{
 			ID:               c.ID,
+			CenterID:         c.CenterID,
+			Code:             c.Code,
 			Name:             c.Name,
+			Category:         c.Category,
 			DefaultDuration:  c.DefaultDuration,
 			ColorHex:         c.ColorHex,
 			RoomBufferMin:    c.RoomBufferMin,
@@ -136,6 +143,7 @@ func (s *CourseService) CreateCourse(ctx context.Context, centerID, adminID uint
 		CenterID:         centerID,
 		Code:             req.Code,
 		Name:             req.Name,
+		Category:         req.Category,
 		DefaultDuration:  req.Duration,
 		ColorHex:         req.ColorHex,
 		RoomBufferMin:    req.RoomBufferMin,
@@ -200,11 +208,22 @@ func (s *CourseService) UpdateCourse(ctx context.Context, centerID, adminID, cou
 
 		before := course
 
-		// 更新基本欄位
-		course.Code = req.Code
-		course.Name = req.Name
-		course.DefaultDuration = req.Duration
-		course.ColorHex = req.ColorHex
+		// 更新基本欄位（只有提供才更新）
+		if req.Code != "" {
+			course.Code = req.Code
+		}
+		if req.Name != "" {
+			course.Name = req.Name
+		}
+		if req.Category != "" {
+			course.Category = req.Category
+		}
+		if req.Duration > 0 {
+			course.DefaultDuration = req.Duration
+		}
+		if req.ColorHex != "" {
+			course.ColorHex = req.ColorHex
+		}
 		course.UpdatedAt = time.Now()
 
 		// 只有提供了才更新緩衝時間

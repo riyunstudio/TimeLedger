@@ -26,6 +26,7 @@ type actions struct {
 	adminCenter       *controllers.AdminCenterController
 	adminRoom         *controllers.AdminRoomController
 	adminCourse       *controllers.AdminCourseController
+	adminCourseCategory *controllers.AdminCourseCategoryController
 	adminHoliday      *controllers.AdminHolidayController
 	adminTerm         *controllers.AdminTermController
 	teacherProfile    *controllers.TeacherProfileController
@@ -204,6 +205,7 @@ func (s *Server) LoadRoutes() {
 		{http.MethodPut, "/api/v1/admin/rooms/:room_id", s.action.adminRoom.UpdateRoom, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodGet, "/api/v1/admin/rooms/active", s.action.adminRoom.GetActiveRooms, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodPatch, "/api/v1/admin/rooms/:room_id/toggle-active", s.action.adminRoom.ToggleRoomActive, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodDelete, "/api/v1/admin/rooms/:room_id", s.action.adminRoom.DeleteRoom, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		// Admin - Resources (非 Room/Course 路由)
 		{http.MethodGet, "/api/v1/admin/courses", s.action.adminCourse.GetCourses, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodPost, "/api/v1/admin/courses", s.action.adminCourse.CreateCourse, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
@@ -211,6 +213,14 @@ func (s *Server) LoadRoutes() {
 		{http.MethodDelete, "/api/v1/admin/courses/:course_id", s.action.adminCourse.DeleteCourse, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodGet, "/api/v1/admin/courses/active", s.action.adminCourse.GetActiveCourses, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodPatch, "/api/v1/admin/courses/:course_id/toggle-active", s.action.adminCourse.ToggleCourseActive, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+
+		// Admin - Course Categories
+		{http.MethodGet, "/api/v1/admin/course-categories", s.action.adminCourseCategory.GetCategories, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodPost, "/api/v1/admin/course-categories", s.action.adminCourseCategory.CreateCategory, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodPut, "/api/v1/admin/course-categories/:id", s.action.adminCourseCategory.UpdateCategory, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+		{http.MethodDelete, "/api/v1/admin/course-categories/:id", s.action.adminCourseCategory.DeleteCategory, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
+
+		// Admin - Offerings
 		{http.MethodGet, "/api/v1/admin/offerings/active", s.action.offering.GetActiveOfferings, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 		{http.MethodPatch, "/api/v1/admin/offerings/:offering_id/toggle-active", s.action.offering.ToggleOfferingActive, []gin.HandlerFunc{authMiddleware.Authenticate(), authMiddleware.RequireCenterAdmin()}},
 
@@ -357,6 +367,7 @@ func (s *Server) NewControllers() {
 	s.action.adminCenter = controllers.NewAdminCenterController(s.app)
 	s.action.adminRoom = controllers.NewAdminRoomController(s.app)
 	s.action.adminCourse = controllers.NewAdminCourseController(s.app)
+	s.action.adminCourseCategory = controllers.NewAdminCourseCategoryController(s.app)
 	s.action.adminHoliday = controllers.NewAdminHolidayController(s.app)
 	s.action.adminTerm = controllers.NewAdminTermController(s.app)
 	s.action.teacherProfile = controllers.NewTeacherProfileController(s.app)

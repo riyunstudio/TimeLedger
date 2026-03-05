@@ -55,9 +55,24 @@
             <option value="ended">已結束</option>
           </select>
         </div>
+        <!-- 類別篩選 -->
+        <div>
+          <label for="category-filter" class="sr-only">篩選類別</label>
+          <select
+            id="category-filter"
+            v-model="filterCategory"
+            aria-label="篩選課程類別"
+            class="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-primary-500/50 appearance-none w-full md:w-auto"
+          >
+            <option value="">全部類別</option>
+            <option v-for="cat in categories" :key="cat" :value="cat">
+              {{ cat }}
+            </option>
+          </select>
+        </div>
         <!-- 清除篩選 -->
         <button
-          v-if="searchQuery || filterWeekday || filterStatus"
+          v-if="searchQuery || filterWeekday || filterStatus || filterCategory"
           @click="clearFilters"
           aria-label="清除所有篩選條件"
           class="px-4 py-2 text-slate-400 hover:text-white transition-colors"
@@ -69,7 +84,7 @@
 
     <!-- 篩選結果計數 -->
     <div v-if="rules.length > 0" class="mb-4 text-sm text-slate-500 text-right" role="status" aria-live="polite">
-      顯示 {{ rules.length }} / {{ totalCount }} 筆資料 (第 {{ currentPage }} / {{ totalPages }} 頁)
+      共 {{ totalCount }} 筆資料
     </div>
 
     <div class="glass-card p-6" role="region" aria-label="課程時段列表">
@@ -89,6 +104,7 @@
         <table class="w-full min-w-[800px]" role="table" aria-label="課程時段列表">
           <thead class="bg-white/5">
             <tr class="text-slate-400 text-sm border-b border-white/10">
+              <th class="p-3 text-center w-20" scope="col">課程代號</th>
               <th class="p-3 text-center w-28" scope="col">課程</th>
               <th class="p-3 text-center w-16" scope="col">星期</th>
               <th class="p-3 text-center w-36" scope="col">課程期間</th>
@@ -96,6 +112,7 @@
               <th class="p-3 text-center w-24" scope="col">教室</th>
               <th class="p-3 text-center w-24" scope="col">老師</th>
               <th class="p-3 text-center w-20" scope="col">狀態</th>
+              <th class="p-3 text-center w-24" scope="col">課程類別</th>
               <th class="p-3 text-center w-20" scope="col">操作</th>
             </tr>
           </thead>
@@ -105,6 +122,7 @@
               :key="rule.id"
               class="border-b border-white/5 hover:bg-white/5 transition-colors"
             >
+              <td class="p-3 text-center text-slate-300 font-mono text-sm">{{ rule.offering?.course?.code || '-' }}</td>
               <td class="p-3 text-center text-slate-200">{{ rule.offering?.name || '-' }}</td>
               <td class="p-3 text-center text-slate-300">{{ getWeekdayText(rule.weekday) }}</td>
               <td class="p-3 text-center text-slate-300">{{ formatDateRange(rule.effective_range) }}</td>
@@ -119,6 +137,7 @@
                   {{ getStatusText(rule) }}
                 </span>
               </td>
+              <td class="p-3 text-center text-slate-300">{{ rule.offering?.course?.category || '-' }}</td>
               <td class="p-3">
                 <div class="flex items-center justify-center gap-3">
                   <button
@@ -142,11 +161,11 @@
         </table>
 
         <!-- 分頁控制 -->
-        <div v-if="totalPages > 1" class="flex items-center justify-between mt-4 pt-4 border-t border-white/10">
+        <div v-if="totalPages >= 1" class="flex items-center justify-between mt-4 pt-4 border-t border-white/10">
           <div class="text-sm text-slate-400">
             每頁 {{ pageSize }} 筆
           </div>
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-1">
             <button
               @click="changePage(currentPage - 1)"
               :disabled="currentPage === 1"
@@ -154,9 +173,21 @@
             >
               上一頁
             </button>
-            <span class="text-sm text-slate-300">
-              第 {{ currentPage }} / {{ totalPages }} 頁
-            </span>
+
+            <template v-for="page in visiblePages" :key="page">
+              <span v-if="page === '...'" class="px-2 text-slate-500">...</span>
+              <button
+                v-else
+                @click="changePage(page as number)"
+                class="px-3 py-1.5 rounded-lg text-sm"
+                :class="page === currentPage
+                  ? 'bg-primary-500 text-white'
+                  : 'bg-white/5 text-slate-300 hover:bg-white/10'"
+              >
+                {{ page }}
+              </button>
+            </template>
+
             <button
               @click="changePage(currentPage + 1)"
               :disabled="currentPage === totalPages"
@@ -217,6 +248,27 @@ const { getCenterId } = useCenterId()
 const searchQuery = ref('')
 const filterWeekday = ref('')
 const filterStatus = ref('')
+const filterCategory = ref('')
+
+// 課程類別
+const categories = ref<string[]>([])
+const fetchCategories = async () => {
+  try {
+    const token = localStorage.getItem('admin_token')
+    const response = await fetch(`${window.location.origin}/api/v1/admin/course-categories`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    })
+    if (response.ok) {
+      const data = await response.json()
+      // 轉換為名稱陣列
+      categories.value = (data.datas || []).map((c: any) => c.name)
+    }
+  } catch (err) {
+    console.error('取得課程類別失敗:', err)
+  }
+}
 
 // 分頁狀態
 const currentPage = ref(1)
@@ -232,8 +284,44 @@ const changePage = (page: number) => {
   }
 }
 
+// 計算顯示的頁碼陣列
+const visiblePages = computed(() => {
+  const total = totalPages.value
+  const current = currentPage.value
+  const pages: (number | string)[] = []
+
+  if (total <= 7) {
+    // 總頁數 <= 7，顯示全部
+    for (let i = 1; i <= total; i++) {
+      pages.push(i)
+    }
+  } else {
+    // 總頁數 > 7，需要顯示省略號
+    if (current <= 4) {
+      // 靠近開頭：1, 2, 3, 4, 5, ..., last
+      for (let i = 1; i <= 5; i++) pages.push(i)
+      pages.push('...')
+      pages.push(total)
+    } else if (current >= total - 3) {
+      // 靠近結尾：1, ..., last-4, last-3, last-2, last-1, last
+      pages.push(1)
+      pages.push('...')
+      for (let i = total - 4; i <= total; i++) pages.push(i)
+    } else {
+      // 中間：1, ..., current-1, current, current+1, ..., last
+      pages.push(1)
+      pages.push('...')
+      for (let i = current - 1; i <= current + 1; i++) pages.push(i)
+      pages.push('...')
+      pages.push(total)
+    }
+  }
+
+  return pages
+})
+
 // 監聽篩選變化，重置到第一頁
-watch([searchQuery, filterWeekday, filterStatus], () => {
+watch([searchQuery, filterWeekday, filterStatus, filterCategory], () => {
   currentPage.value = 1
   fetchRules()
 })
@@ -246,6 +334,7 @@ const clearFilters = () => {
   searchQuery.value = ''
   filterWeekday.value = ''
   filterStatus.value = ''
+  filterCategory.value = ''
 }
 
 // 篩選後的規則列表
@@ -295,16 +384,22 @@ const fetchRules = async () => {
   loading.value = true
   try {
     const api = useApi()
-    const params = {
+    const params: any = {
       page: currentPage.value,
       limit: pageSize.value
+    }
+
+    // 加入類別篩選參數
+    if (filterCategory.value) {
+      params.category = filterCategory.value
     }
 
     const response = await api.get<any>('/admin/rules', params)
 
     // 分頁格式：{ data: [...], total: X, page: X, total_pages: X }
+    // useApi 已自動提取 data.data 或 data.datas
     if (response && response.data) {
-      rules.value = response.data
+      rules.value = response.data || []
       totalCount.value = response.total || 0
       totalPages.value = response.total_pages || 1
     } else {
@@ -467,5 +562,6 @@ const formatDateRange = (effectiveRange: any): string => {
 
 onMounted(() => {
   fetchRules()
+  fetchCategories()
 })
 </script>
