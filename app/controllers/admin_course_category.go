@@ -41,7 +41,7 @@ func (ctl *AdminCourseCategoryController) requireCenterID(helper *ContextHelper)
 // @Tags Admin - Course Category
 // @Produce json
 // @Security BearerAuth
-// @Success 200 {object} global.ApiResponse{data=[]resources.CourseCategoryResponse}
+// @Success 200 {object} global.ApiResponse{data=[]models.CourseCategoryResponse}
 // @Router /api/v1/admin/course-categories [get]
 func (ctl *AdminCourseCategoryController) GetCategories(ctx *gin.Context) {
 	helper := NewContextHelper(ctx)
@@ -73,7 +73,7 @@ type CreateCategoryRequest struct {
 // @Produce json
 // @Security BearerAuth
 // @Param request body CreateCategoryRequest true "類別資訊"
-// @Success 200 {object} global.ApiResponse{data=resources.CourseCategoryResponse}
+// @Success 200 {object} global.ApiResponse{data=models.CourseCategoryResponse}
 // @Router /api/v1/admin/course-categories [post]
 func (ctl *AdminCourseCategoryController) CreateCategory(ctx *gin.Context) {
 	helper := NewContextHelper(ctx)
@@ -111,7 +111,7 @@ type UpdateCategoryRequest struct {
 // @Security BearerAuth
 // @Param id path int true "類別 ID"
 // @Param request body UpdateCategoryRequest true "類別資訊"
-// @Success 200 {object} global.ApiResponse{data=resources.CourseCategoryResponse}
+// @Success 200 {object} global.ApiResponse{data=models.CourseCategoryResponse}
 // @Router /api/v1/admin/course-categories/{id} [put]
 func (ctl *AdminCourseCategoryController) UpdateCategory(ctx *gin.Context) {
 	helper := NewContextHelper(ctx)

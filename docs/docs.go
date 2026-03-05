@@ -185,6 +185,29 @@ const docTemplate = `{
                 }
             }
         },
+        "/admin/health/redis": {
+            "get": {
+                "description": "檢查 Redis 連線是否正常",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - Health"
+                ],
+                "summary": "檢查 Redis 連線狀態",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/global.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/admin/me/change-password": {
             "post": {
                 "description": "修改目前登入管理員的密碼",
@@ -270,6 +293,27 @@ const docTemplate = `{
             }
         },
         "/admin/me/line/notify-settings": {
+            "get": {
+                "description": "取得管理員的 LINE 通知開關狀態",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - LINE"
+                ],
+                "summary": "取得 LINE 通知設定",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/global.ApiResponse"
+                        }
+                    }
+                }
+            },
             "patch": {
                 "description": "更新管理員的 LINE 通知開關",
                 "consumes": [
@@ -661,6 +705,96 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/test/r2-status": {
+            "get": {
+                "description": "檢查 Cloudflare R2 是否已正確配置",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "R2 Test"
+                ],
+                "summary": "測試 R2 連線狀態",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/test/upload": {
+            "post": {
+                "description": "測試 Cloudflare R2 或本地儲存上傳功能",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "R2 Test"
+                ],
+                "summary": "測試圖片上傳到 R2",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "要上傳的檔案",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "分類 (certificates, backgrounds, avatars)",
+                        "name": "category",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.UploadTestResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.UploadTestResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/test/upload-batch": {
+            "post": {
+                "description": "測試多張圖片同時上傳到 R2",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "R2 Test"
+                ],
+                "summary": "測試批量圖片上傳",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/admin/centers": {
             "get": {
                 "security": [
@@ -726,6 +860,106 @@ const docTemplate = `{
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/controllers.CreateCenterRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/global.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/resources.CenterResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/centers/{center_id}/settings": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "取得中心設定",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "中心 ID",
+                        "name": "center_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/global.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/resources.CenterSettingsResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "更新中心設定",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "中心 ID",
+                        "name": "center_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "設定資訊",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.UpdateSettingsRequest"
                         }
                     }
                 ],
@@ -1025,7 +1259,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/controllers.PaginationResponse"
+                                            "$ref": "#/definitions/resources.PaginationResponse"
                                         }
                                     }
                                 }
@@ -1059,7 +1293,7 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "邀請資訊",
+                        "description": "邀請資訊(email, teacher_name, role, message)",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -1085,6 +1319,202 @@ const docTemplate = `{
                                     }
                                 }
                             ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/centers/{id}/invitations/general-link": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - Invitations"
+                ],
+                "summary": "取得通用邀請連結",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Center ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/global.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/services.InvitationLinkResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - Invitations"
+                ],
+                "summary": "產生通用邀請連結",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Center ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "邀請資訊",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/services.GenerateGeneralInvitationLinkRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/global.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/services.InvitationLinkResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/centers/{id}/invitations/general-link/regenerate": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - Invitations"
+                ],
+                "summary": "重新產生通用邀請連結",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Center ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "邀請資訊",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/services.GenerateGeneralInvitationLinkRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/global.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/services.InvitationLinkResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/centers/{id}/invitations/general-link/toggle": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - Invitations"
+                ],
+                "summary": "啟用或停用通用邀請連結",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Center ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/global.ApiResponse"
                         }
                     }
                 }
@@ -1116,7 +1546,7 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "邀請資訊",
+                        "description": "邀請資訊(email, teacher_name, role, message)",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -1310,6 +1740,224 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/admin/centers/{id}/teachers/{teacher_id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "將老師從中心移除",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Center ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Teacher ID",
+                        "name": "teacher_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/global.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/course-categories": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - Course Category"
+                ],
+                "summary": "取得課程類別列表",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/global.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/models.CourseCategoryResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - Course Category"
+                ],
+                "summary": "建立課程類別",
+                "parameters": [
+                    {
+                        "description": "類別資訊",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.CreateCategoryRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/global.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.CourseCategoryResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/course-categories/{id}": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - Course Category"
+                ],
+                "summary": "更新課程類別",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "類別 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "類別資訊",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.UpdateCategoryRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/global.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.CourseCategoryResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - Course Category"
+                ],
+                "summary": "刪除課程類別",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "類別 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/global.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/admin/courses": {
             "get": {
                 "security": [
@@ -1327,6 +1975,26 @@ const docTemplate = `{
                     "Admin"
                 ],
                 "summary": "取得課程列表",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "關鍵字搜尋",
+                        "name": "query",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "頁碼，預設 1",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每頁筆數，預設 20",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -1339,10 +2007,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/resources.CourseResponse"
-                                            }
+                                            "$ref": "#/definitions/resources.PaginationResponse"
                                         }
                                     }
                                 }
@@ -1742,6 +2407,157 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/admin/notifications/broadcast": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "管理員發送 LINE 廣播訊息給所屬中心的老師",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Notification"
+                ],
+                "summary": "廣播訊息給中心老師",
+                "parameters": [
+                    {
+                        "description": "廣播訊息請求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.BroadcastRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/global.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/controllers.BroadcastResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/global.ApiResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/global.ApiResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/global.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/global.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/occupancy/rules": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "取得佔用規則",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Teacher ID (single)",
+                        "name": "teacher_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Teacher IDs (comma-separated, for multi-select)",
+                        "name": "teacher_ids",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Room IDs (comma-separated, for multi-select)",
+                        "name": "room_ids",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "開始日期 (YYYY-MM-DD)",
+                        "name": "start_date",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "結束日期 (YYYY-MM-DD)",
+                        "name": "end_date",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/global.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/resources.OccupancyRulesByDayOfWeek"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/admin/offerings": {
             "get": {
                 "security": [
@@ -1876,7 +2692,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/models.Offering"
+                                                "$ref": "#/definitions/resources.OfferingResponse"
                                             }
                                         }
                                     }
@@ -2040,6 +2856,26 @@ const docTemplate = `{
                     "Admin"
                 ],
                 "summary": "取得教室列表",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "關鍵字搜尋",
+                        "name": "query",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "頁碼，預設 1",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每頁筆數，預設 20",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -2052,10 +2888,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/resources.RoomResponse"
-                                            }
+                                            "$ref": "#/definitions/resources.PaginationResponse"
                                         }
                                     }
                                 }
@@ -2207,6 +3040,37 @@ const docTemplate = `{
                                     }
                                 }
                             ]
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - Room"
+                ],
+                "summary": "刪除教室",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "教室 ID",
+                        "name": "room_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/global.ApiResponse"
                         }
                     }
                 }
@@ -2653,6 +3517,80 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/admin/scheduling/matrix-view": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - Scheduling"
+                ],
+                "summary": "取得矩陣視圖資料（BFF 模式：後端直接回傳前端可直接渲染的矩陣結構）",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "開始日期 (YYYY-MM-DD)",
+                        "name": "start_date",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "結束日期 (YYYY-MM-DD)",
+                        "name": "end_date",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "查詢類型：teacher | room | all",
+                        "name": "type",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "是否包含停課 (true/false，預設 true)",
+                        "name": "include_suspended",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "指定資源 ID（逗號分隔）",
+                        "name": "resource_ids",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/global.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/resources.MatrixViewResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/admin/scheduling/phase-transitions": {
             "post": {
                 "security": [
@@ -2723,6 +3661,26 @@ const docTemplate = `{
                     "Admin - Scheduling"
                 ],
                 "summary": "取得中心的所有排課規則",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "頁碼，預設 1",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每頁筆數，預設 20",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "課程類別篩選",
+                        "name": "category",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -2735,10 +3693,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/models.ScheduleRule"
-                                            }
+                                            "$ref": "#/definitions/resources.PaginationResponse"
                                         }
                                     }
                                 }
@@ -2898,7 +3853,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/models.ScheduleRule"
+                                                "$ref": "#/definitions/resources.ScheduleRuleResponse"
                                             }
                                         }
                                     }
@@ -3061,6 +4016,26 @@ const docTemplate = `{
                     "Admin"
                 ],
                 "summary": "取得中心的老師列表",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "關鍵字搜尋",
+                        "name": "query",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "頁碼，預設 1",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每頁筆數，預設 20",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -3073,10 +4048,96 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/resources.AdminTeacherResponse"
-                                            }
+                                            "$ref": "#/definitions/resources.PaginationResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/teachers/merge": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "將來源教師的所有關聯資料遷移到目標教師，然後軟刪除來源教師",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "合併教師資料",
+                "parameters": [
+                    {
+                        "description": "合併請求資料",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.MergeTeachersRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/global.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/teachers/placeholder": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "建立佔位老師",
+                "parameters": [
+                    {
+                        "description": "佔位老師資料",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.CreatePlaceholderTeacherRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/global.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/resources.AdminTeacherResponse"
                                         }
                                     }
                                 }
@@ -3308,6 +4369,42 @@ const docTemplate = `{
                                     }
                                 }
                             ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/templates/cells/{cellId}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "刪除格子",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Cell ID",
+                        "name": "cell_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/global.ApiResponse"
                         }
                     }
                 }
@@ -3614,49 +4711,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/admin/templates/{template_id}/cells/{cell_id}": {
-            "delete": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Admin"
-                ],
-                "summary": "刪除格子",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Template ID",
-                        "name": "template_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Cell ID",
-                        "name": "cell_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/global.ApiResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/admin/templates/{template_id}/validate-apply": {
             "post": {
                 "security": [
@@ -3690,6 +4744,279 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/controllers.ValidateApplyTemplateRequest"
                         }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/global.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/terms": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "取得學期列表",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/global.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/resources.TermResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "新增學期",
+                "parameters": [
+                    {
+                        "description": "學期資訊",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/services.CreateTermRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/global.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/resources.TermResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/terms/active": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "取得進行中的學期列表",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/global.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/resources.TermResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/terms/copy-rules": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "批量複製規則",
+                "parameters": [
+                    {
+                        "description": "複製規則請求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.CopyRulesRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/global.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/resources.CopyRulesResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/terms/{term_id}": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "更新學期",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Term ID",
+                        "name": "term_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "學期資訊",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/services.UpdateTermRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/global.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/resources.TermResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "刪除學期",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Term ID",
+                        "name": "term_id",
+                        "in": "path",
+                        "required": true
                     }
                 ],
                 "responses": {
@@ -4276,7 +5603,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "type": "string"
+                                                "$ref": "#/definitions/controllers.TeacherBackgroundResponse"
                                             }
                                         }
                                     }
@@ -4323,7 +5650,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/controllers.UploadBackgroundResponse"
+                                            "$ref": "#/definitions/controllers.TeacherBackgroundResponse"
                                         }
                                     }
                                 }
@@ -4331,7 +5658,9 @@ const docTemplate = `{
                         }
                     }
                 }
-            },
+            }
+        },
+        "/api/v1/teacher/me/backgrounds/{id}": {
             "delete": {
                 "security": [
                     {
@@ -4350,10 +5679,10 @@ const docTemplate = `{
                 "summary": "刪除自訂背景圖",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "圖片路徑",
-                        "name": "path",
-                        "in": "query",
+                        "type": "integer",
+                        "description": "背景圖 ID",
+                        "name": "id",
+                        "in": "path",
                         "required": true
                     }
                 ],
@@ -4599,6 +5928,61 @@ const docTemplate = `{
             }
         },
         "/api/v1/teacher/me/certificates/{id}": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Teacher"
+                ],
+                "summary": "更新老師證照",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "證照ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "證照資訊",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.UpdateCertificateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/global.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.TeacherCertificate"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
             "delete": {
                 "security": [
                     {
@@ -5945,6 +7329,26 @@ const docTemplate = `{
                     "Admin"
                 ],
                 "summary": "取得老師列表",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "搜尋關鍵字（姓名或 Email）",
+                        "name": "q",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "頁碼，預設 1",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每頁筆數，預設 20",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -5957,10 +7361,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/resources.AdminTeacherResponse"
-                                            }
+                                            "$ref": "#/definitions/resources.PaginationResponse"
                                         }
                                     }
                                 }
@@ -6183,9 +7584,16 @@ const docTemplate = `{
         "controllers.AcceptInvitationByLinkRequest": {
             "type": "object",
             "required": [
+                "access_token",
                 "line_user_id"
             ],
             "properties": {
+                "access_token": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
                 "line_user_id": {
                     "type": "string"
                 }
@@ -6235,6 +7643,76 @@ const docTemplate = `{
                     "items": {
                         "type": "integer"
                     }
+                }
+            }
+        },
+        "controllers.BroadcastRequest": {
+            "type": "object",
+            "required": [
+                "message",
+                "message_type",
+                "title"
+            ],
+            "properties": {
+                "action_label": {
+                    "description": "按鈕文字（可選，最多 20 字）",
+                    "type": "string",
+                    "maxLength": 20
+                },
+                "action_url": {
+                    "description": "按鈕連結（可選）",
+                    "type": "string"
+                },
+                "message": {
+                    "description": "訊息內容（必填，最多 2000 字）",
+                    "type": "string",
+                    "maxLength": 2000
+                },
+                "message_type": {
+                    "description": "訊息類型（必填）",
+                    "type": "string",
+                    "enum": [
+                        "GENERAL",
+                        "URGENT"
+                    ]
+                },
+                "teacher_ids": {
+                    "description": "接收對象過濾條件（可選）\n若為空則發送給中心所有已綁定 LINE 的老師",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "title": {
+                    "description": "標題（必填，最多 50 字）",
+                    "type": "string",
+                    "maxLength": 50
+                },
+                "warning": {
+                    "description": "警告提示（可選，最多 200 字）",
+                    "type": "string",
+                    "maxLength": 200
+                }
+            }
+        },
+        "controllers.BroadcastResponse": {
+            "type": "object",
+            "properties": {
+                "failed_count": {
+                    "description": "失敗發送數量",
+                    "type": "integer"
+                },
+                "message": {
+                    "description": "訊息",
+                    "type": "string"
+                },
+                "success_count": {
+                    "description": "成功發送數量",
+                    "type": "integer"
+                },
+                "total_count": {
+                    "description": "總共發送數量",
+                    "type": "integer"
                 }
             }
         },
@@ -6332,6 +7810,29 @@ const docTemplate = `{
                 }
             }
         },
+        "controllers.CopyRulesRequest": {
+            "type": "object",
+            "required": [
+                "rule_ids",
+                "source_term_id",
+                "target_term_id"
+            ],
+            "properties": {
+                "rule_ids": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "source_term_id": {
+                    "type": "integer"
+                },
+                "target_term_id": {
+                    "type": "integer"
+                }
+            }
+        },
         "controllers.CreateAdminRequest": {
             "type": "object",
             "required": [
@@ -6360,6 +7861,17 @@ const docTemplate = `{
                         "STAFF",
                         "OWNER"
                     ]
+                }
+            }
+        },
+        "controllers.CreateCategoryRequest": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string"
                 }
             }
         },
@@ -6420,6 +7932,9 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
+                },
+                "visibility": {
+                    "type": "integer"
                 }
             }
         },
@@ -6451,6 +7966,22 @@ const docTemplate = `{
                 },
                 "default_teacher_id": {
                     "type": "integer"
+                }
+            }
+        },
+        "controllers.CreatePlaceholderTeacherRequest": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 1
                 }
             }
         },
@@ -6660,20 +8191,17 @@ const docTemplate = `{
                 }
             }
         },
-        "controllers.PaginationResponse": {
+        "controllers.MergeTeachersRequest": {
             "type": "object",
+            "required": [
+                "source_teacher_id",
+                "target_teacher_id"
+            ],
             "properties": {
-                "data": {},
-                "limit": {
+                "source_teacher_id": {
                     "type": "integer"
                 },
-                "page": {
-                    "type": "integer"
-                },
-                "total": {
-                    "type": "integer"
-                },
-                "total_pages": {
+                "target_teacher_id": {
                     "type": "integer"
                 }
             }
@@ -6799,6 +8327,23 @@ const docTemplate = `{
                 }
             }
         },
+        "controllers.TeacherBackgroundResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "file_url": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "teacher_id": {
+                    "type": "integer"
+                }
+            }
+        },
         "controllers.TeacherCreateExceptionRequest": {
             "type": "object",
             "required": [
@@ -6909,6 +8454,34 @@ const docTemplate = `{
                 }
             }
         },
+        "controllers.UpdateCategoryRequest": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "controllers.UpdateCertificateRequest": {
+            "type": "object",
+            "properties": {
+                "file_url": {
+                    "type": "string"
+                },
+                "issued_at": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "visibility": {
+                    "type": "integer"
+                }
+            }
+        },
         "controllers.UpdateNotifySettingsRequest": {
             "type": "object",
             "required": [
@@ -6933,6 +8506,23 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "controllers.UpdateSettingsRequest": {
+            "type": "object",
+            "properties": {
+                "default_course_duration": {
+                    "type": "integer"
+                },
+                "exception_lead_days": {
+                    "type": "integer"
+                },
+                "operating_end_time": {
+                    "type": "string"
+                },
+                "operating_start_time": {
                     "type": "string"
                 }
             }
@@ -6973,6 +8563,9 @@ const docTemplate = `{
                 "is_open_to_hiring": {
                     "type": "boolean"
                 },
+                "name": {
+                    "type": "string"
+                },
                 "personal_hashtags": {
                     "type": "array",
                     "items": {
@@ -6992,17 +8585,6 @@ const docTemplate = `{
                 }
             }
         },
-        "controllers.UploadBackgroundResponse": {
-            "type": "object",
-            "properties": {
-                "file_name": {
-                    "type": "string"
-                },
-                "image_path": {
-                    "type": "string"
-                }
-            }
-        },
         "controllers.UploadFileResponse": {
             "type": "object",
             "properties": {
@@ -7014,6 +8596,29 @@ const docTemplate = `{
                 },
                 "file_url": {
                     "type": "string"
+                }
+            }
+        },
+        "controllers.UploadTestResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string"
+                },
+                "file_key": {
+                    "type": "string"
+                },
+                "file_url": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "storage": {
+                    "type": "string"
+                },
+                "success": {
+                    "type": "boolean"
                 }
             }
         },
@@ -7090,6 +8695,7 @@ const docTemplate = `{
                 40007,
                 40008,
                 40009,
+                40010,
                 50001,
                 50002,
                 50003,
@@ -7194,7 +8800,8 @@ const docTemplate = `{
                 "SCHED_OFFERING_NOT_FOUND": "班別不存在",
                 "SCHED_ROOM_REQUIRED": "必須指定教室",
                 "SCHED_START_AFTER_END": "開始時間晚於結束時間",
-                "SCHED_TEACHER_REQUIRED": "必須指定老師"
+                "SCHED_TEACHER_REQUIRED": "必須指定老師",
+                "TEACHER_NOT_REGISTERED": "老師尚未註冊（需要先完成註冊流程）"
             },
             "x-enum-descriptions": [
                 "",
@@ -7222,6 +8829,7 @@ const docTemplate = `{
                 "",
                 "",
                 "",
+                "老師尚未註冊（需要先完成註冊流程）",
                 "",
                 "",
                 "",
@@ -7314,6 +8922,7 @@ const docTemplate = `{
                 "OFFERING_HAS_RULES",
                 "ROOM_IN_USE",
                 "INVALID_STATUS",
+                "TEACHER_NOT_REGISTERED",
                 "SCHED_OVERLAP",
                 "SCHED_BUFFER",
                 "SCHED_PAST",
@@ -7483,6 +9092,9 @@ const docTemplate = `{
                 "date": {
                     "type": "string"
                 },
+                "force_cancel": {
+                    "type": "boolean"
+                },
                 "id": {
                     "type": "integer"
                 },
@@ -7507,6 +9119,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "expires_at": {
+                    "description": "通用邀請可為 nil（無期限）",
                     "type": "string"
                 },
                 "id": {
@@ -7537,7 +9150,66 @@ const docTemplate = `{
                     "description": "被邀請的老師ID",
                     "type": "integer"
                 },
+                "teacher_name": {
+                    "description": "預設的老師姓名（用於外部邀請）",
+                    "type": "string"
+                },
                 "token": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.Course": {
+            "type": "object",
+            "properties": {
+                "category": {
+                    "type": "string"
+                },
+                "center_id": {
+                    "type": "integer"
+                },
+                "code": {
+                    "type": "string"
+                },
+                "color_hex": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "default_duration": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "room_buffer_min": {
+                    "type": "integer"
+                },
+                "teacher_buffer_min": {
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.CourseCategoryResponse": {
+            "type": "object",
+            "properties": {
+                "center_id": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
                     "type": "string"
                 }
             }
@@ -7599,9 +9271,11 @@ const docTemplate = `{
             "enum": [
                 "TALENT_POOL",
                 "TEACHER",
-                "MEMBER"
+                "MEMBER",
+                "GENERAL"
             ],
             "x-enum-comments": {
+                "InvitationTypeGeneral": "通用邀請（不綁定 Email）",
                 "InvitationTypeMember": "會員邀請",
                 "InvitationTypeTalentPool": "人才庫邀請",
                 "InvitationTypeTeacher": "老師邀請"
@@ -7609,12 +9283,14 @@ const docTemplate = `{
             "x-enum-descriptions": [
                 "人才庫邀請",
                 "老師邀請",
-                "會員邀請"
+                "會員邀請",
+                "通用邀請（不綁定 Email）"
             ],
             "x-enum-varnames": [
                 "InvitationTypeTalentPool",
                 "InvitationTypeTeacher",
-                "InvitationTypeMember"
+                "InvitationTypeMember",
+                "InvitationTypeGeneral"
             ]
         },
         "models.Offering": {
@@ -7626,14 +9302,30 @@ const docTemplate = `{
                 "center_id": {
                     "type": "integer"
                 },
+                "course": {
+                    "description": "關聯課程（含課程時長）",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.Course"
+                        }
+                    ]
+                },
                 "course_id": {
                     "type": "integer"
                 },
                 "created_at": {
                     "type": "string"
                 },
+                "default_end_time": {
+                    "description": "預設結束時間 (HH:MM)",
+                    "type": "string"
+                },
                 "default_room_id": {
                     "type": "integer"
+                },
+                "default_start_time": {
+                    "description": "預設開始時間 (HH:MM)",
+                    "type": "string"
                 },
                 "default_teacher_id": {
                     "type": "integer"
@@ -7807,6 +9499,9 @@ const docTemplate = `{
                 "center_id": {
                     "type": "integer"
                 },
+                "code": {
+                    "type": "string"
+                },
                 "created_at": {
                     "type": "string"
                 },
@@ -7855,8 +9550,20 @@ const docTemplate = `{
                 "room_id": {
                     "type": "integer"
                 },
+                "skip_holiday": {
+                    "type": "boolean"
+                },
                 "start_time": {
                     "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "suspended_dates": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "teacher": {
                     "$ref": "#/definitions/models.Teacher"
@@ -7903,6 +9610,9 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "is_open_to_hiring": {
+                    "type": "boolean"
+                },
+                "is_placeholder": {
                     "type": "boolean"
                 },
                 "line_notify_token": {
@@ -7960,6 +9670,9 @@ const docTemplate = `{
                 },
                 "updated_at": {
                     "type": "string"
+                },
+                "visibility": {
+                    "type": "integer"
                 }
             }
         },
@@ -8178,6 +9891,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "exception_date": {
+                    "description": "格式: YYYY-MM-DD",
                     "type": "string"
                 },
                 "rule_id": {
@@ -8195,12 +9909,14 @@ const docTemplate = `{
             ],
             "properties": {
                 "new_end_at": {
+                    "description": "格式: YYYY-MM-DD HH:mm:ss",
                     "type": "string"
                 },
                 "new_room_id": {
                     "type": "integer"
                 },
                 "new_start_at": {
+                    "description": "格式: YYYY-MM-DD HH:mm:ss",
                     "type": "string"
                 },
                 "new_teacher_id": {
@@ -8210,6 +9926,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "original_date": {
+                    "description": "格式: YYYY-MM-DD",
                     "type": "string"
                 },
                 "reason": {
@@ -8289,6 +10006,10 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "start_time": {
+                    "type": "string"
+                },
+                "status": {
+                    "description": "預設為 CONFIRMED",
                     "type": "string"
                 },
                 "teacher_id": {
@@ -8451,6 +10172,16 @@ const docTemplate = `{
                 "start_time": {
                     "type": "string"
                 },
+                "status": {
+                    "type": "string"
+                },
+                "suspended_dates": {
+                    "description": "停課日期列表",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "teacher_id": {
                     "type": "integer"
                 },
@@ -8508,6 +10239,13 @@ const docTemplate = `{
                 "exclude_rule_id": {
                     "type": "integer"
                 },
+                "next_start_time": {
+                    "type": "string"
+                },
+                "prev_end_time": {
+                    "description": "以下欄位可選，如果未提供，系統會自動計算上一堂課的結束時間",
+                    "type": "string"
+                },
                 "room_id": {
                     "type": "integer"
                 },
@@ -8536,6 +10274,20 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
+                },
+                "visibility": {
+                    "type": "integer"
+                }
+            }
+        },
+        "resources.AdminTeacherNoteResponse": {
+            "type": "object",
+            "properties": {
+                "internal_note": {
+                    "type": "string"
+                },
+                "rating": {
+                    "type": "integer"
                 }
             }
         },
@@ -8569,8 +10321,17 @@ const docTemplate = `{
                 "is_active": {
                     "type": "boolean"
                 },
+                "is_placeholder": {
+                    "type": "boolean"
+                },
+                "line_user_id": {
+                    "type": "string"
+                },
                 "name": {
                     "type": "string"
+                },
+                "note": {
+                    "$ref": "#/definitions/resources.AdminTeacherNoteResponse"
                 },
                 "phone": {
                     "type": "string"
@@ -8615,6 +10376,9 @@ const docTemplate = `{
                 "id": {
                     "type": "integer"
                 },
+                "role": {
+                    "type": "string"
+                },
                 "status": {
                     "type": "string"
                 }
@@ -8646,19 +10410,94 @@ const docTemplate = `{
                 "allow_public_register": {
                     "type": "boolean"
                 },
+                "default_course_duration": {
+                    "type": "integer"
+                },
                 "default_language": {
                     "type": "string"
                 },
                 "exception_lead_days": {
                     "type": "integer"
+                },
+                "operating_end_time": {
+                    "type": "string"
+                },
+                "operating_start_time": {
+                    "type": "string"
+                }
+            }
+        },
+        "resources.CenterSettingsResponse": {
+            "type": "object",
+            "properties": {
+                "allow_public_register": {
+                    "type": "boolean"
+                },
+                "default_course_duration": {
+                    "type": "integer"
+                },
+                "default_language": {
+                    "type": "string"
+                },
+                "exception_lead_days": {
+                    "type": "integer"
+                },
+                "operating_end_time": {
+                    "type": "string"
+                },
+                "operating_start_time": {
+                    "type": "string"
+                }
+            }
+        },
+        "resources.CopiedRuleInfo": {
+            "type": "object",
+            "properties": {
+                "end_time": {
+                    "type": "string"
+                },
+                "new_rule_id": {
+                    "type": "integer"
+                },
+                "offering_name": {
+                    "type": "string"
+                },
+                "original_rule_id": {
+                    "type": "integer"
+                },
+                "start_time": {
+                    "type": "string"
+                },
+                "weekday": {
+                    "type": "integer"
+                }
+            }
+        },
+        "resources.CopyRulesResponse": {
+            "type": "object",
+            "properties": {
+                "copied_count": {
+                    "type": "integer"
+                },
+                "rules": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/resources.CopiedRuleInfo"
+                    }
                 }
             }
         },
         "resources.CourseResponse": {
             "type": "object",
             "properties": {
+                "category": {
+                    "type": "string"
+                },
                 "center_id": {
                     "type": "integer"
+                },
+                "code": {
+                    "type": "string"
                 },
                 "color_hex": {
                     "type": "string"
@@ -8743,6 +10582,9 @@ const docTemplate = `{
                 "created_at": {
                     "type": "string"
                 },
+                "email": {
+                    "type": "string"
+                },
                 "expires_at": {
                     "type": "string"
                 },
@@ -8760,6 +10602,286 @@ const docTemplate = `{
                 },
                 "status": {
                     "type": "string"
+                },
+                "teacher_name": {
+                    "type": "string"
+                }
+            }
+        },
+        "resources.MatrixDateRange": {
+            "type": "object",
+            "properties": {
+                "end_date": {
+                    "description": "YYYY-MM-DD",
+                    "type": "string"
+                },
+                "start_date": {
+                    "description": "YYYY-MM-DD",
+                    "type": "string"
+                }
+            }
+        },
+        "resources.MatrixItem": {
+            "type": "object",
+            "properties": {
+                "color": {
+                    "description": "課程顏色",
+                    "type": "string"
+                },
+                "date": {
+                    "description": "YYYY-MM-DD",
+                    "type": "string"
+                },
+                "duration": {
+                    "description": "持續分鐘數",
+                    "type": "integer"
+                },
+                "end_time": {
+                    "description": "HH:mm",
+                    "type": "string"
+                },
+                "exception_type": {
+                    "type": "string"
+                },
+                "has_exception": {
+                    "type": "boolean"
+                },
+                "height_percent": {
+                    "description": "CSS height 百分比 (相對於時段)",
+                    "type": "number"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "is_holiday": {
+                    "type": "boolean"
+                },
+                "is_suspended": {
+                    "description": "是否為停課",
+                    "type": "boolean"
+                },
+                "offering_id": {
+                    "type": "integer"
+                },
+                "offering_name": {
+                    "type": "string"
+                },
+                "room_id": {
+                    "type": "integer"
+                },
+                "room_name": {
+                    "type": "string"
+                },
+                "rule_id": {
+                    "type": "integer"
+                },
+                "start_hour": {
+                    "description": "開始小時 (用於 CSS 定位)",
+                    "type": "integer"
+                },
+                "start_minute": {
+                    "description": "開始分鐘",
+                    "type": "integer"
+                },
+                "start_time": {
+                    "description": "HH:mm",
+                    "type": "string"
+                },
+                "status": {
+                    "description": "課程狀態: PLANNED(預計), CONFIRMED(已開課), SUSPENDED(停課), ARCHIVED(歸檔)",
+                    "type": "string"
+                },
+                "teacher_id": {
+                    "type": "integer"
+                },
+                "teacher_name": {
+                    "type": "string"
+                },
+                "title": {
+                    "description": "課程名稱",
+                    "type": "string"
+                },
+                "top_offset": {
+                    "description": "CSS top 百分比 (0-100)",
+                    "type": "number"
+                }
+            }
+        },
+        "resources.MatrixResource": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/resources.MatrixItem"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "type": {
+                    "description": "\"teacher\" | \"room\"",
+                    "type": "string"
+                }
+            }
+        },
+        "resources.MatrixViewResponse": {
+            "type": "object",
+            "properties": {
+                "date_range": {
+                    "$ref": "#/definitions/resources.MatrixDateRange"
+                },
+                "resources": {
+                    "description": "縱軸資源（老師或教室）",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/resources.MatrixResource"
+                    }
+                },
+                "time_slots": {
+                    "description": "橫軸時段，如 [9, 10, 11, ...]",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "resources.OccupancyRuleInfo": {
+            "type": "object",
+            "properties": {
+                "duration": {
+                    "type": "integer"
+                },
+                "end_time": {
+                    "type": "string"
+                },
+                "offering_id": {
+                    "type": "integer"
+                },
+                "offering_name": {
+                    "type": "string"
+                },
+                "room_id": {
+                    "type": "integer"
+                },
+                "room_name": {
+                    "type": "string"
+                },
+                "rule_id": {
+                    "type": "integer"
+                },
+                "start_time": {
+                    "type": "string"
+                },
+                "status": {
+                    "description": "狀態: PLANNED(預計), CONFIRMED(已開課), SUSPENDED(停課), ARCHIVED(歸檔)",
+                    "type": "string"
+                },
+                "teacher_id": {
+                    "type": "integer"
+                },
+                "teacher_name": {
+                    "type": "string"
+                },
+                "weekday": {
+                    "type": "integer"
+                }
+            }
+        },
+        "resources.OccupancyRulesByDayOfWeek": {
+            "type": "object",
+            "properties": {
+                "day_name": {
+                    "description": "\"週一\", \"週二\", etc.",
+                    "type": "string"
+                },
+                "day_of_week": {
+                    "description": "1-7 (週一到週日)",
+                    "type": "integer"
+                },
+                "rules": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/resources.OccupancyRuleInfo"
+                    }
+                }
+            }
+        },
+        "resources.OfferingResponse": {
+            "type": "object",
+            "properties": {
+                "allow_buffer_override": {
+                    "type": "boolean"
+                },
+                "center_id": {
+                    "type": "integer"
+                },
+                "course_duration": {
+                    "description": "課程時長（分鐘），優先使用課程設定，若無則使用中心全局設定",
+                    "type": "integer"
+                },
+                "course_id": {
+                    "type": "integer"
+                },
+                "course_name": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "default_end_time": {
+                    "description": "預設結束時間 (HH:MM)",
+                    "type": "string"
+                },
+                "default_room_id": {
+                    "type": "integer"
+                },
+                "default_start_time": {
+                    "description": "預設開始時間 (HH:MM)",
+                    "type": "string"
+                },
+                "default_teacher_id": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "resources.PaginationResponse": {
+            "type": "object",
+            "properties": {
+                "data": {},
+                "has_next": {
+                    "type": "boolean"
+                },
+                "has_prev": {
+                    "type": "boolean"
+                },
+                "limit": {
+                    "type": "integer"
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                },
+                "total_pages": {
+                    "type": "integer"
                 }
             }
         },
@@ -8800,6 +10922,9 @@ const docTemplate = `{
                 },
                 "status": {
                     "type": "string"
+                },
+                "teacher_name": {
+                    "type": "string"
                 }
             }
         },
@@ -8823,6 +10948,61 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
+                }
+            }
+        },
+        "resources.ScheduleRuleResponse": {
+            "type": "object",
+            "properties": {
+                "center_id": {
+                    "type": "integer"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "duration": {
+                    "type": "integer"
+                },
+                "effective_from": {
+                    "type": "string"
+                },
+                "effective_to": {
+                    "type": "string"
+                },
+                "end_time": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "offering_id": {
+                    "type": "integer"
+                },
+                "room_id": {
+                    "type": "integer"
+                },
+                "start_time": {
+                    "type": "string"
+                },
+                "status": {
+                    "description": "狀態: PLANNED(預計), CONFIRMED(已開課), SUSPENDED(停課), ARCHIVED(歸檔)",
+                    "type": "string"
+                },
+                "suspended_dates": {
+                    "description": "停課日期列表",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "teacher_id": {
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "weekday": {
+                    "type": "integer"
                 }
             }
         },
@@ -8906,6 +11086,32 @@ const docTemplate = `{
                     }
                 },
                 "public_contact_info": {
+                    "type": "string"
+                }
+            }
+        },
+        "resources.TermResponse": {
+            "type": "object",
+            "properties": {
+                "center_id": {
+                    "type": "integer"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "end_date": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "start_date": {
+                    "type": "string"
+                },
+                "updated_at": {
                     "type": "string"
                 }
             }
@@ -9010,11 +11216,18 @@ const docTemplate = `{
         "services.CreateCourseRequest": {
             "type": "object",
             "required": [
+                "code",
                 "color_hex",
                 "duration",
                 "name"
             ],
             "properties": {
+                "category": {
+                    "type": "string"
+                },
+                "code": {
+                    "type": "string"
+                },
                 "color_hex": {
                     "type": "string"
                 },
@@ -9044,6 +11257,9 @@ const docTemplate = `{
                 "date": {
                     "type": "string"
                 },
+                "force_cancel": {
+                    "type": "boolean"
+                },
                 "name": {
                     "type": "string"
                 }
@@ -9060,6 +11276,25 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "services.CreateTermRequest": {
+            "type": "object",
+            "required": [
+                "end_date",
+                "name",
+                "start_date"
+            ],
+            "properties": {
+                "end_date": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "start_date": {
                     "type": "string"
                 }
             }
@@ -9133,6 +11368,10 @@ const docTemplate = `{
                 "start_time": {
                     "type": "string"
                 },
+                "status": {
+                    "description": "狀態: PLANNED(預計), CONFIRMED(已開課), SUSPENDED(停課), ARCHIVED(歸檔)",
+                    "type": "string"
+                },
                 "teacher_id": {
                     "type": "integer"
                 },
@@ -9155,6 +11394,25 @@ const docTemplate = `{
                 }
             }
         },
+        "services.GenerateGeneralInvitationLinkRequest": {
+            "type": "object",
+            "properties": {
+                "adminID": {
+                    "type": "integer"
+                },
+                "centerID": {
+                    "type": "integer"
+                },
+                "message": {
+                    "description": "邀請訊息",
+                    "type": "string"
+                },
+                "role": {
+                    "description": "角色：TEACHER 或 SUBSTITUTE",
+                    "type": "string"
+                }
+            }
+        },
         "services.GenerateInvitationLinkRequest": {
             "type": "object",
             "properties": {
@@ -9172,6 +11430,9 @@ const docTemplate = `{
                 },
                 "role": {
                     "type": "string"
+                },
+                "teacherName": {
+                    "type": "string"
                 }
             }
         },
@@ -9184,6 +11445,9 @@ const docTemplate = `{
             "properties": {
                 "date": {
                     "type": "string"
+                },
+                "force_cancel": {
+                    "type": "boolean"
                 },
                 "name": {
                     "type": "string"
@@ -9247,6 +11511,9 @@ const docTemplate = `{
                 "status": {
                     "type": "string"
                 },
+                "teacher_name": {
+                    "type": "string"
+                },
                 "token": {
                     "type": "string"
                 }
@@ -9268,6 +11535,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "role": {
+                    "type": "string"
+                },
+                "teacherName": {
                     "type": "string"
                 }
             }
@@ -9503,6 +11773,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "status": {
+                    "description": "狀態: PLANNED(預計), CONFIRMED(已開課), SUSPENDED(停課), ARCHIVED(歸檔)",
                     "type": "string"
                 },
                 "teacher_id": {
@@ -9623,28 +11894,33 @@ const docTemplate = `{
         },
         "services.UpdateCourseRequest": {
             "type": "object",
-            "required": [
-                "color_hex",
-                "duration",
-                "name"
-            ],
             "properties": {
+                "category": {
+                    "type": "string"
+                },
+                "code": {
+                    "type": "string"
+                },
                 "color_hex": {
                     "type": "string"
                 },
                 "duration": {
                     "type": "integer"
                 },
+                "is_active": {
+                    "description": "可選，如果提供則更新啟用狀態",
+                    "type": "boolean"
+                },
                 "name": {
                     "type": "string"
                 },
                 "room_buffer_min": {
-                    "type": "integer",
-                    "minimum": 0
+                    "description": "可選指標，如果為 nil 不更新",
+                    "type": "integer"
                 },
                 "teacher_buffer_min": {
-                    "type": "integer",
-                    "minimum": 0
+                    "description": "可選指標，如果為 nil 不更新",
+                    "type": "integer"
                 }
             }
         },
@@ -9659,6 +11935,25 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "services.UpdateTermRequest": {
+            "type": "object",
+            "required": [
+                "end_date",
+                "name",
+                "start_date"
+            ],
+            "properties": {
+                "end_date": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "start_date": {
                     "type": "string"
                 }
             }
@@ -9710,6 +12005,8 @@ var SwaggerInfo = &swag.Spec{
 	Description:      "API 維護文件",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
+	LeftDelim:        "{{",
+	RightDelim:       "}}",
 }
 
 func init() {

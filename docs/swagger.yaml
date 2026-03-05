@@ -1,9 +1,14 @@
 definitions:
   controllers.AcceptInvitationByLinkRequest:
     properties:
+      access_token:
+        type: string
+      email:
+        type: string
       line_user_id:
         type: string
     required:
+    - access_token
     - line_user_id
     type: object
   controllers.AdminLoginRequest:
@@ -37,6 +42,60 @@ definitions:
     - offering_id
     - start_date
     - weekdays
+    type: object
+  controllers.BroadcastRequest:
+    properties:
+      action_label:
+        description: 按鈕文字（可選，最多 20 字）
+        maxLength: 20
+        type: string
+      action_url:
+        description: 按鈕連結（可選）
+        type: string
+      message:
+        description: 訊息內容（必填，最多 2000 字）
+        maxLength: 2000
+        type: string
+      message_type:
+        description: 訊息類型（必填）
+        enum:
+        - GENERAL
+        - URGENT
+        type: string
+      teacher_ids:
+        description: |-
+          接收對象過濾條件（可選）
+          若為空則發送給中心所有已綁定 LINE 的老師
+        items:
+          type: integer
+        type: array
+      title:
+        description: 標題（必填，最多 50 字）
+        maxLength: 50
+        type: string
+      warning:
+        description: 警告提示（可選，最多 200 字）
+        maxLength: 200
+        type: string
+    required:
+    - message
+    - message_type
+    - title
+    type: object
+  controllers.BroadcastResponse:
+    properties:
+      failed_count:
+        description: 失敗發送數量
+        type: integer
+      message:
+        description: 訊息
+        type: string
+      success_count:
+        description: 成功發送數量
+        type: integer
+      total_count:
+        description: 總共發送數量
+        type: integer
     type: object
   controllers.ChangeAdminRoleRequest:
     properties:
@@ -100,6 +159,22 @@ definitions:
       rules_copied:
         type: integer
     type: object
+  controllers.CopyRulesRequest:
+    properties:
+      rule_ids:
+        items:
+          type: integer
+        minItems: 1
+        type: array
+      source_term_id:
+        type: integer
+      target_term_id:
+        type: integer
+    required:
+    - rule_ids
+    - source_term_id
+    - target_term_id
+    type: object
   controllers.CreateAdminRequest:
     properties:
       email:
@@ -122,6 +197,13 @@ definitions:
     - name
     - password
     - role
+    type: object
+  controllers.CreateCategoryRequest:
+    properties:
+      name:
+        type: string
+    required:
+    - name
     type: object
   controllers.CreateCellRequest:
     properties:
@@ -158,6 +240,8 @@ definitions:
         type: string
       name:
         type: string
+      visibility:
+        type: integer
     required:
     - file_url
     - issued_at
@@ -182,6 +266,17 @@ definitions:
         type: integer
     required:
     - course_id
+    type: object
+  controllers.CreatePlaceholderTeacherRequest:
+    properties:
+      email:
+        type: string
+      name:
+        maxLength: 255
+        minLength: 1
+        type: string
+    required:
+    - name
     type: object
   controllers.CreateSkillRequest:
     properties:
@@ -321,17 +416,15 @@ definitions:
       welcome_sent:
         type: boolean
     type: object
-  controllers.PaginationResponse:
+  controllers.MergeTeachersRequest:
     properties:
-      data: {}
-      limit:
+      source_teacher_id:
         type: integer
-      page:
+      target_teacher_id:
         type: integer
-      total:
-        type: integer
-      total_pages:
-        type: integer
+    required:
+    - source_teacher_id
+    - target_teacher_id
     type: object
   controllers.PreviewRecurrenceEditRequest:
     properties:
@@ -414,6 +507,17 @@ definitions:
       total_count:
         type: integer
     type: object
+  controllers.TeacherBackgroundResponse:
+    properties:
+      created_at:
+        type: string
+      file_url:
+        type: string
+      id:
+        type: integer
+      teacher_id:
+        type: integer
+    type: object
   controllers.TeacherCreateExceptionRequest:
     properties:
       center_id:
@@ -488,6 +592,24 @@ definitions:
     - new_status
     - target_admin_id
     type: object
+  controllers.UpdateCategoryRequest:
+    properties:
+      name:
+        type: string
+    required:
+    - name
+    type: object
+  controllers.UpdateCertificateRequest:
+    properties:
+      file_url:
+        type: string
+      issued_at:
+        type: string
+      name:
+        type: string
+      visibility:
+        type: integer
+    type: object
   controllers.UpdateNotifySettingsRequest:
     properties:
       enabled:
@@ -504,6 +626,17 @@ definitions:
       default_teacher_id:
         type: integer
       name:
+        type: string
+    type: object
+  controllers.UpdateSettingsRequest:
+    properties:
+      default_course_duration:
+        type: integer
+      exception_lead_days:
+        type: integer
+      operating_end_time:
+        type: string
+      operating_start_time:
         type: string
     type: object
   controllers.UpdateSkillRequest:
@@ -530,6 +663,8 @@ definitions:
         type: string
       is_open_to_hiring:
         type: boolean
+      name:
+        type: string
       personal_hashtags:
         items:
           type: string
@@ -542,13 +677,6 @@ definitions:
       name:
         type: string
     type: object
-  controllers.UploadBackgroundResponse:
-    properties:
-      file_name:
-        type: string
-      image_path:
-        type: string
-    type: object
   controllers.UploadFileResponse:
     properties:
       file_name:
@@ -557,6 +685,21 @@ definitions:
         type: integer
       file_url:
         type: string
+    type: object
+  controllers.UploadTestResponse:
+    properties:
+      error:
+        type: string
+      file_key:
+        type: string
+      file_url:
+        type: string
+      message:
+        type: string
+      storage:
+        type: string
+      success:
+        type: boolean
     type: object
   controllers.UpsertTeacherNoteRequest:
     properties:
@@ -616,6 +759,7 @@ definitions:
     - 40007
     - 40008
     - 40009
+    - 40010
     - 50001
     - 50002
     - 50003
@@ -721,6 +865,7 @@ definitions:
       SCHED_ROOM_REQUIRED: 必須指定教室
       SCHED_START_AFTER_END: 開始時間晚於結束時間
       SCHED_TEACHER_REQUIRED: 必須指定老師
+      TEACHER_NOT_REGISTERED: 老師尚未註冊（需要先完成註冊流程）
     x-enum-descriptions:
     - ""
     - ""
@@ -747,6 +892,7 @@ definitions:
     - ""
     - ""
     - ""
+    - 老師尚未註冊（需要先完成註冊流程）
     - ""
     - ""
     - ""
@@ -838,6 +984,7 @@ definitions:
     - OFFERING_HAS_RULES
     - ROOM_IN_USE
     - INVALID_STATUS
+    - TEACHER_NOT_REGISTERED
     - SCHED_OVERLAP
     - SCHED_BUFFER
     - SCHED_PAST
@@ -970,6 +1117,8 @@ definitions:
         type: string
       date:
         type: string
+      force_cancel:
+        type: boolean
       id:
         type: integer
       name:
@@ -986,6 +1135,7 @@ definitions:
       email:
         type: string
       expires_at:
+        description: 通用邀請可為 nil（無期限）
         type: string
       id:
         type: integer
@@ -1007,7 +1157,46 @@ definitions:
       teacher_id:
         description: 被邀請的老師ID
         type: integer
+      teacher_name:
+        description: 預設的老師姓名（用於外部邀請）
+        type: string
       token:
+        type: string
+    type: object
+  models.Course:
+    properties:
+      category:
+        type: string
+      center_id:
+        type: integer
+      code:
+        type: string
+      color_hex:
+        type: string
+      created_at:
+        type: string
+      default_duration:
+        type: integer
+      id:
+        type: integer
+      is_active:
+        type: boolean
+      name:
+        type: string
+      room_buffer_min:
+        type: integer
+      teacher_buffer_min:
+        type: integer
+      updated_at:
+        type: string
+    type: object
+  models.CourseCategoryResponse:
+    properties:
+      center_id:
+        type: integer
+      id:
+        type: integer
+      name:
         type: string
     type: object
   models.DateRange:
@@ -1053,8 +1242,10 @@ definitions:
     - TALENT_POOL
     - TEACHER
     - MEMBER
+    - GENERAL
     type: string
     x-enum-comments:
+      InvitationTypeGeneral: 通用邀請（不綁定 Email）
       InvitationTypeMember: 會員邀請
       InvitationTypeTalentPool: 人才庫邀請
       InvitationTypeTeacher: 老師邀請
@@ -1062,22 +1253,34 @@ definitions:
     - 人才庫邀請
     - 老師邀請
     - 會員邀請
+    - 通用邀請（不綁定 Email）
     x-enum-varnames:
     - InvitationTypeTalentPool
     - InvitationTypeTeacher
     - InvitationTypeMember
+    - InvitationTypeGeneral
   models.Offering:
     properties:
       allow_buffer_override:
         type: boolean
       center_id:
         type: integer
+      course:
+        allOf:
+        - $ref: '#/definitions/models.Course'
+        description: 關聯課程（含課程時長）
       course_id:
         type: integer
       created_at:
         type: string
+      default_end_time:
+        description: 預設結束時間 (HH:MM)
+        type: string
       default_room_id:
         type: integer
+      default_start_time:
+        description: 預設開始時間 (HH:MM)
+        type: string
       default_teacher_id:
         type: integer
       id:
@@ -1190,6 +1393,8 @@ definitions:
     properties:
       center_id:
         type: integer
+      code:
+        type: string
       created_at:
         type: string
       duration:
@@ -1221,8 +1426,16 @@ definitions:
         $ref: '#/definitions/models.Room'
       room_id:
         type: integer
+      skip_holiday:
+        type: boolean
       start_time:
         type: string
+      status:
+        type: string
+      suspended_dates:
+        items:
+          type: string
+        type: array
       teacher:
         $ref: '#/definitions/models.Teacher'
       teacher_id:
@@ -1253,6 +1466,8 @@ definitions:
       id:
         type: integer
       is_open_to_hiring:
+        type: boolean
+      is_placeholder:
         type: boolean
       line_notify_token:
         type: string
@@ -1291,6 +1506,8 @@ definitions:
         type: integer
       updated_at:
         type: string
+      visibility:
+        type: integer
     type: object
   models.TeacherPersonalHashtag:
     properties:
@@ -1433,6 +1650,7 @@ definitions:
   requests.CheckRuleLockStatusRequest:
     properties:
       exception_date:
+        description: '格式: YYYY-MM-DD'
         type: string
       rule_id:
         type: integer
@@ -1443,16 +1661,19 @@ definitions:
   requests.CreateExceptionRequest:
     properties:
       new_end_at:
+        description: '格式: YYYY-MM-DD HH:mm:ss'
         type: string
       new_room_id:
         type: integer
       new_start_at:
+        description: '格式: YYYY-MM-DD HH:mm:ss'
         type: string
       new_teacher_id:
         type: integer
       new_teacher_name:
         type: string
       original_date:
+        description: '格式: YYYY-MM-DD'
         type: string
       reason:
         type: string
@@ -1504,6 +1725,9 @@ definitions:
       start_date:
         type: string
       start_time:
+        type: string
+      status:
+        description: 預設為 CONFIRMED
         type: string
       teacher_id:
         type: integer
@@ -1620,6 +1844,13 @@ definitions:
         type: string
       start_time:
         type: string
+      status:
+        type: string
+      suspended_dates:
+        description: 停課日期列表
+        items:
+          type: string
+        type: array
       teacher_id:
         type: integer
       update_mode:
@@ -1654,6 +1885,11 @@ definitions:
         type: string
       exclude_rule_id:
         type: integer
+      next_start_time:
+        type: string
+      prev_end_time:
+        description: 以下欄位可選，如果未提供，系統會自動計算上一堂課的結束時間
+        type: string
       room_id:
         type: integer
       start_time:
@@ -1678,6 +1914,15 @@ definitions:
         type: string
       name:
         type: string
+      visibility:
+        type: integer
+    type: object
+  resources.AdminTeacherNoteResponse:
+    properties:
+      internal_note:
+        type: string
+      rating:
+        type: integer
     type: object
   resources.AdminTeacherResponse:
     properties:
@@ -1699,8 +1944,14 @@ definitions:
         type: integer
       is_active:
         type: boolean
+      is_placeholder:
+        type: boolean
+      line_user_id:
+        type: string
       name:
         type: string
+      note:
+        $ref: '#/definitions/resources.AdminTeacherNoteResponse'
       phone:
         type: string
       skills:
@@ -1729,6 +1980,8 @@ definitions:
         type: string
       id:
         type: integer
+      role:
+        type: string
       status:
         type: string
     type: object
@@ -1749,15 +2002,64 @@ definitions:
     properties:
       allow_public_register:
         type: boolean
+      default_course_duration:
+        type: integer
       default_language:
         type: string
       exception_lead_days:
         type: integer
+      operating_end_time:
+        type: string
+      operating_start_time:
+        type: string
+    type: object
+  resources.CenterSettingsResponse:
+    properties:
+      allow_public_register:
+        type: boolean
+      default_course_duration:
+        type: integer
+      default_language:
+        type: string
+      exception_lead_days:
+        type: integer
+      operating_end_time:
+        type: string
+      operating_start_time:
+        type: string
+    type: object
+  resources.CopiedRuleInfo:
+    properties:
+      end_time:
+        type: string
+      new_rule_id:
+        type: integer
+      offering_name:
+        type: string
+      original_rule_id:
+        type: integer
+      start_time:
+        type: string
+      weekday:
+        type: integer
+    type: object
+  resources.CopyRulesResponse:
+    properties:
+      copied_count:
+        type: integer
+      rules:
+        items:
+          $ref: '#/definitions/resources.CopiedRuleInfo'
+        type: array
     type: object
   resources.CourseResponse:
     properties:
+      category:
+        type: string
       center_id:
         type: integer
+      code:
+        type: string
       color_hex:
         type: string
       created_at:
@@ -1812,6 +2114,8 @@ definitions:
         type: string
       created_at:
         type: string
+      email:
+        type: string
       expires_at:
         type: string
       id:
@@ -1824,6 +2128,198 @@ definitions:
         type: string
       status:
         type: string
+      teacher_name:
+        type: string
+    type: object
+  resources.MatrixDateRange:
+    properties:
+      end_date:
+        description: YYYY-MM-DD
+        type: string
+      start_date:
+        description: YYYY-MM-DD
+        type: string
+    type: object
+  resources.MatrixItem:
+    properties:
+      color:
+        description: 課程顏色
+        type: string
+      date:
+        description: YYYY-MM-DD
+        type: string
+      duration:
+        description: 持續分鐘數
+        type: integer
+      end_time:
+        description: HH:mm
+        type: string
+      exception_type:
+        type: string
+      has_exception:
+        type: boolean
+      height_percent:
+        description: CSS height 百分比 (相對於時段)
+        type: number
+      id:
+        type: integer
+      is_holiday:
+        type: boolean
+      is_suspended:
+        description: 是否為停課
+        type: boolean
+      offering_id:
+        type: integer
+      offering_name:
+        type: string
+      room_id:
+        type: integer
+      room_name:
+        type: string
+      rule_id:
+        type: integer
+      start_hour:
+        description: 開始小時 (用於 CSS 定位)
+        type: integer
+      start_minute:
+        description: 開始分鐘
+        type: integer
+      start_time:
+        description: HH:mm
+        type: string
+      status:
+        description: '課程狀態: PLANNED(預計), CONFIRMED(已開課), SUSPENDED(停課), ARCHIVED(歸檔)'
+        type: string
+      teacher_id:
+        type: integer
+      teacher_name:
+        type: string
+      title:
+        description: 課程名稱
+        type: string
+      top_offset:
+        description: CSS top 百分比 (0-100)
+        type: number
+    type: object
+  resources.MatrixResource:
+    properties:
+      id:
+        type: integer
+      items:
+        items:
+          $ref: '#/definitions/resources.MatrixItem'
+        type: array
+      name:
+        type: string
+      type:
+        description: '"teacher" | "room"'
+        type: string
+    type: object
+  resources.MatrixViewResponse:
+    properties:
+      date_range:
+        $ref: '#/definitions/resources.MatrixDateRange'
+      resources:
+        description: 縱軸資源（老師或教室）
+        items:
+          $ref: '#/definitions/resources.MatrixResource'
+        type: array
+      time_slots:
+        description: 橫軸時段，如 [9, 10, 11, ...]
+        items:
+          type: integer
+        type: array
+    type: object
+  resources.OccupancyRuleInfo:
+    properties:
+      duration:
+        type: integer
+      end_time:
+        type: string
+      offering_id:
+        type: integer
+      offering_name:
+        type: string
+      room_id:
+        type: integer
+      room_name:
+        type: string
+      rule_id:
+        type: integer
+      start_time:
+        type: string
+      status:
+        description: '狀態: PLANNED(預計), CONFIRMED(已開課), SUSPENDED(停課), ARCHIVED(歸檔)'
+        type: string
+      teacher_id:
+        type: integer
+      teacher_name:
+        type: string
+      weekday:
+        type: integer
+    type: object
+  resources.OccupancyRulesByDayOfWeek:
+    properties:
+      day_name:
+        description: '"週一", "週二", etc.'
+        type: string
+      day_of_week:
+        description: 1-7 (週一到週日)
+        type: integer
+      rules:
+        items:
+          $ref: '#/definitions/resources.OccupancyRuleInfo'
+        type: array
+    type: object
+  resources.OfferingResponse:
+    properties:
+      allow_buffer_override:
+        type: boolean
+      center_id:
+        type: integer
+      course_duration:
+        description: 課程時長（分鐘），優先使用課程設定，若無則使用中心全局設定
+        type: integer
+      course_id:
+        type: integer
+      course_name:
+        type: string
+      created_at:
+        type: string
+      default_end_time:
+        description: 預設結束時間 (HH:MM)
+        type: string
+      default_room_id:
+        type: integer
+      default_start_time:
+        description: 預設開始時間 (HH:MM)
+        type: string
+      default_teacher_id:
+        type: integer
+      id:
+        type: integer
+      is_active:
+        type: boolean
+      name:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  resources.PaginationResponse:
+    properties:
+      data: {}
+      has_next:
+        type: boolean
+      has_prev:
+        type: boolean
+      limit:
+        type: integer
+      page:
+        type: integer
+      total:
+        type: integer
+      total_pages:
+        type: integer
     type: object
   resources.PersonalHashtag:
     properties:
@@ -1850,6 +2346,8 @@ definitions:
         type: string
       status:
         type: string
+      teacher_name:
+        type: string
     type: object
   resources.RoomResponse:
     properties:
@@ -1865,6 +2363,43 @@ definitions:
         type: boolean
       name:
         type: string
+    type: object
+  resources.ScheduleRuleResponse:
+    properties:
+      center_id:
+        type: integer
+      created_at:
+        type: string
+      duration:
+        type: integer
+      effective_from:
+        type: string
+      effective_to:
+        type: string
+      end_time:
+        type: string
+      id:
+        type: integer
+      offering_id:
+        type: integer
+      room_id:
+        type: integer
+      start_time:
+        type: string
+      status:
+        description: '狀態: PLANNED(預計), CONFIRMED(已開課), SUSPENDED(停課), ARCHIVED(歸檔)'
+        type: string
+      suspended_dates:
+        description: 停課日期列表
+        items:
+          type: string
+        type: array
+      teacher_id:
+        type: integer
+      updated_at:
+        type: string
+      weekday:
+        type: integer
     type: object
   resources.SessionNoteResource:
     properties:
@@ -1919,6 +2454,23 @@ definitions:
           $ref: '#/definitions/resources.PersonalHashtag'
         type: array
       public_contact_info:
+        type: string
+    type: object
+  resources.TermResponse:
+    properties:
+      center_id:
+        type: integer
+      created_at:
+        type: string
+      end_date:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      start_date:
+        type: string
+      updated_at:
         type: string
     type: object
   services.AdminListItem:
@@ -1987,6 +2539,10 @@ definitions:
     type: object
   services.CreateCourseRequest:
     properties:
+      category:
+        type: string
+      code:
+        type: string
       color_hex:
         type: string
       duration:
@@ -2000,6 +2556,7 @@ definitions:
         minimum: 0
         type: integer
     required:
+    - code
     - color_hex
     - duration
     - name
@@ -2008,6 +2565,8 @@ definitions:
     properties:
       date:
         type: string
+      force_cancel:
+        type: boolean
       name:
         type: string
     required:
@@ -2023,6 +2582,19 @@ definitions:
     required:
     - capacity
     - name
+    type: object
+  services.CreateTermRequest:
+    properties:
+      end_date:
+        type: string
+      name:
+        type: string
+      start_date:
+        type: string
+    required:
+    - end_date
+    - name
+    - start_date
     type: object
   services.ExpandedException:
     properties:
@@ -2071,6 +2643,9 @@ definitions:
         type: integer
       start_time:
         type: string
+      status:
+        description: '狀態: PLANNED(預計), CONFIRMED(已開課), SUSPENDED(停課), ARCHIVED(歸檔)'
+        type: string
       teacher_id:
         type: integer
       teacher_name:
@@ -2085,6 +2660,19 @@ definitions:
       valid:
         type: boolean
     type: object
+  services.GenerateGeneralInvitationLinkRequest:
+    properties:
+      adminID:
+        type: integer
+      centerID:
+        type: integer
+      message:
+        description: 邀請訊息
+        type: string
+      role:
+        description: 角色：TEACHER 或 SUBSTITUTE
+        type: string
+    type: object
   services.GenerateInvitationLinkRequest:
     properties:
       adminID:
@@ -2097,11 +2685,15 @@ definitions:
         type: string
       role:
         type: string
+      teacherName:
+        type: string
     type: object
   services.HolidayItem:
     properties:
       date:
         type: string
+      force_cancel:
+        type: boolean
       name:
         type: string
     required:
@@ -2146,6 +2738,8 @@ definitions:
         type: string
       status:
         type: string
+      teacher_name:
+        type: string
       token:
         type: string
     type: object
@@ -2160,6 +2754,8 @@ definitions:
       message:
         type: string
       role:
+        type: string
+      teacherName:
         type: string
     type: object
   services.ListOfferingsOutput:
@@ -2315,6 +2911,7 @@ definitions:
       start_time:
         type: string
       status:
+        description: '狀態: PLANNED(預計), CONFIRMED(已開課), SUSPENDED(停課), ARCHIVED(歸檔)'
         type: string
       teacher_id:
         type: integer
@@ -2393,22 +2990,25 @@ definitions:
     type: object
   services.UpdateCourseRequest:
     properties:
+      category:
+        type: string
+      code:
+        type: string
       color_hex:
         type: string
       duration:
         type: integer
+      is_active:
+        description: 可選，如果提供則更新啟用狀態
+        type: boolean
       name:
         type: string
       room_buffer_min:
-        minimum: 0
+        description: 可選指標，如果為 nil 不更新
         type: integer
       teacher_buffer_min:
-        minimum: 0
+        description: 可選指標，如果為 nil 不更新
         type: integer
-    required:
-    - color_hex
-    - duration
-    - name
     type: object
   services.UpdateRoomRequest:
     properties:
@@ -2419,6 +3019,19 @@ definitions:
     required:
     - capacity
     - name
+    type: object
+  services.UpdateTermRequest:
+    properties:
+      end_date:
+        type: string
+      name:
+        type: string
+      start_date:
+        type: string
+    required:
+    - end_date
+    - name
+    - start_date
     type: object
   services.ValidationConflict:
     properties:
@@ -2560,6 +3173,21 @@ paths:
       summary: 停用/啟用管理員
       tags:
       - Admin - Management
+  /admin/health/redis:
+    get:
+      consumes:
+      - application/json
+      description: 檢查 Redis 連線是否正常
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/global.ApiResponse'
+      summary: 檢查 Redis 連線狀態
+      tags:
+      - Admin - Health
   /admin/me/change-password:
     post:
       consumes:
@@ -2616,6 +3244,20 @@ paths:
       tags:
       - Admin - LINE
   /admin/me/line/notify-settings:
+    get:
+      consumes:
+      - application/json
+      description: 取得管理員的 LINE 通知開關狀態
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/global.ApiResponse'
+      summary: 取得 LINE 通知設定
+      tags:
+      - Admin - LINE
     patch:
       consumes:
       - application/json
@@ -2871,6 +3513,66 @@ paths:
       summary: 取得教師課表
       tags:
       - Smart Matching
+  /api/test/r2-status:
+    get:
+      description: 檢查 Cloudflare R2 是否已正確配置
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 測試 R2 連線狀態
+      tags:
+      - R2 Test
+  /api/test/upload:
+    post:
+      consumes:
+      - multipart/form-data
+      description: 測試 Cloudflare R2 或本地儲存上傳功能
+      parameters:
+      - description: 要上傳的檔案
+        in: formData
+        name: file
+        required: true
+        type: file
+      - description: 分類 (certificates, backgrounds, avatars)
+        in: formData
+        name: category
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.UploadTestResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/controllers.UploadTestResponse'
+      summary: 測試圖片上傳到 R2
+      tags:
+      - R2 Test
+  /api/test/upload-batch:
+    post:
+      consumes:
+      - multipart/form-data
+      description: 測試多張圖片同時上傳到 R2
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 測試批量圖片上傳
+      tags:
+      - R2 Test
   /api/v1/admin/centers:
     get:
       consumes:
@@ -2919,6 +3621,63 @@ paths:
       security:
       - BearerAuth: []
       summary: 新增中心
+      tags:
+      - Admin
+  /api/v1/admin/centers/{center_id}/settings:
+    get:
+      parameters:
+      - description: 中心 ID
+        in: path
+        name: center_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/global.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/resources.CenterSettingsResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 取得中心設定
+      tags:
+      - Admin
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: 中心 ID
+        in: path
+        name: center_id
+        required: true
+        type: integer
+      - description: 設定資訊
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.UpdateSettingsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/global.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/resources.CenterResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 更新中心設定
       tags:
       - Admin
   /api/v1/admin/centers/{id}/holidays:
@@ -3082,7 +3841,7 @@ paths:
             - $ref: '#/definitions/global.ApiResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/controllers.PaginationResponse'
+                  $ref: '#/definitions/resources.PaginationResponse'
               type: object
       security:
       - BearerAuth: []
@@ -3098,7 +3857,7 @@ paths:
         name: id
         required: true
         type: integer
-      - description: 邀請資訊
+      - description: 邀請資訊(email, teacher_name, role, message)
         in: body
         name: request
         required: true
@@ -3121,7 +3880,33 @@ paths:
       summary: 邀請老師加入中心
       tags:
       - Admin
-  /api/v1/admin/centers/{id}/invitations/generate-link:
+  /api/v1/admin/centers/{id}/invitations/general-link:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: Center ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/global.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/services.InvitationLinkResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 取得通用邀請連結
+      tags:
+      - Admin - Invitations
     post:
       consumes:
       - application/json
@@ -3132,6 +3917,94 @@ paths:
         required: true
         type: integer
       - description: 邀請資訊
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/services.GenerateGeneralInvitationLinkRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/global.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/services.InvitationLinkResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 產生通用邀請連結
+      tags:
+      - Admin - Invitations
+  /api/v1/admin/centers/{id}/invitations/general-link/regenerate:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Center ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 邀請資訊
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/services.GenerateGeneralInvitationLinkRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/global.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/services.InvitationLinkResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 重新產生通用邀請連結
+      tags:
+      - Admin - Invitations
+  /api/v1/admin/centers/{id}/invitations/general-link/toggle:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Center ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/global.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: 啟用或停用通用邀請連結
+      tags:
+      - Admin - Invitations
+  /api/v1/admin/centers/{id}/invitations/generate-link:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Center ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 邀請資訊(email, teacher_name, role, message)
         in: body
         name: request
         required: true
@@ -3248,10 +4121,35 @@ paths:
       summary: 複製班別
       tags:
       - Admin
-  /api/v1/admin/courses:
-    get:
+  /api/v1/admin/centers/{id}/teachers/{teacher_id}:
+    delete:
       consumes:
       - application/json
+      parameters:
+      - description: Center ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Teacher ID
+        in: path
+        name: teacher_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/global.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: 將老師從中心移除
+      tags:
+      - Admin
+  /api/v1/admin/course-categories:
+    get:
       produces:
       - application/json
       responses:
@@ -3263,8 +4161,121 @@ paths:
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/resources.CourseResponse'
+                    $ref: '#/definitions/models.CourseCategoryResponse'
                   type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 取得課程類別列表
+      tags:
+      - Admin - Course Category
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 類別資訊
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.CreateCategoryRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/global.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.CourseCategoryResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 建立課程類別
+      tags:
+      - Admin - Course Category
+  /api/v1/admin/course-categories/{id}:
+    delete:
+      parameters:
+      - description: 類別 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/global.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: 刪除課程類別
+      tags:
+      - Admin - Course Category
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: 類別 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 類別資訊
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.UpdateCategoryRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/global.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.CourseCategoryResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 更新課程類別
+      tags:
+      - Admin - Course Category
+  /api/v1/admin/courses:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: 關鍵字搜尋
+        in: query
+        name: query
+        type: string
+      - description: 頁碼，預設 1
+        in: query
+        name: page
+        type: integer
+      - description: 每頁筆數，預設 20
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/global.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/resources.PaginationResponse'
               type: object
       security:
       - BearerAuth: []
@@ -3502,6 +4513,97 @@ paths:
       summary: 產生包含驗證碼的 QR Code
       tags:
       - LINE
+  /api/v1/admin/notifications/broadcast:
+    post:
+      consumes:
+      - application/json
+      description: 管理員發送 LINE 廣播訊息給所屬中心的老師
+      parameters:
+      - description: 廣播訊息請求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.BroadcastRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/global.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/controllers.BroadcastResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/global.ApiResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/global.ApiResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/global.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/global.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: 廣播訊息給中心老師
+      tags:
+      - Admin Notification
+  /api/v1/admin/occupancy/rules:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: Teacher ID (single)
+        in: query
+        name: teacher_id
+        type: integer
+      - description: Teacher IDs (comma-separated, for multi-select)
+        in: query
+        name: teacher_ids
+        type: string
+      - description: Room IDs (comma-separated, for multi-select)
+        in: query
+        name: room_ids
+        type: string
+      - description: 開始日期 (YYYY-MM-DD)
+        in: query
+        name: start_date
+        required: true
+        type: string
+      - description: 結束日期 (YYYY-MM-DD)
+        in: query
+        name: end_date
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/global.ApiResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/resources.OccupancyRulesByDayOfWeek'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 取得佔用規則
+      tags:
+      - Admin
   /api/v1/admin/offerings:
     get:
       consumes:
@@ -3658,7 +4760,7 @@ paths:
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/models.Offering'
+                    $ref: '#/definitions/resources.OfferingResponse'
                   type: array
               type: object
       security:
@@ -3670,6 +4772,19 @@ paths:
     get:
       consumes:
       - application/json
+      parameters:
+      - description: 關鍵字搜尋
+        in: query
+        name: query
+        type: string
+      - description: 頁碼，預設 1
+        in: query
+        name: page
+        type: integer
+      - description: 每頁筆數，預設 20
+        in: query
+        name: limit
+        type: integer
       produces:
       - application/json
       responses:
@@ -3680,9 +4795,7 @@ paths:
             - $ref: '#/definitions/global.ApiResponse'
             - properties:
                 data:
-                  items:
-                    $ref: '#/definitions/resources.RoomResponse'
-                  type: array
+                  $ref: '#/definitions/resources.PaginationResponse'
               type: object
       security:
       - BearerAuth: []
@@ -3717,6 +4830,25 @@ paths:
       tags:
       - Admin
   /api/v1/admin/rooms/{room_id}:
+    delete:
+      parameters:
+      - description: 教室 ID
+        in: path
+        name: room_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/global.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: 刪除教室
+      tags:
+      - Admin - Room
     put:
       consumes:
       - application/json
@@ -4025,6 +5157,51 @@ paths:
       summary: 展開排課規則為具體課程場次
       tags:
       - Admin - Scheduling
+  /api/v1/admin/scheduling/matrix-view:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: 開始日期 (YYYY-MM-DD)
+        in: query
+        name: start_date
+        required: true
+        type: string
+      - description: 結束日期 (YYYY-MM-DD)
+        in: query
+        name: end_date
+        required: true
+        type: string
+      - description: 查詢類型：teacher | room | all
+        in: query
+        name: type
+        required: true
+        type: string
+      - description: 是否包含停課 (true/false，預設 true)
+        in: query
+        name: include_suspended
+        type: string
+      - description: 指定資源 ID（逗號分隔）
+        in: query
+        name: resource_ids
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/global.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/resources.MatrixViewResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 取得矩陣視圖資料（BFF 模式：後端直接回傳前端可直接渲染的矩陣結構）
+      tags:
+      - Admin - Scheduling
   /api/v1/admin/scheduling/phase-transitions:
     post:
       consumes:
@@ -4059,6 +5236,19 @@ paths:
     get:
       consumes:
       - application/json
+      parameters:
+      - description: 頁碼，預設 1
+        in: query
+        name: page
+        type: integer
+      - description: 每頁筆數，預設 20
+        in: query
+        name: limit
+        type: integer
+      - description: 課程類別篩選
+        in: query
+        name: category
+        type: string
       produces:
       - application/json
       responses:
@@ -4069,9 +5259,7 @@ paths:
             - $ref: '#/definitions/global.ApiResponse'
             - properties:
                 data:
-                  items:
-                    $ref: '#/definitions/models.ScheduleRule'
-                  type: array
+                  $ref: '#/definitions/resources.PaginationResponse'
               type: object
       security:
       - BearerAuth: []
@@ -4155,7 +5343,7 @@ paths:
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/models.ScheduleRule'
+                    $ref: '#/definitions/resources.ScheduleRuleResponse'
                   type: array
               type: object
       security:
@@ -4252,6 +5440,19 @@ paths:
     get:
       consumes:
       - application/json
+      parameters:
+      - description: 關鍵字搜尋
+        in: query
+        name: query
+        type: string
+      - description: 頁碼，預設 1
+        in: query
+        name: page
+        type: integer
+      - description: 每頁筆數，預設 20
+        in: query
+        name: limit
+        type: integer
       produces:
       - application/json
       responses:
@@ -4262,9 +5463,7 @@ paths:
             - $ref: '#/definitions/global.ApiResponse'
             - properties:
                 data:
-                  items:
-                    $ref: '#/definitions/resources.AdminTeacherResponse'
-                  type: array
+                  $ref: '#/definitions/resources.PaginationResponse'
               type: object
       security:
       - BearerAuth: []
@@ -4349,6 +5548,58 @@ paths:
       security:
       - BearerAuth: []
       summary: 新增或更新老師評分與備註
+      tags:
+      - Admin
+  /api/v1/admin/teachers/merge:
+    post:
+      consumes:
+      - application/json
+      description: 將來源教師的所有關聯資料遷移到目標教師，然後軟刪除來源教師
+      parameters:
+      - description: 合併請求資料
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.MergeTeachersRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/global.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: 合併教師資料
+      tags:
+      - Admin
+  /api/v1/admin/teachers/placeholder:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 佔位老師資料
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.CreatePlaceholderTeacherRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/global.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/resources.AdminTeacherResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 建立佔位老師
       tags:
       - Admin
   /api/v1/admin/templates:
@@ -4548,33 +5799,6 @@ paths:
       summary: 新增模板中的格子
       tags:
       - Admin
-  /api/v1/admin/templates/{template_id}/cells/{cell_id}:
-    delete:
-      consumes:
-      - application/json
-      parameters:
-      - description: Template ID
-        in: path
-        name: template_id
-        required: true
-        type: integer
-      - description: Cell ID
-        in: path
-        name: cell_id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/global.ApiResponse'
-      security:
-      - BearerAuth: []
-      summary: 刪除格子
-      tags:
-      - Admin
   /api/v1/admin/templates/{template_id}/cells/reorder:
     put:
       consumes:
@@ -4634,6 +5858,183 @@ paths:
       security:
       - BearerAuth: []
       summary: 驗證套用模板
+      tags:
+      - Admin
+  /api/v1/admin/templates/cells/{cellId}:
+    delete:
+      consumes:
+      - application/json
+      parameters:
+      - description: Cell ID
+        in: path
+        name: cell_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/global.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: 刪除格子
+      tags:
+      - Admin
+  /api/v1/admin/terms:
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/global.ApiResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/resources.TermResponse'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 取得學期列表
+      tags:
+      - Admin
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 學期資訊
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/services.CreateTermRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/global.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/resources.TermResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 新增學期
+      tags:
+      - Admin
+  /api/v1/admin/terms/{term_id}:
+    delete:
+      consumes:
+      - application/json
+      parameters:
+      - description: Term ID
+        in: path
+        name: term_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/global.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: 刪除學期
+      tags:
+      - Admin
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Term ID
+        in: path
+        name: term_id
+        required: true
+        type: integer
+      - description: 學期資訊
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/services.UpdateTermRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/global.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/resources.TermResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 更新學期
+      tags:
+      - Admin
+  /api/v1/admin/terms/active:
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/global.ApiResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/resources.TermResponse'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 取得進行中的學期列表
+      tags:
+      - Admin
+  /api/v1/admin/terms/copy-rules:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 複製規則請求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.CopyRulesRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/global.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/resources.CopyRulesResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 批量複製規則
       tags:
       - Admin
   /api/v1/auth/admin/login:
@@ -4951,27 +6352,6 @@ paths:
       tags:
       - Teacher
   /api/v1/teacher/me/backgrounds:
-    delete:
-      consumes:
-      - application/json
-      parameters:
-      - description: 圖片路徑
-        in: query
-        name: path
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/global.ApiResponse'
-      security:
-      - BearerAuth: []
-      summary: 刪除自訂背景圖
-      tags:
-      - Teacher - Export
     get:
       consumes:
       - application/json
@@ -4986,7 +6366,7 @@ paths:
             - properties:
                 data:
                   items:
-                    type: string
+                    $ref: '#/definitions/controllers.TeacherBackgroundResponse'
                   type: array
               type: object
       security:
@@ -5013,11 +6393,33 @@ paths:
             - $ref: '#/definitions/global.ApiResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/controllers.UploadBackgroundResponse'
+                  $ref: '#/definitions/controllers.TeacherBackgroundResponse'
               type: object
       security:
       - BearerAuth: []
       summary: 上傳自訂背景圖
+      tags:
+      - Teacher - Export
+  /api/v1/teacher/me/backgrounds/{id}:
+    delete:
+      consumes:
+      - application/json
+      parameters:
+      - description: 背景圖 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/global.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: 刪除自訂背景圖
       tags:
       - Teacher - Export
   /api/v1/teacher/me/centers:
@@ -5142,6 +6544,38 @@ paths:
       security:
       - BearerAuth: []
       summary: 刪除老師證照
+      tags:
+      - Teacher
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: 證照ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 證照資訊
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.UpdateCertificateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/global.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.TeacherCertificate'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 更新老師證照
       tags:
       - Teacher
   /api/v1/teacher/me/certificates/upload:
@@ -5928,6 +7362,19 @@ paths:
     get:
       consumes:
       - application/json
+      parameters:
+      - description: 搜尋關鍵字（姓名或 Email）
+        in: query
+        name: q
+        type: string
+      - description: 頁碼，預設 1
+        in: query
+        name: page
+        type: integer
+      - description: 每頁筆數，預設 20
+        in: query
+        name: limit
+        type: integer
       produces:
       - application/json
       responses:
@@ -5938,9 +7385,7 @@ paths:
             - $ref: '#/definitions/global.ApiResponse'
             - properties:
                 data:
-                  items:
-                    $ref: '#/definitions/resources.AdminTeacherResponse'
-                  type: array
+                  $ref: '#/definitions/resources.PaginationResponse'
               type: object
       security:
       - BearerAuth: []
