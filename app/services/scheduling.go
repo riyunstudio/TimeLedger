@@ -628,11 +628,18 @@ func (s *ScheduleService) UpdateRule(ctx context.Context, centerID, adminID, rul
 		// 2. 相同星期幾(Weekday)
 		// 3. 相同開始時間(StartTime)
 		// 4. 相同結束時間(EndTime)
-		// 5. 不是自己
+		// 5. 相同教室(RoomID)
+		// 6. 相同老師(TeacherID，需同時為 nil 或同時有值)
+		// 7. 不是自己
+		teacherMatch := (rule.TeacherID == nil && existingRule.TeacherID == nil) ||
+			(rule.TeacherID != nil && existingRule.TeacherID != nil && *rule.TeacherID == *existingRule.TeacherID)
+
 		if rule.OfferingID == existingRule.OfferingID &&
 			rule.Weekday == existingRule.Weekday &&
 			rule.StartTime == existingRule.StartTime &&
 			rule.EndTime == existingRule.EndTime &&
+			rule.RoomID == existingRule.RoomID &&
+			teacherMatch &&
 			rule.ID != existingRule.ID {
 			relatedRules = append(relatedRules, rule)
 		}
