@@ -6,11 +6,11 @@ import (
 )
 
 type SmartMatchingService interface {
-	FindMatches(ctx context.Context, centerID uint, teacherID *uint, roomID uint, startTime, endTime time.Time, requiredSkills []string, excludeTeacherIDs []uint) ([]MatchScore, error)
+	FindMatches(ctx context.Context, centerID uint, teacherID *uint, roomIDs []uint, startTime, endTime time.Time, requiredSkills []string, excludeTeacherIDs []uint) ([]MatchScore, error)
 	SearchTalent(ctx context.Context, searchParams TalentSearchParams) (*TalentSearchResultResponse, error)
 	GetTalentStats(ctx context.Context, centerID uint) (*TalentStats, error)
 	InviteTalent(ctx context.Context, centerID uint, adminID uint, teacherIDs []uint, message string) (*InviteResult, error)
-	GetSearchSuggestions(ctx context.Context, query string) (*SearchSuggestions, error)
+	GetSearchSuggestions(ctx context.Context, centerID uint, query string) (*SearchSuggestions, error)
 	GetAlternativeSlots(ctx context.Context, centerID uint, teacherID uint, originalStart, originalEnd time.Time, duration int) ([]AlternativeSlot, error)
 	GetTeacherSessions(ctx context.Context, centerID uint, teacherID uint, startDate, endDate string) (*TeacherSessions, error)
 }

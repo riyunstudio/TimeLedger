@@ -26,6 +26,8 @@
         class="input-field"
         :disabled="loading"
         @input="debouncedSearch"
+        @compositionstart="handleCompositionStart"
+        @compositionend="handleCompositionEnd"
       />
     </div>
 
@@ -316,11 +318,27 @@ const ratingTeacher = ref<any>(null)
 
 const teachers = ref<any[]>([])
 
+// IME 輸入狀態追蹤（解決中文輸入問題）
+const isComposing = ref(false)
+
 // 去抖動搜尋函數
 const debouncedSearch = useDebounceFn(() => {
+  if (isComposing.value) return // IME 組合中不觸發
   currentPage.value = 1 // 搜尋時回到第一頁
   fetchTeachers()
 }, 300)
+
+// 處理 IME 組合開始
+const handleCompositionStart = () => {
+  isComposing.value = true
+}
+
+// 處理 IME 組合結束
+const handleCompositionEnd = (event: CompositionEvent) => {
+  isComposing.value = false
+  // 組合結束後觸發搜尋
+  debouncedSearch()
+}
 
 // 帶搜尋和分頁的 API 請求
 const fetchTeachers = async () => {

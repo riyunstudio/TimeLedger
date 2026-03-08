@@ -280,7 +280,7 @@ github.com/swaggo/files
 # github.com/swaggo/gin-swagger v1.6.1
 ## explicit; go 1.23.0
 github.com/swaggo/gin-swagger
-# github.com/swaggo/swag v1.8.12
+# github.com/swaggo/swag v1.16.6
 ## explicit; go 1.18
 github.com/swaggo/swag
 # github.com/twitchyliquid64/golang-asm v0.15.1

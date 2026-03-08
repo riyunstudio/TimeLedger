@@ -133,12 +133,6 @@
               >
                 {{ course.category }}
               </span>
-              <span
-                v-if="course.code"
-                class="px-2 py-0.5 text-xs rounded bg-primary-500/20 text-primary-400 font-mono"
-              >
-                {{ course.code }}
-              </span>
               <h3 class="text-lg font-medium text-slate-100">{{ course.name }}</h3>
             </div>
           </div>
@@ -241,18 +235,7 @@
         </h3>
 
         <form @submit.prevent="saveCourse" class="space-y-4">
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-slate-300 mb-2">
-                課程代號
-              </label>
-              <input
-                v-model="form.code"
-                type="text"
-                class="input-field"
-                placeholder="例：Piano-101"
-              />
-            </div>
+          <div class="grid grid-cols-1 gap-4">
             <div>
               <label class="block text-sm font-medium text-slate-300 mb-2">
                 課程名稱 <span class="text-red-400">*</span>
@@ -373,7 +356,6 @@ const pagination = ref<PaginationState>({
 const debounceTimer = ref<NodeJS.Timeout | null>(null)
 
 const form = reactive({
-  code: '',
   name: '',
   category: '',
   default_duration: 60,
@@ -479,7 +461,6 @@ function goToPage(page: number) {
 
 function editCourse(course: Course) {
   editingCourse.value = course
-  form.code = course.code || ''
   form.name = course.name
   form.category = course.category || ''
   form.default_duration = course.default_duration || 60
@@ -544,7 +525,6 @@ async function saveCourse() {
   saving.value = true
   try {
     const data = {
-      code: form.code.trim() || null,
       name: form.name,
       category: form.category || null,
       duration: form.default_duration,

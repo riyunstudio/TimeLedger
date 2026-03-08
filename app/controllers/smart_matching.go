@@ -20,12 +20,12 @@ type SmartMatchingController struct {
 }
 
 type FindMatchesRequest struct {
-	TeacherID         *uint     `json:"teacher_id"`
-	RoomID            uint      `json:"room_id" binding:"required"`
-	StartTime         string    `json:"start_time" binding:"required"`
-	EndTime           string    `json:"end_time" binding:"required"`
-	RequiredSkills    []string  `json:"required_skills"`
-	ExcludeTeacherIDs []uint    `json:"exclude_teacher_ids"`
+	TeacherID         *uint    `json:"teacher_id"`
+	RoomIDs           []uint   `json:"room_ids" binding:"required"`
+	StartTime         string   `json:"start_time" binding:"required"`
+	EndTime           string   `json:"end_time" binding:"required"`
+	RequiredSkills    []string `json:"required_skills"`
+	ExcludeTeacherIDs []uint   `json:"exclude_teacher_ids"`
 }
 
 type TalentSearchParams struct {
@@ -93,7 +93,7 @@ func (ctl *SmartMatchingController) FindMatches(ctx *gin.Context) {
 	endTime = time.Date(endTime.Year(), endTime.Month(), endTime.Day(), 23, 59, 59, 999999999, loc)
 
 	// 直接同步處理（Go 處理速度很快，不需要 WebSocket）
-	matches, err := ctl.smartMatchingSvc.FindMatches(ctx.Request.Context(), centerID, req.TeacherID, req.RoomID, startTime, endTime, req.RequiredSkills, req.ExcludeTeacherIDs)
+	matches, err := ctl.smartMatchingSvc.FindMatches(ctx.Request.Context(), centerID, req.TeacherID, req.RoomIDs, startTime, endTime, req.RequiredSkills, req.ExcludeTeacherIDs)
 	if err != nil {
 		helper.InternalError(err.Error())
 		return
@@ -109,7 +109,7 @@ func (ctl *SmartMatchingController) FindMatches(ctx *gin.Context) {
 		TargetID:   0,
 		Payload: models.AuditPayload{
 			After: map[string]interface{}{
-				"room_id":         req.RoomID,
+				"room_ids":        req.RoomIDs,
 				"start_time":      req.StartTime,
 				"end_time":        req.EndTime,
 				"required_skills": req.RequiredSkills,
@@ -345,12 +345,18 @@ func (ctl *SmartMatchingController) InviteTalent(ctx *gin.Context) {
 func (ctl *SmartMatchingController) GetSearchSuggestions(ctx *gin.Context) {
 	helper := NewContextHelper(ctx)
 
+	// 驗證中心 ID（確保有權限）
+	centerID := ctl.requireCenterID(helper)
+	if centerID == 0 {
+		return
+	}
+
 	query := helper.QueryStringOrDefault("q", "")
 	if query == "" {
 		query = helper.QueryStringOrDefault("keyword", "")
 	}
 
-	suggestions, err := ctl.smartMatchingSvc.GetSearchSuggestions(ctx.Request.Context(), query)
+	suggestions, err := ctl.smartMatchingSvc.GetSearchSuggestions(ctx.Request.Context(), centerID, query)
 	if err != nil {
 		helper.InternalError(err.Error())
 		return
@@ -397,7 +403,7 @@ func (ctl *SmartMatchingController) GetAlternativeSlots(ctx *gin.Context) {
 	helper.Success(alternatives)
 }
 
-// GetTeacherSessionsRequest - 教師課表請求
+// GetTeacherSessionsRequest - 教師課表請求（使用 Query 參數）
 type GetTeacherSessionsRequest struct {
 	StartDate string `form:"start_date" binding:"required"`
 	EndDate   string `form:"end_date" binding:"required"`
@@ -443,7 +449,9 @@ func (ctl *SmartMatchingController) GetTeacherSessions(ctx *gin.Context) {
 	}
 
 	var req GetTeacherSessionsRequest
-	if !helper.MustBindJSON(&req) {
+	// 使用 ShouldBindQuery 綁定 Query 參數（符合 Swagger 定義的 GET 請求）
+	if err := ctx.ShouldBindQuery(&req); err != nil {
+		helper.BadRequest("無效的查詢參數：" + err.Error())
 		return
 	}
 

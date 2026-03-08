@@ -84,6 +84,8 @@ type SmartMatchingServiceImpl struct {
 	teacherCertificateRepo *repositories.TeacherCertificateRepository
 	centerTeacherNoteRepo  *repositories.CenterTeacherNoteRepository
 	centerInvitationRepo   *repositories.CenterInvitationRepository
+	membershipRepo         *repositories.CenterMembershipRepository
+	validationSvc          ScheduleValidationService
 	notificationService    NotificationService
 }
 
@@ -98,116 +100,94 @@ func NewSmartMatchingService(app *app.App) SmartMatchingService {
 		teacherCertificateRepo: repositories.NewTeacherCertificateRepository(app),
 		centerTeacherNoteRepo:  repositories.NewCenterTeacherNoteRepository(app),
 		centerInvitationRepo:   repositories.NewCenterInvitationRepository(app),
+		membershipRepo:         repositories.NewCenterMembershipRepository(app),
+		validationSvc:          NewScheduleValidationService(app),
 		notificationService:    NewNotificationService(app),
 	}
 }
 
 // FindMatches searches for available teachers matching the criteria
-func (s *SmartMatchingServiceImpl) FindMatches(ctx context.Context, centerID uint, teacherID *uint, roomID uint, startTime, endTime time.Time, requiredSkills []string, excludeTeacherIDs []uint) ([]MatchScore, error) {
-	rules, err := s.scheduleRuleRepo.ListByCenterID(ctx, centerID)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(rules) == 0 {
-		return []MatchScore{}, nil
-	}
-
+// 搜尋範圍：
+// 1. 該中心已有排課的老師
+// 2. 開放對外徵才的老師（可邀請加入）
+func (s *SmartMatchingServiceImpl) FindMatches(ctx context.Context, centerID uint, teacherID *uint, roomIDs []uint, startTime, endTime time.Time, requiredSkills []string, excludeTeacherIDs []uint) ([]MatchScore, error) {
 	// 建立排除教師 ID 的 Map（O(1) 查找）
 	excludeMap := make(map[uint]bool)
 	for _, id := range excludeTeacherIDs {
 		excludeMap[id] = true
 	}
 
-	// 收集所有唯一的教師 ID
-	teacherIDs := make([]uint, 0, len(rules))
-	for _, rule := range rules {
-		if rule.TeacherID != nil {
-			teacherIDs = append(teacherIDs, *rule.TeacherID)
+	// 取得候選老師列表
+	candidateTeacherIDs, err := s.getCandidateTeachers(ctx, centerID)
+	if err != nil {
+		return nil, err
+	}
+
+	// 過濾排除的老師
+	filteredTeacherIDs := make([]uint, 0, len(candidateTeacherIDs))
+	for _, id := range candidateTeacherIDs {
+		if !excludeMap[id] {
+			filteredTeacherIDs = append(filteredTeacherIDs, id)
 		}
 	}
 
-	// 批量查詢所有教師數據（解決 N+1 問題）
-	teachersMap, err := s.teacherRepository.BatchGetByIDs(ctx, teacherIDs)
+	if len(filteredTeacherIDs) == 0 {
+		return []MatchScore{}, nil
+	}
+
+	// 批量查詢所有教師數據
+	teachersMap, err := s.teacherRepository.BatchGetByIDs(ctx, filteredTeacherIDs)
 	if err != nil {
 		return nil, err
 	}
 
 	// 批量查詢所有技能數據
-	skillsMap, err := s.teacherSkillRepo.BatchListByTeacherIDs(ctx, teacherIDs)
+	skillsMap, err := s.teacherSkillRepo.BatchListByTeacherIDs(ctx, filteredTeacherIDs)
 	if err != nil {
 		return nil, err
 	}
 
 	// 批量查詢所有中心教師備註
-	centerNotesMap, err := s.centerTeacherNoteRepo.BatchGetByCenterAndTeachers(ctx, centerID, teacherIDs)
-	if err != nil {
-		return nil, err
-	}
-
-	// 批量查詢例外記錄
-	ruleIDs := make([]uint, 0, len(rules))
-	for _, rule := range rules {
-		ruleIDs = append(ruleIDs, rule.ID)
-	}
-	exceptionsMap, err := s.scheduleExceptionRepo.BatchGetByRuleIDs(ctx, ruleIDs, startTime)
+	centerNotesMap, err := s.centerTeacherNoteRepo.BatchGetByCenterAndTeachers(ctx, centerID, filteredTeacherIDs)
 	if err != nil {
 		return nil, err
 	}
 
 	var matches []MatchScore
 
-	for _, rule := range rules {
-		if rule.TeacherID == nil {
-			continue
-		}
-
-		currentTeacherID := *rule.TeacherID
-
-		// 使用 Map 進行 O(1) 排除檢查
-		if excludeMap[currentTeacherID] {
-			continue
-		}
-
-		// 檢查是否有已核准的取消例外
-		if exceptions, ok := exceptionsMap[rule.ID]; ok {
-			for _, exc := range exceptions {
-				if exc.ExceptionType == "CANCEL" && exc.Status == "APPROVED" {
-					continue
-				}
-			}
-		}
-
+	// 對每個候選老師進行評分
+	for _, currentTeacherID := range filteredTeacherIDs {
 		teacher, ok := teachersMap[currentTeacherID]
 		if !ok {
-			continue
-		}
-
-		if !teacher.IsOpenToHiring {
 			continue
 		}
 
 		skills := skillsMap[currentTeacherID]
 		centerNote := centerNotesMap[currentTeacherID]
 
-		availability := MatchAvailable
-		if teacherID != nil && currentTeacherID == *teacherID && roomID == rule.RoomID {
-			availability = MatchOverlap
-		}
+		// 檢查老師是否為中心成員
+		isMember := centerNote.ID != 0
 
+		// 計算各項分數
 		skillScore := calculateSkillMatchScore(skills, requiredSkills)
 		regionScore := calculateRegionMatchScore(teacher.City, teacher.District, "", "")
 		hashtagScore := calculateHashtagScore(skills, []string{})
 		internalScore := calculateInternalScore(centerNote.Rating, centerNote.InternalNote)
 
+		// 可用性檢查（只有中心成員才需要檢查排課衝突）
+		availability := MatchAvailable
 		availabilityScore := 0
-		switch availability {
-		case MatchAvailable:
+
+		if isMember {
+			// 中心成員：檢查時段是否有空
+			availability, availabilityScore = s.checkTeacherAvailability(ctx, centerID, currentTeacherID, roomIDs, startTime, endTime)
+		} else if teacher.IsOpenToHiring {
+			// 外部老師（開放徵才）：預設可用，但標記為可邀請
+			availability = MatchAvailable
 			availabilityScore = 40
-		case MatchBufferConflict:
-			availabilityScore = 15
-		case MatchOverlap:
-			availabilityScore = 0
+		} else {
+			// 不符合條件的老師（已排除）
+			continue
 		}
 
 		totalScore := availabilityScore + internalScore + skillScore + regionScore + hashtagScore
@@ -223,7 +203,7 @@ func (s *SmartMatchingServiceImpl) FindMatches(ctx context.Context, centerID uin
 			RegionScore:       regionScore,
 			Skills:            extractSkills(skills),
 			Hashtags:          extractHashtags(skills),
-			IsMember:          centerNote.ID != 0,
+			IsMember:          isMember,
 			InternalNote:      centerNote.InternalNote,
 			InternalRating:    centerNote.Rating,
 			PublicContactInfo: teacher.PublicContactInfo,
@@ -235,6 +215,92 @@ func (s *SmartMatchingServiceImpl) FindMatches(ctx context.Context, centerID uin
 	sortMatchesByScore(matches)
 
 	return matches, nil
+}
+
+// getCandidateTeachers 取得候選老師列表（中心成員 + 開放徵才）
+func (s *SmartMatchingServiceImpl) getCandidateTeachers(ctx context.Context, centerID uint) ([]uint, error) {
+	teacherIDs := make([]uint, 0)
+
+	// 1. 取得該中心已有排課規則的老師
+	rules, err := s.scheduleRuleRepo.ListByCenterID(ctx, centerID)
+	if err != nil {
+		return nil, err
+	}
+
+	ruleTeacherMap := make(map[uint]bool) // 記錄哪些老師有排課規則
+	for _, rule := range rules {
+		if rule.TeacherID != nil {
+			teacherIDs = append(teacherIDs, *rule.TeacherID)
+			ruleTeacherMap[*rule.TeacherID] = true
+		}
+	}
+
+	// 2. 取得中心成員（已加入該中心的老師）
+	memberTeacherIDs, err := s.membershipRepo.ListTeacherIDsByCenterID(ctx, centerID)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, tid := range memberTeacherIDs {
+		// 如果成員還沒在列表中，加入
+		if !ruleTeacherMap[tid] {
+			teacherIDs = append(teacherIDs, tid)
+			ruleTeacherMap[tid] = true
+		}
+	}
+
+	// 3. 取得開放對外徵才的老師
+	allTeachers, err := s.teacherRepository.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, t := range allTeachers {
+		// 只加入開放徵才且不在列表中的老師
+		if t.IsOpenToHiring && !ruleTeacherMap[t.ID] {
+			teacherIDs = append(teacherIDs, t.ID)
+		}
+	}
+
+	return teacherIDs, nil
+}
+
+// checkTeacherAvailability 檢查老師在某時段是否可用
+// 修正：應該檢查所有教室，回傳最好的結果
+func (s *SmartMatchingServiceImpl) checkTeacherAvailability(ctx context.Context, centerID uint, teacherID uint, roomIDs []uint, startTime, endTime time.Time) (MatchAvailability, int) {
+	teacherIDPtr := &teacherID
+
+	// 優先級：OVERLAP (0) > BUFFER_CONFLICT (15) > AVAILABLE (40)
+	// 只要有一個教室重疊就是重疊，全部緩衝衝突才是緩衝衝突
+	hasOverlap := false
+	hasBufferConflict := false
+
+	// 檢查每個教室
+	for _, roomID := range roomIDs {
+		result, err := s.validationSvc.CheckOverlap(ctx, centerID, teacherIDPtr, roomID, startTime, endTime, 0, nil, "")
+		if err != nil {
+			// 發生錯誤時，視為可用（保守策略）
+			return MatchAvailable, 40
+		}
+
+		// 檢查是否有重疊
+		if !result.Valid {
+			hasOverlap = true
+		} else if len(result.Conflicts) > 0 {
+			// 有緩衝衝突但無重疊
+			hasBufferConflict = true
+		}
+	}
+
+	// 回傳最好的結果（優先級：可用 > 緩衝衝突 > 重疊）
+	if hasOverlap {
+		return MatchOverlap, 0
+	}
+	if hasBufferConflict {
+		return MatchBufferConflict, 15
+	}
+
+	return MatchAvailable, 40
 }
 
 // NewPagination - 建立分頁資訊
@@ -254,26 +320,39 @@ func NewPagination(page, limit, total int) Pagination {
 }
 
 // SearchTalent searches for teachers based on criteria with pagination and sorting
+// 優化版本：減少 N+1 查詢問題
 func (s *SmartMatchingServiceImpl) SearchTalent(ctx context.Context, searchParams TalentSearchParams) (*TalentSearchResultResponse, error) {
-	var allResults []TalentResult
+	// 取得該中心的成員 ID 列表（如果指定了中心）
+	memberIDMap := make(map[uint]bool)
+	if searchParams.CenterID > 0 {
+		memberTeacherIDs, err := s.membershipRepo.ListTeacherIDsByCenterID(ctx, searchParams.CenterID)
+		if err == nil {
+			for _, id := range memberTeacherIDs {
+				memberIDMap[id] = true
+			}
+		}
+	}
 
+	// 第一階段：基本過濾（減少載入的資料量）
 	teachers, err := s.teacherRepository.List(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, teacher := range teachers {
+	// 收集需要批量查詢的教師 ID
+	candidateTeacherIDs := make([]uint, 0)
+	filteredTeachers := make(map[uint]*models.Teacher)
+
+	for i := range teachers {
+		teacher := &teachers[i]
+
+		// 只搜尋開放徵才的老師
 		if !teacher.IsOpenToHiring {
 			continue
 		}
 
-		if searchParams.CenterID > 0 {
-			// Filter by center membership if CenterID is specified
-			// This is a simplified check - in production you'd query membership
-		}
-
+		// 如果指定了中心，排除已加入該中心的老師
 		if searchParams.City != "" {
-			// 將搜尋參數正規化為資料庫格式
 			normalizedSearchCity := normalizeCityName(searchParams.City)
 			normalizedTeacherCity := normalizeCityName(teacher.City)
 			if normalizedTeacherCity != normalizedSearchCity {
@@ -282,7 +361,6 @@ func (s *SmartMatchingServiceImpl) SearchTalent(ctx context.Context, searchParam
 		}
 
 		if searchParams.District != "" {
-			// 將搜尋參數正規化為資料庫格式
 			normalizedSearchDistrict := normalizeDistrictName(searchParams.District)
 			normalizedTeacherDistrict := normalizeDistrictName(teacher.District)
 			if normalizedTeacherDistrict != normalizedSearchDistrict {
@@ -298,12 +376,51 @@ func (s *SmartMatchingServiceImpl) SearchTalent(ctx context.Context, searchParam
 			}
 		}
 
-		skillsList, err := s.teacherSkillRepo.ListByTeacherID(ctx, teacher.ID)
-		if err != nil && len(searchParams.Skills) > 0 {
-			// 只有在有技能篩選條件且取得失敗時才跳過
+		// 如果指定了中心，排除已加入該中心的老師
+		if searchParams.CenterID > 0 && memberIDMap[teacher.ID] {
 			continue
 		}
 
+		candidateTeacherIDs = append(candidateTeacherIDs, teacher.ID)
+		filteredTeachers[teacher.ID] = teacher
+	}
+
+	if len(candidateTeacherIDs) == 0 {
+		// 沒有符合條件的老師，直接返回空結果
+		return &TalentSearchResultResponse{
+			Talents:   []TalentCardResponse{},
+			Pagination: Pagination{Page: 1, Limit: 20, Total: 0},
+		}, nil
+	}
+
+	// 第二階段：批量查詢相關資料（解決 N+1 問題）
+	skillsMap, err := s.teacherSkillRepo.BatchListByTeacherIDs(ctx, candidateTeacherIDs)
+	if err != nil {
+		s.Logger.Warn("failed to batch query teacher skills", "error", err.Error())
+	}
+	certificatesMap, err := s.teacherCertificateRepo.BatchListByTeacherIDs(ctx, candidateTeacherIDs)
+	if err != nil {
+		s.Logger.Warn("failed to batch query teacher certificates", "error", err.Error())
+	}
+	notesMap, err := s.centerTeacherNoteRepo.BatchGetByCenterAndTeachers(ctx, searchParams.CenterID, candidateTeacherIDs)
+	if err != nil {
+		s.Logger.Warn("failed to batch query center teacher notes", "error", err.Error())
+	}
+
+	// 第三階段：根據技能和標籤過濾，並建立結果
+	var allResults []TalentResult
+
+	for _, teacherID := range candidateTeacherIDs {
+		teacher, ok := filteredTeachers[teacherID]
+		if !ok {
+			continue
+		}
+
+		skillsList := skillsMap[teacherID]
+		certificates := certificatesMap[teacherID]
+		centerNote := notesMap[teacherID]
+
+		// 技能篩選
 		if len(searchParams.Skills) > 0 {
 			hasSkill := false
 			for _, requiredSkill := range searchParams.Skills {
@@ -313,6 +430,9 @@ func (s *SmartMatchingServiceImpl) SearchTalent(ctx context.Context, searchParam
 						break
 					}
 				}
+				if hasSkill {
+					break
+				}
 			}
 			if !hasSkill {
 				continue
@@ -321,7 +441,7 @@ func (s *SmartMatchingServiceImpl) SearchTalent(ctx context.Context, searchParam
 
 		// 標籤篩選
 		if len(searchParams.Hashtags) > 0 {
-			personalHashtags := s.extractPersonalHashtags(ctx, teacher.ID)
+			personalHashtags := s.extractPersonalHashtagsBatch(ctx, teacherID, skillsList)
 			hasMatchingHashtag := false
 
 			for _, requiredTag := range searchParams.Hashtags {
@@ -370,8 +490,6 @@ func (s *SmartMatchingServiceImpl) SearchTalent(ctx context.Context, searchParam
 			}
 		}
 
-		certificates, _ := s.teacherCertificateRepo.ListByTeacherID(ctx, teacher.ID)
-
 		certificatesList := make([]Certificate, 0, len(certificates))
 		for _, cert := range certificates {
 			certificatesList = append(certificatesList, Certificate{
@@ -381,9 +499,6 @@ func (s *SmartMatchingServiceImpl) SearchTalent(ctx context.Context, searchParam
 			})
 		}
 
-		// 取得中心備註（用於判斷是否為成員及評分）
-		centerNote, _ := s.centerTeacherNoteRepo.GetByCenterAndTeacher(ctx, searchParams.CenterID, teacher.ID)
-
 		result := TalentResult{
 			TeacherID:         teacher.ID,
 			Name:              teacher.Name,
@@ -391,7 +506,7 @@ func (s *SmartMatchingServiceImpl) SearchTalent(ctx context.Context, searchParam
 			City:              teacher.City,
 			District:          teacher.District,
 			Skills:            extractSkills(skillsList),
-			PersonalHashtags:  s.extractPersonalHashtags(ctx, teacher.ID),
+			PersonalHashtags:  s.extractPersonalHashtagsBatch(ctx, teacherID, skillsList),
 			IsOpenToHiring:    teacher.IsOpenToHiring,
 			Certificates:      certificatesList,
 			PublicContactInfo: teacher.PublicContactInfo,
@@ -635,11 +750,36 @@ func extractHashtags(skills []models.TeacherSkill) []string {
 }
 
 func (s *SmartMatchingServiceImpl) extractPersonalHashtags(ctx context.Context, teacherID uint) []string {
-	hashtags, _ := s.teacherRepository.ListPersonalHashtags(ctx, teacherID)
+	hashtags, err := s.teacherRepository.ListPersonalHashtags(ctx, teacherID)
+	if err != nil {
+		s.Logger.Warn("failed to list personal hashtags", "teacher_id", teacherID, "error", err.Error())
+		return []string{}
+	}
 
 	result := make([]string, 0, len(hashtags))
 	for _, tag := range hashtags {
 		result = append(result, "#"+tag.Name)
+	}
+	return result
+}
+
+// extractPersonalHashtagsBatch 從已載入的技能中提取標籤（避免 N+1）
+func (s *SmartMatchingServiceImpl) extractPersonalHashtagsBatch(ctx context.Context, teacherID uint, skills []models.TeacherSkill) []string {
+	hashtagMap := make(map[string]bool)
+
+	// 從技能中提取標籤
+	for _, skill := range skills {
+		for _, tag := range skill.Hashtags {
+			if tag.Hashtag.Name != "" {
+				hashtagMap[tag.Hashtag.Name] = true
+			}
+		}
+	}
+
+	// 轉換為字串切片
+	result := make([]string, 0, len(hashtagMap))
+	for tag := range hashtagMap {
+		result = append(result, "#"+tag)
 	}
 	return result
 }
@@ -656,23 +796,40 @@ func sortMatchesByScore(matches []MatchScore) {
 
 // GetTalentStats - 取得人才庫統計資料
 func (s *SmartMatchingServiceImpl) GetTalentStats(ctx context.Context, centerID uint) (*TalentStats, error) {
-	// 取得所有開放徵才的老師
+	// 取得該中心的成員數量
+	memberTeacherIDs, err := s.membershipRepo.ListTeacherIDsByCenterID(ctx, centerID)
+	if err != nil {
+		return nil, err
+	}
+	memberCount := len(memberTeacherIDs)
+
+	// 建立成員 ID Map，方便快速查找
+	memberIDMap := make(map[uint]bool)
+	for _, id := range memberTeacherIDs {
+		memberIDMap[id] = true
+	}
+
+	// 取得所有老師（只取有必要的欄位）
 	teachers, err := s.teacherRepository.List(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	var openHiringCount, memberCount int
+	// 過濾：只統計開放徵才且非該中心成員的老師
+	var openHiringCount int
 	var totalRating float64
 	ratingCount := 0
 	cityMap := make(map[string]int)
 	skillMap := make(map[string]int)
+	openHiringTeacherIDs := make([]uint, 0)
 
 	for _, teacher := range teachers {
-		if !teacher.IsOpenToHiring {
+		// 只統計開放徵才且不是該中心成員的老師
+		if !teacher.IsOpenToHiring || memberIDMap[teacher.ID] {
 			continue
 		}
 		openHiringCount++
+		openHiringTeacherIDs = append(openHiringTeacherIDs, teacher.ID)
 
 		// 統計城市分布
 		if teacher.City != "" {
@@ -680,21 +837,48 @@ func (s *SmartMatchingServiceImpl) GetTalentStats(ctx context.Context, centerID 
 		}
 
 		// 取得技能
-		skills, _ := s.teacherSkillRepo.ListByTeacherID(ctx, teacher.ID)
+		skills, err := s.teacherSkillRepo.ListByTeacherID(ctx, teacher.ID)
+		if err != nil {
+			s.Logger.Warn("failed to list teacher skills", "teacher_id", teacher.ID, "error", err.Error())
+		}
 		for _, skill := range skills {
 			skillMap[skill.SkillName]++
 		}
 
-		// 取得中心備註（用於評分）
-		centerNote, _ := s.centerTeacherNoteRepo.GetByCenterAndTeacher(ctx, centerID, teacher.ID)
+		// 取得中心備註（用於評分）- 這裡雖然老師不是成員，但可能有之前的評分
+		centerNote, err := s.centerTeacherNoteRepo.GetByCenterAndTeacher(ctx, centerID, teacher.ID)
+		if err != nil {
+			s.Logger.Warn("failed to get center teacher note", "teacher_id", teacher.ID, "error", err.Error())
+		}
 		if centerNote.Rating > 0 {
 			totalRating += float64(centerNote.Rating)
 			ratingCount++
 		}
+	}
 
-		// 檢查是否為中心成員
-		if centerNote.ID != 0 {
-			memberCount++
+	// 批量查詢成員的技能和評分（提升效能）
+	if len(memberTeacherIDs) > 0 {
+		memberSkillsMap, err := s.teacherSkillRepo.BatchListByTeacherIDs(ctx, memberTeacherIDs)
+		if err != nil {
+			s.Logger.Warn("failed to batch query member skills", "error", err.Error())
+		}
+		memberNotesMap, err := s.centerTeacherNoteRepo.BatchGetByCenterAndTeachers(ctx, centerID, memberTeacherIDs)
+		if err != nil {
+			s.Logger.Warn("failed to batch query member notes", "error", err.Error())
+		}
+
+		for _, teacherID := range memberTeacherIDs {
+			// 成員也納入技能統計
+			if skills, ok := memberSkillsMap[teacherID]; ok {
+				for _, skill := range skills {
+					skillMap[skill.SkillName]++
+				}
+			}
+			// 成員評分
+			if note, ok := memberNotesMap[teacherID]; ok && note.Rating > 0 {
+				totalRating += float64(note.Rating)
+				ratingCount++
+			}
 		}
 	}
 
@@ -771,7 +955,7 @@ func (s *SmartMatchingServiceImpl) GetTalentStats(ctx context.Context, centerID 
 	}
 
 	return &TalentStats{
-		TotalCount:       len(teachers),
+		TotalCount:       openHiringCount + memberCount, // 可搜尋的總人數（開放徵才 + 中心成員）
 		OpenHiringCount:  openHiringCount,
 		MemberCount:      memberCount,
 		AverageRating:    averageRating,
@@ -877,8 +1061,8 @@ func (s *SmartMatchingServiceImpl) InviteTalent(ctx context.Context, centerID ui
 	return result, nil
 }
 
-// GetSearchSuggestions - 取得搜尋建議
-func (s *SmartMatchingServiceImpl) GetSearchSuggestions(ctx context.Context, query string) (*SearchSuggestions, error) {
+// GetSearchSuggestions - 取得搜尋建議（優化版本：加入 centerID 並修復 N+1）
+func (s *SmartMatchingServiceImpl) GetSearchSuggestions(ctx context.Context, centerID uint, query string) (*SearchSuggestions, error) {
 	suggestions := &SearchSuggestions{
 		Skills:   make([]SuggestionItem, 0),
 		Tags:     make([]SuggestionItem, 0),
@@ -886,14 +1070,33 @@ func (s *SmartMatchingServiceImpl) GetSearchSuggestions(ctx context.Context, que
 		Trending: []string{"瑜珈", "鋼琴", "舞蹈", "美術", "英語"},
 	}
 
-	if query == "" {
-		return suggestions, nil
+	// 取得該中心的成員 ID 列表
+	memberIDMap := make(map[uint]bool)
+	memberTeacherIDs, err := s.membershipRepo.ListTeacherIDsByCenterID(ctx, centerID)
+	if err == nil {
+		for _, id := range memberTeacherIDs {
+			memberIDMap[id] = true
+		}
 	}
 
 	// 取得所有開放徵才的老師
 	teachers, err := s.teacherRepository.List(ctx)
 	if err != nil {
 		return nil, err
+	}
+
+	// 收集候選老師 ID（開放徵才且不是該中心成員）
+	candidateIDs := make([]uint, 0)
+	for _, teacher := range teachers {
+		if teacher.IsOpenToHiring && !memberIDMap[teacher.ID] {
+			candidateIDs = append(candidateIDs, teacher.ID)
+		}
+	}
+
+	// 批量查詢技能（解決 N+1 問題）
+	skillsMap, err := s.teacherSkillRepo.BatchListByTeacherIDs(ctx, candidateIDs)
+	if err != nil {
+		s.Logger.Warn("failed to batch query skills for suggestions", "error", err.Error())
 	}
 
 	skillSet := make(map[string]bool)
@@ -903,12 +1106,18 @@ func (s *SmartMatchingServiceImpl) GetSearchSuggestions(ctx context.Context, que
 	queryLower := strings.ToLower(query)
 
 	for _, teacher := range teachers {
+		// 排除該中心成員
+		if memberIDMap[teacher.ID] {
+			continue
+		}
+
+		// 只處理開放徵才的老師
 		if !teacher.IsOpenToHiring {
 			continue
 		}
 
 		// 姓名匹配
-		if strings.Contains(strings.ToLower(teacher.Name), queryLower) && !nameSet[teacher.Name] {
+		if query != "" && strings.Contains(strings.ToLower(teacher.Name), queryLower) && !nameSet[teacher.Name] {
 			nameSet[teacher.Name] = true
 			suggestions.Names = append(suggestions.Names, SuggestionItem{
 				Type:  "name",
@@ -916,28 +1125,35 @@ func (s *SmartMatchingServiceImpl) GetSearchSuggestions(ctx context.Context, que
 			})
 		}
 
-		// 技能匹配
-		skills, _ := s.teacherSkillRepo.ListByTeacherID(ctx, teacher.ID)
-		for _, skill := range skills {
-			if strings.Contains(strings.ToLower(skill.SkillName), queryLower) && !skillSet[skill.SkillName] {
-				skillSet[skill.SkillName] = true
-				suggestions.Skills = append(suggestions.Skills, SuggestionItem{
-					Type:  "skill",
-					Value: skill.SkillName,
-				})
+		// 技能匹配（使用批量查詢結果）
+		if query != "" {
+			skills := skillsMap[teacher.ID]
+			for _, skill := range skills {
+				if strings.Contains(strings.ToLower(skill.SkillName), queryLower) && !skillSet[skill.SkillName] {
+					skillSet[skill.SkillName] = true
+					suggestions.Skills = append(suggestions.Skills, SuggestionItem{
+						Type:  "skill",
+						Value: skill.SkillName,
+					})
+				}
 			}
-		}
 
-		// 標籤匹配
-		hashtags := s.extractPersonalHashtags(ctx, teacher.ID)
-		for _, tag := range hashtags {
-			tagClean := strings.TrimPrefix(tag, "#")
-			if strings.Contains(strings.ToLower(tagClean), queryLower) && !tagSet[tagClean] {
-				tagSet[tagClean] = true
-				suggestions.Tags = append(suggestions.Tags, SuggestionItem{
-					Type:  "tag",
-					Value: tagClean,
-				})
+			// 標籤匹配（從技能中提取）
+			for _, skill := range skills {
+				for _, tag := range skill.Hashtags {
+					tagName := tag.Hashtag.Name
+					if tagName == "" {
+						continue
+					}
+					tagClean := strings.TrimPrefix(tagName, "#")
+					if strings.Contains(strings.ToLower(tagClean), queryLower) && !tagSet[tagClean] {
+						tagSet[tagClean] = true
+						suggestions.Tags = append(suggestions.Tags, SuggestionItem{
+							Type:  "tag",
+							Value: tagClean,
+						})
+					}
+				}
 			}
 		}
 	}
@@ -979,7 +1195,12 @@ func (s *SmartMatchingServiceImpl) GetAlternativeSlots(ctx context.Context, cent
 		timeSlots := []string{"09:00", "14:00", "16:00"}
 
 		for _, startTime := range timeSlots {
-			hour, _ := strconv.Atoi(strings.Split(startTime, ":")[0])
+			hourParts := strings.Split(startTime, ":")
+			hour, err := strconv.Atoi(hourParts[0])
+			if err != nil {
+				s.Logger.Warn("failed to parse hour", "start_time", startTime, "error", err.Error())
+				continue
+			}
 			endHour := hour + duration/60
 			endTime := fmt.Sprintf("%02d:30", endHour)
 
@@ -1031,8 +1252,14 @@ func (s *SmartMatchingServiceImpl) GetTeacherSessions(ctx context.Context, cente
 	}
 
 	// 解析日期
-	start, _ := time.Parse("2006-01-02", startDate)
-	end, _ := time.Parse("2006-01-02", endDate)
+	start, err := time.Parse("2006-01-02", startDate)
+	if err != nil {
+		return nil, fmt.Errorf("無效的開始日期格式: %w", err)
+	}
+	end, err := time.Parse("2006-01-02", endDate)
+	if err != nil {
+		return nil, fmt.Errorf("無效的結束日期格式: %w", err)
+	}
 
 	// 取得該時段區間的規則
 	rules, err := s.scheduleRuleRepo.ListByCenterID(ctx, centerID)
@@ -1058,7 +1285,11 @@ func (s *SmartMatchingServiceImpl) GetTeacherSessions(ctx context.Context, cente
 			// 檢查是否為規則的星期
 			if int(currentDate.Weekday()) == rule.Weekday {
 				// 檢查是否有取消例外
-				exceptions, _ := s.scheduleExceptionRepo.GetByRuleAndDate(ctx, rule.ID, currentDate)
+				exceptions, err := s.scheduleExceptionRepo.GetByRuleAndDate(ctx, rule.ID, currentDate)
+				if err != nil {
+					// 查詢例外失敗時，保守起見假設沒有取消
+					s.Logger.Warn("failed to query schedule exceptions", "rule_id", rule.ID, "date", currentDate.Format("2006-01-02"), "error", err.Error())
+				}
 				hasCancel := false
 				for _, exc := range exceptions {
 					if exc.ExceptionType == "CANCEL" && exc.Status == "APPROVED" {
@@ -1139,7 +1370,7 @@ type Certificate struct {
 }
 
 type MatchService interface {
-	FindMatches(ctx context.Context, centerID uint, teacherID *uint, roomID uint, startTime, endTime time.Time, requiredSkills []string, excludeTeacherIDs []uint) ([]MatchScore, error)
+	FindMatches(ctx context.Context, centerID uint, teacherID *uint, roomIDs []uint, startTime, endTime time.Time, requiredSkills []string, excludeTeacherIDs []uint) ([]MatchScore, error)
 	SearchTalent(ctx context.Context, searchParams TalentSearchParams) (*TalentSearchResultResponse, error)
 }
 

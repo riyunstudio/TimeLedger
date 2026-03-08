@@ -69,6 +69,7 @@ type ValidateFullRequest struct {
 // CreateRuleRequest 建立排課規則請求
 type CreateRuleRequest struct {
 	Name           string  `json:"name" binding:"required"`
+	Code           string  `json:"code"` // 課程代號（可多組）
 	OfferingID     uint    `json:"offering_id" binding:"required"`
 	TeacherID      *uint   `json:"teacher_id"`
 	RoomID         uint    `json:"room_id" binding:"required"`
@@ -96,6 +97,7 @@ func (r *CreateRuleRequest) Validate() error {
 // UpdateRuleRequest 更新排課規則請求
 type UpdateRuleRequest struct {
 	Name           string   `json:"name"`
+	Code           string   `json:"code"` // 課程代號（可多組）
 	OfferingID     uint     `json:"offering_id"`
 	TeacherID      *uint    `json:"teacher_id"`
 	RoomID         uint     `json:"room_id"`

@@ -8,6 +8,8 @@
         @focus="showSuggestions = true"
         @keydown.enter.prevent="executeSearch"
         @keydown.escape="showSuggestions = false"
+        @compositionstart="handleCompositionStart"
+        @compositionend="handleCompositionEnd"
         type="text"
         placeholder="搜尋人才姓名、技能、標籤..."
         class="w-full px-4 py-3 pl-10 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
@@ -149,6 +151,8 @@
 </template>
 
 <script setup lang="ts">
+import { useDebounceFn } from '@vueuse/core'
+
 interface Suggestion {
   type: 'skill' | 'tag' | 'name'
   value: string
@@ -176,23 +180,45 @@ const suggestions = ref<Suggestion[]>([])
 const recentSearches = ref<RecentSearch[]>([])
 const trendingSearches = ref<string[]>(['瑜珈', '鋼琴', '舞蹈', '美術', '英語'])
 
+// IME 輸入狀態追蹤（解決中文輸入問題）
+const isComposing = ref(false)
+
 // 監聽 modelValue 變化
 watch(() => props.modelValue, (newVal) => {
   query.value = newVal
 })
+
+// 去抖動生成搜尋建議
+const debouncedGenerateSuggestions = useDebounceFn(() => {
+  if (query.value.length > 0) {
+    generateSuggestions()
+  } else {
+    suggestions.value = []
+  }
+}, 300)
+
+// 處理 IME 組合開始
+const handleCompositionStart = () => {
+  isComposing.value = true
+}
+
+// 處理 IME 組合結束
+const handleCompositionEnd = (event: CompositionEvent) => {
+  isComposing.value = false
+  // 組合結束後觸發搜尋建議生成
+  debouncedGenerateSuggestions()
+}
 
 // 輸入事件
 const onInput = (event: Event) => {
   const target = event.target as HTMLInputElement
   query.value = target.value
   emit('update:modelValue', query.value)
-  
-  if (query.value.length > 0) {
-    // 生成搜尋建議
-    generateSuggestions()
-  } else {
-    suggestions.value = []
-  }
+
+  // IME 組合中不觸發建議生成
+  if (isComposing.value) return
+
+  debouncedGenerateSuggestions()
 }
 
 // 生成搜尋建議

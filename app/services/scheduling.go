@@ -62,6 +62,7 @@ type ScheduleServiceInterface interface {
 // CreateScheduleRuleRequest 建立排課規則請求
 type CreateScheduleRuleRequest struct {
 	Name               string  `json:"name" binding:"required"`
+	Code               string  `json:"code"` // 課程代號（可多組）
 	OfferingID         uint    `json:"offering_id" binding:"required"`
 	TeacherID          *uint   `json:"teacher_id"`
 	RoomID             uint    `json:"room_id" binding:"required"`
@@ -79,6 +80,7 @@ type CreateScheduleRuleRequest struct {
 // UpdateScheduleRuleRequest 更新排課規則請求
 type UpdateScheduleRuleRequest struct {
 	Name               string   `json:"name"`
+	Code               string   `json:"code"` // 課程代號（可多組）
 	OfferingID        uint     `json:"offering_id"`
 	TeacherID         *uint    `json:"teacher_id"`
 	RoomID            uint     `json:"room_id"`
@@ -346,6 +348,7 @@ func (s *ScheduleService) CreateRule(ctx context.Context, centerID, adminID uint
 			rule := models.ScheduleRule{
 				CenterID:   centerID,
 				OfferingID: req.OfferingID,
+				Code:       req.Code, // 課程代號
 				TeacherID:  req.TeacherID,
 				RoomID:     req.RoomID,
 				Weekday:    weekday,
@@ -807,6 +810,10 @@ func (s *ScheduleService) handleAllUpdateWithTx(txRepo *repositories.ScheduleRul
 func (s *ScheduleService) applyUpdateToRule(rule models.ScheduleRule, req *UpdateScheduleRuleRequest, startDate, endDate time.Time) models.ScheduleRule {
 	if req.Name != "" {
 		rule.Name = req.Name
+	}
+	// 課程代號（可多組）
+	if req.Code != "" {
+		rule.Code = req.Code
 	}
 	if req.OfferingID != 0 {
 		rule.OfferingID = req.OfferingID
@@ -1431,6 +1438,7 @@ func (r *ScheduleResource) ToRuleResponse(rule models.ScheduleRule) *resources.S
 		ID:            rule.ID,
 		CenterID:      rule.CenterID,
 		OfferingID:    rule.OfferingID,
+		Code:          rule.Code, // 課程代號
 		TeacherID:     rule.TeacherID,
 		RoomID:        rule.RoomID,
 		Weekday:       rule.Weekday,
