@@ -122,7 +122,7 @@
               :key="rule.id"
               class="border-b border-white/5 hover:bg-white/5 transition-colors"
             >
-              <td class="p-3 text-center text-slate-300 font-mono text-sm">{{ rule.offering?.course?.code || '-' }}</td>
+              <td class="p-3 text-center text-slate-300 font-mono text-sm">{{ rule.code || '-' }}</td>
               <td class="p-3 text-center text-slate-200">{{ rule.offering?.name || '-' }}</td>
               <td class="p-3 text-center text-slate-300">{{ getWeekdayText(rule.weekday) }}</td>
               <td class="p-3 text-center text-slate-300">{{ formatDateRange(rule.effective_range) }}</td>
@@ -443,6 +443,8 @@ const handleUpdateModeConfirm = async (updateMode: string) => {
     await api.put(`/admin/rules/${pendingEditData.value.id}`, {
       ...pendingEditData.value.formData,
       update_mode: updateMode,
+      // 排除自己，避免與自己衝突
+      exclude_rule_id: pendingEditData.value.id,
     })
     await fetchRules()
     showUpdateModeModal.value = false
@@ -496,7 +498,11 @@ const handleModalSubmit = (formData: any) => {
 const submitDirectly = async (formData: any) => {
   try {
     const api = useApi()
-    await api.put(`/admin/rules/${editingRule.value.id}`, formData)
+    await api.put(`/admin/rules/${editingRule.value.id}`, {
+      ...formData,
+      // 排除自己，避免與自己衝突
+      exclude_rule_id: editingRule.value.id,
+    })
     await fetchRules()
     // 清除資源快取，確保下次開啟 Modal 時載入最新資料
     const { invalidate } = useResourceCache()

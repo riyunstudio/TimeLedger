@@ -11,6 +11,7 @@ type ScheduleRuleResponse struct {
 	ID             uint      `json:"id"`
 	CenterID       uint      `json:"center_id"`
 	OfferingID     uint      `json:"offering_id"`
+	Code           string    `json:"code"` // 課程代號（可多組）
 	TeacherID      *uint     `json:"teacher_id,omitempty"`
 	RoomID         uint      `json:"room_id"`
 	Weekday        int       `json:"weekday"`
@@ -200,6 +201,7 @@ func (r *ScheduleResource) ToRuleResponse(rule models.ScheduleRule) *ScheduleRul
 		ID:             rule.ID,
 		CenterID:       rule.CenterID,
 		OfferingID:     rule.OfferingID,
+		Code:           rule.Code,
 		TeacherID:      rule.TeacherID,
 		RoomID:         rule.RoomID,
 		Weekday:        rule.Weekday,

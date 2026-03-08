@@ -69,8 +69,21 @@
       </label>
     </div>
 
-    <!-- 課程和老師 -->
+    <!-- 課程代號和課程 -->
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-slate-300 mb-2">
+          課程代號
+        </label>
+        <input
+          :value="values.code"
+          @input="(e) => setFieldValue('code', (e.target as HTMLInputElement).value)"
+          type="text"
+          class="input-field"
+          placeholder="例如：PIANO-001"
+        />
+      </div>
+
       <div>
         <SearchableSelect
           :model-value="values.offering_id"
@@ -82,7 +95,10 @@
           :error="errors.offering_id"
         />
       </div>
+    </div>
 
+    <!-- 老師 -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
       <div>
         <SearchableSelect
           :model-value="values.teacher_id"
@@ -779,6 +795,7 @@ const roomOptions = computed<SelectOption[]>(() =>
 const createValidationSchema = () => {
   const baseSchema = {
     name: z.string().optional(),
+    code: z.string().optional(), // 課程代號
     offering_id: z.union([z.string(), z.number(), z.null()]).refine((val) => {
       // 確保值不為空（字串長度 > 0 或數字 > 0）
       if (val === null) return false
@@ -823,6 +840,7 @@ const getInitialValues = () => {
 
     return {
       name: props.editingRule.name || '',
+      code: props.editingRule.code || '', // 課程代號
       offering_id: props.editingRule.offering_id || null,
       teacher_id: props.editingRule.teacher_id || null,
       room_id: props.editingRule.room_id || null,
@@ -841,6 +859,7 @@ const getInitialValues = () => {
 
   return {
     name: '',
+    code: '', // 課程代號
     offering_id: null,
     teacher_id: null,
     room_id: null,
@@ -886,6 +905,7 @@ watch(
       // 使用 setValues 一次更新所有欄位
       setValues({
         name: rule.name || '',
+        code: rule.code || '', // 課程代號
         offering_id: rule.offering_id || null,
         teacher_id: rule.teacher_id || null,
         room_id: rule.room_id || null,
@@ -1035,6 +1055,7 @@ watch(
 const onFormSubmit = handleSubmit(async (formValues) => {
   const data: Record<string, unknown> = {
     name: formValues.name,
+    code: formValues.code || null, // 課程代號
     offering_id: parseInt(formValues.offering_id as string),
     start_time: formValues.start_time,
     end_time: formValues.end_time,

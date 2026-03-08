@@ -384,6 +384,7 @@ const handleFormSubmit = async (formData: Record<string, unknown>, updateMode: s
     // 準備提交資料
     const submitData: Record<string, unknown> = {
       name: formData.name,
+      code: formData.code || null, // 課程代號
       offering_id: parseInt(formData.offering_id as string),
       start_time: formData.start_time,
       end_time: formData.end_time,

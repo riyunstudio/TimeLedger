@@ -396,6 +396,7 @@ func (ctl *SchedulingController) CreateRule(ctx *gin.Context) {
 
 	svcReq := &services.CreateScheduleRuleRequest{
 		Name:           req.Name,
+		Code:           req.Code, // 課程代號
 		OfferingID:     req.OfferingID,
 		TeacherID:      req.TeacherID,
 		RoomID:         req.RoomID,
@@ -456,6 +457,7 @@ func (ctl *SchedulingController) UpdateRule(ctx *gin.Context) {
 
 	svcReq := &services.UpdateScheduleRuleRequest{
 		Name:            req.Name,
+		Code:            req.Code, // 課程代號
 		OfferingID:      req.OfferingID,
 		TeacherID:       req.TeacherID,
 		RoomID:          req.RoomID,
