@@ -771,7 +771,7 @@ const processSuspend = async (mode: 'SINGLE' | 'FUTURE') => {
 
       await api.put(`/admin/rules/${selectedSchedule.value.id}`, {
         end_date: endDate,
-        update_mode: 'ALL',
+        update_mode: 'FUTURE',
         name: selectedSchedule.value.title,
         reason: '由管理員於首頁選擇從此以後停課',
       })
