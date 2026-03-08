@@ -361,18 +361,15 @@ func (s *ScheduleService) CreateRule(ctx context.Context, centerID, adminID uint
 				},
 		Status: func() string {
 				// 自動狀態轉換邏輯
-				// 1. 如果有設定老師且狀態為空或 PLANNED → 升級為 CONFIRMED（有老師自動升級正式課）
-				if req.TeacherID != nil && (req.Status == "" || req.Status == models.RuleStatusPlanned) {
-					return models.RuleStatusConfirmed
-				}
-				// 2. 如果沒有設定老師且狀態為空 → 預設為 PLANNED（沒老師預設為預計課）
-				if req.TeacherID == nil && req.Status == "" {
-					return models.RuleStatusPlanned
-				}
-				// 3. 其他情況使用請求中指定的狀態
+				// 1. 如果使用者已經明確選擇狀態，尊重其選擇
 				if req.Status != "" {
 					return req.Status
 				}
+				// 2. 如果沒有設定老師且狀態為空 → 預設為 PLANNED（沒老師預設為預計課）
+				if req.TeacherID == nil {
+					return models.RuleStatusPlanned
+				}
+				// 3. 有設定老師且狀態為空 → 預設為 CONFIRMED
 				return models.RuleStatusConfirmed
 			}(),
 			}
