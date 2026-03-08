@@ -269,7 +269,7 @@ export const useSchedulingValidation = () => {
       date: request.date,
       start_time: formatTimeForAPI(request.date, request.start_time),
       end_time: formatTimeForAPI(request.date, request.end_time),
-      rule_id: request.rule_id,
+      exclude_rule_id: request.rule_id, // 傳遞 rule_id 作為 exclude_rule_id，排除自己
       course_id: request.course_id,
     }
 
