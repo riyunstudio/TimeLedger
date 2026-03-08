@@ -273,6 +273,13 @@ func (ctl *SchedulingController) ValidateFull(ctx *gin.Context) {
 		return
 	}
 
+	// Debug: 記錄 exclude_rule_id
+	if req.ExcludeRuleID != nil {
+		fmt.Printf("[ValidateFull] ExcludeRuleID: %d\n", *req.ExcludeRuleID)
+	} else {
+		fmt.Printf("[ValidateFull] ExcludeRuleID is nil\n")
+	}
+
 	// 解析時間字串為 time.Time（支援 "HH:mm" 或 RFC3339 格式）
 	startTime, err := parseTimeString(req.StartTime)
 	if err != nil {
