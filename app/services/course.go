@@ -88,7 +88,20 @@ func (s *CourseService) GetCourses(ctx context.Context, centerID uint, query str
 				IsActive:         item.IsActive,
 			})
 		}
-		return courses, int64(len(courses)), nil, nil
+
+		// 計算分頁
+		total := int64(len(courses))
+		offset := (page - 1) * limit
+		if offset >= int(total) {
+			return []models.Course{}, total, nil, nil
+		}
+		end := offset + limit
+		if end > len(courses) {
+			end = len(courses)
+		}
+		pagedCourses := courses[offset:end]
+
+		return pagedCourses, total, nil, nil
 	}
 
 	// 快取未命中或讀取失敗，從資料庫取得
@@ -127,7 +140,19 @@ func (s *CourseService) GetCourses(ctx context.Context, centerID uint, query str
 		s.Logger.Warn("failed to cache course list", "error", err)
 	}
 
-	return courses, int64(len(courses)), nil, nil
+	// 計算分頁
+	total := int64(len(courses))
+	offset := (page - 1) * limit
+	if offset >= int(total) {
+		return []models.Course{}, total, nil, nil
+	}
+	end := offset + limit
+	if end > len(courses) {
+		end = len(courses)
+	}
+	pagedCourses := courses[offset:end]
+
+	return pagedCourses, total, nil, nil
 }
 
 func (s *CourseService) GetActiveCourses(ctx context.Context, centerID uint) ([]models.Course, *errInfos.Res, error) {
