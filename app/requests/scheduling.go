@@ -68,19 +68,20 @@ type ValidateFullRequest struct {
 
 // CreateRuleRequest 建立排課規則請求
 type CreateRuleRequest struct {
-	Name           string  `json:"name" binding:"required"`
-	Code           string  `json:"code"` // 課程代號（可多組）
-	OfferingID     uint    `json:"offering_id" binding:"required"`
-	TeacherID      *uint   `json:"teacher_id"`
-	RoomID         uint    `json:"room_id" binding:"required"`
-	StartTime      string  `json:"start_time" binding:"required,time_format"`
-	EndTime        string  `json:"end_time" binding:"required,time_format"`
-	Duration       int     `json:"duration" binding:"required"`
-	Weekdays       []int   `json:"weekdays" binding:"required,min=1"`
-	StartDate      string  `json:"start_date" binding:"required,date_format"`
-	EndDate        *string `json:"end_date"`
-	Status         string  `json:"status"` // 預設為 CONFIRMED
-	OverrideBuffer bool    `json:"override_buffer"`
+	Name            string   `json:"name" binding:"required"`
+	Code            string   `json:"code"` // 課程代號（可多組）
+	OfferingID      uint     `json:"offering_id" binding:"required"`
+	TeacherID       *uint    `json:"teacher_id"`
+	RoomID          uint     `json:"room_id" binding:"required"`
+	StartTime       string   `json:"start_time" binding:"required,time_format"`
+	EndTime         string   `json:"end_time" binding:"required,time_format"`
+	Duration        int      `json:"duration" binding:"required"`
+	Weekdays        []int    `json:"weekdays" binding:"required,min=1"`
+	StartDate       string   `json:"start_date" binding:"required,date_format"`
+	EndDate         *string  `json:"end_date"`
+	Status          string   `json:"status"` // 預設為 CONFIRMED
+	OverrideBuffer  bool     `json:"override_buffer"`
+	SuspendedDates  []string `json:"suspended_dates"` // 停課日期列表
 }
 
 // Validate 建立規則時的額外驗證

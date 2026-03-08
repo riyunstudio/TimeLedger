@@ -402,18 +402,19 @@ func (ctl *SchedulingController) CreateRule(ctx *gin.Context) {
 	}
 
 	svcReq := &services.CreateScheduleRuleRequest{
-		Name:           req.Name,
-		Code:           req.Code, // 課程代號
-		OfferingID:     req.OfferingID,
-		TeacherID:      req.TeacherID,
-		RoomID:         req.RoomID,
-		StartTime:      req.StartTime,
-		EndTime:        req.EndTime,
-		Duration:       req.Duration,
-		Weekdays:       req.Weekdays,
-		StartDate:      req.StartDate,
-		EndDate:        req.EndDate,
-		OverrideBuffer: req.OverrideBuffer,
+		Name:            req.Name,
+		Code:            req.Code, // 課程代號
+		OfferingID:      req.OfferingID,
+		TeacherID:       req.TeacherID,
+		RoomID:          req.RoomID,
+		StartTime:       req.StartTime,
+		EndTime:         req.EndTime,
+		Duration:        req.Duration,
+		Weekdays:        req.Weekdays,
+		StartDate:       req.StartDate,
+		EndDate:         req.EndDate,
+		OverrideBuffer:  req.OverrideBuffer,
+		SuspendedDates:  req.SuspendedDates,
 	}
 
 	rules, errInfo, err := ctl.scheduleSvc.CreateRule(ctx.Request.Context(), centerID, adminID, svcReq)

@@ -75,6 +75,7 @@ type CreateScheduleRuleRequest struct {
 	Status             string  `json:"status"`
 	OverrideBuffer     bool    `json:"override_buffer"`
 	SkipConflictCheck  bool    `json:"skip_conflict_check"` // 允許與預計課重疊（Soft Booking）
+	SuspendedDates     []string `json:"suspended_dates"` // 停課日期列表
 }
 
 // UpdateScheduleRuleRequest 更新排課規則請求
@@ -359,19 +360,34 @@ func (s *ScheduleService) CreateRule(ctx context.Context, centerID, adminID uint
 					StartDate: startDate,
 					EndDate:   endDate,
 				},
-		Status: func() string {
-				// 自動狀態轉換邏輯
-				// 1. 如果使用者已經明確選擇狀態，尊重其選擇
-				if req.Status != "" {
-					return req.Status
+				Status: func() string {
+					// 自動狀態轉換邏輯
+					// 1. 如果使用者已經明確選擇狀態，尊重其選擇
+					if req.Status != "" {
+						return req.Status
+					}
+					// 2. 如果沒有設定老師且狀態為空 → 預設為 PLANNED（沒老師預設為預計課）
+					if req.TeacherID == nil {
+						return models.RuleStatusPlanned
+					}
+					// 3. 有設定老師且狀態為空 → 預設為 CONFIRMED
+					return models.RuleStatusConfirmed
+				}(),
+			}
+
+			// 處理 SuspendedDates（停課日期）
+			if len(req.SuspendedDates) > 0 {
+				loc := libs.GetTaiwanLocation()
+				suspendedDates := make(models.SuspendedDates, 0, len(req.SuspendedDates))
+				for _, dateStr := range req.SuspendedDates {
+					date, err := time.ParseInLocation("2006-01-02", dateStr, loc)
+					if err != nil {
+						s.Logger.Warn("invalid suspended_date format", "date", dateStr, "error", err)
+						continue
+					}
+					suspendedDates = append(suspendedDates, date)
 				}
-				// 2. 如果沒有設定老師且狀態為空 → 預設為 PLANNED（沒老師預設為預計課）
-				if req.TeacherID == nil {
-					return models.RuleStatusPlanned
-				}
-				// 3. 有設定老師且狀態為空 → 預設為 CONFIRMED
-				return models.RuleStatusConfirmed
-			}(),
+				rule.SuspendedDates = suspendedDates
 			}
 
 			if _, err := txRepo.Create(ctx, rule); err != nil {
