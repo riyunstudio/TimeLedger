@@ -623,7 +623,14 @@ func (s *ScheduleService) UpdateRule(ctx context.Context, centerID, adminID, rul
 
 	var relatedRules []models.ScheduleRule
 	for _, rule := range allRules {
+		// 必須同時滿足以下條件才算同一循環規則：
+		// 1. 相同課程(OfferingID)
+		// 2. 相同星期幾(Weekday)
+		// 3. 相同開始時間(StartTime)
+		// 4. 相同結束時間(EndTime)
+		// 5. 不是自己
 		if rule.OfferingID == existingRule.OfferingID &&
+			rule.Weekday == existingRule.Weekday &&
 			rule.StartTime == existingRule.StartTime &&
 			rule.EndTime == existingRule.EndTime &&
 			rule.ID != existingRule.ID {
