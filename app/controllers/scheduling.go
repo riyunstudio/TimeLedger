@@ -368,8 +368,14 @@ func (ctl *SchedulingController) GetRules(ctx *gin.Context) {
 		return
 	}
 
+	// 使用 ScheduleResource 轉換規則響應
+	ruleResponses := make([]*resources.ScheduleRuleResponse, len(rules))
+	for i, rule := range rules {
+		ruleResponses[i] = ctl.scheduleResource.ToRuleResponse(rule)
+	}
+
 	// 建立分頁回應
-	paginationResp := resources.NewPaginationResponse(rules, total, page, limit)
+	paginationResp := resources.NewPaginationResponse(ruleResponses, total, page, limit)
 
 	helper.Success(paginationResp)
 }
