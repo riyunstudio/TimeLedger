@@ -125,7 +125,7 @@
               <td class="p-3 text-center text-slate-300 font-mono text-sm">{{ rule.code || '-' }}</td>
               <td class="p-3 text-center text-slate-200">{{ rule.offering?.name || '-' }}</td>
               <td class="p-3 text-center text-slate-300">{{ getWeekdayText(rule.weekday) }}</td>
-              <td class="p-3 text-center text-slate-300">{{ formatDateRange(rule.effective_range) }}</td>
+              <td class="p-3 text-center text-slate-300">{{ formatDateRange(rule) }}</td>
               <td class="p-3 text-center text-slate-300">{{ rule.start_time }} - {{ rule.end_time }}</td>
               <td class="p-3 text-center text-slate-300">{{ rule.room?.name || '-' }}</td>
               <td class="p-3 text-center text-slate-300">{{ rule.teacher?.name || '-' }}</td>
