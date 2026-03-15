@@ -8,22 +8,44 @@ import (
 
 // ScheduleRuleResponse 排課規則響應
 type ScheduleRuleResponse struct {
-	ID             uint      `json:"id"`
-	CenterID       uint      `json:"center_id"`
-	OfferingID     uint      `json:"offering_id"`
-	Code           string    `json:"code"` // 課程代號（可多組）
-	TeacherID      *uint     `json:"teacher_id,omitempty"`
-	RoomID         uint      `json:"room_id"`
-	Weekday        int       `json:"weekday"`
-	StartTime      string    `json:"start_time"`
-	EndTime        string    `json:"end_time"`
-	Duration       int       `json:"duration"`
-	EffectiveFrom  string    `json:"effective_from"`
-	EffectiveTo    string    `json:"effective_to"`
-	SuspendedDates []string  `json:"suspended_dates"` // 停課日期列表
-	Status         string    `json:"status"`          // 狀態: PLANNED(預計), CONFIRMED(已開課), SUSPENDED(停課), ARCHIVED(歸檔)
-	CreatedAt      time.Time `json:"created_at"`
-	UpdatedAt      time.Time `json:"updated_at"`
+	ID             uint             `json:"id"`
+	CenterID       uint             `json:"center_id"`
+	OfferingID     uint             `json:"offering_id"`
+	Code           string           `json:"code"` // 課程代號（可多組）
+	TeacherID      *uint            `json:"teacher_id,omitempty"`
+	RoomID         uint             `json:"room_id"`
+	Weekday        int              `json:"weekday"`
+	StartTime      string           `json:"start_time"`
+	EndTime        string           `json:"end_time"`
+	Duration       int              `json:"duration"`
+	EffectiveFrom  string           `json:"effective_from"`
+	EffectiveTo    string           `json:"effective_to"`
+	SuspendedDates []string         `json:"suspended_dates"` // 停課日期列表
+	Status         string           `json:"status"`          // 狀態: PLANNED(預計), CONFIRMED(已開課), SUSPENDED(停課), ARCHIVED(歸檔)
+	CreatedAt      time.Time        `json:"created_at"`
+	UpdatedAt      time.Time        `json:"updated_at"`
+	// 關聯物件（用於列表顯示）
+	Offering  *RuleOffering  `json:"offering,omitempty"`
+	Room      *RuleRoom     `json:"room,omitempty"`
+	Teacher   *RuleTeacher  `json:"teacher,omitempty"`
+}
+
+// RuleOffering 規則中的課程資訊
+type RuleOffering struct {
+	ID   uint   `json:"id"`
+	Name string `json:"name"`
+}
+
+// RuleRoom 規則中的教室資訊
+type RuleRoom struct {
+	ID   uint   `json:"id"`
+	Name string `json:"name"`
+}
+
+// RuleTeacher 規則中的老師資訊
+type RuleTeacher struct {
+	ID   uint   `json:"id"`
+	Name string `json:"name"`
 }
 
 // ExpandedScheduleResponse 展開後的課表響應
@@ -197,6 +219,31 @@ func (r *ScheduleResource) ToRuleResponse(rule models.ScheduleRule) *ScheduleRul
 		suspendedDatesStr = append(suspendedDatesStr, date.Format("2006-01-02"))
 	}
 
+	// 構建關聯物件
+	var offering *RuleOffering
+	if rule.Offering.ID != 0 {
+		offering = &RuleOffering{
+			ID:   rule.Offering.ID,
+			Name: rule.Offering.Name,
+		}
+	}
+
+	var room *RuleRoom
+	if rule.Room.ID != 0 {
+		room = &RuleRoom{
+			ID:   rule.Room.ID,
+			Name: rule.Room.Name,
+		}
+	}
+
+	var teacher *RuleTeacher
+	if rule.Teacher.ID != 0 {
+		teacher = &RuleTeacher{
+			ID:   rule.Teacher.ID,
+			Name: rule.Teacher.Name,
+		}
+	}
+
 	return &ScheduleRuleResponse{
 		ID:             rule.ID,
 		CenterID:       rule.CenterID,
@@ -214,6 +261,9 @@ func (r *ScheduleResource) ToRuleResponse(rule models.ScheduleRule) *ScheduleRul
 		Status:         rule.Status,
 		CreatedAt:      rule.CreatedAt,
 		UpdatedAt:      rule.UpdatedAt,
+		Offering:       offering,
+		Room:           room,
+		Teacher:        teacher,
 	}
 }
 
