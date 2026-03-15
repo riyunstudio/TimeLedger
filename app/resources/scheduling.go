@@ -30,10 +30,18 @@ type ScheduleRuleResponse struct {
 	Teacher   *RuleTeacher  `json:"teacher,omitempty"`
 }
 
+// RuleCourse 規則中的課程資訊
+type RuleCourse struct {
+	ID       uint   `json:"id"`
+	Name     string `json:"name"`
+	Category string `json:"category"`
+}
+
 // RuleOffering 規則中的課程資訊
 type RuleOffering struct {
-	ID   uint   `json:"id"`
-	Name string `json:"name"`
+	ID     uint       `json:"id"`
+	Name   string     `json:"name"`
+	Course *RuleCourse `json:"course,omitempty"`
 }
 
 // RuleRoom 規則中的教室資訊
@@ -222,9 +230,18 @@ func (r *ScheduleResource) ToRuleResponse(rule models.ScheduleRule) *ScheduleRul
 	// 構建關聯物件
 	var offering *RuleOffering
 	if rule.Offering.ID != 0 {
+		var course *RuleCourse
+		if rule.Offering.Course.ID != 0 {
+			course = &RuleCourse{
+				ID:       rule.Offering.Course.ID,
+				Name:     rule.Offering.Course.Name,
+				Category: rule.Offering.Course.Category,
+			}
+		}
 		offering = &RuleOffering{
-			ID:   rule.Offering.ID,
-			Name: rule.Offering.Name,
+			ID:     rule.Offering.ID,
+			Name:   rule.Offering.Name,
+			Course: course,
 		}
 	}
 
