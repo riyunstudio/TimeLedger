@@ -1,0 +1,21 @@
+[     411ms] [WARNING] [WARN] liff.init() was called with a current URL that is not related to the endpoint URL.
+http://localhost:3000/admin/login is not under https://www.timeledger.tw/ @ http://localhost:3000/_nuxt/node_modules/.cache/vite/client/deps/@line_liff.js?v=6e86138f:794
+[   51133ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://localhost:3000/api/v1/auth/admin/login:0
+[   51134ms] [ERROR] [Error Handler] {code: HTTP_401, message: 登入已過期，請重新登入, timestamp: 2026-03-15T10:29:09.400Z, url: http://localhost:3000/admin/login, userAgent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWeb…KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36} @ http://localhost:3000/_nuxt/utils/errorHandler.ts:169
+[   51135ms] [ERROR] Login failed: {status: 401, statusText: Unauthorized, message: 登入已過期，請重新登入} @ http://localhost:3000/_nuxt/pages/admin/login.vue:46
+[   51163ms] [WARNING] [intlify] Not found 'landing.features.subtitle' key in 'zh' locale messages. @ http://localhost:3000/_nuxt/node_modules/.cache/vite/client/deps/chunk-RINKOBRI.js?v=6e86138f:3
+[  148962ms] [WARNING] [Vue Router warn]: No match found for location with path "/admin/schedule-rules" @ http://localhost:3000/_nuxt/node_modules/vue-router/dist/devtools-EWN81iOl.mjs?v=6e86138f:34
+[  149140ms] [WARNING] [WARN] liff.init() was called with a current URL that is not related to the endpoint URL.
+http://localhost:3000/admin/schedule-rules is not under https://www.timeledger.tw/ @ http://localhost:3000/_nuxt/node_modules/.cache/vite/client/deps/@line_liff.js?v=6e86138f:794
+[  149159ms] [WARNING] [Vue Router warn]: No match found for location with path "/admin/schedule-rules" @ http://localhost:3000/_nuxt/node_modules/vue-router/dist/devtools-EWN81iOl.mjs?v=6e86138f:34
+[  149168ms] [ERROR] [nuxt] error caught during app initialization H3Error: Page not found: /admin/schedule-rules
+    at createError (http://localhost:3000/_nuxt/node_modules/h3/dist/index.mjs?v=6e86138f:71:15)
+    at createError (http://localhost:3000/_nuxt/node_modules/nuxt/dist/app/composables/error.js?v=6e86138f:33:21)
+    at http://localhost:3000/_nuxt/node_modules/nuxt/dist/pages/runtime/plugins/router.js?v=6e86138f:210:55
+    at fn (http://localhost:3000/_nuxt/node_modules/nuxt/dist/app/nuxt.js?v=6e86138f:221:44)
+    at Object.runWithContext (http://localhost:3000/_nuxt/node_modules/@vue/runtime-core/dist/runtime-core.esm-bundler.js?v=6e86138f:4254:18)
+    at callWithNuxt (http://localhost:3000/_nuxt/node_modules/nuxt/dist/app/nuxt.js?v=6e86138f:227:24)
+    at http://localhost:3000/_nuxt/node_modules/nuxt/dist/app/nuxt.js?v=6e86138f:38:41
+    at EffectScope.run (http://localhost:3000/_nuxt/node_modules/@vue/reactivity/dist/reactivity.esm-bundler.js?v=6e86138f:67:16)
+    at Object.runWithContext (http://localhost:3000/_nuxt/node_modules/nuxt/dist/app/nuxt.js?v=6e86138f:38:31)
+    at http://localhost:3000/_nuxt/node_modules/nuxt/dist/pages/runtime/plugins/router.js?v=6e86138f:210:24 @ http://localhost:3000/_nuxt/node_modules/nuxt/dist/app/nuxt.js?v=6e86138f:123

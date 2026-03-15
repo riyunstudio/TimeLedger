@@ -1577,11 +1577,19 @@ func (s *ScheduleService) GetMatrixViewData(ctx context.Context, centerID uint, 
 	var matrixResources []resources.MatrixResource
 	var usedResourceIDs map[uint]bool
 
+	// 取得營業時間設定
+	opsStartTime := ""
+	opsEndTime := ""
+	if centerSettings != nil {
+		opsStartTime = centerSettings.OperatingStartTime
+		opsEndTime = centerSettings.OperatingEndTime
+	}
+
 	if req.Type == "teacher" || req.Type == "all" {
-		matrixResources, usedResourceIDs = s.groupByTeacher(expandedSchedules, teacherMap, roomMap, filterResourceIDs, includeSuspended)
+		matrixResources, usedResourceIDs = s.groupByTeacher(expandedSchedules, teacherMap, roomMap, filterResourceIDs, includeSuspended, opsStartTime, opsEndTime)
 	}
 	if req.Type == "room" || req.Type == "all" {
-		roomResources, _ := s.groupByRoom(expandedSchedules, teacherMap, roomMap, filterResourceIDs, includeSuspended)
+		roomResources, _ := s.groupByRoom(expandedSchedules, teacherMap, roomMap, filterResourceIDs, includeSuspended, opsStartTime, opsEndTime)
 		// 如果是 all 類型，過濾掉已重複的資源
 		if req.Type == "all" && usedResourceIDs != nil {
 			var filteredRoomResources []resources.MatrixResource
@@ -1629,6 +1637,8 @@ func (s *ScheduleService) groupByTeacher(
 	roomMap map[uint]*models.Room,
 	filterResourceIDs map[uint]bool,
 	includeSuspended bool,
+	operatingStartTime string,
+	operatingEndTime string,
 ) ([]resources.MatrixResource, map[uint]bool) {
 	usedResourceIDs := make(map[uint]bool)
 	teacherSchedules := make(map[uint][]ExpandedSchedule)
@@ -1660,7 +1670,7 @@ func (s *ScheduleService) groupByTeacher(
 			name = teacher.Name
 		}
 
-		items := s.buildMatrixItems(schedules, teacherMap, roomMap)
+		items := s.buildMatrixItems(schedules, teacherMap, roomMap, operatingStartTime, operatingEndTime)
 
 		matrixResources = append(matrixResources, resources.MatrixResource{
 			ID:    teacherID,
@@ -1680,6 +1690,8 @@ func (s *ScheduleService) groupByRoom(
 	roomMap map[uint]*models.Room,
 	filterResourceIDs map[uint]bool,
 	includeSuspended bool,
+	operatingStartTime string,
+	operatingEndTime string,
 ) ([]resources.MatrixResource, map[uint]bool) {
 	usedResourceIDs := make(map[uint]bool)
 	roomSchedules := make(map[uint][]ExpandedSchedule)
@@ -1711,7 +1723,7 @@ func (s *ScheduleService) groupByRoom(
 			name = room.Name
 		}
 
-		items := s.buildMatrixItems(schedules, teacherMap, roomMap)
+		items := s.buildMatrixItems(schedules, teacherMap, roomMap, operatingStartTime, operatingEndTime)
 
 		matrixResources = append(matrixResources, resources.MatrixResource{
 			ID:    roomID,
@@ -1725,12 +1737,36 @@ func (s *ScheduleService) groupByRoom(
 }
 
 // buildMatrixItems 構建矩陣項目列表
+// operatingStartTime/operatingEndTime: 中心的營業時間，用於計算 CSS 位置
 func (s *ScheduleService) buildMatrixItems(
 	schedules []ExpandedSchedule,
 	teacherMap map[uint]*models.Teacher,
 	roomMap map[uint]*models.Room,
+	operatingStartTime string,
+	operatingEndTime string,
 ) []resources.MatrixItem {
 	items := make([]resources.MatrixItem, 0, len(schedules))
+
+	// 解析營業時間（預設 00:00 - 23:59）
+	opsStartHour, opsStartMin := 0, 0
+	opsEndHour, opsEndMin := 23, 59
+	if operatingStartTime != "" {
+		if h, m := s.parseTimeToHourMinute(operatingStartTime); h >= 0 {
+			opsStartHour, opsStartMin = h, m
+		}
+	}
+	if operatingEndTime != "" {
+		if h, m := s.parseTimeToHourMinute(operatingEndTime); h >= 0 {
+			opsEndHour, opsEndMin = h, m
+		}
+	}
+	// 計算有效營業分鐘數
+	opsStartMinutes := opsStartHour*60 + opsStartMin
+	opsEndMinutes := opsEndHour*60 + opsEndMin
+	operatingMinutes := opsEndMinutes - opsStartMinutes
+	if operatingMinutes <= 0 {
+		operatingMinutes = 1440 // 預設全天
+	}
 
 	for _, schedule := range schedules {
 		// 解析時間
@@ -1740,9 +1776,15 @@ func (s *ScheduleService) buildMatrixItems(
 		// 計算持續分鐘數
 		duration := s.calculateDuration(schedule.StartTime, schedule.EndTime)
 
-		// 計算 CSS 位置和高度
-		topOffset := float64(startHour*60+startMinute) / 1440 * 100 // 一天 1440 分鐘
-		heightPercent := float64(duration) / 1440 * 100
+		// 計算 CSS 位置和高度（基於營業時間）
+		// topOffset: 從營業開始時間到課程開始時間的百分比
+		courseStartMinutes := startHour*60 + startMinute
+		topOffset := float64(courseStartMinutes-opsStartMinutes) / float64(operatingMinutes) * 100
+		if topOffset < 0 {
+			topOffset = 0 // 不應該低於營業開始
+		}
+		// heightPercent: 課程時長佔營業時間的百分比
+		heightPercent := float64(duration) / float64(operatingMinutes) * 100
 
 		// 取得老師名稱
 		teacherName := "未安排老師"

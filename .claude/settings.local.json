@@ -6,7 +6,21 @@
       "Bash(swag init:*)",
       "mcp__plugin_serena_serena__get_symbols_overview",
       "mcp__plugin_serena_serena__read_file",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "mcp__plugin_serena_serena__activate_project",
+      "mcp__plugin_serena_serena__find_symbol",
+      "mcp__plugin_playwright_playwright__browser_navigate",
+      "mcp__plugin_serena_serena__search_for_pattern",
+      "mcp__plugin_playwright_playwright__browser_snapshot",
+      "mcp__plugin_playwright_playwright__browser_wait_for",
+      "mcp__plugin_playwright_playwright__browser_take_screenshot",
+      "mcp__plugin_playwright_playwright__browser_fill_form",
+      "mcp__plugin_playwright_playwright__browser_click",
+      "mcp__plugin_playwright_playwright__browser_run_code",
+      "Bash(curl:*)",
+      "mcp__plugin_playwright_playwright__browser_type",
+      "mcp__plugin_playwright_playwright__browser_select_option",
+      "mcp__plugin_playwright_playwright__browser_close"
     ]
   }
 }

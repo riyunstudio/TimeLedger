@@ -1,0 +1,15 @@
+[     344ms] [WARNING] [Vue Router warn]: No match found for location with path "/admin/schedule-rules" @ http://localhost:3000/_nuxt/node_modules/vue-router/dist/devtools-EWN81iOl.mjs?v=6e86138f:34
+[     736ms] [WARNING] [WARN] liff.init() was called with a current URL that is not related to the endpoint URL.
+http://localhost:3000/admin/schedule-rules is not under https://www.timeledger.tw/ @ http://localhost:3000/_nuxt/node_modules/.cache/vite/client/deps/@line_liff.js?v=6e86138f:794
+[     768ms] [WARNING] [Vue Router warn]: No match found for location with path "/admin/schedule-rules" @ http://localhost:3000/_nuxt/node_modules/vue-router/dist/devtools-EWN81iOl.mjs?v=6e86138f:34
+[     782ms] [ERROR] [nuxt] error caught during app initialization H3Error: Page not found: /admin/schedule-rules
+    at createError (http://localhost:3000/_nuxt/node_modules/h3/dist/index.mjs?v=6e86138f:71:15)
+    at createError (http://localhost:3000/_nuxt/node_modules/nuxt/dist/app/composables/error.js?v=6e86138f:33:21)
+    at http://localhost:3000/_nuxt/node_modules/nuxt/dist/pages/runtime/plugins/router.js?v=6e86138f:210:55
+    at fn (http://localhost:3000/_nuxt/node_modules/nuxt/dist/app/nuxt.js?v=6e86138f:221:44)
+    at Object.runWithContext (http://localhost:3000/_nuxt/node_modules/@vue/runtime-core/dist/runtime-core.esm-bundler.js?v=6e86138f:4254:18)
+    at callWithNuxt (http://localhost:3000/_nuxt/node_modules/nuxt/dist/app/nuxt.js?v=6e86138f:227:24)
+    at http://localhost:3000/_nuxt/node_modules/nuxt/dist/app/nuxt.js?v=6e86138f:38:41
+    at EffectScope.run (http://localhost:3000/_nuxt/node_modules/@vue/reactivity/dist/reactivity.esm-bundler.js?v=6e86138f:67:16)
+    at Object.runWithContext (http://localhost:3000/_nuxt/node_modules/nuxt/dist/app/nuxt.js?v=6e86138f:38:31)
+    at http://localhost:3000/_nuxt/node_modules/nuxt/dist/pages/runtime/plugins/router.js?v=6e86138f:210:24 @ http://localhost:3000/_nuxt/node_modules/nuxt/dist/app/nuxt.js?v=6e86138f:123
