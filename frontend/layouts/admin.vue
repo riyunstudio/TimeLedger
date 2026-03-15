@@ -651,6 +651,10 @@ const pageTitle = computed(() => {
 
 // 切換子選單
 function toggleSubmenu(menu: keyof typeof expandedMenus) {
+  // 如果側邊欄收合中，點擊有子項目的選單時自動展開側邊欄
+  if (sidebarCollapsed.value) {
+    sidebarCollapsed.value = false
+  }
   expandedMenus[menu] = !expandedMenus[menu]
 }
 

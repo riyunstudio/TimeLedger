@@ -4,7 +4,9 @@
       "Bash(npx vue-tsc:*)",
       "Bash(npx vite:*)",
       "Bash(swag init:*)",
-      "mcp__plugin_serena_serena__get_symbols_overview"
+      "mcp__plugin_serena_serena__get_symbols_overview",
+      "mcp__plugin_serena_serena__read_file",
+      "Bash(git add:*)"
     ]
   }
 }
