@@ -51,8 +51,12 @@ export interface ScheduleRule {
   start_time: string
   /** 結束時間 (HH:mm) */
   end_time: string
-  /** 有效範圍 */
-  effective_range: DateRange
+  /** 有效範圍（舊格式） */
+  effective_range?: DateRange
+  /** 有效開始日期（YYYY-MM-DD） */
+  effective_from?: string
+  /** 有效結束日期（YYYY-MM-DD） */
+  effective_to?: string
   /** 循環規則 */
   recurrence_rule?: RecurrenceRule
   /** 是否已鎖定 */
@@ -632,8 +636,12 @@ export interface OccupancyRule {
   end_time: string
   /** 持續分鐘數 */
   duration?: number
-  /** 有效範圍 */
+  /** 有效範圍（舊格式） */
   effective_range?: DateRange
+  /** 有效開始日期（YYYY-MM-DD） */
+  effective_from?: string
+  /** 有效結束日期（YYYY-MM-DD） */
+  effective_to?: string
   /** 狀態: PLANNED(預計), CONFIRMED(已開課), SUSPENDED(停課), ARCHIVED(歸檔) */
   status?: string
 }

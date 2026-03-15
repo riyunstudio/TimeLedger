@@ -212,7 +212,7 @@
   <UpdateModeModal
     v-if="showUpdateModeModal"
     :show="showUpdateModeModal"
-    :rule-date="editingRule ? new Date(editingRule.effective_range?.start_date).toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' }) : ''"
+    :rule-date="editingRule ? new Date(editingRule.effective_from || editingRule.effective_range?.start_date).toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' }) : ''"
     @close="showUpdateModeModal = false; showModal = true; pendingEditData = null"
     @confirm="handleUpdateModeConfirm"
   />
@@ -361,8 +361,8 @@ const filteredRules = computed(() => {
   if (filterStatus.value) {
     const now = new Date()
     result = result.filter(rule => {
-      const startDate = new Date(rule.effective_range?.start_date)
-      const endDate = rule.effective_range?.end_date ? new Date(rule.effective_range.end_date) : null
+      const startDate = new Date(rule.effective_from || rule.effective_range?.start_date)
+      const endDate = (rule.effective_to || rule.effective_range?.end_date) ? new Date(rule.effective_to || rule.effective_range?.end_date) : null
 
       switch (filterStatus.value) {
         case 'upcoming':
@@ -473,10 +473,10 @@ const handleRuleCreated = async () => {
 const handleModalSubmit = (formData: any) => {
   // 如果編輯模式下有修改日期相關內容，需要詢問更新模式
   if (editingRule.value && formData.start_date) {
-    const originalStartDate = editingRule.value.effective_range?.start_date?.split('T')[0]
+    const originalStartDate = (editingRule.value.effective_from || editingRule.value.effective_range?.start_date)?.split('T')[0]
     if (originalStartDate && originalStartDate !== formData.start_date) {
       // 日期有變更，顯示更新模式選擇
-      const ruleDate = new Date(editingRule.value.effective_range?.start_date).toLocaleDateString('zh-TW', {
+      const ruleDate = new Date(editingRule.value.effective_from || editingRule.value.effective_range?.start_date).toLocaleDateString('zh-TW', {
         year: 'numeric',
         month: 'long',
         day: 'numeric',
@@ -524,8 +524,8 @@ const getWeekdayText = (weekday: number): string => {
 
 const getStatusClass = (rule: any): string => {
   const now = new Date()
-  const startDate = new Date(rule.effective_range?.start_date)
-  const endDate = rule.effective_range?.end_date ? new Date(rule.effective_range.end_date) : null
+  const startDate = new Date(rule.effective_from || rule.effective_range?.start_date)
+  const endDate = (rule.effective_to || rule.effective_range?.end_date) ? new Date(rule.effective_to || rule.effective_range?.end_date) : null
 
   if (endDate && now > endDate) return 'bg-slate-500/20 text-slate-400'
   if (now < startDate) return 'bg-primary-500/20 text-primary-500'
@@ -534,8 +534,8 @@ const getStatusClass = (rule: any): string => {
 
 const getStatusText = (rule: any): string => {
   const now = new Date()
-  const startDate = new Date(rule.effective_range?.start_date)
-  const endDate = rule.effective_range?.end_date ? new Date(rule.effective_range.end_date) : null
+  const startDate = new Date(rule.effective_from || rule.effective_range?.start_date)
+  const endDate = (rule.effective_to || rule.effective_range?.end_date) ? new Date(rule.effective_to || rule.effective_range?.end_date) : null
 
   if (endDate && now > endDate) return '已結束'
   if (now < startDate) return '尚未開始'
@@ -543,16 +543,19 @@ const getStatusText = (rule: any): string => {
 }
 
 const formatDateRange = (effectiveRange: any): string => {
-  if (!effectiveRange?.start_date) return '-'
+  // 支援新格式 (effective_from/effective_to) 和舊格式 (effective_range.start_date/end_date)
+  const startDate = effectiveRange?.start_date || effectiveRange?.effective_from
+  if (!startDate) return '-'
 
-  const startDate = new Date(effectiveRange.start_date)
-  const startStr = startDate.toLocaleDateString('zh-TW', {
+  const start = new Date(startDate)
+  const startStr = start.toLocaleDateString('zh-TW', {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit'
   })
 
-  if (!effectiveRange?.end_date) {
+  const endDate = effectiveRange?.end_date || effectiveRange?.effective_to
+  if (!endDate) {
     return `${startStr} 起`
   }
 
