@@ -1768,6 +1768,9 @@ func (s *ScheduleService) buildMatrixItems(
 		operatingMinutes = 1440 // 預設全天
 	}
 
+	// 統一天分鐘數（24小時 = 1440分鐘）
+	dayMinutes := 1440
+
 	for _, schedule := range schedules {
 		// 解析時間
 		startHour, startMinute := s.parseTimeToHourMinute(schedule.StartTime)
@@ -1776,15 +1779,19 @@ func (s *ScheduleService) buildMatrixItems(
 		// 計算持續分鐘數
 		duration := s.calculateDuration(schedule.StartTime, schedule.EndTime)
 
-		// 計算 CSS 位置和高度（基於營業時間）
+		// 計算 CSS 位置和高度（基於 24 小時，與前端一致）
 		// topOffset: 從營業開始時間到課程開始時間的百分比
 		courseStartMinutes := startHour*60 + startMinute
-		topOffset := float64(courseStartMinutes-opsStartMinutes) / float64(operatingMinutes) * 100
-		if topOffset < 0 {
-			topOffset = 0 // 不應該低於營業開始
+		// 確保不低於營業開始時間
+		if courseStartMinutes < opsStartMinutes {
+			courseStartMinutes = opsStartMinutes
 		}
-		// heightPercent: 課程時長佔營業時間的百分比
-		heightPercent := float64(duration) / float64(operatingMinutes) * 100
+		topOffset := float64(courseStartMinutes-opsStartMinutes) / float64(dayMinutes) * 100
+		if topOffset < 0 {
+			topOffset = 0
+		}
+		// heightPercent: 課程時長佔 24 小時的百分比
+		heightPercent := float64(duration) / float64(dayMinutes) * 100
 
 		// 取得老師名稱
 		teacherName := "未安排老師"
