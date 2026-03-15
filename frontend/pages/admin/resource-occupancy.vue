@@ -259,6 +259,7 @@ import type { Term, OccupancyRule } from '~/types/scheduling'
 import CopyRulesWizard from '~/components/Admin/CopyRulesWizard.vue'
 import SearchableSelect, { type SelectOption } from '~/components/Common/SearchableSelect.vue'
 import { useResourceCache } from '~/composables/useResourceCache'
+import { formatDateToString } from '~/composables/useTaiwanTime'
 
 /**
  * 資源（老師或教室）
@@ -304,8 +305,8 @@ const diff = today.getDate() - day + (day === 0 ? -6 : 1) // 調整到週一
 const monday = new Date(today.setDate(diff))
 const sunday = new Date(monday)
 sunday.setDate(monday.getDate() + 6)
-queryStartDate.value = monday.toISOString().split('T')[0]
-queryEndDate.value = sunday.toISOString().split('T')[0]
+queryStartDate.value = formatDateToString(monday)
+queryEndDate.value = formatDateToString(sunday)
 
 // 資源類型
 const resourceType = ref<'teacher' | 'room'>('teacher')

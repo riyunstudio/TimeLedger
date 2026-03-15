@@ -1,40 +1,60 @@
 <template>
   <div class="min-h-screen bg-slate-900 flex">
     <!-- Desktop Sidebar -->
-    <aside class="hidden lg:flex w-64 bg-slate-800/50 border-r border-slate-700 flex-col shrink-0 relative z-20">
+    <aside
+      class="hidden lg:flex bg-slate-800/50 border-r border-slate-700 flex-col shrink-0 relative z-20 transition-all duration-300"
+      :class="sidebarCollapsed ? 'w-16' : 'w-64'"
+    >
       <!-- Logo 區域 -->
-      <div class="p-5 border-b border-slate-700">
+      <div class="p-3 border-b border-slate-700 flex items-center justify-center">
         <NuxtLink to="/admin/dashboard" class="flex items-center gap-3 group">
-          <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-primary-500 to-secondary-500 flex items-center justify-center group-hover:scale-105 transition-transform duration-200">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-primary-500 to-secondary-500 flex items-center justify-center group-hover:scale-105 transition-transform duration-200 shrink-0">
             <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <div>
-            <h1 class="text-lg font-bold text-white group-hover:text-primary-300 transition-colors">TimeLedger</h1>
-            <p class="text-xs text-slate-400">排課管理平台</p>
+          <div v-show="!sidebarCollapsed" class="overflow-hidden">
+            <h1 class="text-lg font-bold text-white group-hover:text-primary-300 transition-colors whitespace-nowrap">TimeLedger</h1>
+            <p class="text-xs text-slate-400 whitespace-nowrap">排課管理平台</p>
           </div>
         </NuxtLink>
       </div>
 
+      <!-- 收合按鈕 -->
+      <button
+        @click="sidebarCollapsed = !sidebarCollapsed"
+        class="absolute -right-3 top-20 w-6 h-6 bg-slate-700 border border-slate-600 rounded-full flex items-center justify-center hover:bg-slate-600 transition-colors z-30"
+      >
+        <svg
+          class="w-3 h-3 text-slate-400 transition-transform duration-300"
+          :class="{ 'rotate-180': sidebarCollapsed }"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+        </svg>
+      </button>
+
       <!-- 導航選單 -->
-      <nav class="flex-1 overflow-y-auto p-3 space-y-1">
+      <nav class="flex-1 overflow-y-auto p-2 lg:p-3 space-y-1">
         <!-- 排課管理 -->
         <div>
           <button
             @click="toggleSubmenu('scheduling')"
-            class="w-full flex items-center justify-between px-4 py-2.5 rounded-lg text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all duration-200 group"
+            :class="['w-full flex items-center justify-between px-2 lg:px-4 py-2.5 rounded-lg text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all duration-200 group', sidebarCollapsed ? 'justify-center px-2' : '']"
           >
-            <div class="flex items-center gap-3">
-              <div class="w-8 h-8 rounded-lg bg-slate-700/50 flex items-center justify-center group-hover:bg-primary-500/20 transition-colors">
+            <div :class="['flex items-center gap-3', sidebarCollapsed ? 'justify-center w-full' : '']">
+              <div class="w-8 h-8 rounded-lg bg-slate-700/50 flex items-center justify-center group-hover:bg-primary-500/20 transition-colors shrink-0">
                 <svg class="w-4 h-4 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
               </div>
-              <span class="font-medium">排課管理</span>
+              <span v-show="!sidebarCollapsed" class="font-medium whitespace-nowrap">排課管理</span>
             </div>
             <svg
-              class="w-4 h-4 text-slate-500 transition-transform duration-200"
+              v-show="!sidebarCollapsed"
+              class="w-4 h-4 text-slate-500 transition-transform duration-200 shrink-0"
               :class="{ 'rotate-180': expandedMenus.scheduling }"
               fill="none"
               stroke="currentColor"
@@ -44,7 +64,7 @@
             </svg>
           </button>
           <div
-            v-show="expandedMenus.scheduling"
+            v-show="expandedMenus.scheduling && !sidebarCollapsed"
             class="ml-4 mt-1 space-y-0.5"
           >
             <NuxtLink
@@ -76,48 +96,49 @@
 
         <!-- 審核管理 -->
         <NuxtLink
-          to="/admin/approval"
-          class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all duration-200 group"
+          :to="'/admin/approval'"
+          :class="['flex items-center gap-3 px-2 lg:px-4 py-2.5 rounded-lg text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all duration-200 group', sidebarCollapsed ? 'justify-center px-2' : '']"
           active-class="bg-primary-500/20 !text-primary-400"
         >
-          <div class="w-8 h-8 rounded-lg bg-slate-700/50 flex items-center justify-center group-hover:bg-amber-500/20 transition-colors">
+          <div class="w-8 h-8 rounded-lg bg-slate-700/50 flex items-center justify-center group-hover:bg-amber-500/20 transition-colors shrink-0">
             <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <span class="font-medium">審核管理</span>
+          <span v-show="!sidebarCollapsed" class="font-medium whitespace-nowrap">審核管理</span>
         </NuxtLink>
 
         <!-- 一鍵公告 -->
         <NuxtLink
-          to="/admin/broadcast"
-          class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all duration-200 group"
+          :to="'/admin/broadcast'"
+          :class="['flex items-center gap-3 px-2 lg:px-4 py-2.5 rounded-lg text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all duration-200 group', sidebarCollapsed ? 'justify-center px-2' : '']"
           active-class="bg-primary-500/20 !text-primary-400"
         >
-          <div class="w-8 h-8 rounded-lg bg-slate-700/50 flex items-center justify-center group-hover:bg-orange-500/20 transition-colors">
+          <div class="w-8 h-8 rounded-lg bg-slate-700/50 flex items-center justify-center group-hover:bg-orange-500/20 transition-colors shrink-0">
             <svg class="w-4 h-4 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
             </svg>
           </div>
-          <span class="font-medium">一鍵公告</span>
+          <span v-show="!sidebarCollapsed" class="font-medium whitespace-nowrap">一鍵公告</span>
         </NuxtLink>
 
         <!-- 人才庫 -->
         <div>
           <button
             @click="toggleSubmenu('talent')"
-            class="w-full flex items-center justify-between px-4 py-2.5 rounded-lg text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all duration-200 group"
+            :class="['w-full flex items-center justify-between px-2 lg:px-4 py-2.5 rounded-lg text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all duration-200 group', sidebarCollapsed ? 'justify-center px-2' : '']"
           >
-            <div class="flex items-center gap-3">
-              <div class="w-8 h-8 rounded-lg bg-slate-700/50 flex items-center justify-center group-hover:bg-violet-500/20 transition-colors">
+            <div :class="['flex items-center gap-3', sidebarCollapsed ? 'justify-center w-full' : '']">
+              <div class="w-8 h-8 rounded-lg bg-slate-700/50 flex items-center justify-center group-hover:bg-violet-500/20 transition-colors shrink-0">
                 <svg class="w-4 h-4 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
               </div>
-              <span class="font-medium">人才庫</span>
+              <span v-show="!sidebarCollapsed" class="font-medium whitespace-nowrap">人才庫</span>
             </div>
             <svg
-              class="w-4 h-4 text-slate-500 transition-transform duration-200"
+              v-show="!sidebarCollapsed"
+              class="w-4 h-4 text-slate-500 transition-transform duration-200 shrink-0"
               :class="{ 'rotate-180': expandedMenus.talent }"
               fill="none"
               stroke="currentColor"
@@ -127,7 +148,7 @@
             </svg>
           </button>
           <div
-            v-show="expandedMenus.talent"
+            v-show="expandedMenus.talent && !sidebarCollapsed"
             class="ml-4 mt-1 space-y-0.5"
           >
             <NuxtLink
@@ -151,49 +172,50 @@
 
         <!-- 範本管理 -->
         <NuxtLink
-          to="/admin/templates"
-          class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all duration-200 group"
+          :to="'/admin/templates'"
+          :class="['flex items-center gap-3 px-2 lg:px-4 py-2.5 rounded-lg text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all duration-200 group', sidebarCollapsed ? 'justify-center px-2' : '']"
           active-class="bg-primary-500/20 !text-primary-400"
         >
-          <div class="w-8 h-8 rounded-lg bg-slate-700/50 flex items-center justify-center group-hover:bg-emerald-500/20 transition-colors">
+          <div class="w-8 h-8 rounded-lg bg-slate-700/50 flex items-center justify-center group-hover:bg-emerald-500/20 transition-colors shrink-0">
             <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
             </svg>
           </div>
-          <span class="font-medium">範本管理</span>
+          <span v-show="!sidebarCollapsed" class="font-medium whitespace-nowrap">範本管理</span>
         </NuxtLink>
 
         <!-- 資源管理 -->
         <NuxtLink
-          to="/admin/resources"
-          class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all duration-200 group"
+          :to="'/admin/resources'"
+          :class="['flex items-center gap-3 px-2 lg:px-4 py-2.5 rounded-lg text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all duration-200 group', sidebarCollapsed ? 'justify-center px-2' : '']"
           active-class="bg-primary-500/20 !text-primary-400"
         >
-          <div class="w-8 h-8 rounded-lg bg-slate-700/50 flex items-center justify-center group-hover:bg-cyan-500/20 transition-colors">
+          <div class="w-8 h-8 rounded-lg bg-slate-700/50 flex items-center justify-center group-hover:bg-cyan-500/20 transition-colors shrink-0">
             <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
             </svg>
           </div>
-          <span class="font-medium">資源管理</span>
+          <span v-show="!sidebarCollapsed" class="font-medium whitespace-nowrap">資源管理</span>
         </NuxtLink>
 
         <!-- 系統設定 -->
         <div>
           <button
             @click="toggleSubmenu('settings')"
-            class="w-full flex items-center justify-between px-4 py-2.5 rounded-lg text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all duration-200 group"
+            :class="['w-full flex items-center justify-between px-2 lg:px-4 py-2.5 rounded-lg text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all duration-200 group', sidebarCollapsed ? 'justify-center px-2' : '']"
           >
-            <div class="flex items-center gap-3">
-              <div class="w-8 h-8 rounded-lg bg-slate-700/50 flex items-center justify-center group-hover:bg-slate-600 transition-colors">
+            <div :class="['flex items-center gap-3', sidebarCollapsed ? 'justify-center w-full' : '']">
+              <div class="w-8 h-8 rounded-lg bg-slate-700/50 flex items-center justify-center group-hover:bg-slate-600 transition-colors shrink-0">
                 <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
               </div>
-              <span class="font-medium">系統設定</span>
+              <span v-show="!sidebarCollapsed" class="font-medium whitespace-nowrap">系統設定</span>
             </div>
             <svg
-              class="w-4 h-4 text-slate-500 transition-transform duration-200"
+              v-show="!sidebarCollapsed"
+              class="w-4 h-4 text-slate-500 transition-transform duration-200 shrink-0"
               :class="{ 'rotate-180': expandedMenus.settings }"
               fill="none"
               stroke="currentColor"
@@ -203,7 +225,7 @@
             </svg>
           </button>
           <div
-            v-show="expandedMenus.settings"
+            v-show="expandedMenus.settings && !sidebarCollapsed"
             class="ml-4 mt-1 space-y-0.5"
           >
             <NuxtLink
@@ -243,12 +265,12 @@
       </nav>
 
       <!-- 用戶資訊 -->
-      <div class="p-4 border-t border-slate-700">
-        <div class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-slate-700/30">
-          <div class="w-9 h-9 rounded-full bg-gradient-to-br from-primary-500 to-secondary-500 flex items-center justify-center text-white font-medium text-sm">
+      <div class="p-2 lg:p-4 border-t border-slate-700">
+        <div :class="['flex items-center gap-3 px-2 lg:px-3 py-2.5 rounded-lg bg-slate-700/30', sidebarCollapsed ? 'justify-center' : '']">
+          <div class="w-9 h-9 rounded-full bg-gradient-to-br from-primary-500 to-secondary-500 flex items-center justify-center text-white font-medium text-sm shrink-0">
             管
           </div>
-          <div class="flex-1 min-w-0">
+          <div v-show="!sidebarCollapsed" class="flex-1 min-w-0 overflow-hidden">
             <p class="text-sm font-medium text-white truncate">超級管理員</p>
             <p class="text-xs text-slate-400 truncate">admin@timeledger.com</p>
           </div>
@@ -596,6 +618,9 @@ const toastRef = ref<any>(null)
 
 // Mobile menu state
 const mobileMenuOpen = ref(false)
+
+// Desktop sidebar collapsed state
+const sidebarCollapsed = ref(false)
 
 // 子選單展開狀態
 const expandedMenus = reactive({

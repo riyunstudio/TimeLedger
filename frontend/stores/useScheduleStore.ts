@@ -482,7 +482,7 @@ export const useScheduleStore = defineStore('schedule', () => {
         link.href = url
 
         // 產生檔案名稱
-        const today = new Date().toISOString().split('T')[0]
+        const today = formatDateToString(new Date())
         link.download = `課表-${today}.png`
 
         // 觸發下載

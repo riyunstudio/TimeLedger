@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { formatDateToString } from '~/composables/useTaiwanTime'
 
 // ============================================
 // Mock Setup
@@ -402,7 +403,7 @@ describe('Teacher Dashboard Logic - Date Formatting', () => {
   it('應該正確格式化今天的日期', () => {
     const logic = new TeacherDashboardPageLogic()
     const today = new Date()
-    const todayStr = today.toISOString().split('T')[0]
+    const todayStr = formatDateToString(today)
 
     expect(logic.formatDate(todayStr)).toBe('今天')
   })
@@ -411,7 +412,7 @@ describe('Teacher Dashboard Logic - Date Formatting', () => {
     const logic = new TeacherDashboardPageLogic()
     const tomorrow = new Date()
     tomorrow.setDate(tomorrow.getDate() + 1)
-    const tomorrowStr = tomorrow.toISOString().split('T')[0]
+    const tomorrowStr = formatDateToString(tomorrow)
 
     expect(logic.formatDate(tomorrowStr)).toBe('明天')
   })
@@ -420,7 +421,7 @@ describe('Teacher Dashboard Logic - Date Formatting', () => {
     const logic = new TeacherDashboardPageLogic()
     const yesterday = new Date()
     yesterday.setDate(yesterday.getDate() - 1)
-    const yesterdayStr = yesterday.toISOString().split('T')[0]
+    const yesterdayStr = formatDateToString(yesterday)
 
     expect(logic.formatDate(yesterdayStr)).toBe('昨天')
   })
@@ -458,7 +459,7 @@ describe('Teacher Dashboard Logic - Grid Cell Class', () => {
     // 過去日期
     const pastDate = new Date()
     pastDate.setDate(pastDate.getDate() - 5)
-    const pastDateStr = pastDate.toISOString().split('T')[0]
+    const pastDateStr = formatDateToString(pastDate)
 
     const result = logic.getGridCellClass(pastDateStr, 10)
 
@@ -470,7 +471,7 @@ describe('Teacher Dashboard Logic - Grid Cell Class', () => {
     // 未來日期
     const futureDate = new Date()
     futureDate.setDate(futureDate.getDate() + 10)
-    const futureDateStr = futureDate.toISOString().split('T')[0]
+    const futureDateStr = formatDateToString(futureDate)
 
     const result = logic.getGridCellClass(futureDateStr, 10)
 

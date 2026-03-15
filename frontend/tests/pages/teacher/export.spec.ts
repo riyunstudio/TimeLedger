@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { formatDateToString } from '~/composables/useTaiwanTime'
 
 // Mock modules before imports
 vi.mock('vue', async () => {
@@ -483,7 +484,7 @@ describe('teacher/export.vue 頁面邏輯', () => {
     it('isToday 應該正確判斷是否為今天', () => {
       const logic = new DateFormatLogic()
       const today = new Date()
-      const todayStr = today.toISOString().split('T')[0]
+      const todayStr = formatDateToString(today)
       expect(logic.isToday(todayStr)).toBe(true)
       expect(logic.isToday('2026-01-01')).toBe(false)
     })

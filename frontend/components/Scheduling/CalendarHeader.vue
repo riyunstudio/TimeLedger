@@ -230,6 +230,7 @@ import { computed, ref } from 'vue'
 // 引入圖示和提示元件
 import Icon from '~/components/base/Icon.vue'
 import HelpTooltip from '~/components/base/HelpTooltip.vue'
+import { formatDateToString } from '~/composables/useTaiwanTime'
 
 // ============================================
 // Props 定義
@@ -274,17 +275,17 @@ const today = new Date()
 const minDate = computed(() => {
   const d = new Date(today)
   d.setFullYear(d.getFullYear() - 2)
-  return d.toISOString().split('T')[0]
+  return formatDateToString(d)
 })
 const maxDate = computed(() => {
   const d = new Date(today)
   d.setFullYear(d.getFullYear() + 2)
-  return d.toISOString().split('T')[0]
+  return formatDateToString(d)
 })
 
 // 初始化今天的日期
 const initializeToday = () => {
-  selectedDate.value = today.toISOString().split('T')[0]
+  selectedDate.value = formatDateToString(today)
 }
 
 // 快速選擇今天
