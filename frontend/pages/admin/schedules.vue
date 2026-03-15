@@ -559,8 +559,8 @@ const formatDateRange = (effectiveRange: any): string => {
     return `${startStr} 起`
   }
 
-  const endDate = new Date(effectiveRange.end_date)
-  const endStr = endDate.toLocaleDateString('zh-TW', {
+  const end = new Date(endDate)
+  const endStr = end.toLocaleDateString('zh-TW', {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit'
