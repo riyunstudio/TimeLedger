@@ -642,7 +642,11 @@ const allDates = computed(() => {
   })
 
   while (current <= end) {
-    const dayOfWeek = current.getDay()
+    // getDay() returns 0-6 (0=Sunday), convert to backend format 1-7 (1=Monday, 7=Sunday)
+    let dayOfWeek = current.getDay()
+    if (dayOfWeek === 0) {
+      dayOfWeek = 7  // Sunday is 7 in backend
+    }
     if (weekdays.includes(dayOfWeek)) {
       const dateStr = formatDateToString(current)
       const monthKey = `${current.getFullYear()}年${current.getMonth() + 1}月`
@@ -651,7 +655,7 @@ const allDates = computed(() => {
       dates.push({
         value: dateStr,
         day: `${current.getDate()}`,
-        weekday: weekdayNames[dayOfWeek],
+        weekday: weekdayNames[current.getDay()],  // Use original 0-6 for display
         monthKey,
         isHoliday: !!holidayInfo,
         holidayName: holidayInfo?.name || null,
