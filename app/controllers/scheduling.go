@@ -329,6 +329,9 @@ func (ctl *SchedulingController) ValidateFull(ctx *gin.Context) {
 // @Param page query int false "頁碼，預設 1"
 // @Param limit query int false "每頁筆數，預設 20"
 // @Param category query string false "課程類別篩選"
+// @Param search query string false "搜尋關鍵字（課程名稱/老師名稱/教室名稱）"
+// @Param weekday query int false "星期篩選（1-7）"
+// @Param status query string false "狀態篩選（upcoming/ongoing/ended）"
 // @Success 200 {object} global.ApiResponse{data=resources.PaginationResponse}
 // @Router /api/v1/admin/scheduling/rules [get]
 func (ctl *SchedulingController) GetRules(ctx *gin.Context) {
@@ -348,8 +351,19 @@ func (ctl *SchedulingController) GetRules(ctx *gin.Context) {
 	page := helper.QueryIntOrDefault("page", 1)
 	limit := helper.QueryIntOrDefault("limit", 20)
 
-	// 取得 category 參數（用於過濾）
+	// 取得過濾參數
 	category := ctx.Query("category")
+	search := ctx.Query("search")
+	weekdayStr := ctx.Query("weekday")
+	status := ctx.Query("status")
+
+	// 解析 weekday 參數
+	weekday := 0
+	if weekdayStr != "" {
+		if parsed, err := strconv.Atoi(weekdayStr); err == nil && parsed >= 1 && parsed <= 7 {
+			weekday = parsed
+		}
+	}
 
 	// 驗證分頁參數
 	if page < 1 {
@@ -362,7 +376,7 @@ func (ctl *SchedulingController) GetRules(ctx *gin.Context) {
 		limit = 100
 	}
 
-	rules, total, err := ctl.scheduleSvc.GetRulesPaginated(ctx.Request.Context(), centerID, page, limit, category)
+	rules, total, err := ctl.scheduleSvc.GetRulesPaginated(ctx.Request.Context(), centerID, page, limit, category, search, weekday, status)
 	if err != nil {
 		helper.InternalError(err.Error())
 		return
@@ -419,6 +433,7 @@ func (ctl *SchedulingController) CreateRule(ctx *gin.Context) {
 		Weekdays:        req.Weekdays,
 		StartDate:       req.StartDate,
 		EndDate:         req.EndDate,
+		Status:          req.Status, // 課程狀態
 		OverrideBuffer:  req.OverrideBuffer,
 		SuspendedDates:  req.SuspendedDates,
 	}

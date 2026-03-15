@@ -338,46 +338,9 @@ const clearFilters = () => {
 }
 
 // 篩選後的規則列表
+// 過濾後的規則（現在由後端處理過濾，前端直接使用 API 回傳的資料）
 const filteredRules = computed(() => {
-  let result = [...rules.value]
-
-  // 搜尋過濾
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
-    result = result.filter(rule =>
-      rule.offering?.name?.toLowerCase().includes(query) ||
-      rule.teacher?.name?.toLowerCase().includes(query) ||
-      rule.room?.name?.toLowerCase().includes(query)
-    )
-  }
-
-  // 星期過濾
-  if (filterWeekday.value) {
-    const weekdayValue = parseInt(filterWeekday.value)
-    result = result.filter(rule => rule.weekday === weekdayValue)
-  }
-
-  // 狀態過濾
-  if (filterStatus.value) {
-    const now = new Date()
-    result = result.filter(rule => {
-      const startDate = new Date(rule.effective_from || rule.effective_range?.start_date)
-      const endDate = (rule.effective_to || rule.effective_range?.end_date) ? new Date(rule.effective_to || rule.effective_range?.end_date) : null
-
-      switch (filterStatus.value) {
-        case 'upcoming':
-          return now < startDate
-        case 'ongoing':
-          return now >= startDate && (!endDate || now <= endDate)
-        case 'ended':
-          return endDate && now > endDate
-        default:
-          return true
-      }
-    })
-  }
-
-  return result
+  return rules.value
 })
 
 const fetchRules = async () => {
@@ -389,9 +352,18 @@ const fetchRules = async () => {
       limit: pageSize.value
     }
 
-    // 加入類別篩選參數
+    // 加入過濾參數（由後端處理）
     if (filterCategory.value) {
       params.category = filterCategory.value
+    }
+    if (searchQuery.value) {
+      params.search = searchQuery.value.trim()
+    }
+    if (filterWeekday.value) {
+      params.weekday = parseInt(filterWeekday.value)
+    }
+    if (filterStatus.value) {
+      params.status = filterStatus.value
     }
 
     const response = await api.get<any>('/admin/rules', params)

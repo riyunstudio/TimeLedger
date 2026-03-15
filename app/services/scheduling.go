@@ -29,7 +29,7 @@ type ScheduleServiceInterface interface {
 
 	// 規則管理
 	GetRules(ctx context.Context, centerID uint) ([]models.ScheduleRule, error)
-	GetRulesPaginated(ctx context.Context, centerID uint, page, limit int, category string) ([]models.ScheduleRule, int64, error)
+	GetRulesPaginated(ctx context.Context, centerID uint, page, limit int, category, search string, weekday int, status string) ([]models.ScheduleRule, int64, error)
 	CreateRule(ctx context.Context, centerID, adminID uint, req *CreateScheduleRuleRequest) ([]models.ScheduleRule, *errInfos.Res, error)
 	UpdateRule(ctx context.Context, centerID, adminID, ruleID uint, req *UpdateScheduleRuleRequest) ([]models.ScheduleRule, *errInfos.Res, error)
 	DeleteRule(ctx context.Context, centerID, adminID, ruleID uint) error
@@ -249,9 +249,12 @@ func (s *ScheduleService) GetRules(ctx context.Context, centerID uint) ([]models
 }
 
 // GetRulesPaginated 分頁取得排課規則列表
-// category 參數：用於過濾特定課程類別（如不提供則不過濾）
-func (s *ScheduleService) GetRulesPaginated(ctx context.Context, centerID uint, page, limit int, category string) ([]models.ScheduleRule, int64, error) {
-	rules, total, err := s.ruleRepo.ListByCenterIDPaginated(ctx, centerID, page, limit, category)
+// category 參數：用於過濾特定課程類別
+// search 參數：用於搜尋課程名稱、老師名稱、教室名稱
+// weekday 參數：用於過濾星期幾（1-7）
+// status 參數：用於過濾狀態（upcoming/ongoing/ended）
+func (s *ScheduleService) GetRulesPaginated(ctx context.Context, centerID uint, page, limit int, category, search string, weekday int, status string) ([]models.ScheduleRule, int64, error) {
+	rules, total, err := s.ruleRepo.ListByCenterIDPaginated(ctx, centerID, page, limit, category, search, weekday, status)
 	if err != nil {
 		return nil, 0, err
 	}

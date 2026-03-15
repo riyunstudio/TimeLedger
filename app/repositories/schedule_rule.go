@@ -5,6 +5,7 @@ import (
 	"time"
 	"timeLedger/app"
 	"timeLedger/app/models"
+	"timeLedger/libs"
 
 	"gorm.io/gorm"
 )
@@ -154,50 +155,155 @@ func (rp *ScheduleRuleRepository) ListByCenterID(ctx context.Context, centerID u
 	return data, err
 }
 
-// ListByCenterIDPaginated 分頁取得排課規則
-// category 參數：用於過濾特定課程類別（如不提供則不過濾）
-func (rp *ScheduleRuleRepository) ListByCenterIDPaginated(ctx context.Context, centerID uint, page, limit int, category string) ([]models.ScheduleRule, int64, error) {
+// ListByCenterIDPaginated 分頁取得排課規則（優化版）
+// category 參數：用於過濾特定課程類別
+// search 參數：用於搜尋課程名稱、老師名稱、教室名稱
+// weekday 參數：用於過濾星期幾（1-7）
+// status 參數：用於過濾狀態（upcoming/ongoing/ended）
+func (rp *ScheduleRuleRepository) ListByCenterIDPaginated(ctx context.Context, centerID uint, page, limit int, category, search string, weekday int, status string) ([]models.ScheduleRule, int64, error) {
 	var data []models.ScheduleRule
 	var total int64
 
-	baseQuery := rp.app.MySQL.RDB.WithContext(ctx).Model(&models.ScheduleRule{}).Where("schedule_rules.center_id = ?", centerID)
+	loc := libs.GetTaiwanLocation()
+	now := time.Now().In(loc)
 
-	// 如果有 category 參數，JOIN courses 表進行過濾
-	if category != "" {
-		baseQuery = baseQuery.
+	// ============================================
+	// 第一步：取得符合條件的 ID 列表（優化 COUNT 查詢）
+	// ============================================
+	// 使用子查詢避免重複 JOIN，先取得符合條件的 rule IDs
+	subQuery := rp.app.MySQL.RDB.WithContext(ctx).
+		Model(&models.ScheduleRule{}).
+		Select("schedule_rules.id").
+		Where("schedule_rules.center_id = ?", centerID)
+
+	// 只有 category 需要 JOIN courses 表
+	hasCategoryFilter := category != ""
+	hasSearchFilter := search != ""
+	hasWeekdayFilter := weekday > 0
+	hasStatusFilter := status != ""
+
+	if hasCategoryFilter {
+		subQuery = subQuery.
 			Joins("JOIN offerings ON schedule_rules.offering_id = offerings.id").
 			Joins("JOIN courses ON offerings.course_id = courses.id").
 			Where("courses.category = ?", category)
 	}
 
+	// 搜尋過濾：使用 EXISTS 子查詢或直接 JOIN
+	if hasSearchFilter {
+		searchPattern := "%" + search + "%"
+		// 搜尋時需要 JOIN 相關表
+		subQuery = subQuery.
+			Joins("LEFT JOIN offerings ON schedule_rules.offering_id = offerings.id").
+			Joins("LEFT JOIN rooms ON schedule_rules.room_id = rooms.id").
+			Joins("LEFT JOIN teachers ON schedule_rules.teacher_id = teachers.id").
+			Where(
+				"offerings.name LIKE ? OR teachers.name LIKE ? OR rooms.name LIKE ?",
+				searchPattern, searchPattern, searchPattern,
+			)
+	}
+
+	// 星期過濾（不需要 JOIN）
+	if hasWeekdayFilter {
+		subQuery = subQuery.Where("schedule_rules.weekday = ?", weekday)
+	}
+
+	// 狀態過濾（使用 JSON_EXTRACT 查詢 effective_range）
+	if hasStatusFilter {
+		nowStr := now.Format("2006-01-02")
+		switch status {
+		case "upcoming":
+			// 尚未開始：effective_range.start_date > now
+			subQuery = subQuery.Where("JSON_UNQUOTE(JSON_EXTRACT(schedule_rules.effective_range, '$.start_date')) > ?", nowStr)
+		case "ongoing":
+			// 進行中：effective_range.start_date <= now <= effective_range.end_date
+			subQuery = subQuery.Where("JSON_UNQUOTE(JSON_EXTRACT(schedule_rules.effective_range, '$.start_date')) <= ? AND (JSON_UNQUOTE(JSON_EXTRACT(schedule_rules.effective_range, '$.end_date')) IS NULL OR JSON_UNQUOTE(JSON_EXTRACT(schedule_rules.effective_range, '$.end_date')) >= ?)", nowStr, nowStr)
+		case "ended":
+			// 已結束：effective_range.end_date < now
+			subQuery = subQuery.Where("JSON_UNQUOTE(JSON_EXTRACT(schedule_rules.effective_range, '$.end_date')) IS NOT NULL AND JSON_UNQUOTE(JSON_EXTRACT(schedule_rules.effective_range, '$.end_date')) < ?", nowStr)
+		}
+	}
+
 	// 取得總數
-	if err := baseQuery.Count(&total).Error; err != nil {
+	subQuery = subQuery.Order("schedule_rules.weekday ASC, schedule_rules.start_time ASC")
+	if err := subQuery.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	// 計算偏移量
+	// 如果沒有符合條件的資料，直接返回
+	if total == 0 {
+		return data, total, nil
+	}
+
+	// ============================================
+	// 第二步：取得分頁資料（使用 Preload 載入關聯）
+	// ============================================
 	offset := (page - 1) * limit
 
-	// 建立查詢
+	// 取得符合條件的 ID 列表
+	var ruleIDs []uint
+	idQuery := rp.app.MySQL.RDB.WithContext(ctx).
+		Model(&models.ScheduleRule{}).
+		Select("schedule_rules.id").
+		Where("schedule_rules.center_id = ?", centerID)
+
+	if hasCategoryFilter {
+		idQuery = idQuery.
+			Joins("JOIN offerings ON schedule_rules.offering_id = offerings.id").
+			Joins("JOIN courses ON offerings.course_id = courses.id").
+			Where("courses.category = ?", category)
+	}
+
+	if hasSearchFilter {
+		searchPattern := "%" + search + "%"
+		idQuery = idQuery.
+			Joins("LEFT JOIN offerings ON schedule_rules.offering_id = offerings.id").
+			Joins("LEFT JOIN rooms ON schedule_rules.room_id = rooms.id").
+			Joins("LEFT JOIN teachers ON schedule_rules.teacher_id = teachers.id").
+			Where(
+				"offerings.name LIKE ? OR teachers.name LIKE ? OR rooms.name LIKE ?",
+				searchPattern, searchPattern, searchPattern,
+			)
+	}
+
+	if hasWeekdayFilter {
+		idQuery = idQuery.Where("schedule_rules.weekday = ?", weekday)
+	}
+
+	// 狀態過濾（使用 JSON_EXTRACT 查詢 effective_range）
+	if hasStatusFilter {
+		nowStr := now.Format("2006-01-02")
+		switch status {
+		case "upcoming":
+			idQuery = idQuery.Where("JSON_UNQUOTE(JSON_EXTRACT(schedule_rules.effective_range, '$.start_date')) > ?", nowStr)
+		case "ongoing":
+			idQuery = idQuery.Where("JSON_UNQUOTE(JSON_EXTRACT(schedule_rules.effective_range, '$.start_date')) <= ? AND (JSON_UNQUOTE(JSON_EXTRACT(schedule_rules.effective_range, '$.end_date')) IS NULL OR JSON_UNQUOTE(JSON_EXTRACT(schedule_rules.effective_range, '$.end_date')) >= ?)", nowStr, nowStr)
+		case "ended":
+			idQuery = idQuery.Where("JSON_UNQUOTE(JSON_EXTRACT(schedule_rules.effective_range, '$.end_date')) IS NOT NULL AND JSON_UNQUOTE(JSON_EXTRACT(schedule_rules.effective_range, '$.end_date')) < ?", nowStr)
+		}
+	}
+
+	idQuery = idQuery.Order("schedule_rules.weekday ASC, schedule_rules.start_time ASC").
+		Offset(offset).Limit(limit)
+
+	if err := idQuery.Pluck("id", &ruleIDs).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// 如果沒有 ID，直接返回
+	if len(ruleIDs) == 0 {
+		return data, total, nil
+	}
+
+	// 使用 IN 查詢取得資料，並用 Preload 載入關聯（比 JOIN 更高效）
 	query := rp.app.MySQL.RDB.WithContext(ctx).
 		Preload("Offering").
 		Preload("Offering.Course").
 		Preload("Room").
 		Preload("Teacher").
-		Where("schedule_rules.center_id = ?", centerID).
-		Order("weekday ASC, start_time ASC").
-		Offset(offset).
-		Limit(limit)
+		Where("schedule_rules.id IN ?", ruleIDs).
+		Order("schedule_rules.weekday ASC, schedule_rules.start_time ASC")
 
-	// 如果有 category 參數，JOIN courses 表進行過濾
-	if category != "" {
-		query = query.
-			Joins("JOIN offerings ON schedule_rules.offering_id = offerings.id").
-			Joins("JOIN courses ON offerings.course_id = courses.id").
-			Where("courses.category = ?", category)
-	}
-
-	// 取得分頁資料
 	err := query.Find(&data).Error
 
 	return data, total, err
