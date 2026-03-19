@@ -53,9 +53,10 @@ export function useResourceCache() {
           api.get<any[]>(`/admin/rooms/active`)
         ])
 
-        // 處理 offerings - GetOfferings 返回 ListOfferingsOutput (使用 data.Offerings 欄位)
-        // 格式: { code: 0, data: { Offerings: [...], Pagination: {...} } }
-        const offeringsData = (offeringsRes as any)?.data?.Offerings || (offeringsRes as any)?.data || (offeringsRes as any)?.Offerings || []
+        // 處理 offerings - GetOfferings 返回 ListOfferingsOutput (直接返回 Offerings 陣列)
+        // useApi parseResponse 返回 datas: { Offerings: [...], Pagination: {...} }
+        // 所以直接取 .Offerings
+        const offeringsData = (offeringsRes as any)?.Offerings || []
         resourceCache.value.offerings = offeringsData
 
         // 處理 teachers - ListTeachers 返回 []AdminTeacherResponse 陣列 (使用 data 欄位)
