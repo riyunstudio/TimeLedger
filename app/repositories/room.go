@@ -48,8 +48,9 @@ func (rp *RoomRepository) SearchByNamePaginated(ctx context.Context, centerID ui
 	if limit < 1 {
 		limit = 20
 	}
-	if limit > 100 {
-		limit = 100
+	// 限制最大為 1000，防止一次請求過多資料
+	if limit > 1000 {
+		limit = 1000
 	}
 	offset := (page - 1) * limit
 

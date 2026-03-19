@@ -71,8 +71,9 @@ func (ctl *AdminTeacherController) ListTeachers(ctx *gin.Context) {
 	if limit < 1 {
 		limit = 20
 	}
-	if limit > 100 {
-		limit = 100
+	// 限制最大為 1000，防止一次請求過多資料
+	if limit > 1000 {
+		limit = 1000
 	}
 
 	// 取得該中心的所有會員老師 ID（包含 ACTIVE 和 INVITED 狀態）
