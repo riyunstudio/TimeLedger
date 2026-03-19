@@ -54,6 +54,11 @@ func NewAdminTeacherController(app *app.App) *AdminTeacherController {
 func (ctl *AdminTeacherController) ListTeachers(ctx *gin.Context) {
 	helper := NewContextHelper(ctx)
 
+	// 防止瀏覽器快取
+	ctx.Header("Cache-Control", "no-cache, no-store, must-revalidate")
+	ctx.Header("Pragma", "no-cache")
+	ctx.Header("Expires", "0")
+
 	centerID := helper.MustCenterID()
 	if centerID == 0 {
 		return
