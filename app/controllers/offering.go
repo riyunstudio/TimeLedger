@@ -50,8 +50,12 @@ func (c *OfferingController) GetOfferings(ctx *gin.Context) {
 	if _, err := fmt.Sscanf(page, "%d", &pageInt); err != nil || pageInt < 1 {
 		pageInt = 1
 	}
-	if _, err := fmt.Sscanf(limit, "%d", &limitInt); err != nil || limitInt < 1 || limitInt > 100 {
+	if _, err := fmt.Sscanf(limit, "%d", &limitInt); err != nil || limitInt < 1 {
 		limitInt = 20
+	}
+	// 限制最大為 1000，防止一次請求過多資料
+	if limitInt > 1000 {
+		limitInt = 1000
 	}
 
 	result, errInfo, err := c.offeringService.ListOfferings(ctx.Request.Context(), &services.ListOfferingsInput{
