@@ -45,16 +45,18 @@ export function useResourceCache() {
         const centerId = getCenterId()
 
         const [offeringsRes, teachersRes, roomsRes] = await Promise.all([
-          // offerings 使用 active endpoint 獲取所有可用的班別
-          api.get<any>(`/admin/offerings/active`),
+          // offerings 使用 /admin/offerings 獲取所有班別（含停用），limit=1000 確保取得全部
+          api.get<any>(`/admin/offerings?limit=1000`),
           // teachers 使用 /admin/teachers 端點（useApi 會自動添加 /api/v1 前綴）
           api.get<any[]>(`/admin/teachers?limit=1000`),
           // rooms 使用 /admin/rooms/active 端點
           api.get<any[]>(`/admin/rooms/active`)
         ])
 
-        // 處理 offerings - GetActiveOfferings 返回 []models.Offering 陣列 (使用 data 欄位)
-        resourceCache.value.offerings = offeringsRes?.data || offeringsRes || []
+        // 處理 offerings - GetOfferings 返回 ListOfferingsOutput (使用 data.Offerings 欄位)
+        // 格式: { code: 0, data: { Offerings: [...], Pagination: {...} } }
+        const offeringsData = (offeringsRes as any)?.data?.Offerings || (offeringsRes as any)?.data || (offeringsRes as any)?.Offerings || []
+        resourceCache.value.offerings = offeringsData
 
         // 處理 teachers - ListTeachers 返回 []AdminTeacherResponse 陣列 (使用 data 欄位)
         const teachersData = (teachersRes as any)?.data || (teachersRes as any)?.datas || teachersRes || []
