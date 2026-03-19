@@ -31,6 +31,7 @@ func NewOfferingController(appInstance *app.App) *OfferingController {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @Param q query string false "關鍵字搜尋（模糊比對班別名稱）"
 // @Param page query int false "Page number" default(1)
 // @Param limit query int false "Items per page" default(20)
 // @Success 200 {object} global.ApiResponse{data=services.ListOfferingsOutput}
@@ -50,6 +51,7 @@ func (c *OfferingController) GetOfferings(ctx *gin.Context) {
 
 	page := helper.QueryStringOrDefault("page", "1")
 	limit := helper.QueryStringOrDefault("limit", "20")
+	query := helper.QueryStringOrDefault("q", "")
 
 	var pageInt, limitInt int
 	if _, err := fmt.Sscanf(page, "%d", &pageInt); err != nil || pageInt < 1 {
@@ -67,6 +69,7 @@ func (c *OfferingController) GetOfferings(ctx *gin.Context) {
 		CenterID: centerID,
 		Page:     pageInt,
 		Limit:    limitInt,
+		Query:    query,
 	})
 	if err != nil {
 		helper.ErrorWithInfo(errInfo)

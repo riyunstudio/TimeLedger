@@ -59,8 +59,9 @@ export function useResourceCache() {
         const offeringsData = (offeringsRes as any)?.Offerings || []
         resourceCache.value.offerings = offeringsData
 
-        // 處理 teachers - ListTeachers 返回 []AdminTeacherResponse 陣列 (使用 data 欄位)
-        const teachersData = (teachersRes as any)?.data || (teachersRes as any)?.datas || teachersRes || []
+        // 處理 teachers - ListTeachers 返回 PaginationResponse { Data: [...], Total, ... }
+        // parseResponse 返回 .datas = { data: [...], total: 1, ... }
+        const teachersData = (teachersRes as any)?.data || (teachersRes as any)?.Data || []
         resourceCache.value.teachers = new Map()
         if (Array.isArray(teachersData)) {
           teachersData.forEach((t: any) => {

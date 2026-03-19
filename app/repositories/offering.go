@@ -67,6 +67,48 @@ func (rp *OfferingRepository) ListByCenterIDPaginated(ctx context.Context, cente
 	return rp.FindPaged(ctx, page, limit, "created_at DESC", "center_id = ?", centerID)
 }
 
+// SearchByNamePaginated 搜尋班別（分頁 + 關鍵字）
+func (rp *OfferingRepository) SearchByNamePaginated(ctx context.Context, centerID uint, query string, page, limit int) ([]models.Offering, int64, error) {
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 {
+		limit = 20
+	}
+	if limit > 1000 {
+		limit = 1000
+	}
+
+	offset := (page - 1) * limit
+
+	var offerings []models.Offering
+	var total int64
+
+	baseQuery := rp.dbRead.WithContext(ctx).Model(&models.Offering{}).Where("center_id = ?", centerID)
+
+	// 如果有搜尋關鍵字，加入模糊比對
+	if query != "" {
+		baseQuery = baseQuery.Where("name LIKE ?", "%"+query+"%")
+	}
+
+	// 取得總數
+	if err := baseQuery.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// 取得分頁資料
+	if err := baseQuery.
+		Preload("Course").
+		Order("created_at DESC").
+		Offset(offset).
+		Limit(limit).
+		Find(&offerings).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return offerings, total, nil
+}
+
 func (rp *OfferingRepository) GetByIDAndCenterID(ctx context.Context, id uint, centerID uint) (models.Offering, error) {
 	return rp.GetByIDWithCenterScope(ctx, id, centerID)
 }

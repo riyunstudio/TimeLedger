@@ -37,6 +37,7 @@ type ListOfferingsInput struct {
 	CenterID uint
 	Page     int
 	Limit    int
+	Query    string // 關鍵字搜尋（模糊比對班別名稱）
 }
 
 // ListOfferingsOutput 查詢班別列表的輸出資料
@@ -47,9 +48,10 @@ type ListOfferingsOutput struct {
 
 // ListOfferings 取得班別列表
 func (s *OfferingService) ListOfferings(ctx context.Context, input *ListOfferingsInput) (*ListOfferingsOutput, *errInfos.Res, error) {
-	offerings, total, err := s.offeringRepo.ListByCenterIDPaginated(
+	offerings, total, err := s.offeringRepo.SearchByNamePaginated(
 		ctx,
 		input.CenterID,
+		input.Query,
 		input.Page,
 		input.Limit,
 	)

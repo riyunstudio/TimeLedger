@@ -93,6 +93,9 @@
           placeholder="請選擇課程"
           required
           :error="errors.offering_id"
+          remote-search
+          :search-api="searchOfferings"
+          :debounce-ms="300"
         />
       </div>
     </div>
@@ -106,6 +109,9 @@
           :options="teacherOptions"
           label="老師"
           placeholder="請選擇老師"
+          remote-search
+          :search-api="searchTeachers"
+          :debounce-ms="300"
         />
       </div>
     </div>
@@ -119,6 +125,9 @@
           :options="roomOptions"
           label="教室"
           placeholder="請選擇教室"
+          remote-search
+          :search-api="searchRooms"
+          :debounce-ms="300"
         />
       </div>
 
@@ -794,6 +803,54 @@ const roomOptions = computed<SelectOption[]>(() =>
     name: r.name
   }))
 )
+
+// 課程搜尋 API（遠端搜尋模式）
+const api = useApi()
+const searchOfferings = async (query: string): Promise<SelectOption[]> => {
+  try {
+    const response = await api.get<any>(`/admin/offerings?q=${encodeURIComponent(query)}&limit=50`)
+    const offeringsData = response?.Offerings || []
+    return offeringsData.map((o: any) => ({
+      id: o.id,
+      name: o.name || `班別 #${o.id}`
+    }))
+  } catch (error) {
+    console.error('搜尋課程失敗:', error)
+    return []
+  }
+}
+
+// 老師搜尋 API（遠端搜尋模式）
+const searchTeachers = async (query: string): Promise<SelectOption[]> => {
+  try {
+    const response = await api.get<any>(`/admin/teachers?q=${encodeURIComponent(query)}&limit=50`)
+    // parseResponse 返回 .datas = { data: [...], total: 1, ... }
+    const teachersData = response?.data || response?.Data || []
+    return teachersData.map((t: any) => ({
+      id: t.id,
+      name: t.name || `老師 #${t.id}`
+    }))
+  } catch (error) {
+    console.error('搜尋老師失敗:', error)
+    return []
+  }
+}
+
+// 教室搜尋 API（遠端搜尋模式）
+const searchRooms = async (query: string): Promise<SelectOption[]> => {
+  try {
+    const response = await api.get<any>(`/admin/rooms?query=${encodeURIComponent(query)}&limit=50`)
+    // parseResponse 返回 .datas = { data: [...], total: 1, ... }
+    const roomsData = response?.data || response?.Data || []
+    return roomsData.map((r: any) => ({
+      id: r.id,
+      name: r.name || `教室 #${r.id}`
+    }))
+  } catch (error) {
+    console.error('搜尋教室失敗:', error)
+    return []
+  }
+}
 
 // Zod 驗證 Schema
 const createValidationSchema = () => {

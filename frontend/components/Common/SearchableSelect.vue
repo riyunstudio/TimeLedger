@@ -24,7 +24,7 @@
           />
           <div class="pr-3 flex items-center gap-2">
             <svg
-              v-if="loading"
+              v-if="loading || isSearching"
               class="animate-spin h-5 w-5 text-primary-500"
               xmlns="http://www.w3.org/2000/svg"
               fill="none"
@@ -218,7 +218,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import {
   Combobox,
   ComboboxInput,
@@ -244,6 +244,10 @@ interface Props {
   error?: string
   helper?: string
   multiple?: boolean
+  // 遠端搜尋相關
+  remoteSearch?: boolean      // 啟用遠端搜尋模式
+  searchApi?: (query: string) => Promise<SelectOption[]>  // 搜尋 API
+  debounceMs?: number         // 防抖延遲（預設 300ms）
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -251,7 +255,9 @@ const props = withDefaults(defineProps<Props>(), {
   loading: false,
   disabled: false,
   required: false,
-  multiple: false
+  multiple: false,
+  remoteSearch: false,
+  debounceMs: 300
 })
 
 const emit = defineEmits<{
@@ -260,6 +266,10 @@ const emit = defineEmits<{
 }>()
 
 const query = ref('')
+const remoteOptions = ref<SelectOption[]>([])
+const isSearching = ref(false)
+let debounceTimer: ReturnType<typeof setTimeout> | null = null
+
 const selectedId = computed({
   get: () => {
     // 多選模式下，返回選中的第一個 ID
@@ -292,9 +302,71 @@ onMounted(() => {
 
 onUnmounted(() => {
   document.removeEventListener('mousedown', handleClickOutside)
+  if (debounceTimer) {
+    clearTimeout(debounceTimer)
+  }
+})
+
+// 遠端搜尋
+const performSearch = async (searchQuery: string) => {
+  if (!props.remoteSearch || !props.searchApi) {
+    return
+  }
+
+  isSearching.value = true
+  try {
+    remoteOptions.value = await props.searchApi(searchQuery)
+  } catch (error) {
+    console.error('搜尋失敗:', error)
+    remoteOptions.value = []
+  } finally {
+    isSearching.value = false
+  }
+}
+
+// 防抖搜尋
+watch(query, (newQuery) => {
+  if (debounceTimer) {
+    clearTimeout(debounceTimer)
+  }
+
+  if (!newQuery.trim() && !props.remoteSearch) {
+    remoteOptions.value = []
+    return
+  }
+
+  debounceTimer = setTimeout(() => {
+    performSearch(newQuery)
+  }, props.debounceMs)
+})
+
+// 當下拉選單開啟時，如果沒有遠端結果且不是本地模式，執行一次搜尋
+watch(isOpen, (open) => {
+  if (open && props.remoteSearch && props.searchApi && remoteOptions.value.length === 0) {
+    performSearch('')
+  }
 })
 
 const filteredOptions = computed(() => {
+  // 遠端搜尋模式
+  if (props.remoteSearch) {
+    if (query.value === '') {
+      // 空搜尋時返回本地選項或全部遠端結果
+      return remoteOptions.value.length > 0 ? remoteOptions.value : props.options
+    }
+    // 有搜尋時返回遠端結果，但確保已選中的選項在列表中
+    const selectedId = props.modelValue
+    if (selectedId && !remoteOptions.value.find(opt => String(opt.id) === String(selectedId))) {
+      // 如果選中的選項不在遠端結果中，加入到列表最前面
+      const selectedOption = props.options.find(opt => String(opt.id) === String(selectedId))
+      if (selectedOption) {
+        return [selectedOption, ...remoteOptions.value]
+      }
+    }
+    return remoteOptions.value
+  }
+
+  // 本地搜尋模式
   if (query.value === '') {
     return props.options
   }
