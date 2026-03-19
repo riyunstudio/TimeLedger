@@ -142,7 +142,9 @@ const fetchData = async () => {
   error.value = null
 
   try {
-    const { fetchAllResources } = useResourceCache()
+    const { fetchAllResources, invalidate } = useResourceCache()
+    // 強制清除快取，確保每次打開都取得最新資料
+    invalidate()
     await fetchAllResources()
   } catch (err: any) {
     console.error('Failed to fetch data:', err)
